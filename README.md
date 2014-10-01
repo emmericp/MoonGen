@@ -1,3 +1,5 @@
+#MoonGen Packet Generator
+
 MoonGen is a high-speed scriptable packet generator.
 The whole load generator is controlled by a Lua script: all packets that are
 sent are crafted by a user-provided script. Thanks to the incredibly fast LuaJIT VM
@@ -18,19 +20,22 @@ setup can be used to benchmark middle-boxes like firewalls.
 
 TODO: write more readme and reference paper here
 
-Dependencies:
-	* gcc
-	* make
-	* cmake
-	* kernel headers (for the DPDK ixgbe-uio driver)
-	* libluajit-2.0.3
+##Dependencies
 
-Installation:
-	1. Install the dependencies
-	2. ./build.sh
-	3. ./setup-hugetlbfs.sh
-	4. Run MoonGen from the build directory (installer coming soon)
+* gcc
+* make
+* cmake
+* kernel headers (for the DPDK ixgbe-uio driver)
+* libluajit-2.0.3
 
-Examples:
-	./MoonGen ../examples/l2-load-latency.lua
+##Installation
+
+1. Install the dependencies
+2. ./build.sh
+3. ./setup-hugetlbfs.sh
+4. Run MoonGen from the build directory (installer coming soon)
+
+##Examples
+
+    ./MoonGen ../examples/l2-load-latency.lua
 
