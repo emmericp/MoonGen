@@ -1,0 +1,325 @@
+local mod = {}
+
+local ffi	= require "ffi"
+local dpdkc	= require "dpdkc"
+local dpdk	= require "dpdk"
+local device	= require "device"
+
+local dev = device.__devicePrototype
+local rxQueue = device.__rxQueuePrototype
+local txQueue = device.__txQueuePrototype
+
+-- registers, mostly 82599/X540-specific
+local RXMTRL			= 0x00005120
+local TSYNCRXCTL		= 0x00005188
+local RXSTMPL			= 0x000051E8
+local RXSTMPH			= 0x000051A4
+local ETQF_0			= 0x00005128
+local ETQS_0			= 0x0000EC00
+
+local TSYNCTXCTL		= 0x00008C00
+local TXSTMPL			= 0x00008C04
+local TXSTMPH			= 0x00008C08
+local TIMEINCA			= 0x00008C14 -- X540 only
+local TIMINCA			= 0x00008C14 -- 82599 only (yes, the datasheets actually uses two different names)
+
+-- 82580 (and others gbit cards?) registers
+local TSAUXC			= 0x0000B640
+local TIMINCA_82580		= 0x0000B608
+local TSYNCRXCTL_82580		= 0x0000B620
+
+local SRRCTL_82580		= {}
+for i = 0, 7 do
+	SRRCTL_82580[i] = 0x0000C00C + 0x40 * i
+end
+
+-- TODO: support for more registers
+
+-- bit names in registers
+local TSYNCRXCTL_RXTT		= 1
+local TSYNCRXCTL_TYPE_OFFS	= 1
+local TSYNCRXCTL_TYPE_MASK	= bit.lshift(7, TSYNCRXCTL_TYPE_OFFS)
+local TSYNCRXCTL_EN		= bit.lshift(1, 4)
+
+local TSYNCTXCTL_TXTT		= 1
+local TSYNCTXCTL_EN		= bit.lshift(1, 4)
+
+local ETQF_FILTER_ENABLE	= bit.lshift(1, 31)
+local ETQF_IEEE_1588_TIME_STAMP	= bit.lshift(1, 30)
+
+local ETQS_RX_QUEUE_OFFS	= 16
+local ETQS_QUEUE_ENABLE		= bit.lshift(1, 31)
+
+local TIMINCA_IP_OFFS		= 24 -- 82599 only
+
+local TSAUXC_DISABLE		= bit.lshift(1, 31)
+
+local SRRCTL_TIMESTAMP		= bit.lshift(1, 30)
+
+-- offloading flags
+local PKT_TX_IEEE1588_TMST	= 0x8000
+local PKT_TX_IP_CKSUM		= 0x1000
+local PKT_TX_UDP_CKSUM		= 0x6000
+
+-- other constants
+local ETHER_TYPE_1588		= 0x88F7
+
+function mod.fillL2Packet(buf)
+	buf.pkt.pkt_len = 60
+	buf.pkt.data_len = 60
+	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
+	local data = ffi.cast("uint8_t*", buf.pkt.data)
+	-- PTP v2 L2 packet
+	for i = 0, 11 do
+		data[i] = i
+	end
+	data[12] = 0x88
+	data[13] = 0xF7
+	data[14] = 0x00
+	data[15] = 0x02
+end
+
+function mod.fillPacket(buf, port, size)
+	size = size or 80
+	-- min 76 bytes
+	if size < 80 then
+		error("time stamped UDP packets must be at least 80 bytes long")
+	end
+	buf.pkt.pkt_len = size - 4
+	buf.pkt.data_len = size - 4
+	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
+	local data = ffi.cast("uint8_t*", buf.pkt.data)
+	data[0] = 0x00 -- dst mac
+	data[1] = 0x25
+	data[2] = 0x90
+	data[3] = 0xED
+	data[4] = 0xBD
+	data[5] = 0xDD
+	data[6] = 0x00 -- src mac
+	data[7] = 0x25
+	data[8] = 0x90
+	data[9] = 0xED
+	data[10] = 0xBD
+	data[11] = 0xDD
+	data[12] = 0x08 -- ethertype (IPv4)
+	data[13] = 0x00
+	data[14] = 0x45 -- Version, IHL
+	data[15] = 0x00 -- DSCP/ECN
+	data[16] = 0x00 -- length (62)
+	data[17] = 0x3E
+	data[18] = 0x00 --id
+	data[19] = 0x00
+	data[20] = 0x00 -- flags/fragment offset
+	data[21] = 0x00 -- fragment offset
+	data[22] = 0x80 -- ttl
+	data[23] = 0x11 -- protocol (UDP)
+	data[24] = 0x00 -- checksum (offloaded to NIC)
+	data[25] = 0x00
+	data[26] = 0x01 -- src ip (1.2.3.4)
+	data[27] = 0x02
+	data[28] = 0x03
+	data[29] = 0x04
+	data[30] = 0x0A -- dst ip (10.0.0.1)
+	data[31] = 0x00
+	data[32] = 0x00
+	data[33] = 0x01
+	data[34] = bit.rshift(port, 8)
+	data[35] = bit.band(port, 0xFF) -- src port
+	data[36] = bit.rshift(port, 8)
+	data[37] = bit.band(port, 0xFF) -- dst port
+	data[38] = 0x00
+	data[39] = 0x2A -- length (42)
+	data[40] = 0x00 -- checksum (offloaded to NIC)
+	data[41] = 0x00 -- checksum (offloaded to NIC)
+	data[42] = 0x00 -- message id
+	data[43] = 0x02 -- ptp version
+	-- 44-47: unimportant fields
+	for i = 48, 48 + 7 do
+		data[i] = 0x00 -- sequence number (8 byte)
+	end
+	--  56, 57: unimportant fields
+	data[58] = 0x54 -- 'T' -- timestamp indicator
+	data[59] = 0x53 -- 'S'
+	-- TODO: checksum offloading NYI
+	local cs = checksum(data + 14, 20)
+	data[24] = bit.band(cs, 0xFF)
+	data[25] = bit.rshift(cs, 8)
+end
+
+-- TODO these functions should also use the upper 32 bit...
+
+--- waits until a tx timestamp is available and return it
+function mod.readTxTimestamp(port)
+	while bit.band(dpdkc.read_reg32(port, TSYNCTXCTL), TSYNCTXCTL_TXTT) == 0 do
+		if not dpdk.running() then
+			return -1
+		end
+	end
+	local low = dpdkc.read_reg32(port, TXSTMPL)
+	-- high 32 bits are not needed at the moment as the clock is reset before/after each packet
+	-- however, it must still be read to release the registers
+	local high = dpdkc.read_reg32(port, TXSTMPH)
+	return low
+end
+
+--- try to read a tx timestamp if one is available, returns -1 if no timestamp is available
+function mod.tryReadTxTimestamp(port)
+	if bit.band(dpdkc.read_reg32(port, TSYNCTXCTL), TSYNCTXCTL_TXTT) == 0 then
+		return nil
+	end
+	local low = dpdkc.read_reg32(port, TXSTMPL)
+	local high = dpdkc.read_reg32(port, TXSTMPH)
+	return low
+end
+
+function mod.readRxTimestamp(port)
+	while bit.band(dpdkc.read_reg32(port, TSYNCRXCTL), TSYNCRXCTL_RXTT) == 0 do
+		if not dpdk.running() then
+			return -1
+		end
+	end
+	local low = dpdkc.read_reg32(port, RXSTMPL)
+	local high = dpdkc.read_reg32(port, RXSTMPH)
+	return low
+end
+
+function mod.tryReadRxTimestamp(port)
+	if bit.band(dpdkc.read_reg32(port, TSYNCRXCTL), TSYNCRXCTL_RXTT) == 0 then
+		return nil
+	end
+	local low = dpdkc.read_reg32(port, RXSTMPL)
+	local high = dpdkc.read_reg32(port, RXSTMPH)
+	return low
+end
+
+local function startTimerIxgbe(port, id)
+	-- start system timer, this differs slightly between the two currently supported ixgbe-chips
+	if id == device.PCI_ID_X540 then
+		dpdkc.write_reg32(port, TIMEINCA, 1)
+	elseif id == device.PCI_ID_82599 then
+		dpdkc.write_reg32(port, TIMINCA, bit.bor(2, bit.lshift(2, TIMINCA_IP_OFFS)))
+	else -- should not happen
+		errorf("unsupported ixgbe device %s", device.getDeviceName(port))
+	end
+end
+
+local function startTimerIgb(port, id)
+	if id == device.PCI_ID_82580 then
+		-- start the timer
+		dpdkc.write_reg32(port, TIMINCA_82580, 1)
+		dpdkc.write_reg32(port, TSAUXC, bit.band(dpdkc.read_reg32(port, TSAUXC), bit.bnot(TSAUXC_DISABLE)))
+
+	else
+		errorf("unsupported igb device %s", device.getDeviceName(port))
+	end
+end
+
+local function enableRxTimestampsIxgbe(port, queue, udpPort, id)
+	startTimerIxgbe(port, id)
+	-- l2 rx filter
+	dpdkc.write_reg32(port, ETQF_0, bit.bor(ETQF_FILTER_ENABLE, ETQF_IEEE_1588_TIME_STAMP, ETHER_TYPE_1588))
+	dpdkc.write_reg32(port, ETQS_0, bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue, ETQS_RX_QUEUE_OFFS)))
+	-- L3 filter
+	-- TODO
+	-- enable rx timestamping
+	local val = dpdkc.read_reg32(port, TSYNCRXCTL)
+	val = bit.bor(val, TSYNCRXCTL_EN)
+	val = bit.band(val, bit.bnot(TSYNCRXCTL_TYPE_MASK))
+	val = bit.bor(val, bit.lshift(2, TSYNCRXCTL_TYPE_OFFS))
+	dpdkc.write_reg32(port, TSYNCRXCTL, val)
+	-- timestamp udp messages
+	local val = bit.lshift(udpPort, 16)
+	dpdkc.write_reg32(port, RXMTRL, val)
+end
+
+local function enableTxTimestampsIxgbe(port, queue, udpPort, id)
+	startTimerIxgbe(port, id)
+	local val = dpdkc.read_reg32(port, TSYNCTXCTL)
+	dpdkc.write_reg32(port, TSYNCTXCTL, bit.bor(val, TSYNCTXCTL_EN))
+end
+
+local function enableRxTimestampsAllIgb(port, queue, id)
+	startTimerIgb(port, id)
+	local val = dpdkc.read_reg32(port, TSYNCRXCTL_82580)
+	val = bit.bor(val, TSYNCRXCTL_EN)
+	val = bit.band(val, bit.bnot(TSYNCRXCTL_TYPE_MASK))
+	val = bit.bor(val, bit.lshift(bit.lshift(1, 2), TSYNCRXCTL_TYPE_OFFS))
+	dpdkc.write_reg32(port, TSYNCRXCTL_82580, val)
+	dpdkc.write_reg32(port, SRRCTL_82580[queue], bit.bor(dpdkc.read_reg32(port, SRRCTL_82580[queue]), SRRCTL_TIMESTAMP))
+end
+
+-- TODO: implement support for more hardware
+local enableFuncs = {
+	[device.PCI_ID_X540]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
+	[device.PCI_ID_82599]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
+	[device.PCI_ID_82580]	= { nil, nil, enableRxTimestampsAllIgb }
+}
+
+function rxQueue:enableTimestamps(udpPort)
+	udpPort = udpPort or 0
+	local id = self.dev:getPciId()
+	local f = enableFuncs[id]
+	f = f and f[1]
+	if not f then
+		errorf("RX time stamping on device type %s is not supported", self.dev:getName())
+	end
+	f(self.id, self.qid, udpPort, id)
+end
+
+function rxQueue:enableTimestampsAllPackets()
+	local id = self.dev:getPciId()
+	local f = enableFuncs[id]
+	f = f and f[3]
+	if not f then
+		errorf("Time stamping all RX packets on device type %s is not supported", self.dev:getName())
+	end
+	f(self.id, self.qid, id)
+end
+
+function txQueue:enableTimestamps(udpPort)
+	udpPort = udpPort or 0
+	local id = self.dev:getPciId()
+	local f = enableFuncs[id]
+	f = f and f[2]
+	if not f then
+		errorf("TX time stamping on device type %s is not supported", self.dev:getName())
+	end
+	f(self.id, self.qid, udpPort, id)
+end
+
+local function getTimestamp(wait, f, ...)
+	wait = wait or 0
+	repeat
+		local ts = f(...)
+		if ts then
+			return ts
+		end
+		dpdk.sleepMicros(math.min(10, wait))
+		wait = wait - 10
+		if not dpdk.running() then
+			break
+		end
+	until wait < 0
+	return nil
+end
+
+--- Read a TX timestamp from the device.
+function txQueue:getTimestamp(wait)
+	return getTimestamp(wait, mod.tryReadTxTimestamp, self.id)
+end
+
+--- Read a RX timestamp from the device.
+function rxQueue:getTimestamp(wait)
+	return getTimestamp(wait, mod.tryReadRxTimestamp, self.id)
+end
+
+function mod.syncClocks(dev1, dev2)
+	dpdkc.sync_clocks(dev1.id, dev2.id)
+end
+
+function mod.getClockDiff(dev1, dev2)
+	return dpdkc.get_clock_difference(dev1.id, dev2.id) * 6.4
+end
+
+return mod
+
