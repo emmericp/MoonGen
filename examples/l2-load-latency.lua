@@ -13,21 +13,32 @@ function master(...)
 		errorf("usage: txPort rxPort [rate]")
 	end
 	rate = rate or 10000
+	local rcWorkaround = rate > (64 * 64) / (84 * 84) * 10000 and rate < 10000
 	local rxMempool = memory.createMemPool()
 	local txDev, rxDev
 	if txPort == rxPort then
-		txDev = device.config(txPort, rxMempool, 2, 2)
+		txDev = device.config(txPort, rxMempool, 2, rcWorkaround and 4 or 2)
 		rxDev = txDev
 		txDev:wait()
 	else
-		txDev = device.config(txPort, rxMempool, 1, 2)
+		txDev = device.config(txPort, rxMempool, 1, rcWorkaround and 4 or 2)
 		rxDev = device.config(rxPort, rxMempool, 2, 1)
 		device.waitForDevs(txDev, rxDev)
 	end
-	txDev:getTxQueue(0):setRate(rate)
+	if rcWorkaround then
+		txDev:getTxQueue(0):setRate(rate / 3)
+		txDev:getTxQueue(2):setRate(rate / 3)
+		txDev:getTxQueue(3):setRate(rate / 3)
+	else
+		txDev:getTxQueue(0):setRate(rate)
+	end
 	dpdk.launchLua("timerSlave", txPort, rxPort, 1, 1)
 	dpdk.launchLua("loadSlave", txPort, 0)
 	dpdk.launchLua("counterSlave", rxPort, 0)
+	if rcWorkaround then
+		dpdk.launchLua("loadSlave", txPort, 2)
+		dpdk.launchLua("loadSlave", txPort, 3)
+	end
 	dpdk.waitForSlaves()
 end
 
