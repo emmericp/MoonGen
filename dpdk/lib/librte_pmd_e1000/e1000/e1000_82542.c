@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -316,7 +316,7 @@ STATIC s32 e1000_init_hw_82542(struct e1000_hw *hw)
 STATIC s32 e1000_setup_link_82542(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_setup_link_82542");
 

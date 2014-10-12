@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -161,8 +161,8 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 				ret = rte_mempool_get_bulk(mp, &obj_table[idx],
 							   n_get_bulk);
 				if (unlikely(ret < 0)) {
-					rte_mempool_dump(mp);
-					rte_ring_dump(mp->ring);
+					rte_mempool_dump(stdout, mp);
+					rte_ring_dump(stdout, mp->ring);
 					/* in this case, objects are lost... */
 					return -1;
 				}
@@ -273,7 +273,7 @@ do_one_mempool_test(unsigned cores)
 	return 0;
 }
 
-int
+static int
 test_mempool_perf(void)
 {
 	rte_atomic32_init(&synchro);
@@ -325,7 +325,13 @@ test_mempool_perf(void)
 	if (do_one_mempool_test(rte_lcore_count()) < 0)
 		return -1;
 
-	rte_mempool_list_dump();
+	rte_mempool_list_dump(stdout);
 
 	return 0;
 }
+
+static struct test_command mempool_perf_cmd = {
+	.command = "mempool_perf_autotest",
+	.callback = test_mempool_perf,
+};
+REGISTER_TEST_COMMAND(mempool_perf_cmd);

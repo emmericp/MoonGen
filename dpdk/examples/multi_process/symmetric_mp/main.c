@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -251,7 +251,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 			.rx_adv_conf = {
 				.rss_conf = {
 					.rss_key = NULL,
-					.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
+					.rss_hf = ETH_RSS_IP,
 				},
 			},
 			.txmode = {
@@ -347,10 +347,10 @@ lcore_main(void *arg __rte_unused)
 	/* build up message in msgbuf before printing to decrease likelihood
 	 * of multi-core message interleaving.
 	 */
-	msgbufpos += rte_snprintf(msgbuf, sizeof(msgbuf) - msgbufpos,
+	msgbufpos += snprintf(msgbuf, sizeof(msgbuf) - msgbufpos,
 			"Lcore %u using ports ", id);
 	for (p = start_port; p < end_port; p++){
-		msgbufpos += rte_snprintf(msgbuf + msgbufpos, sizeof(msgbuf) - msgbufpos,
+		msgbufpos += snprintf(msgbuf + msgbufpos, sizeof(msgbuf) - msgbufpos,
 				"%u ", (unsigned)ports[p]);
 	}
 	printf("%s\n", msgbuf);
@@ -463,8 +463,6 @@ main(int argc, char **argv)
 
 	/* probe to determine the NIC devices available */
 	proc_type = rte_eal_process_type();
-	if (rte_pmd_init_all() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot init pmd\n");
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 	if (rte_eth_dev_count() == 0)

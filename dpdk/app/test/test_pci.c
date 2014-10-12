@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -63,7 +63,7 @@ static int my_driver_init(struct rte_pci_driver *dr,
 			  struct rte_pci_device *dev);
 
 /*
- * To test cases where RTE_PCI_DRV_NEED_IGB_UIO is set, and isn't set, two
+ * To test cases where RTE_PCI_DRV_NEED_MAPPING is set, and isn't set, two
  * drivers are created (one with IGB devices, the other with IXGBE devices).
  */
 
@@ -81,7 +81,6 @@ struct rte_pci_id my_driver_id2[] = {
 /* IGB & EM NICS */
 #define RTE_PCI_DEV_ID_DECL_EM(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-#define RTE_PCI_DEV_USE_82575EB_COPPER
 #include <rte_pci_dev_ids.h>
 
 { .vendor_id = 0, /* sentinel */ },
@@ -91,7 +90,7 @@ struct rte_pci_driver my_driver = {
 	.name = "test_driver",
 	.devinit = my_driver_init,
 	.id_table = my_driver_id,
-	.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 };
 
 struct rte_pci_driver my_driver2 = {
@@ -153,7 +152,7 @@ test_pci(void)
 	struct rte_devargs_list save_devargs_list;
 
 	printf("Dump all devices\n");
-	rte_eal_pci_dump();
+	rte_eal_pci_dump(stdout);
 	if (driver_registered == 0) {
 		rte_eal_pci_register(&my_driver);
 		rte_eal_pci_register(&my_driver2);
@@ -196,3 +195,9 @@ test_pci(void)
 
 	return 0;
 }
+
+static struct test_command pci_cmd = {
+	.command = "pci_autotest",
+	.callback = test_pci,
+};
+REGISTER_TEST_COMMAND(pci_cmd);

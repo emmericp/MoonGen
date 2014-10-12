@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -30,6 +30,8 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 include $(RTE_SDK)/mk/rte.vars.mk
+
+ifeq ($(CONFIG_RTE_TEST_PMD),y)
 
 #
 # library name
@@ -46,22 +48,21 @@ endif
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_TEST_PMD) := testpmd.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += parameters.c
-ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
-SRCS-$(CONFIG_RTE_TEST_PMD) += cmdline.c
-endif
-SRCS-$(CONFIG_RTE_TEST_PMD) += config.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += iofwd.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += macfwd.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += macfwd-retry.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += rxonly.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += txonly.c
-SRCS-$(CONFIG_RTE_TEST_PMD) += csumonly.c
-ifeq ($(CONFIG_RTE_LIBRTE_IEEE1588),y)
-SRCS-$(CONFIG_RTE_TEST_PMD) += ieee1588fwd.c
-endif
-SRCS-$(CONFIG_RTE_TEST_PMD) += mempool_anon.c
+SRCS-y := testpmd.c
+SRCS-y += parameters.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline.c
+SRCS-y += config.c
+SRCS-y += iofwd.c
+SRCS-y += macfwd.c
+SRCS-y += macfwd-retry.c
+SRCS-y += macswap.c
+SRCS-y += flowgen.c
+SRCS-y += rxonly.c
+SRCS-y += txonly.c
+SRCS-y += csumonly.c
+SRCS-y += icmpecho.c
+SRCS-$(CONFIG_RTE_LIBRTE_IEEE1588) += ieee1588fwd.c
+SRCS-y += mempool_anon.c
 
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 CFLAGS_mempool_anon.o := -D_GNU_SOURCE
@@ -69,6 +70,8 @@ endif
 CFLAGS_cmdline.o := -D_GNU_SOURCE
 
 # this application needs libraries first
-DEPDIRS-$(CONFIG_RTE_TEST_PMD) += lib
+DEPDIRS-y += lib
 
 include $(RTE_SDK)/mk/rte.app.mk
+
+endif

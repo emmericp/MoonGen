@@ -38,6 +38,7 @@ There are many libraries, so their headers may be grouped by topics:
 - **device**:
   [ethdev]             (@ref rte_ethdev.h),
   [devargs]            (@ref rte_devargs.h),
+  [bond]               (@ref rte_eth_bond.h),
   [KNI]                (@ref rte_kni.h),
   [PCI]                (@ref rte_pci.h),
   [PCI IDs]            (@ref rte_pci_dev_ids.h)
@@ -78,7 +79,9 @@ There are many libraries, so their headers may be grouped by topics:
   [SCTP]               (@ref rte_sctp.h),
   [TCP]                (@ref rte_tcp.h),
   [UDP]                (@ref rte_udp.h),
-  [LPM route]          (@ref rte_lpm.h)
+  [frag/reass]         (@ref rte_ip_frag.h),
+  [LPM route]          (@ref rte_lpm.h),
+  [ACL]                (@ref rte_acl.h)
 
 - **QoS**:
   [metering]           (@ref rte_meter.h),
@@ -94,14 +97,32 @@ There are many libraries, so their headers may be grouped by topics:
 - **containers**:
   [mbuf]               (@ref rte_mbuf.h),
   [ring]               (@ref rte_ring.h),
+  [distributor]        (@ref rte_distributor.h),
   [tailq]              (@ref rte_tailq.h),
   [bitmap]             (@ref rte_bitmap.h)
+
+- **packet framework**:
+  * [port]             (@ref rte_port.h):
+    [ethdev]           (@ref rte_port_ethdev.h),
+    [ring]             (@ref rte_port_ring.h),
+    [frag]             (@ref rte_port_frag.h),
+    [reass]            (@ref rte_port_ras.h),
+    [sched]            (@ref rte_port_sched.h),
+    [src/sink]         (@ref rte_port_source_sink.h)
+  * [table]            (@ref rte_table.h):
+    [lpm IPv4]         (@ref rte_table_lpm.h),
+    [lpm IPv6]         (@ref rte_table_lpm_ipv6.h),
+    [ACL]              (@ref rte_table_acl.h),
+    [hash]             (@ref rte_table_hash.h),
+    [array]            (@ref rte_table_array.h),
+    [stub]             (@ref rte_table_stub.h)
+  * [pipeline]         (@ref rte_pipeline.h)
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),
   [random]             (@ref rte_random.h),
   [key/value args]     (@ref rte_kvargs.h),
-  [string]             (@ref rte_string_fns.h),
+  [string]             (@ref rte_string_fns.h)
 
 - **debug**:
   [debug]              (@ref rte_debug.h),

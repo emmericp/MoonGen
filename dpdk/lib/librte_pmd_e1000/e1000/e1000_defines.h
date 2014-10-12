@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -76,6 +76,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_CTRL_EXT_EE_RST	0x00002000 /* Reinitialize from EEPROM */
 /* Physical Func Reset Done Indication */
 #define E1000_CTRL_EXT_PFRSTD	0x00004000
+#define E1000_CTRL_EXT_SDLPE	0X00040000  /* SerDes Low Power Enable */
 #define E1000_CTRL_EXT_SPD_BYPS	0x00008000 /* Speed Select Bypass */
 #define E1000_CTRL_EXT_RO_DIS	0x00020000 /* Relaxed Ordering disable */
 #define E1000_CTRL_EXT_DMA_DYN_CLK_EN	0x00080000 /* DMA Dynamic Clk Gating */
@@ -852,6 +853,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_PCS_STATUS_ADDR_I354	1
 #define E1000_PCS_STATUS_RX_LPI_RCVD	0x0400
 #define E1000_PCS_STATUS_TX_LPI_RCVD	0x0800
+#define E1000_M88E1512_CFG_REG_1	0x0010
+#define E1000_M88E1512_CFG_REG_2	0x0011
+#define E1000_M88E1512_CFG_REG_3	0x0007
+#define E1000_M88E1512_MODE		0x0014
 #define E1000_EEE_SU_LPI_CLK_STP	0x00800000 /* EEE LPI Clock Stop */
 #define E1000_EEE_LP_ADV_DEV_I210	7          /* EEE LP Adv Device */
 #define E1000_EEE_LP_ADV_ADDR_I210	61         /* EEE LP Adv Register */

@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #define _IXGBE_API_H_
 
 #include "ixgbe_type.h"
-#ident "$Id: ixgbe_api.h,v 1.115 2012/08/23 23:30:15 jtkirshe Exp $"
+#ident "$Id: ixgbe_api.h,v 1.123 2013/11/22 01:02:01 jtkirshe Exp $"
+
+void ixgbe_dcb_get_rtrup2tc(struct ixgbe_hw *hw, u8 *map);
 
 s32 ixgbe_init_shared_code(struct ixgbe_hw *hw);
 
@@ -72,13 +74,12 @@ s32 ixgbe_check_phy_link(struct ixgbe_hw *hw,
 			 bool *link_up);
 s32 ixgbe_setup_phy_link_speed(struct ixgbe_hw *hw,
 			       ixgbe_link_speed speed,
-			       bool autoneg,
 			       bool autoneg_wait_to_complete);
 void ixgbe_disable_tx_laser(struct ixgbe_hw *hw);
 void ixgbe_enable_tx_laser(struct ixgbe_hw *hw);
 void ixgbe_flap_tx_laser(struct ixgbe_hw *hw);
 s32 ixgbe_setup_link(struct ixgbe_hw *hw, ixgbe_link_speed speed,
-		     bool autoneg, bool autoneg_wait_to_complete);
+		     bool autoneg_wait_to_complete);
 s32 ixgbe_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		     bool *link_up, bool link_up_wait_to_complete);
 s32 ixgbe_get_link_capabilities(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
@@ -135,18 +136,20 @@ u32 ixgbe_get_supported_physical_layer(struct ixgbe_hw *hw);
 s32 ixgbe_enable_rx_dma(struct ixgbe_hw *hw, u32 regval);
 s32 ixgbe_disable_sec_rx_path(struct ixgbe_hw *hw);
 s32 ixgbe_enable_sec_rx_path(struct ixgbe_hw *hw);
+s32 ixgbe_mng_fw_enabled(struct ixgbe_hw *hw);
 s32 ixgbe_reinit_fdir_tables_82599(struct ixgbe_hw *hw);
 s32 ixgbe_init_fdir_signature_82599(struct ixgbe_hw *hw, u32 fdirctrl);
-s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl);
+s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
+					bool cloud_mode);
 s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 					  union ixgbe_atr_hash_dword input,
 					  union ixgbe_atr_hash_dword common,
 					  u8 queue);
 s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
-				    union ixgbe_atr_input *input_mask);
+				    union ixgbe_atr_input *input_mask, bool cloud_mode);
 s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 					  union ixgbe_atr_input *input,
-					  u16 soft_id, u8 queue);
+					  u16 soft_id, u8 queue, bool cloud_mode);
 s32 ixgbe_fdir_erase_perfect_filter_82599(struct ixgbe_hw *hw,
 					  union ixgbe_atr_input *input,
 					  u16 soft_id);
@@ -154,7 +157,8 @@ s32 ixgbe_fdir_add_perfect_filter_82599(struct ixgbe_hw *hw,
 					union ixgbe_atr_input *input,
 					union ixgbe_atr_input *mask,
 					u16 soft_id,
-					u8 queue);
+					u8 queue,
+					bool cloud_mode);
 void ixgbe_atr_compute_perfect_hash_82599(union ixgbe_atr_input *input,
 					  union ixgbe_atr_input *mask);
 u32 ixgbe_atr_compute_sig_hash_82599(union ixgbe_atr_hash_dword input,
@@ -173,5 +177,7 @@ void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u16 mask);
 s32 ixgbe_get_wwn_prefix(struct ixgbe_hw *hw, u16 *wwnn_prefix,
 			 u16 *wwpn_prefix);
 s32 ixgbe_get_fcoe_boot_status(struct ixgbe_hw *hw, u16 *bs);
+void ixgbe_disable_rx(struct ixgbe_hw *hw);
+void ixgbe_enable_rx(struct ixgbe_hw *hw);
 
 #endif /* _IXGBE_API_H_ */

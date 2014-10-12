@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -122,7 +122,7 @@ cmdline_set_prompt(struct cmdline *cl, const char *prompt)
 {
 	if (!cl || !prompt)
 		return;
-	rte_snprintf(cl->prompt, sizeof(cl->prompt), "%s", prompt);
+	snprintf(cl->prompt, sizeof(cl->prompt), "%s", prompt);
 }
 
 struct cmdline *
@@ -256,7 +256,7 @@ cmdline_interact(struct cmdline *cl)
 
 	c = -1;
 	while (1) {
-		if (read(cl->s_in, &c, 1) < 0)
+		if (read(cl->s_in, &c, 1) <= 0)
 			break;
 		if (cmdline_in(cl, &c, 1) < 0)
 			break;

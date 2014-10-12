@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -46,7 +46,7 @@ enum elem_state {
 struct malloc_elem {
 	struct malloc_heap *heap;
 	struct malloc_elem *volatile prev;      /* points to prev elem in memzone */
-	struct malloc_elem *volatile next_free; /* to make list of free elements */
+	LIST_ENTRY(malloc_elem) free_list;      /* list of free elements in heap */
 	const struct rte_memzone *mz;
 	volatile enum elem_state state;
 	uint32_t pad;
@@ -156,8 +156,7 @@ malloc_elem_can_hold(struct malloc_elem *elem, size_t size, unsigned align);
  * is much larger than the data block requested, we split the element in two.
  */
 struct malloc_elem *
-malloc_elem_alloc(struct malloc_elem *elem, size_t size,
-		unsigned align, struct malloc_elem *prev_free);
+malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align);
 
 /*
  * free a malloc_elem block by adding it to the free list. If the
@@ -173,5 +172,17 @@ malloc_elem_free(struct malloc_elem *elem);
  */
 int
 malloc_elem_resize(struct malloc_elem *elem, size_t size);
+
+/*
+ * Given an element size, compute its freelist index.
+ */
+size_t
+malloc_elem_free_list_index(size_t size);
+
+/*
+ * Add element to its heap's free list.
+ */
+void
+malloc_elem_free_list_insert(struct malloc_elem *elem);
 
 #endif /* MALLOC_ELEM_H_ */

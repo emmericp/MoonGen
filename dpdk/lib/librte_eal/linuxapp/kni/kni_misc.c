@@ -1,23 +1,23 @@
 /*-
  * GPL LICENSE SUMMARY
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
- * 
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of version 2 of the GNU General Public License as
  *   published by the Free Software Foundation.
- * 
+ *
  *   This program is distributed in the hope that it will be useful, but
  *   WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *   General Public License for more details.
- * 
+ *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *   The full GNU General Public License is included in this distribution
  *   in the file called LICENSE.GPL.
- * 
+ *
  *   Contact Information:
  *   Intel Corporation
  */
@@ -345,6 +345,9 @@ kni_ioctl_create(unsigned int ioctl_num, unsigned long ioctl_param)
 	up_read(&kni_list_lock);
 
 	net_dev = alloc_netdev(sizeof(struct kni_dev), dev_info.name,
+#ifdef NET_NAME_UNKNOWN
+							NET_NAME_UNKNOWN,
+#endif
 							kni_net_init);
 	if (net_dev == NULL) {
 		KNI_ERR("error allocating device \"%s\"\n", dev_info.name);

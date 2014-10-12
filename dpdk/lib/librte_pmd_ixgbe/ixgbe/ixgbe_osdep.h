@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2012, Intel Corporation 
+  Copyright (c) 2001-2014, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -62,6 +62,10 @@
 #define DEBUGOUT6(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT7(S, args...)   DEBUGOUT(S, ##args)
 
+#define ERROR_REPORT1(e, S, args...)   DEBUGOUT(S, ##args)
+#define ERROR_REPORT2(e, S, args...)   DEBUGOUT(S, ##args)
+#define ERROR_REPORT3(e, S, args...)   DEBUGOUT(S, ##args)
+
 #define FALSE               0
 #define TRUE                1
 
@@ -87,6 +91,7 @@
 typedef uint8_t		u8;
 typedef int8_t		s8;
 typedef uint16_t	u16;
+typedef int16_t	s16; 
 typedef uint32_t	u32;
 typedef int32_t		s32;
 typedef uint64_t	u64;

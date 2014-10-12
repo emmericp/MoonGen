@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -74,6 +74,9 @@ extern struct rte_logs rte_logs;
 #define RTE_LOGTYPE_POWER   0x00000400 /**< Log related to power. */
 #define RTE_LOGTYPE_METER   0x00000800 /**< Log related to QoS meter. */
 #define RTE_LOGTYPE_SCHED   0x00001000 /**< Log related to QoS port scheduler. */
+#define RTE_LOGTYPE_PORT    0x00002000 /**< Log related to port. */
+#define RTE_LOGTYPE_TABLE   0x00004000 /**< Log related to table. */
+#define RTE_LOGTYPE_PIPELINE 0x00008000 /**< Log related to pipeline. */
 
 /* these log types can be used in an application */
 #define RTE_LOGTYPE_USER1   0x01000000 /**< User-defined log type 1. */
@@ -173,9 +176,12 @@ int rte_log_cur_msg_logtype(void);
 void rte_log_set_history(int enable);
 
 /**
- * Dump the log history to the console.
+ * Dump the log history to a file
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_log_dump_history(void);
+void rte_log_dump_history(FILE *f);
 
 /**
  * Add a log message to the history.
@@ -252,7 +258,8 @@ int rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
  *   - 0: Success.
  *   - Negative on error.
  */
-int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap);
+int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
+	__attribute__((format(printf,3,0)));
 
 /**
  * Generates a log message.

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -36,7 +36,7 @@
 
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 #define VMXNET3_ASSERT(x) do { \
-	if(!(x)) rte_panic("VMXNET3: x"); \
+	if (!(x)) rte_panic("VMXNET3: x"); \
 } while(0)
 #endif
 
@@ -64,16 +64,16 @@
 /* RSS configuration structure - shared with device through GPA */
 typedef
 struct VMXNET3_RSSConf {
-   uint16_t   hashType;
-   uint16_t   hashFunc;
-   uint16_t   hashKeySize;
-   uint16_t   indTableSize;
-   uint8_t    hashKey[VMXNET3_RSS_MAX_KEY_SIZE];
-   /*
-    * indTable is only element that can be changed without
-    * device quiesce-reset-update-activation cycle
-    */
-   uint8_t    indTable[VMXNET3_RSS_MAX_IND_TABLE_SIZE];
+	uint16_t   hashType;
+	uint16_t   hashFunc;
+	uint16_t   hashKeySize;
+	uint16_t   indTableSize;
+	uint8_t    hashKey[VMXNET3_RSS_MAX_KEY_SIZE];
+	/*
+	 * indTable is only element that can be changed without
+	 * device quiesce-reset-update-activation cycle
+	 */
+	uint8_t    indTable[VMXNET3_RSS_MAX_IND_TABLE_SIZE];
 } VMXNET3_RSSConf;
 
 typedef
@@ -117,16 +117,6 @@ struct vmxnet3_hw {
 	vmxnet3_mf_table_t   *mf_table;
 };
 
-/*
- * Structure to store private data for each driver instance (for each port).
- */
-struct vmxnet3_adapter {
-	struct vmxnet3_hw              hw;
-};
-
-#define VMXNET3_DEV_PRIVATE_TO_HW(adapter)\
-	(&((struct vmxnet3_adapter *)adapter)->hw)
-
 #define VMXNET3_GET_ADDR_LO(reg)   ((uint32_t)(reg))
 #define VMXNET3_GET_ADDR_HI(reg)   ((uint32_t)(((uint64_t)(reg)) >> 32))
 
@@ -134,7 +124,7 @@ struct vmxnet3_adapter {
 
 #define VMXNET3_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
 
-static inline uint32_t vmxnet3_read_addr(volatile void* addr)
+static inline uint32_t vmxnet3_read_addr(volatile void *addr)
 {
 	return VMXNET3_PCI_REG(addr);
 }

@@ -1,13 +1,13 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   Copyright(c) 2014 6WIND S.A.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -61,6 +61,10 @@ ifeq ($(NO_AUTOLIBS),)
 
 LDLIBS += --whole-archive
 
+ifeq ($(CONFIG_RTE_LIBRTE_DISTRIBUTOR),y)
+LDLIBS += -lrte_distributor
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 LDLIBS += -lrte_kni
@@ -73,20 +77,16 @@ LDLIBS += -lrte_ivshmem
 endif
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_E1000_PMD),y)
-LDLIBS += -lrte_pmd_e1000
+ifeq ($(CONFIG_RTE_LIBRTE_PIPELINE),y)
+LDLIBS += -lrte_pipeline
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
-LDLIBS += -lrte_pmd_ixgbe
+ifeq ($(CONFIG_RTE_LIBRTE_TABLE),y)
+LDLIBS += -lrte_table
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_VIRTIO_PMD),y)
-LDLIBS += -lrte_pmd_virtio_uio
-endif
-
-ifeq ($(CONFIG_RTE_LIBRTE_VMXNET3_PMD),y)
-LDLIBS += -lrte_pmd_vmxnet3_uio
+ifeq ($(CONFIG_RTE_LIBRTE_PORT),y)
+LDLIBS += -lrte_port
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_TIMER),y)
@@ -129,12 +129,12 @@ ifeq ($(CONFIG_RTE_LIBRTE_MBUF),y)
 LDLIBS += -lrte_mbuf
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_ETHER),y)
-LDLIBS += -lethdev
+ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
+LDLIBS += -lrte_ip_frag
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
-LDLIBS += -lrte_pmd_ring
+ifeq ($(CONFIG_RTE_LIBRTE_ETHER),y)
+LDLIBS += -lethdev
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_MALLOC),y)
@@ -162,19 +162,55 @@ ifeq ($(CONFIG_RTE_LIBRTE_EAL),y)
 LDLIBS += -lrte_eal
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
+LDLIBS += -lrte_cmdline
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_CFGFILE),y)
+LDLIBS += -lrte_cfgfile
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)
+LDLIBS += -lrte_pmd_bond
+endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_XENVIRT),y)
 LDLIBS += -lrte_pmd_xenvirt
 LDLIBS += -lxenstore
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
-LDLIBS += -lrte_cmdline
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
+# plugins (link only if static libraries)
+
+ifeq ($(CONFIG_RTE_LIBRTE_VMXNET3_PMD),y)
+LDLIBS += -lrte_pmd_vmxnet3_uio
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_VIRTIO_PMD),y)
+LDLIBS += -lrte_pmd_virtio_uio
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_I40E_PMD),y)
+LDLIBS += -lrte_pmd_i40e
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
+LDLIBS += -lrte_pmd_ixgbe
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_E1000_PMD),y)
+LDLIBS += -lrte_pmd_e1000
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
+LDLIBS += -lrte_pmd_ring
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_PCAP),y)
 LDLIBS += -lrte_pmd_pcap -lpcap
 endif
+
+endif # plugins
 
 LDLIBS += $(EXECENV_LDLIBS)
 

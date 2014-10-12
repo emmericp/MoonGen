@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -43,16 +43,24 @@ ifeq ($(CC), icc)
 #
 # CFLAGS for icc
 #
-CFLAGS_LAD = -wd174 -wd593 -wd869 -wd981 -wd2259
-else 
+CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
+
+else ifeq ($(CC), clang)
+#
+# CFLAGS for clang
+#
+CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
+CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
+
+else
 #
 # CFLAGS for gcc
 #
 ifneq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 3 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 endif
-CFLAGS_LAD = -Wno-unused-parameter -Wno-unused-value
-CFLAGS_LAD += -Wno-strict-aliasing -Wno-format-extra-args
+CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
+CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
 
 ifeq ($(shell test $(GCC_MAJOR_VERSION) -ge 4 -a $(GCC_MINOR_VERSION) -ge 6 && echo 1), 1)
 CFLAGS_ixgbe_common.o += -Wno-unused-but-set-variable
@@ -60,10 +68,11 @@ endif
 endif
 
 #
-# Add extra flags for LAD source files to disable warnings in them
+# Add extra flags for base driver files (also known as shared code)
+# to disable warnings in them
 #
-LAD_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_ixgbe/ixgbe/*.c)))
-$(foreach obj, $(LAD_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_LAD)))
+BASE_DRIVER_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_ixgbe/ixgbe/*.c)))
+$(foreach obj, $(BASE_DRIVER_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 
 VPATH += $(RTE_SDK)/lib/librte_pmd_ixgbe/ixgbe
 

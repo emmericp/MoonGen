@@ -30,7 +30,6 @@ end
 local function master(_, file, ...)
 	MOONGEN_TASK_NAME = "master"
 	dpdk.init()
-	dev.init()
 	local devices = dev.getDevices()
 	printf("Found %d usable ports:", #devices)
 	for _, device in ipairs(devices) do
@@ -41,7 +40,7 @@ local function master(_, file, ...)
 	xpcall(_G["master"], getStackTrace, ...)
 	-- exit program once the master task finishes
 	-- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()
-	os.exit(0)
+	--os.exit(0)
 end
 
 local function slave(file, func, ...)

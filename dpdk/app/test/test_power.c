@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -38,8 +38,6 @@
 #include <string.h>
 
 #include "test.h"
-
-#ifdef RTE_LIBRTE_POWER
 
 #include <rte_power.h>
 
@@ -63,7 +61,7 @@ check_cur_freq(unsigned lcore_id, uint32_t idx)
 	uint32_t cur_freq;
 	int ret = -1;
 
-	if (rte_snprintf(fullpath, sizeof(fullpath),
+	if (snprintf(fullpath, sizeof(fullpath),
 		TEST_POWER_SYSFILE_CUR_FREQ, lcore_id) < 0) {
 		return 0;
 	}
@@ -379,7 +377,7 @@ check_power_freq_min(void)
 	return 0;
 }
 
-int
+static int
 test_power(void)
 {
 	int ret = -1;
@@ -477,14 +475,8 @@ fail_all:
 	return -1;
 }
 
-#else /* RTE_LIBRTE_POWER */
-
-int
-test_power(void)
-{
-	printf("The power library is not included in this build\n");
-	return 0;
-}
-
-#endif /* RTE_LIBRTE_POWER */
-
+static struct test_command power_cmd = {
+	.command = "power_autotest",
+	.callback = test_power,
+};
+REGISTER_TEST_COMMAND(power_cmd);

@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -43,6 +43,13 @@ MODULE_CFLAGS += -I$(SRCDIR) --param max-inline-insns-single=50
 MODULE_CFLAGS += -I$(RTE_OUTPUT)/include -I$(SRCDIR)/ethtool/ixgbe -I$(SRCDIR)/ethtool/igb
 MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 MODULE_CFLAGS += -Wall -Werror
+
+ifeq ($(shell lsb_release -si 2>/dev/null),Ubuntu)
+MODULE_CFLAGS += -DUBUNTU_RELEASE_CODE=$(shell lsb_release -sr | tr -d .)
+UBUNTU_KERNEL_CODE := $(shell cut -d' ' -f2 /proc/version_signature | \
+                        cut -d'~' -f1 | cut -d- -f1,2 | tr .- $(comma))
+MODULE_CFLAGS += -D"UBUNTU_KERNEL_CODE=UBUNTU_KERNEL_VERSION($(UBUNTU_KERNEL_CODE))"
+endif
 
 # this lib needs main eal
 DEPDIRS-y += lib/librte_eal/linuxapp/eal

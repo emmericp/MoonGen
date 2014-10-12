@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -229,7 +229,7 @@ static int tap_create(char *name)
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
 	if (name && *name)
-		rte_snprintf(ifr.ifr_name, IFNAMSIZ, name);
+		snprintf(ifr.ifr_name, IFNAMSIZ, "%s", name);
 
 	ret = ioctl(fd, TUNSETIFF, (void *) &ifr);
 	if (ret < 0) {
@@ -238,7 +238,7 @@ static int tap_create(char *name)
 	}
 
 	if (name)
-		rte_snprintf(name, IFNAMSIZ, ifr.ifr_name);
+		snprintf(name, IFNAMSIZ, "%s", ifr.ifr_name);
 
 	return fd;
 }
@@ -253,7 +253,7 @@ main_loop(__attribute__((unused)) void *arg)
 
 	if ((1ULL << lcore_id) & input_cores_mask) {
 		/* Create new tap interface */
-		rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
+		snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
 		tap_fd = tap_create(tap_name);
 		if (tap_fd < 0)
 			FATAL_ERROR("Could not create tap interface \"%s\" (%d)",
@@ -286,7 +286,7 @@ main_loop(__attribute__((unused)) void *arg)
 	}
 	else if ((1ULL << lcore_id) & output_cores_mask) {
 		/* Create new tap interface */
-		rte_snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
+		snprintf(tap_name, IFNAMSIZ, "tap_dpdk_%.2u", lcore_id);
 		tap_fd = tap_create(tap_name);
 		if (tap_fd < 0)
 			FATAL_ERROR("Could not create tap interface \"%s\" (%d)",
@@ -565,11 +565,6 @@ main(int argc, char** argv)
 		FATAL_ERROR("Could not initialise mbuf pool");
 		return -1;
 	}
-
-	/* Initialise PMD driver(s) */
-	ret = rte_pmd_init_all();
-	if (ret < 0)
-		FATAL_ERROR("Could not probe PMD (%d)", ret);
 
 	/* Scan PCI bus for recognised devices */
 	ret = rte_eal_pci_probe();

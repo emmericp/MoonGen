@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -313,6 +313,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				ol_flags |= PKT_TX_IP_CKSUM;
 			}
 			else {
+				ol_flags |= PKT_TX_IPV4;
 				/* SW checksum calculation */
 				ipv4_hdr->src_addr++;
 				ipv4_hdr->hdr_checksum = get_ipv4_cksum(ipv4_hdr);
@@ -373,6 +374,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					unsigned char *) + l2_len);
 			l3_len = sizeof(struct ipv6_hdr) ;
 			l4_proto = ipv6_hdr->proto;
+			ol_flags |= PKT_TX_IPV6;
 
 			if (l4_proto == IPPROTO_UDP) {
 				udp_hdr = (struct udp_hdr*) (rte_pktmbuf_mtod(mb,

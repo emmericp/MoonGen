@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,20 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "ixgbe_api.h"
 #include "ixgbe_common.h"
-#ident "$Id: ixgbe_api.c,v 1.187 2012/11/08 10:11:52 jtkirshe Exp $"
+#ident "$Id: ixgbe_api.c,v 1.207 2013/11/22 01:02:01 jtkirshe Exp $"
+
+/**
+ * ixgbe_dcb_get_rtrup2tc - read rtrup2tc reg
+ * @hw: pointer to hardware structure
+ * @map: pointer to u8 arr for returning map
+ *
+ * Read the rtrup2tc HW register and resolve its content into map
+ **/
+void ixgbe_dcb_get_rtrup2tc(struct ixgbe_hw *hw, u8 *map)
+{
+	if (hw->mac.ops.get_rtrup2tc)
+		hw->mac.ops.get_rtrup2tc(hw, map);
+}
 
 /**
  *  ixgbe_init_shared_code - Initialize the shared code
@@ -65,12 +78,12 @@ s32 ixgbe_init_shared_code(struct ixgbe_hw *hw)
 	case ixgbe_mac_82599EB:
 		status = ixgbe_init_ops_82599(hw);
 		break;
+	case ixgbe_mac_X540:
+		status = ixgbe_init_ops_X540(hw);
+		break;
 	case ixgbe_mac_82599_vf:
 	case ixgbe_mac_X540_vf:
 		status = ixgbe_init_ops_vf(hw);
-		break;
-	case ixgbe_mac_X540:
-		status = ixgbe_init_ops_X540(hw);
 		break;
 	default:
 		status = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
@@ -92,6 +105,12 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 	s32 ret_val = IXGBE_SUCCESS;
 
 	DEBUGFUNC("ixgbe_set_mac_type\n");
+
+	if (hw->vendor_id != IXGBE_INTEL_VENDOR_ID) {
+		ERROR_REPORT2(IXGBE_ERROR_UNSUPPORTED,
+			     "Unsupported vendor id: %x", hw->vendor_id);
+		return IXGBE_ERR_DEVICE_NOT_SUPPORTED;
+	}
 
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_82598:
@@ -138,6 +157,9 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 		break;
 	default:
 		ret_val = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
+		ERROR_REPORT2(IXGBE_ERROR_UNSUPPORTED,
+			     "Unsupported device id: %x",
+			     hw->device_id);
 		break;
 	}
 
@@ -506,16 +528,14 @@ s32 ixgbe_check_phy_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
  *  ixgbe_setup_phy_link_speed - Set auto advertise
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: true if autonegotiation enabled
  *
  *  Sets the auto advertised capabilities
  **/
 s32 ixgbe_setup_phy_link_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed,
-			       bool autoneg,
 			       bool autoneg_wait_to_complete)
 {
 	return ixgbe_call_func(hw, hw->phy.ops.setup_link_speed, (hw, speed,
-			       autoneg, autoneg_wait_to_complete),
+			       autoneg_wait_to_complete),
 			       IXGBE_NOT_IMPLEMENTED);
 }
 
@@ -575,17 +595,15 @@ void ixgbe_flap_tx_laser(struct ixgbe_hw *hw)
  *  ixgbe_setup_link - Set link speed
  *  @hw: pointer to hardware structure
  *  @speed: new link speed
- *  @autoneg: true if autonegotiation enabled
  *
  *  Configures link settings.  Restarts the link.
  *  Performs autonegotiation if needed.
  **/
 s32 ixgbe_setup_link(struct ixgbe_hw *hw, ixgbe_link_speed speed,
-		     bool autoneg,
 		     bool autoneg_wait_to_complete)
 {
 	return ixgbe_call_func(hw, hw->mac.ops.setup_link, (hw, speed,
-			       autoneg, autoneg_wait_to_complete),
+			       autoneg_wait_to_complete),
 			       IXGBE_NOT_IMPLEMENTED);
 }
 
@@ -998,6 +1016,8 @@ s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
 }
 
 
+
+
 /**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
  *  @hw: pointer to hardware structure
@@ -1178,3 +1198,15 @@ void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
 		hw->mac.ops.release_swfw_sync(hw, mask);
 }
 
+
+void ixgbe_disable_rx(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.disable_rx)
+		hw->mac.ops.disable_rx(hw);
+}
+
+void ixgbe_enable_rx(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.enable_rx)
+		hw->mac.ops.enable_rx(hw);
+}

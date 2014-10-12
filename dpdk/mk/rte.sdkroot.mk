@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -53,7 +53,7 @@ export BUILDING_RTE_SDK
 
 #
 # We can specify the configuration template when doing the "make
-# config". For instance: make config T=i686-default-baremetal-gcc
+# config". For instance: make config T=i686-native-baremetal-gcc
 #
 RTE_CONFIG_TEMPLATE :=
 ifdef T
@@ -114,6 +114,10 @@ depdirs depgraph:
 .PHONY: gcov gcovclean
 gcov gcovclean:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkgcov.mk $@
+
+.PHONY: examples examples_clean
+examples examples_clean:
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkexamples.mk $@
 
 # all other build targets
 %:

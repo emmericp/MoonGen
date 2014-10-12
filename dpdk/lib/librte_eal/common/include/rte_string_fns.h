@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -44,18 +44,9 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <errno.h>
-
 /**
- * Safer version of snprintf that writes up to buflen characters to
- * the output buffer and ensures that the resultant string is null-terminated,
- * that is, it writes at most buflen-1 actual string characters to buffer. The
- * return value is the number of characters which should be written to the
- * buffer, so string truncation can be detected by the caller by checking if
- * the return value is greater than or equal to the buflen.
+ * This functio is deprecated and just for backward compatibility.
+ * It is just an alternate version of snprintf.
  *
  * @param buffer
  *   The buffer into which the output is to be written
@@ -72,33 +63,10 @@ extern "C" {
  *   buffer been sufficiently big.
  *
  */
-static inline int
+int
 rte_snprintf(char *buffer, int buflen, const char *format, ...)
-{
-	int len;
-	va_list ap;
-
-	if (buffer == NULL && buflen != 0)
-		goto einval_error;
-	if (format == NULL) {
-		if (buflen > 0)
-			buffer[0] = '\0';
-		goto einval_error;
-	}
-
-	va_start(ap, format);
-	len = vsnprintf(buffer, buflen, format, ap);
-	va_end(ap);
-	if (len >= buflen && buflen > 0)
-		buffer[buflen - 1] = '\0';
-
-	return len;
-
-einval_error:
-	errno = EINVAL;
-	return -1;
-}
-
+	__attribute__((format(printf,3,4)))
+	__attribute__((deprecated));
 
 /**
  * Takes string "string" parameter and splits it at character "delim"
@@ -126,38 +94,12 @@ einval_error:
  * @return
  *   The number of tokens in the tokens array.
  */
-static inline int
+int
 rte_strsplit(char *string, int stringlen,
-		char **tokens, int maxtokens, char delim)
-{
-	int i, tok = 0;
-	int tokstart = 1; /* first token is right at start of string */
-
-	if (string == NULL || tokens == NULL)
-		goto einval_error;
-
-	for (i = 0; i < stringlen; i++) {
-		if (string[i] == '\0' || tok >= maxtokens)
-			break;
-		if (tokstart) {
-			tokstart = 0;
-			tokens[tok++] = &string[i];
-		}
-		if (string[i] == delim) {
-			string[i] = '\0';
-			tokstart = 1;
-		}
-	}
-	return tok;
-
-einval_error:
-	errno = EINVAL;
-	return -1;
-}
+             char **tokens, int maxtokens, char delim);
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* RTE_STRING_FNS_H */

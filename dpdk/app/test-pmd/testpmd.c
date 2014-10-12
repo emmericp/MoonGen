@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -83,6 +83,7 @@ uint16_t verbose_level = 0; /**< Silent by default. */
 
 /* use master core for command line ? */
 uint8_t interactive = 0;
+uint8_t auto_start = 0;
 
 /*
  * NUMA support configuration.
@@ -94,10 +95,10 @@ uint8_t interactive = 0;
 uint8_t numa_support = 0; /**< No numa support by default */
 
 /*
- * In UMA mode,all memory is allocated from socket 0 if --socket-num is 
+ * In UMA mode,all memory is allocated from socket 0 if --socket-num is
  * not configured.
  */
-uint8_t socket_num = UMA_NO_CONFIG; 
+uint8_t socket_num = UMA_NO_CONFIG;
 
 /*
  * Use ANONYMOUS mapped memory (might be not physically continuous) for mbufs.
@@ -144,9 +145,12 @@ struct fwd_engine * fwd_engines[] = {
 	&io_fwd_engine,
 	&mac_fwd_engine,
 	&mac_retry_fwd_engine,
+	&mac_swap_engine,
+	&flow_gen_engine,
 	&rx_only_engine,
 	&tx_only_engine,
 	&csum_fwd_engine,
+	&icmp_echo_engine,
 #ifdef RTE_LIBRTE_IEEE1588
 	&ieee1588_fwd_engine,
 #endif
@@ -170,14 +174,14 @@ uint16_t tx_pkt_seg_lengths[RTE_MAX_SEGS_PER_PKT] = {
 uint8_t  tx_pkt_nb_segs = 1; /**< Number of segments in TXONLY packets */
 
 uint16_t nb_pkt_per_burst = DEF_PKT_BURST; /**< Number of packets per burst. */
-uint16_t mb_mempool_cache = DEF_PKT_BURST; /**< Size of mbuf mempool cache. */
+uint16_t mb_mempool_cache = DEF_MBUF_CACHE; /**< Size of mbuf mempool cache. */
 
 /* current configuration is in DCB or not,0 means it is not in DCB mode */
 uint8_t dcb_config = 0;
- 
+
 /* Whether the dcb is in testing status */
 uint8_t dcb_test = 0;
- 
+
 /* DCB on and VT on mapping is default */
 enum dcb_queue_mapping_mode dcb_q_mapping = DCB_VT_Q_MAPPING;
 
@@ -200,9 +204,9 @@ uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT; /**< Number of TX descriptors. */
  */
 #define RX_PTHRESH 8 /**< Default value of RX prefetch threshold register. */
 #define RX_HTHRESH 8 /**< Default value of RX host threshold register. */
-#define RX_WTHRESH 4 /**< Default value of RX write-back threshold register. */
+#define RX_WTHRESH 0 /**< Default value of RX write-back threshold register. */
 
-#define TX_PTHRESH 36 /**< Default value of TX prefetch threshold register. */
+#define TX_PTHRESH 32 /**< Default value of TX prefetch threshold register. */
 #define TX_HTHRESH 0 /**< Default value of TX host threshold register. */
 #define TX_WTHRESH 0 /**< Default value of TX write-back threshold register. */
 
@@ -246,7 +250,7 @@ uint32_t txq_flags = 0; /* No flags set. */
 /*
  * Receive Side Scaling (RSS) configuration.
  */
-uint16_t rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6; /* RSS IP by default. */
+uint64_t rss_hf = ETH_RSS_IP; /* RSS IP by default. */
 
 /*
  * Port topology configuration
@@ -259,12 +263,17 @@ uint16_t port_topology = PORT_TOPOLOGY_PAIRED; /* Ports are paired by default */
 uint8_t no_flush_rx = 0; /* flush by default */
 
 /*
+ * Avoids to check link status when starting/stopping a port.
+ */
+uint8_t no_link_check = 0; /* check by default */
+
+/*
  * NIC bypass mode configuration options.
  */
 #ifdef RTE_NIC_BYPASS
 
 /* The NIC bypass watchdog timeout. */
-uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF; 
+uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF;
 
 #endif
 
@@ -291,7 +300,7 @@ struct rte_fdir_conf fdir_conf = {
 	.drop_queue = 127,
 };
 
-static volatile int test_done = 1; /* stop packet forwarding when set to 1. */
+volatile int test_done = 1; /* stop packet forwarding when set to 1. */
 
 struct queue_stats_mappings tx_queue_stats_mappings_array[MAX_TX_QUEUE_STATS_MAPPINGS];
 struct queue_stats_mappings rx_queue_stats_mappings_array[MAX_RX_QUEUE_STATS_MAPPINGS];
@@ -457,7 +466,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 				    testpmd_mbuf_pool_ctor, &mbp_ctor_arg,
 				    testpmd_mbuf_ctor, &mb_ctor_arg,
 				    socket_id, 0);
-	else 
+	else
 		rte_mp = rte_mempool_create(pool_name, nb_mbuf, mb_size,
 				    (unsigned) mb_mempool_cache,
 				    sizeof(struct rte_pktmbuf_pool_private),
@@ -471,7 +480,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		rte_exit(EXIT_FAILURE, "Creation of mbuf pool for socket %u "
 						"failed\n", socket_id);
 	} else if (verbose_level > 0) {
-		rte_mempool_dump(rte_mp);
+		rte_mempool_dump(stdout, rte_mp);
 	}
 }
 
@@ -535,13 +544,13 @@ init_config(void)
 	 * Use the maximum value of nb_rxd and nb_txd here, then nb_rxd and
 	 * nb_txd can be configured at run time.
 	 */
-	if (param_total_num_mbufs) 
+	if (param_total_num_mbufs)
 		nb_mbuf_per_pool = param_total_num_mbufs;
 	else {
 		nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX + (nb_lcores * mb_mempool_cache)
 				+ RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
-		
-		if (!numa_support) 
+
+		if (!numa_support)
 			nb_mbuf_per_pool = (nb_mbuf_per_pool * nb_ports);
 	}
 
@@ -561,13 +570,13 @@ init_config(void)
 		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d struct rte_port) "
 							"failed\n", nb_ports);
 	}
-	
+
 	for (pid = 0; pid < nb_ports; pid++) {
 		port = &ports[pid];
 		rte_eth_dev_info_get(pid, &port->dev_info);
 
 		if (numa_support) {
-			if (port_numa[pid] != NUMA_NO_CONFIG) 
+			if (port_numa[pid] != NUMA_NO_CONFIG)
 				port_per_socket[port_numa[pid]]++;
 			else {
 				uint32_t socket_id = rte_eth_dev_socket_id(pid);
@@ -575,7 +584,7 @@ init_config(void)
 				/* if socket_id is invalid, set to 0 */
 				if (check_socket_id(socket_id) < 0)
 					socket_id = 0;
-				port_per_socket[socket_id]++; 
+				port_per_socket[socket_id]++;
 			}
 		}
 
@@ -592,9 +601,9 @@ init_config(void)
 			nb_mbuf_per_pool = nb_mbuf_per_pool/nb_ports;
 
 		for (i = 0; i < MAX_SOCKET; i++) {
-			nb_mbuf = (nb_mbuf_per_pool * 
+			nb_mbuf = (nb_mbuf_per_pool *
 						port_per_socket[i]);
-			if (nb_mbuf) 
+			if (nb_mbuf)
 				mbuf_pool_create(mbuf_data_size,
 						nb_mbuf,i);
 		}
@@ -605,7 +614,9 @@ init_config(void)
 	 * Records which Mbuf pool to use by each logical core, if needed.
 	 */
 	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
-		mbp = mbuf_pool_find(rte_lcore_to_socket_id(lc_id));
+		mbp = mbuf_pool_find(
+			rte_lcore_to_socket_id(fwd_lcores_cpuids[lc_id]));
+
 		if (mbp == NULL)
 			mbp = mbuf_pool_find(0);
 		fwd_lcores[lc_id]->mbp = mbp;
@@ -615,6 +626,32 @@ init_config(void)
 	if (init_fwd_streams() < 0)
 		rte_exit(EXIT_FAILURE, "FAIL from init_fwd_streams()\n");
 }
+
+
+void
+reconfig(portid_t new_port_id)
+{
+	struct rte_port *port;
+
+	/* Reconfiguration of Ethernet ports. */
+	ports = rte_realloc(ports,
+			    sizeof(struct rte_port) * nb_ports,
+			    CACHE_LINE_SIZE);
+	if (ports == NULL) {
+		rte_exit(EXIT_FAILURE, "rte_realloc(%d struct rte_port) failed\n",
+				nb_ports);
+	}
+
+	port = &ports[new_port_id];
+	rte_eth_dev_info_get(new_port_id, &port->dev_info);
+
+	/* set flag to initialize port/queue */
+	port->need_reconfig = 1;
+	port->need_reconfig_queues = 1;
+
+	init_port_config();
+}
+
 
 int
 init_fwd_streams(void)
@@ -650,10 +687,10 @@ init_fwd_streams(void)
 			}
 		}
 		else {
-			if (socket_num == UMA_NO_CONFIG)	 
+			if (socket_num == UMA_NO_CONFIG)
 				port->socket_id = 0;
-			else 
-				port->socket_id = socket_num;	
+			else
+				port->socket_id = socket_num;
 		}
 	}
 
@@ -761,39 +798,45 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 	if ((!port->rx_queue_stats_mapping_enabled) && (!port->tx_queue_stats_mapping_enabled)) {
 		printf("  RX-packets: %-14"PRIu64" RX-dropped: %-14"PRIu64"RX-total: "
 		       "%-"PRIu64"\n",
-		       stats->ipackets, stats->ierrors,
-		       (uint64_t) (stats->ipackets + stats->ierrors));
+		       stats->ipackets, stats->imissed,
+		       (uint64_t) (stats->ipackets + stats->imissed));
 
 		if (cur_fwd_eng == &csum_fwd_engine)
 			printf("  Bad-ipcsum: %-14"PRIu64" Bad-l4csum: %-14"PRIu64" \n",
 			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
+		if (((stats->ierrors - stats->imissed) + stats->rx_nombuf) > 0) {
+			printf("  RX-badcrc:  %-14"PRIu64" RX-badlen:  %-14"PRIu64
+			       "RX-error: %-"PRIu64"\n",
+			       stats->ibadcrc, stats->ibadlen, stats->ierrors);
+			printf("  RX-nombufs: %-14"PRIu64"\n", stats->rx_nombuf);
+		}
 
 		printf("  TX-packets: %-14"PRIu64" TX-dropped: %-14"PRIu64"TX-total: "
 		       "%-"PRIu64"\n",
 		       stats->opackets, port->tx_dropped,
 		       (uint64_t) (stats->opackets + port->tx_dropped));
-
-		if (stats->rx_nombuf > 0)
-			printf("  RX-nombufs: %-14"PRIu64"\n", stats->rx_nombuf);
-
 	}
 	else {
 		printf("  RX-packets:             %14"PRIu64"    RX-dropped:%14"PRIu64"    RX-total:"
 		       "%14"PRIu64"\n",
-		       stats->ipackets, stats->ierrors,
-		       (uint64_t) (stats->ipackets + stats->ierrors));
+		       stats->ipackets, stats->imissed,
+		       (uint64_t) (stats->ipackets + stats->imissed));
 
 		if (cur_fwd_eng == &csum_fwd_engine)
 			printf("  Bad-ipcsum:%14"PRIu64"    Bad-l4csum:%14"PRIu64"\n",
 			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
+		if (((stats->ierrors - stats->imissed) + stats->rx_nombuf) > 0) {
+			printf("  RX-badcrc:              %14"PRIu64"    RX-badlen: %14"PRIu64
+			       "    RX-error:%"PRIu64"\n",
+			       stats->ibadcrc, stats->ibadlen, stats->ierrors);
+			printf("  RX-nombufs:             %14"PRIu64"\n",
+			       stats->rx_nombuf);
+		}
 
 		printf("  TX-packets:             %14"PRIu64"    TX-dropped:%14"PRIu64"    TX-total:"
 		       "%14"PRIu64"\n",
 		       stats->opackets, port->tx_dropped,
 		       (uint64_t) (stats->opackets + port->tx_dropped));
-
-		if (stats->rx_nombuf > 0)
-			printf("  RX-nombufs:%14"PRIu64"\n", stats->rx_nombuf);
 	}
 
 	/* Display statistics of XON/XOFF pause frames, if any. */
@@ -1155,8 +1198,8 @@ stop_packet_forwarding(void)
 		port->stats.ibytes = 0;
 		stats.obytes   -= port->stats.obytes;
 		port->stats.obytes = 0;
-		stats.ierrors  -= port->stats.ierrors;
-		port->stats.ierrors = 0;
+		stats.imissed  -= port->stats.imissed;
+		port->stats.imissed = 0;
 		stats.oerrors  -= port->stats.oerrors;
 		port->stats.oerrors = 0;
 		stats.rx_nombuf -= port->stats.rx_nombuf;
@@ -1168,7 +1211,7 @@ stop_packet_forwarding(void)
 
 		total_recv += stats.ipackets;
 		total_xmit += stats.opackets;
-		total_rx_dropped += stats.ierrors;
+		total_rx_dropped += stats.imissed;
 		total_tx_dropped += port->tx_dropped;
 		total_rx_nombuf  += stats.rx_nombuf;
 
@@ -1199,6 +1242,20 @@ stop_packet_forwarding(void)
 	test_done = 1;
 }
 
+void
+dev_set_link_up(portid_t pid)
+{
+	if (rte_eth_dev_set_link_up((uint8_t)pid) < 0)
+		printf("\nSet link up fail.\n");
+}
+
+void
+dev_set_link_down(portid_t pid)
+{
+	if (rte_eth_dev_set_link_down((uint8_t)pid) < 0)
+		printf("\nSet link down fail.\n");
+}
+
 static int
 all_ports_started(void)
 {
@@ -1223,6 +1280,7 @@ start_port(portid_t pid)
 	portid_t pi;
 	queueid_t qi;
 	struct rte_port *port;
+	struct ether_addr mac_addr;
 
 	if (test_done == 0) {
 		printf("Please stop forwarding first\n");
@@ -1233,7 +1291,7 @@ start_port(portid_t pid)
 		printf("Fail from init_fwd_streams()\n");
 		return -1;
 	}
-	
+
 	if(dcb_config)
 		dcb_test = 1;
 	for (pi = 0; pi < nb_ports; pi++) {
@@ -1250,7 +1308,7 @@ start_port(portid_t pid)
 		if (port->need_reconfig > 0) {
 			port->need_reconfig = 0;
 
-			printf("Configuring Port %d (socket %d)\n", pi,
+			printf("Configuring Port %d (socket %u)\n", pi,
 					port->socket_id);
 			/* configure port */
 			diag = rte_eth_dev_configure(pi, nb_rxq, nb_txq,
@@ -1271,15 +1329,15 @@ start_port(portid_t pid)
 			/* setup tx queues */
 			for (qi = 0; qi < nb_txq; qi++) {
 				if ((numa_support) &&
-					(txring_numa[pi] != NUMA_NO_CONFIG)) 
+					(txring_numa[pi] != NUMA_NO_CONFIG))
 					diag = rte_eth_tx_queue_setup(pi, qi,
 						nb_txd,txring_numa[pi],
 						&(port->tx_conf));
 				else
-					diag = rte_eth_tx_queue_setup(pi, qi, 
+					diag = rte_eth_tx_queue_setup(pi, qi,
 						nb_txd,port->socket_id,
 						&(port->tx_conf));
-					
+
 				if (diag == 0)
 					continue;
 
@@ -1296,9 +1354,9 @@ start_port(portid_t pid)
 			}
 			/* setup rx queues */
 			for (qi = 0; qi < nb_rxq; qi++) {
-				if ((numa_support) && 
+				if ((numa_support) &&
 					(rxring_numa[pi] != NUMA_NO_CONFIG)) {
-					struct rte_mempool * mp = 
+					struct rte_mempool * mp =
 						mbuf_pool_find(rxring_numa[pi]);
 					if (mp == NULL) {
 						printf("Failed to setup RX queue:"
@@ -1307,13 +1365,13 @@ start_port(portid_t pid)
 							rxring_numa[pi]);
 						return -1;
 					}
-					
+
 					diag = rte_eth_rx_queue_setup(pi, qi,
 					     nb_rxd,rxring_numa[pi],
 					     &(port->rx_conf),mp);
 				}
 				else
-					diag = rte_eth_rx_queue_setup(pi, qi, 
+					diag = rte_eth_rx_queue_setup(pi, qi,
 					     nb_rxd,port->socket_id,
 					     &(port->rx_conf),
 				             mbuf_pool_find(port->socket_id));
@@ -1350,11 +1408,17 @@ start_port(portid_t pid)
 			RTE_PORT_HANDLING, RTE_PORT_STARTED) == 0)
 			printf("Port %d can not be set into started\n", pi);
 
+		rte_eth_macaddr_get(pi, &mac_addr);
+		printf("Port %d: %02X:%02X:%02X:%02X:%02X:%02X\n", pi,
+				mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
+				mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
+				mac_addr.addr_bytes[4], mac_addr.addr_bytes[5]);
+
 		/* at least one port started, need checking link status */
 		need_check_link_status = 1;
 	}
 
-	if (need_check_link_status)
+	if (need_check_link_status && !no_link_check)
 		check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
 	else
 		printf("Please stop the ports first\n");
@@ -1396,7 +1460,7 @@ stop_port(portid_t pid)
 			printf("Port %d can not be set into stopped\n", pi);
 		need_check_link_status = 1;
 	}
-	if (need_check_link_status)
+	if (need_check_link_status && !no_link_check)
 		check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
 
 	printf("Done\n");
@@ -1447,6 +1511,18 @@ all_ports_stopped(void)
 		if (port->port_status != RTE_PORT_STOPPED)
 			return 0;
 	}
+
+	return 1;
+}
+
+int
+port_is_started(portid_t port_id)
+{
+	if (port_id_is_invalid(port_id))
+		return -1;
+
+	if (ports[port_id].port_status != RTE_PORT_STARTED)
+		return 0;
 
 	return 1;
 }
@@ -1627,7 +1703,7 @@ init_port_config(void)
 			if( port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0)
 				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
 			else
-				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;        
+				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
 		}
 
 		port->rx_conf.rx_thresh = rx_thresh;
@@ -1658,7 +1734,7 @@ static  int
 get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 {
         uint8_t i;
- 
+
  	/*
  	 * Builds up the correct configuration for dcb+vt based on the vlan tags array
  	 * given above, and the number of traffic classes available for use.
@@ -1666,7 +1742,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 	if (dcb_conf->dcb_mode == DCB_VT_ENABLED) {
 		struct rte_eth_vmdq_dcb_conf vmdq_rx_conf;
 		struct rte_eth_vmdq_dcb_tx_conf vmdq_tx_conf;
- 
+
 		/* VMDQ+DCB RX and TX configrations */
 		vmdq_rx_conf.enable_default_pool = 0;
 		vmdq_rx_conf.default_pool = 0;
@@ -1674,7 +1750,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			(dcb_conf->num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
 		vmdq_tx_conf.nb_queue_pools =
 			(dcb_conf->num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
- 
+
 		vmdq_rx_conf.nb_pool_maps = sizeof( vlan_tags )/sizeof( vlan_tags[ 0 ]);
 		for (i = 0; i < vmdq_rx_conf.nb_pool_maps; i++) {
 			vmdq_rx_conf.pool_map[i].vlan_id = vlan_tags[ i ];
@@ -1684,7 +1760,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			vmdq_rx_conf.dcb_queue[i] = i;
 			vmdq_tx_conf.dcb_queue[i] = i;
 		}
- 
+
 		/*set DCB mode of RX and TX of multiple queues*/
 		eth_conf->rxmode.mq_mode = ETH_MQ_RX_VMDQ_DCB;
 		eth_conf->txmode.mq_mode = ETH_MQ_TX_VMDQ_DCB;
@@ -1692,7 +1768,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT|ETH_DCB_PFC_SUPPORT;
 		else
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT;
- 
+
 		(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_dcb_conf, &vmdq_rx_conf,
                                 sizeof(struct rte_eth_vmdq_dcb_conf)));
 		(void)(rte_memcpy(&eth_conf->tx_adv_conf.vmdq_dcb_tx_conf, &vmdq_tx_conf,
@@ -1701,16 +1777,16 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 	else {
 		struct rte_eth_dcb_rx_conf rx_conf;
 		struct rte_eth_dcb_tx_conf tx_conf;
- 
+
 		/* queue mapping configuration of DCB RX and TX */
 		if (dcb_conf->num_tcs == ETH_4_TCS)
 			dcb_q_mapping = DCB_4_TCS_Q_MAPPING;
 		else
 			dcb_q_mapping = DCB_8_TCS_Q_MAPPING;
- 
+
 		rx_conf.nb_tcs = dcb_conf->num_tcs;
 		tx_conf.nb_tcs = dcb_conf->num_tcs;
- 
+
 		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++){
 			rx_conf.dcb_queue[i] = i;
 			tx_conf.dcb_queue[i] = i;
@@ -1721,7 +1797,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT|ETH_DCB_PFC_SUPPORT;
 		else
 			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT;
-		 
+
 		(void)(rte_memcpy(&eth_conf->rx_adv_conf.dcb_rx_conf, &rx_conf,
                                 sizeof(struct rte_eth_dcb_rx_conf)));
 		(void)(rte_memcpy(&eth_conf->tx_adv_conf.dcb_tx_conf, &tx_conf,
@@ -1739,25 +1815,25 @@ init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf)
 	int retval;
 	uint16_t nb_vlan;
 	uint16_t i;
- 
+
 	/* rxq and txq configuration in dcb mode */
 	nb_rxq = 128;
 	nb_txq = 128;
 	rx_free_thresh = 64;
- 
+
 	memset(&port_conf,0,sizeof(struct rte_eth_conf));
 	/* Enter DCB configuration status */
 	dcb_config = 1;
- 
+
 	nb_vlan = sizeof( vlan_tags )/sizeof( vlan_tags[ 0 ]);
 	/*set configuration of DCB in vt mode and DCB in non-vt mode*/
 	retval = get_eth_dcb_conf(&port_conf, dcb_conf);
 	if (retval < 0)
 		return retval;
- 
+
 	rte_port = &ports[pid];
 	memcpy(&rte_port->dev_conf, &port_conf,sizeof(struct rte_eth_conf));
- 
+
 	rte_port->rx_conf.rx_thresh = rx_thresh;
 	rte_port->rx_conf.rx_free_thresh = rx_free_thresh;
 	rte_port->tx_conf.tx_thresh = tx_thresh;
@@ -1768,12 +1844,12 @@ init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf)
 	for (i = 0; i < nb_vlan; i++){
 		rx_vft_set(pid, vlan_tags[i], 1);
 	}
- 
+
 	rte_eth_macaddr_get(pid, &rte_port->eth_addr);
 	map_port_queue_stats_mapping_registers(pid, rte_port);
 
 	rte_port->dcb_flag = 1;
- 
+
 	return 0;
 }
 
@@ -1790,12 +1866,6 @@ main(int argc, char** argv)
 	diag = rte_eal_init(argc, argv);
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
-
-	if (rte_pmd_init_all())
-		rte_panic("Cannot init PMD\n");
-
-	if (rte_eal_pci_probe())
-		rte_panic("Cannot probe PCI\n");
 
 	nb_ports = (portid_t) rte_eth_dev_count();
 	if (nb_ports == 0)
@@ -1830,9 +1900,13 @@ main(int argc, char** argv)
 		rte_eth_promiscuous_enable(port_id);
 
 #ifdef RTE_LIBRTE_CMDLINE
-	if (interactive == 1)
+	if (interactive == 1) {
+		if (auto_start) {
+			printf("Start automatic packet forwarding\n");
+			start_packet_forwarding(0);
+		}
 		prompt();
-	else
+	} else
 #endif
 	{
 		char c;

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -108,7 +108,7 @@ rte_eal_tailq_reserve_by_idx(const unsigned tailq_idx)
 }
 
 void
-rte_dump_tailq(void)
+rte_dump_tailq(FILE *f)
 {
 	struct rte_mem_config *mcfg;
 	unsigned i = 0;
@@ -118,9 +118,9 @@ rte_dump_tailq(void)
 	rte_rwlock_read_lock(&mcfg->qlock);
 	for (i=0; i < RTE_MAX_TAILQ; i++) {
 		const struct rte_tailq_head *tailq = &mcfg->tailq_head[i];
-		const struct rte_dummy_head *head = &tailq->tailq_head;
+		const struct rte_tailq_entry_head *head = &tailq->tailq_head;
 
-		printf("Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n", i,
+		fprintf(f, "Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n", i,
 		       (rte_tailq_names[i] != NULL ? rte_tailq_names[i]:"nil"),
 		       head->tqh_first, head->tqh_last);
 	}
@@ -131,7 +131,7 @@ int
 rte_eal_tailqs_init(void)
 {
 	unsigned i;
-	struct rte_mem_config *mcfg = NULL; 
+	struct rte_mem_config *mcfg = NULL;
 
 	RTE_BUILD_BUG_ON(RTE_MAX_TAILQ < RTE_TAILQ_NUM);
 

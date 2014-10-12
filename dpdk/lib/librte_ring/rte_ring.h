@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -91,6 +91,7 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
 #include <stdint.h>
 #include <sys/queue.h>
 #include <errno.h>
@@ -137,8 +138,6 @@ struct rte_ring_debug_stats {
  * a problem.
  */
 struct rte_ring {
-	TAILQ_ENTRY(rte_ring) next;      /**< Next in list. */
-
 	char name[RTE_RING_NAMESIZE];    /**< Name of the ring. */
 	int flags;                       /**< Flags supplied at creation. */
 
@@ -170,8 +169,8 @@ struct rte_ring {
 #endif
 
 	void * ring[0] __rte_cache_aligned; /**< Memory space of ring starts here.
-	 	 	 	 	 	 	 	 	 	 * not volatile so need to be careful
-	 	 	 	 	 	 	 	 	 	 * about compiler re-ordering */
+	                                     * not volatile so need to be careful
+	                                     * about compiler re-ordering */
 };
 
 #define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
@@ -199,13 +198,70 @@ struct rte_ring {
 #endif
 
 /**
+ * Calculate the memory size needed for a ring
+ *
+ * This function returns the number of bytes needed for a ring, given
+ * the number of elements in it. This value is the sum of the size of
+ * the structure rte_ring and the size of the memory needed by the
+ * objects pointers. The value is aligned to a cache line size.
+ *
+ * @param count
+ *   The number of elements in the ring (must be a power of 2).
+ * @return
+ *   - The memory size needed for the ring on success.
+ *   - -EINVAL if count is not a power of 2.
+ */
+ssize_t rte_ring_get_memsize(unsigned count);
+
+/**
+ * Initialize a ring structure.
+ *
+ * Initialize a ring structure in memory pointed by "r". The size of the
+ * memory area must be large enough to store the ring structure and the
+ * object table. It is advised to use rte_ring_get_memsize() to get the
+ * appropriate size.
+ *
+ * The ring size is set to *count*, which must be a power of two. Water
+ * marking is disabled by default. The real usable ring size is
+ * *count-1* instead of *count* to differentiate a free ring from an
+ * empty ring.
+ *
+ * The ring is not added in RTE_TAILQ_RING global list. Indeed, the
+ * memory given by the caller may not be shareable among dpdk
+ * processes.
+ *
+ * @param r
+ *   The pointer to the ring structure followed by the objects table.
+ * @param name
+ *   The name of the ring.
+ * @param count
+ *   The number of elements in the ring (must be a power of 2).
+ * @param flags
+ *   An OR of the following:
+ *    - RING_F_SP_ENQ: If this flag is set, the default behavior when
+ *      using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
+ *      is "single-producer". Otherwise, it is "multi-producers".
+ *    - RING_F_SC_DEQ: If this flag is set, the default behavior when
+ *      using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
+ *      is "single-consumer". Otherwise, it is "multi-consumers".
+ * @return
+ *   0 on success, or a negative value on error.
+ */
+int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
+	unsigned flags);
+
+/**
  * Create a new ring named *name* in memory.
  *
- * This function uses ``memzone_reserve()`` to allocate memory. Its size is
- * set to *count*, which must be a power of two. Water marking is
- * disabled by default.
- * Note that the real usable ring size is *count-1* instead of
- * *count*.
+ * This function uses ``memzone_reserve()`` to allocate memory. Then it
+ * calls rte_ring_init() to initialize an empty ring.
+ *
+ * The new ring size is set to *count*, which must be a power of
+ * two. Water marking is disabled by default. The real usable ring size
+ * is *count-1* instead of *count* to differentiate a free ring from an
+ * empty ring.
+ *
+ * The ring is added in RTE_TAILQ_RING list.
  *
  * @param name
  *   The name of the ring.
@@ -260,12 +316,14 @@ int rte_ring_set_water_mark(struct rte_ring *r, unsigned count);
 /**
  * Dump the status of the ring to the console.
  *
+ * @param f
+ *   A pointer to a file for output
  * @param r
  *   A pointer to the ring structure.
  */
-void rte_ring_dump(const struct rte_ring *r);
+void rte_ring_dump(FILE *f, const struct rte_ring *r);
 
-/* the actual enqueue of pointers on the ring. 
+/* the actual enqueue of pointers on the ring.
  * Placed here since identical code needed in both
  * single and multi producer enqueue functions */
 #define ENQUEUE_PTRS() do { \
@@ -291,7 +349,7 @@ void rte_ring_dump(const struct rte_ring *r);
 	} \
 } while(0)
 
-/* the actual copy of pointers on the ring to obj_table. 
+/* the actual copy of pointers on the ring to obj_table.
  * Placed here since identical code needed in both
  * single and multi consumer dequeue functions */
 #define DEQUEUE_PTRS() do { \
@@ -405,7 +463,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	}
 
 	/*
-	 * If there are other enqueues in progress that preceeded us,
+	 * If there are other enqueues in progress that preceded us,
 	 * we need to wait for them to complete
 	 */
 	while (unlikely(r->prod.tail != prod_head))
@@ -996,8 +1054,11 @@ rte_ring_free_count(const struct rte_ring *r)
 
 /**
  * Dump the status of all rings on the console
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_ring_list_dump(void);
+void rte_ring_list_dump(FILE *f);
 
 /**
  * Search a ring from its name
@@ -1073,9 +1134,9 @@ rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 		      unsigned n)
 {
 	if (r->prod.sp_enqueue)
-		return 	rte_ring_sp_enqueue_burst(r, obj_table, n);
+		return rte_ring_sp_enqueue_burst(r, obj_table, n);
 	else
-		return 	rte_ring_mp_enqueue_burst(r, obj_table, n);
+		return rte_ring_mp_enqueue_burst(r, obj_table, n);
 }
 
 /**

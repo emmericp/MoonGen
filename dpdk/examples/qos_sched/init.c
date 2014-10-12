@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -124,35 +124,34 @@ app_init_port(uint8_t portid, struct rte_mempool *mp)
 	tx_conf.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS;
 
 	/* init port */
-	RTE_LOG(INFO, APP, "Initializing port %hu... ", portid);
+	RTE_LOG(INFO, APP, "Initializing port %"PRIu8"... ", portid);
 	fflush(stdout);
 	ret = rte_eth_dev_configure(portid, 1, 1, &port_conf);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%hu\n",
-		ret, portid);
+		rte_exit(EXIT_FAILURE, "Cannot configure device: "
+				"err=%d, port=%"PRIu8"\n", ret, portid);
 
 	/* init one RX queue */
 	fflush(stdout);
 	ret = rte_eth_rx_queue_setup(portid, 0, (uint16_t)ring_conf.rx_size,
 		rte_eth_dev_socket_id(portid), &rx_conf, mp);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, port=%hu\n",
-		ret, portid);
-	
+		rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: "
+				"err=%d, port=%"PRIu8"\n", ret, portid);
+
 	/* init one TX queue */
 	fflush(stdout);
 	ret = rte_eth_tx_queue_setup(portid, 0,
 		(uint16_t)ring_conf.tx_size, rte_eth_dev_socket_id(portid), &tx_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, "
-		"port=%hu queue=%d\n",
-		ret, portid, 0);
+				"port=%"PRIu8" queue=%d\n", ret, portid, 0);
 
 	/* Start device */
 	ret = rte_eth_dev_start(portid);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "rte_pmd_port_start: err=%d, port=%hu\n",
-		ret, portid);
+		rte_exit(EXIT_FAILURE, "rte_pmd_port_start: "
+				"err=%d, port=%"PRIu8"\n", ret, portid);
 
 	printf("done: ");
 
@@ -167,10 +166,10 @@ app_init_port(uint8_t portid, struct rte_mempool *mp)
 		printf(" Link Down\n");
 	}
 	rte_eth_promiscuous_enable(portid);
-	
+
 	/* mark port as initialized */
 	app_inited_port_mask |= 1u << portid;
-	
+
 	return 0;
 }
 
@@ -189,12 +188,12 @@ static struct rte_sched_pipe_params pipe_profiles[RTE_SCHED_PIPE_PROFILES_PER_PO
 		.tb_rate = 305175,
 		.tb_size = 1000000,
 
-		.tc_rate = {305175, 305175, 305175, 305175}, 
+		.tc_rate = {305175, 305175, 305175, 305175},
 		.tc_period = 40,
 #ifdef RTE_SCHED_SUBPORT_TC_OV
 		.tc_ov_weight = 1,
 #endif
-		
+
 		.wrr_weights = {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
 	},
 };
@@ -249,7 +248,7 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 
 	port_params.socket = socketid;
 	port_params.rate = (uint64_t) link.link_speed * 1000 * 1000 / 8;
-	rte_snprintf(port_name, sizeof(port_name), "port_%d", portid);
+	snprintf(port_name, sizeof(port_name), "port_%d", portid);
 	port_params.name = port_name;
 
 	port = rte_sched_port_config(&port_params);
@@ -263,7 +262,7 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 			rte_exit(EXIT_FAILURE, "Unable to config sched subport %u, err=%d\n",
 					subport, err);
 		}
-	
+
 		for (pipe = 0; pipe < port_params.n_pipes_per_subport; pipe ++) {
 			if (app_pipe_to_profile[subport][pipe] != -1) {
 				err = rte_sched_pipe_config(port, subport, pipe,
@@ -276,7 +275,7 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 			}
 		}
 	}
-	
+
 	return port;
 }
 
@@ -285,7 +284,7 @@ app_load_cfg_profile(const char *profile)
 {
 	if (profile == NULL)
 		return 0;
-	
+
 	struct cfg_file *cfg_file = cfg_load(profile, 0);
 	if (cfg_file == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot load configuration profile %s\n", profile);
@@ -305,10 +304,6 @@ int app_init(void)
 	char ring_name[MAX_NAME_LEN];
 	char pool_name[MAX_NAME_LEN];
 
-	/* init driver(s) */
-	if (rte_pmd_init_all() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot init PMD\n");
-
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
@@ -318,13 +313,13 @@ int app_init(void)
 	/* load configuration profile */
 	if (app_load_cfg_profile(cfg_profile) != 0)
 		rte_exit(EXIT_FAILURE, "Invalid configuration profile\n");
-	
+
 	/* Initialize each active flow */
 	for(i = 0; i < nb_pfc; i++) {
 		uint32_t socket = rte_lcore_to_socket_id(qos_conf[i].rx_core);
 		struct rte_ring *ring;
 
-		rte_snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].rx_core);
+		snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].rx_core);
 		ring = rte_ring_lookup(ring_name);
 		if (ring == NULL)
 			qos_conf[i].rx_ring = rte_ring_create(ring_name, ring_conf.ring_size,
@@ -332,7 +327,7 @@ int app_init(void)
 		else
 			qos_conf[i].rx_ring = ring;
 
-		rte_snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].tx_core);
+		snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].tx_core);
 		ring = rte_ring_lookup(ring_name);
 		if (ring == NULL)
 			qos_conf[i].tx_ring = rte_ring_create(ring_name, ring_conf.ring_size,
@@ -342,7 +337,7 @@ int app_init(void)
 
 
 		/* create the mbuf pools for each RX Port */
-		rte_snprintf(pool_name, MAX_NAME_LEN, "mbuf_pool%u", i);
+		snprintf(pool_name, MAX_NAME_LEN, "mbuf_pool%u", i);
 		qos_conf[i].mbuf_pool = rte_mempool_create(pool_name, mp_size, MBUF_SIZE,
 						burst_conf.rx_burst * 4,
 						sizeof(struct rte_pktmbuf_pool_private),
@@ -355,13 +350,13 @@ int app_init(void)
 
 		app_init_port(qos_conf[i].rx_port, qos_conf[i].mbuf_pool);
 		app_init_port(qos_conf[i].tx_port, qos_conf[i].mbuf_pool);
-		
+
 		qos_conf[i].sched_port = app_init_sched_port(qos_conf[i].tx_port, socket);
 	}
 
 	RTE_LOG(INFO, APP, "time stamp clock running at %" PRIu64 " Hz\n",
 			 rte_get_timer_hz());
-	
+
 	RTE_LOG(INFO, APP, "Ring sizes: NIC RX = %u, Mempool = %d SW queue = %u,"
 			 "NIC TX = %u\n", ring_conf.rx_size, mp_size, ring_conf.ring_size,
 			 ring_conf.tx_size);
@@ -369,7 +364,7 @@ int app_init(void)
 	RTE_LOG(INFO, APP, "Burst sizes: RX read = %hu, RX write = %hu,\n"
 						  "             Worker read/QoS enqueue = %hu,\n"
 						  "             QoS dequeue = %hu, Worker write = %hu\n",
-		burst_conf.rx_burst, burst_conf.ring_burst, burst_conf.ring_burst, 
+		burst_conf.rx_burst, burst_conf.ring_burst, burst_conf.ring_burst,
 		burst_conf.qos_dequeue, burst_conf.tx_burst);
 
 	RTE_LOG(INFO, APP, "NIC thresholds RX (p = %hhu, h = %hhu, w = %hhu),"

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <rte_eal_memconfig.h>
 #include <rte_memory.h>
@@ -228,7 +229,7 @@ get_hugefile_by_virt_addr(uint64_t virt_addr, struct memseg_cache_entry * e)
 	}
 
 	/* calculate offset and copy the file path */
-	rte_snprintf(e->filepath, RTE_PTR_DIFF(path_end, start) + 1, "%s", start);
+	snprintf(e->filepath, RTE_PTR_DIFF(path_end, start) + 1, "%s", start);
 
 	e->offset = virt_addr - start_addr;
 
@@ -605,7 +606,7 @@ rte_ivshmem_metadata_add_mempool(const struct rte_mempool * mp, const char * nam
 static inline void
 ivshmem_config_path(char *buffer, size_t bufflen, const char *name)
 {
-	rte_snprintf(buffer, bufflen, IVSHMEM_CONFIG_FILE_FMT, name);
+	snprintf(buffer, bufflen, IVSHMEM_CONFIG_FILE_FMT, name);
 }
 
 
@@ -706,7 +707,7 @@ int rte_ivshmem_metadata_create(const char *name)
 	/* Metadata setup */
 	memset(ivshmem_config->metadata, 0, sizeof(struct rte_ivshmem_metadata));
 	ivshmem_config->metadata->magic_number = IVSHMEM_MAGIC;
-	rte_snprintf(ivshmem_config->metadata->name,
+	snprintf(ivshmem_config->metadata->name,
 			sizeof(ivshmem_config->metadata->name), "%s", name);
 
 	rte_spinlock_unlock(&global_cfg_sl);
@@ -737,7 +738,7 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 	rte_spinlock_lock(&config->sl);
 
 	/* prepare metadata file path */
-	rte_snprintf(cfg_file_path, sizeof(cfg_file_path), IVSHMEM_CONFIG_FILE_FMT,
+	snprintf(cfg_file_path, sizeof(cfg_file_path), IVSHMEM_CONFIG_FILE_FMT,
 			config->metadata->name);
 
 	ms_cache = config->memseg_cache;
@@ -753,7 +754,7 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 		entry = &ms_cache[iter];
 
 		/* Offset and sizes within the current pathname */
-		tmplen = rte_snprintf(cmdline_ptr, remaining_len, IVSHMEM_QEMU_CMD_FD_FMT,
+		tmplen = snprintf(cmdline_ptr, remaining_len, IVSHMEM_QEMU_CMD_FD_FMT,
 				entry->filepath, entry->offset, entry->len);
 
 		shared_mem_size += entry->len;
@@ -774,9 +775,9 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 	zero_size = total_size - shared_mem_size - METADATA_SIZE_ALIGNED;
 
 	/* add /dev/zero to command-line to fill the space */
-	tmplen = rte_snprintf(cmdline_ptr, remaining_len, IVSHMEM_QEMU_CMD_FD_FMT,
+	tmplen = snprintf(cmdline_ptr, remaining_len, IVSHMEM_QEMU_CMD_FD_FMT,
 			"/dev/zero",
-			0x0,
+			(uint64_t)0x0,
 			zero_size);
 
 	cmdline_ptr = RTE_PTR_ADD(cmdline_ptr, tmplen);
@@ -789,9 +790,9 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 	}
 
 	/* add metadata file to the end of command-line */
-	tmplen = rte_snprintf(cmdline_ptr, remaining_len, IVSHMEM_QEMU_CMD_FD_FMT,
+	tmplen = snprintf(cmdline_ptr, remaining_len, IVSHMEM_QEMU_CMD_FD_FMT,
 			cfg_file_path,
-			0x0,
+			(uint64_t)0x0,
 			METADATA_SIZE_ALIGNED);
 
 	cmdline_ptr = RTE_PTR_ADD(cmdline_ptr, tmplen);
@@ -811,7 +812,7 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 		return -1;
 	}
 	/* complete the command-line */
-	rte_snprintf(buffer, size,
+	snprintf(buffer, size,
 			IVSHMEM_QEMU_CMD_LINE_HEADER_FMT,
 			total_size >> 20,
 			cmdline);
@@ -821,9 +822,8 @@ rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size, const char *n
 	return 0;
 }
 
-
 void
-rte_ivshmem_metadata_dump(const char *name)
+rte_ivshmem_metadata_dump(FILE *f, const char *name)
 {
 	unsigned i = 0;
 	struct ivshmem_config * config;
@@ -850,7 +850,7 @@ rte_ivshmem_metadata_dump(const char *name)
 
 	while (entry->mz.addr != NULL && i < RTE_DIM(config->metadata->entry)) {
 
-		printf("Entry %u: name:<%-20s>, phys:0x%-15lx, len:0x%-15lx, "
+		fprintf(f, "Entry %u: name:<%-20s>, phys:0x%-15lx, len:0x%-15lx, "
 			"virt:%-15p, off:0x%-15lx\n",
 			i,
 			entry->mz.name,
@@ -861,7 +861,7 @@ rte_ivshmem_metadata_dump(const char *name)
 		i++;
 
 #ifdef RTE_LIBRTE_IVSHMEM_DEBUG
-		printf("\tHugepage files:\n");
+		fprintf(f, "\tHugepage files:\n");
 
 		hugepage_sz = entry->mz.hugepage_sz;
 		addr = RTE_ALIGN_FLOOR(entry->mz.addr_64, hugepage_sz);
@@ -873,7 +873,7 @@ rte_ivshmem_metadata_dump(const char *name)
 
 			get_hugefile_by_virt_addr(addr, &e);
 
-			printf("\t0x%"PRIx64 "-0x%" PRIx64 " offset: 0x%" PRIx64 " %s\n",
+			fprintf(f, "\t0x%"PRIx64 "-0x%" PRIx64 " offset: 0x%" PRIx64 " %s\n",
 					addr, addr + hugepage_sz, e.offset, e.filepath);
 		}
 #endif

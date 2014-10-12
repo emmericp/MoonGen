@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -155,7 +155,7 @@ static s32 ixgbe_bypass_rw_generic(struct ixgbe_hw *hw, u32 cmd, u32 *status)
  *
  * If we send a write we can't be sure it took until we can read back
  * that same register.  It can be a problem as some of the feilds may
- * for valid reasons change inbetween the time wrote the register and
+ * for valid reasons change between the time wrote the register and
  * we read it again to verify.  So this function check everything we
  * can check and then assumes it worked.
  *
@@ -254,7 +254,7 @@ static s32 ixgbe_bypass_set_generic(struct ixgbe_hw *hw, u32 ctrl, u32 event,
 }
 
 /**
- *  ixgbe_bypass_rd_eep_generic - Read the bypass FW eeprom addres.
+ *  ixgbe_bypass_rd_eep_generic - Read the bypass FW eeprom address.
  *
  *  @hw: pointer to hardware structure
  *  @addr: The bypass eeprom address to read.

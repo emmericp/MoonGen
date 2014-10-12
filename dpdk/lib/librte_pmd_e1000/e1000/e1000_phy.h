@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -225,6 +225,7 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 #define HV_M_STATUS_AUTONEG_COMPLETE	0x1000
 #define HV_M_STATUS_SPEED_MASK		0x0300
 #define HV_M_STATUS_SPEED_1000		0x0200
+#define HV_M_STATUS_SPEED_100		0x0100
 #define HV_M_STATUS_LINK_UP		0x0040
 
 #define IGP01E1000_PHY_PCS_INIT_REG	0x00B4
@@ -274,10 +275,8 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 #define E1000_KMRNCTRLSTA_K1_CONFIG	0x7
 #define E1000_KMRNCTRLSTA_K1_ENABLE	0x0002 /* enable K1 */
 #define E1000_KMRNCTRLSTA_HD_CTRL	0x10   /* Kumeran HD Control */
-#if !defined(EXTERNAL_RELEASE) || (defined(NAHUM6LP_HW) && defined(ULP_IN_D0_SUPPORT))
 #define E1000_KMRNCTRLSTA_OP_MODES	0x1F   /* Kumeran Modes of Operation */
 #define E1000_KMRNCTRLSTA_OP_MODES_LSC2CSC	0x0002 /* change LSC to CSC */
-#endif /* !EXTERNAL_RELEASE || (NAHUM6LP_HW && ULP_IN_D0_SUPPORT) */
 
 #define IFE_PHY_EXTENDED_STATUS_CONTROL	0x10
 #define IFE_PHY_SPECIAL_CONTROL		0x11 /* 100BaseTx PHY Special Ctrl */

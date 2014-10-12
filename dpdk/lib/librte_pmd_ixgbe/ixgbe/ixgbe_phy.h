@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #define _IXGBE_PHY_H_
 
 #include "ixgbe_type.h"
-#define IXGBE_I2C_EEPROM_DEV_ADDR    0xA0
+#define IXGBE_I2C_EEPROM_DEV_ADDR	0xA0
+#define IXGBE_I2C_EEPROM_DEV_ADDR2	0xA2
+#define IXGBE_I2C_EEPROM_BANK_LEN	0xFF
 
 /* EEPROM byte offsets */
 #define IXGBE_SFF_IDENTIFIER		0x0
@@ -47,6 +49,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_SFF_10GBE_COMP_CODES	0x3
 #define IXGBE_SFF_CABLE_TECHNOLOGY	0x8
 #define IXGBE_SFF_CABLE_SPEC_COMP	0x3C
+#define IXGBE_SFF_SFF_8472_SWAP		0x5C
+#define IXGBE_SFF_SFF_8472_COMP		0x5E
 
 /* Bitmasks */
 #define IXGBE_SFF_DA_PASSIVE_CABLE	0x4
@@ -57,6 +61,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_SFF_1GBASET_CAPABLE	0x8
 #define IXGBE_SFF_10GBASESR_CAPABLE	0x10
 #define IXGBE_SFF_10GBASELR_CAPABLE	0x20
+#ifdef SUPPORT_10GBASE_ER
+#define IXGBE_SFF_10GBASEER_CAPABLE    0x80
+#endif /* SUPPORT_10GBASE_ER */
+#define IXGBE_SFF_ADDRESSING_MODE	0x4
 #define IXGBE_I2C_EEPROM_READ_MASK	0x100
 #define IXGBE_I2C_EEPROM_STATUS_MASK	0x3
 #define IXGBE_I2C_EEPROM_STATUS_NO_OPERATION	0x0
@@ -94,7 +102,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_TN_LASI_STATUS_REG	0x9005
 #define IXGBE_TN_LASI_STATUS_TEMP_ALARM	0x0008
 
-#ident "$Id: ixgbe_phy.h,v 1.48 2012/01/04 01:49:02 jtkirshe Exp $"
+/* SFP+ SFF-8472 Compliance */
+#define IXGBE_SFF_SFF_8472_UNSUP	0x00
+
+#ident "$Id: ixgbe_phy.h,v 1.56 2013/09/05 23:59:49 jtkirshe Exp $"
 
 s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw);
 bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr);
@@ -102,6 +113,10 @@ enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id);
 s32 ixgbe_get_phy_id(struct ixgbe_hw *hw);
 s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw);
 s32 ixgbe_reset_phy_generic(struct ixgbe_hw *hw);
+s32 ixgbe_read_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
+			   u16 *phy_data);
+s32 ixgbe_write_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
+			    u16 phy_data);
 s32 ixgbe_read_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
 			       u32 device_type, u16 *phy_data);
 s32 ixgbe_write_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
@@ -109,11 +124,11 @@ s32 ixgbe_write_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
 s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw);
 s32 ixgbe_setup_phy_link_speed_generic(struct ixgbe_hw *hw,
 				       ixgbe_link_speed speed,
-				       bool autoneg,
 				       bool autoneg_wait_to_complete);
 s32 ixgbe_get_copper_link_capabilities_generic(struct ixgbe_hw *hw,
 					       ixgbe_link_speed *speed,
 					       bool *autoneg);
+s32 ixgbe_check_reset_blocked(struct ixgbe_hw *hw);
 
 /* PHY specific */
 s32 ixgbe_check_phy_link_tnx(struct ixgbe_hw *hw,

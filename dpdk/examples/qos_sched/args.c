@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -69,7 +69,7 @@ static const char usage[] =
 	"                                                                               \n"
 	"Application optional parameters:                                               \n"
         "    --i     : run in interactive mode (default value is %u)                    \n"
-	"    --mst I : master core index (default value is %u)                          \n" 
+	"    --mst I : master core index (default value is %u)                          \n"
 	"    --rsz \"A, B, C\" :   Ring sizes                                           \n"
 	"           A = Size (in number of buffer descriptors) of each of the NIC RX    \n"
 	"               rings read by the I/O RX lcores (default value is %u)           \n"
@@ -143,7 +143,7 @@ app_cpu_core_count(void)
 	uint32_t ncores = 0;
 
 	for(i = 0; i < RTE_MAX_LCORE; i++) {
-		len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR, i);
+		len = snprintf(path, sizeof(path), SYS_CPU_DIR, i);
 		if (len <= 0 || (unsigned)len >= sizeof(path))
 			continue;
 
@@ -178,7 +178,7 @@ app_parse_opt_vals(const char *conf_str, char separator, uint32_t n_vals, uint32
 	for(i = 0; i < n_tokens; i++) {
 		opt_vals[i] = (uint32_t)atol(tokens[i]);
 	}
-	
+
 	free(string);
 
 	return n_tokens;
@@ -191,7 +191,7 @@ app_parse_ring_conf(const char *conf_str)
 	uint32_t vals[3];
 
 	ret = app_parse_opt_vals(conf_str, ',', 3, vals);
-	if (ret != 3)	
+	if (ret != 3)
 		return ret;
 
 	ring_conf.rx_size = vals[0];
@@ -208,7 +208,7 @@ app_parse_rth_conf(const char *conf_str)
 	uint32_t vals[3];
 
 	ret = app_parse_opt_vals(conf_str, ',', 3, vals);
-	if (ret != 3)	
+	if (ret != 3)
 		return ret;
 
 	rx_thresh.pthresh = (uint8_t)vals[0];
@@ -225,7 +225,7 @@ app_parse_tth_conf(const char *conf_str)
 	uint32_t vals[3];
 
 	ret = app_parse_opt_vals(conf_str, ',', 3, vals);
-	if (ret != 3)	
+	if (ret != 3)
 		return ret;
 
 	tx_thresh.pthresh = (uint8_t)vals[0];
@@ -264,17 +264,20 @@ app_parse_flow_conf(const char *conf_str)
 	}
 
 	if (pconf->rx_port >= RTE_MAX_ETHPORTS) {
-		RTE_LOG(ERR, APP, "pfc %u: invalid rx port %hu index\n", nb_pfc, pconf->rx_port);
+		RTE_LOG(ERR, APP, "pfc %u: invalid rx port %"PRIu8" index\n",
+				nb_pfc, pconf->rx_port);
 		return -1;
 	}
 	if (pconf->tx_port >= RTE_MAX_ETHPORTS) {
-		RTE_LOG(ERR, APP, "pfc %u: invalid tx port %hu index\n", nb_pfc, pconf->rx_port);
+		RTE_LOG(ERR, APP, "pfc %u: invalid tx port %"PRIu8" index\n",
+				nb_pfc, pconf->rx_port);
 		return -1;
 	}
 
 	mask = 1lu << pconf->rx_port;
 	if (app_used_rx_port_mask & mask) {
-		RTE_LOG(ERR, APP, "pfc %u: rx port %hu is used already\n", nb_pfc, pconf->rx_port);
+		RTE_LOG(ERR, APP, "pfc %u: rx port %"PRIu8" is used already\n",
+				nb_pfc, pconf->rx_port);
 		return -1;
 	}
 	app_used_rx_port_mask |= mask;
@@ -282,7 +285,8 @@ app_parse_flow_conf(const char *conf_str)
 
 	mask = 1lu << pconf->tx_port;
 	if (app_used_tx_port_mask & mask) {
-		RTE_LOG(ERR, APP, "pfc %u: port %hu is used already\n", nb_pfc, pconf->tx_port);
+		RTE_LOG(ERR, APP, "pfc %u: port %"PRIu8" is used already\n",
+				nb_pfc, pconf->tx_port);
 		return -1;
 	}
 	app_used_tx_port_mask |= mask;
@@ -320,7 +324,7 @@ app_parse_burst_conf(const char *conf_str)
 	return 0;
 }
 
-/* 
+/*
  * Parses the argument given in the command line of the application,
  * calculates mask for used cores and initializes EAL with calculated core mask
  */

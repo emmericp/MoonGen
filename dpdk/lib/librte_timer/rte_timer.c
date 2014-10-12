@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -378,7 +378,9 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 		return -1;
 
 	__TIMER_STAT_ADD(reset, 1);
-	priv_timer[lcore_id].updated = 1;
+	if (prev_status.state == RTE_TIMER_RUNNING) {
+		priv_timer[lcore_id].updated = 1;
+	}
 
 	/* remove it from list */
 	if (prev_status.state == RTE_TIMER_PENDING) {
@@ -453,7 +455,9 @@ rte_timer_stop(struct rte_timer *tim)
 		return -1;
 
 	__TIMER_STAT_ADD(stop, 1);
-	priv_timer[lcore_id].updated = 1;
+	if (prev_status.state == RTE_TIMER_RUNNING) {
+		priv_timer[lcore_id].updated = 1;
+	}
 
 	/* remove it from list */
 	if (prev_status.state == RTE_TIMER_PENDING) {
@@ -547,7 +551,7 @@ void rte_timer_manage(void)
 		tim->f(tim, tim->arg);
 
 		rte_spinlock_lock(&priv_timer[lcore_id].list_lock);
-
+		__TIMER_STAT_ADD(pending, -1);
 		/* the timer was stopped or reloaded by the callback
 		 * function, we have nothing to do here */
 		if (priv_timer[lcore_id].updated == 1)
@@ -555,7 +559,6 @@ void rte_timer_manage(void)
 
 		if (tim->period == 0) {
 			/* remove from done list and mark timer as stopped */
-			__TIMER_STAT_ADD(pending, -1);
 			status.state = RTE_TIMER_STOP;
 			status.owner = RTE_TIMER_NO_OWNER;
 			rte_wmb();
@@ -564,6 +567,7 @@ void rte_timer_manage(void)
 		else {
 			/* keep it in list and mark timer as pending */
 			status.state = RTE_TIMER_PENDING;
+			__TIMER_STAT_ADD(pending, 1);
 			status.owner = (int16_t)lcore_id;
 			rte_wmb();
 			tim->status.u32 = status.u32;
@@ -582,7 +586,7 @@ done:
 }
 
 /* dump statistics about timers */
-void rte_timer_dump_stats(void)
+void rte_timer_dump_stats(FILE *f)
 {
 #ifdef RTE_LIBRTE_TIMER_DEBUG
 	struct rte_timer_debug_stats sum;
@@ -595,12 +599,12 @@ void rte_timer_dump_stats(void)
 		sum.manage += priv_timer[lcore_id].stats.manage;
 		sum.pending += priv_timer[lcore_id].stats.pending;
 	}
-	printf("Timer statistics:\n");
-	printf("  reset = %"PRIu64"\n", sum.reset);
-	printf("  stop = %"PRIu64"\n", sum.stop);
-	printf("  manage = %"PRIu64"\n", sum.manage);
-	printf("  pending = %"PRIu64"\n", sum.pending);
+	fprintf(f, "Timer statistics:\n");
+	fprintf(f, "  reset = %"PRIu64"\n", sum.reset);
+	fprintf(f, "  stop = %"PRIu64"\n", sum.stop);
+	fprintf(f, "  manage = %"PRIu64"\n", sum.manage);
+	fprintf(f, "  pending = %"PRIu64"\n", sum.pending);
 #else
-	printf("No timer statistics, RTE_LIBRTE_TIMER_DEBUG is disabled\n");
+	fprintf(f, "No timer statistics, RTE_LIBRTE_TIMER_DEBUG is disabled\n");
 #endif
 }

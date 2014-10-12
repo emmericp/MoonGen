@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -101,8 +101,8 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 
 /*
  * If vendor/device ID match, call the devinit() function of all
- * registered driver for the given device. Return -1 if no driver is
- * found for this device.
+ * registered driver for the given device. Return -1 if initialization
+ * failed, return 1 if no driver is found for this device.
  * For drivers with the RTE_PCI_DRV_MULTIPLE flag enabled, register
  * the same device multiple times until failure to do so.
  * It is required for non-Intel NIC drivers provided by third-parties such
@@ -118,7 +118,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 		rc = rte_eal_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
-			break;
+			return -1;
 		if (rc > 0)
 			/* positive value means driver not found */
 			continue;
@@ -130,7 +130,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 				;
 		return 0;
 	}
-	return -1;
+	return 1;
 }
 
 /*
@@ -144,11 +144,15 @@ rte_eal_pci_probe(void)
 	struct rte_pci_device *dev = NULL;
 	struct rte_devargs *devargs;
 	int probe_all = 0;
+	int ret = 0;
 
 	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) == 0)
 		probe_all = 1;
 
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
+		/* check if device has already been initialized */
+		if (dev->driver != NULL)
+			continue;
 
 		/* set devargs in PCI structure */
 		devargs = pci_devargs_lookup(dev);
@@ -157,10 +161,11 @@ rte_eal_pci_probe(void)
 
 		/* probe all or only whitelisted devices */
 		if (probe_all)
-			pci_probe_all_drivers(dev);
+			ret = pci_probe_all_drivers(dev);
 		else if (devargs != NULL &&
-			devargs->type == RTE_DEVTYPE_WHITELISTED_PCI &&
-			pci_probe_all_drivers(dev) < 0)
+			devargs->type == RTE_DEVTYPE_WHITELISTED_PCI)
+			ret = pci_probe_all_drivers(dev);
+		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Requested device " PCI_PRI_FMT
 				 " cannot be used\n", dev->addr.domain, dev->addr.bus,
 				 dev->addr.devid, dev->addr.function);
@@ -171,19 +176,19 @@ rte_eal_pci_probe(void)
 
 /* dump one device */
 static int
-pci_dump_one_device(struct rte_pci_device *dev)
+pci_dump_one_device(FILE *f, struct rte_pci_device *dev)
 {
 	int i;
 
-	printf(PCI_PRI_FMT, dev->addr.domain, dev->addr.bus,
+	fprintf(f, PCI_PRI_FMT, dev->addr.domain, dev->addr.bus,
 	       dev->addr.devid, dev->addr.function);
-	printf(" - vendor:%x device:%x\n", dev->id.vendor_id,
+	fprintf(f, " - vendor:%x device:%x\n", dev->id.vendor_id,
 	       dev->id.device_id);
 
 	for (i = 0; i != sizeof(dev->mem_resource) /
 		sizeof(dev->mem_resource[0]); i++) {
-		printf("   %16.16"PRIx64" %16.16"PRIx64"\n",
-			dev->mem_resource[i].phys_addr, 
+		fprintf(f, "   %16.16"PRIx64" %16.16"PRIx64"\n",
+			dev->mem_resource[i].phys_addr,
 			dev->mem_resource[i].len);
 	}
 	return 0;
@@ -191,12 +196,12 @@ pci_dump_one_device(struct rte_pci_device *dev)
 
 /* dump devices on the bus */
 void
-rte_eal_pci_dump(void)
+rte_eal_pci_dump(FILE *f)
 {
 	struct rte_pci_device *dev = NULL;
 
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
-		pci_dump_one_device(dev);
+		pci_dump_one_device(f, dev);
 	}
 }
 

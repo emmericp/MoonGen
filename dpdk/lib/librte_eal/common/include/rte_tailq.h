@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -45,13 +45,15 @@ extern "C" {
 #endif
 
 #include <sys/queue.h>
+#include <stdio.h>
 
 /** dummy structure type used by the rte_tailq APIs */
-struct rte_dummy {
-	TAILQ_ENTRY(rte_dummy) next; /**< Pointer entries for a tailq list */
+struct rte_tailq_entry {
+	TAILQ_ENTRY(rte_tailq_entry) next; /**< Pointer entries for a tailq list */
+	void *data; /**< Pointer to the data referenced by this tailq entry */
 };
 /** dummy */
-TAILQ_HEAD(rte_dummy_head, rte_dummy);
+TAILQ_HEAD(rte_tailq_entry_head, rte_tailq_entry);
 
 #define RTE_TAILQ_NAMESIZE 32
 
@@ -64,7 +66,7 @@ TAILQ_HEAD(rte_dummy_head, rte_dummy);
  * a multi-process app to find already-created elements in shared memory.
  */
 struct rte_tailq_head {
-	struct rte_dummy_head tailq_head; /**< NOTE: must be first element */
+	struct rte_tailq_entry_head tailq_head; /**< NOTE: must be first element */
 };
 
 /**
@@ -170,8 +172,11 @@ struct rte_tailq_head *rte_eal_tailq_reserve_by_idx(const unsigned idx);
 
 /**
  * Dump tail queues to the console.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_dump_tailq(void);
+void rte_dump_tailq(FILE *f);
 
 /**
  * Lookup for a tail queue.

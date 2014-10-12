@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -38,7 +38,7 @@ endif
 
 # Targets to install can be specified in command line. It can be a
 # target name or a name containing jokers "*". Example:
-# x86_64-default-*-gcc
+# x86_64-native-*-gcc
 ifndef T
 T=*
 endif
@@ -58,6 +58,18 @@ install: $(INSTALL_TARGETS)
 	@echo ================== Installing $*
 	$(Q)if [ ! -f $(BUILD_DIR)/$*/.config ]; then \
 		$(MAKE) config T=$* O=$(BUILD_DIR)/$*; \
+	elif cmp -s $(BUILD_DIR)/$*/.config.orig $(BUILD_DIR)/$*/.config; then \
+		$(MAKE) config T=$* O=$(BUILD_DIR)/$*; \
+	else \
+		if [ -f $(BUILD_DIR)/$*/.config.orig ] ; then \
+			tmp_build=$(BUILD_DIR)/$*/.config.tmp; \
+			$(MAKE) config T=$* O=$$tmp_build; \
+			if ! cmp -s $(BUILD_DIR)/$*/.config.orig $$tmp_build/.config ; then \
+				echo "Conflict: local config and template config have both changed"; \
+				exit 1; \
+			fi; \
+		fi; \
+		echo "Using local configuration"; \
 	fi
 	$(Q)$(MAKE) all O=$(BUILD_DIR)/$*
 

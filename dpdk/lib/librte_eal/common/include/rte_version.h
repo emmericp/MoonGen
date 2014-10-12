@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -59,17 +59,24 @@ extern "C" {
 /**
  * Minor version number i.e. the y in x.y.z
  */
-#define RTE_VER_MINOR 6
+#define RTE_VER_MINOR 7
 
 /**
  * Patch level number i.e. the z in x.y.z
  */
-#define RTE_VER_PATCH_LEVEL 0
+#define RTE_VER_PATCH_LEVEL 1
 
 /**
- * Patch release number i.e. the w in x.y.zrw
+ * Extra string to be appended to version number
  */
-#define RTE_VER_PATCH_RELEASE 2
+#define RTE_VER_SUFFIX ""
+
+/**
+ * Patch release number
+ *   0-15 = release candidates
+ *   16   = release
+ */
+#define RTE_VER_PATCH_RELEASE 16
 
 /**
  * Macro to compute a version number usable for comparisons
@@ -86,31 +93,33 @@ extern "C" {
 			RTE_VER_PATCH_RELEASE)
 
 /**
- * Extra string to be appended to version number,
- * for example: pre1, EAR, final etc.
- */
-#define RTE_VER_SUFFIX ""
-
-/**
- * Function returning string of version number: "RTE x.y.zrw"
+ * Function returning version string
  * @return
  *     string
  */
 static inline const char *
-rte_version(void) {
-	if (sizeof(RTE_VER_SUFFIX) > sizeof(""))
-		return RTE_VER_PREFIX" "
-				RTE_STR(RTE_VER_MAJOR)"."
-				RTE_STR(RTE_VER_MINOR)"."
-				RTE_STR(RTE_VER_PATCH_LEVEL)"r"
-				RTE_STR(RTE_VER_PATCH_RELEASE)
-				"-"RTE_VER_SUFFIX;
+rte_version(void)
+{
+	static char version[32];
+	if (version[0] != 0)
+		return version;
+	if (strlen(RTE_VER_SUFFIX) == 0)
+		sprintf(version, "%s %d.%d.%d",
+			RTE_VER_PREFIX,
+			RTE_VER_MAJOR,
+			RTE_VER_MINOR,
+			RTE_VER_PATCH_LEVEL);
 	else
-		return RTE_VER_PREFIX" "
-				RTE_STR(RTE_VER_MAJOR)"."
-				RTE_STR(RTE_VER_MINOR)"."
-				RTE_STR(RTE_VER_PATCH_LEVEL)"r"
-				RTE_STR(RTE_VER_PATCH_RELEASE);
+		sprintf(version, "%s %d.%d.%d%s%d",
+			RTE_VER_PREFIX,
+			RTE_VER_MAJOR,
+			RTE_VER_MINOR,
+			RTE_VER_PATCH_LEVEL,
+			RTE_VER_SUFFIX,
+			RTE_VER_PATCH_RELEASE < 16 ?
+				RTE_VER_PATCH_RELEASE :
+				RTE_VER_PATCH_RELEASE - 16);
+	return version;
 }
 
 #ifdef __cplusplus

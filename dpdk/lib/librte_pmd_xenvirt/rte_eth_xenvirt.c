@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -53,6 +53,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
+#include <rte_dev.h>
 #include <cmdline_parse.h>
 #include <cmdline_parse_etheraddr.h>
 
@@ -122,7 +123,7 @@ eth_xenvirt_rx(void *q, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			break;
 		}
 		if (unlikely(virtqueue_enqueue_recv_refill(rxvq, new_mbuf))) {
- 			rte_pktmbuf_free_seg(new_mbuf);
+			rte_pktmbuf_free_seg(new_mbuf);
 			break;
 		}
 	}
@@ -210,8 +211,8 @@ gntalloc_vring_flag(int vtidx)
 	}
 
 	*(uint8_t *)ptr = MAP_FLAG;
-	rte_snprintf(val_str, sizeof(val_str), "%u", gref_tmp);
-	rte_snprintf(key_str, sizeof(key_str),
+	snprintf(val_str, sizeof(val_str), "%u", gref_tmp);
+	snprintf(key_str, sizeof(key_str),
 		DPDK_XENSTORE_PATH"%d"VRING_FLAG_STR, vtidx);
 	xenstore_write(key_str, val_str);
 }
@@ -229,10 +230,10 @@ dev_start_notify(int vtidx)
 	RTE_LOG(INFO, PMD, "%s: virtio %d is started\n", __func__, vtidx);
 	gntalloc_vring_flag(vtidx);
 
-	rte_snprintf(key_str, sizeof(key_str), "%s%s%d",
+	snprintf(key_str, sizeof(key_str), "%s%s%d",
 		DPDK_XENSTORE_PATH, EVENT_TYPE_START_STR,
 			vtidx);
-	rte_snprintf(val_str, sizeof(val_str), "1");
+	snprintf(val_str, sizeof(val_str), "1");
 	xenstore_write(key_str, val_str);
 }
 
@@ -258,11 +259,11 @@ update_mac_address(struct ether_addr *mac_addrs, int vtidx)
 		RTE_LOG(ERR, PMD, "%s: NULL pointer mac specified\n", __func__);
 		return -1;
 	}
-	rv = rte_snprintf(key_str, sizeof(key_str),
+	rv = snprintf(key_str, sizeof(key_str),
 			DPDK_XENSTORE_PATH"%d_ether_addr", vtidx);
 	if (rv == -1)
 		return rv;
-	rv = rte_snprintf(val_str, sizeof(val_str), "%02x:%02x:%02x:%02x:%02x:%02x",
+	rv = snprintf(val_str, sizeof(val_str), "%02x:%02x:%02x:%02x:%02x:%02x",
 			mac_addrs->addr_bytes[0],
 			mac_addrs->addr_bytes[1],
 			mac_addrs->addr_bytes[2],
@@ -374,7 +375,7 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 
 /*
  * Create shared vring between guest and host.
- * Memory is allocated through grant alloc driver, so it is not physical continous.
+ * Memory is allocated through grant alloc driver, so it is not physical continuous.
  */
 static void *
 gntalloc_vring_create(int queue_type, uint32_t size, int vtidx)
@@ -418,9 +419,9 @@ gntalloc_vring_create(int queue_type, uint32_t size, int vtidx)
 	}
 
 	if (queue_type == VTNET_RQ)
-		rv = rte_snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"RXVRING_XENSTORE_STR, vtidx);
-	else 
-		rv = rte_snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"TXVRING_XENSTORE_STR, vtidx);
+		rv = snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"RXVRING_XENSTORE_STR, vtidx);
+	else
+		rv = snprintf(key_str, sizeof(key_str), DPDK_XENSTORE_PATH"%d"TXVRING_XENSTORE_STR, vtidx);
 	if (rv == -1 || xenstore_write(key_str, val_str) == -1) {
 		gntfree(va, size, start_index);
 		va = NULL;
@@ -448,7 +449,7 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 
 	/* Allocate memory for virtqueue. */
 	if (queue_type == VTNET_RQ) {
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_rvq",
+		snprintf(vq_name, sizeof(vq_name), "port%d_rvq",
 				dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
@@ -458,7 +459,7 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 		}
 		memcpy(vq->vq_name, vq_name, sizeof(vq->vq_name));
 	} else if(queue_type == VTNET_TQ) {
-		rte_snprintf(vq_name, sizeof(vq_name), "port%d_tvq",
+		snprintf(vq_name, sizeof(vq_name), "port%d_tvq",
 			dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
@@ -483,10 +484,10 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 	memset(vq->vq_ring_virt_mem, 0, vq->vq_ring_size);
 	vr = &vq->vq_ring;
 	vring_init(vr, vq_size, vq->vq_ring_virt_mem, vq->vq_alignment);
-	/* 
- 	 * Locally maintained last consumed index, this idex trails 
- 	 * vq_ring.used->idx.
- 	 */
+	/*
+	 * Locally maintained last consumed index, this idex trails
+	 * vq_ring.used->idx.
+	 */
 	vq->vq_used_cons_idx = 0;
 	vq->vq_desc_head_idx = 0;
 	vq->vq_free_cnt = vq->vq_nentries;
@@ -541,7 +542,7 @@ static struct eth_dev_ops ops = {
 };
 
 
-static int 
+static int
 rte_eth_xenvirt_parse_args(struct xenvirt_dict *dict,
 			const char *name, const char *params)
 {
@@ -646,7 +647,7 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 		goto err;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate();
+	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL)
 		goto err;
 
@@ -705,14 +706,10 @@ rte_pmd_xenvirt_devinit(const char *name, const char *params)
 	return 0;
 }
 
-static struct rte_vdev_driver pmd_xenvirt_drv = {
+static struct rte_driver pmd_xenvirt_drv = {
 	.name = "eth_xenvirt",
+	.type = PMD_VDEV,
 	.init = rte_pmd_xenvirt_devinit,
 };
 
-__attribute__((constructor))
-static void
-rte_pmd_xenvirt_init(void)
-{
-	rte_eal_vdev_driver_register(&pmd_xenvirt_drv);
-}
+PMD_REGISTER_DRIVER(pmd_xenvirt_drv);

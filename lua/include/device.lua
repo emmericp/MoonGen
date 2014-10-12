@@ -59,6 +59,7 @@ function dev:getTxQueue(id)
 		return tbl[id]
 	end
 	tbl[id] = setmetatable({ id = self.id, qid = id, dev = self }, txQueue)
+	tbl[id]:getTxRate()
 	return tbl[id]
 end
 
@@ -88,6 +89,7 @@ end
 -- This function then reports the current link state on stdout
 function dev:wait()
 	local link = self:getLinkStatus()
+	self.speed = link.speed
 	printf("Port %d (%s) is %s: %s%s MBit/s", self.id, self:getMac(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
 end
 
@@ -170,6 +172,10 @@ function txQueue:setRate(rate)
 		print("WARNING: link down, assuming 10 GbE connection")
 		speed = 10000
 	end
+	self.rate = math.min(rate, speed)
+	self.speed = speed
+	local link = self.dev:getLinkStatus()
+	self.speed = link.speed
 	rate = rate / speed
 	-- the X540 and 82599 chips have a hardware bug: they assume that the wire size of an
 	-- ethernet frame is 64 byte when it is actually 84 byte (8 byte preamble/SFD, 12 byte IFG)
@@ -202,16 +208,45 @@ function txQueue:setTxRateRaw(rate, disable)
 	dpdkc.write_reg32(self.id, RF_X540_82599, bit.bor(bit.lshift(rateInt, 14), rateDec, RF_ENABLE_BIT))
 end
 
-function txQueue:send(bufArray)
-	local sent = 0
+function txQueue:getTxRate()
+	local link = self.dev:getLinkStatus()
+	self.speed = link.speed > 0 and link.speed or 10000
+	dpdkc.write_reg32(self.id, RTTDQSEL, self.qid)
+	local reg = dpdkc.read_reg32(self.id, RF_X540_82599)
+	if reg == 0 then
+		self.rate = nil
+		return self.speed
+	end
+	-- 10.14 fixed-point
+	local rateInt = bit.band(bit.rshift(reg, 14), 0x3FFF)
+	local rateDec = bit.band(reg, 0x3FF)
+	self.rate = (1 / (rateInt + rateDec / 2^14)) * self.speed
+	return self.rate
+end
+
+function txQueue:send(bufs)
+	local totalSent = 0
+	-- TODO: consider moving this loop to the C library
 	while true do
-		--print(sent, bufArray.array + sent)
-		sent = sent + dpdkc.rte_eth_tx_burst_export(self.id, self.qid, bufArray.array + sent, bufArray.size - sent)
-		if sent >= bufArray.size then
+		local sent = dpdkc.rte_eth_tx_burst_export(self.id, self.qid, bufs.array + totalSent, bufs.size - totalSent)
+		totalSent = totalSent + sent
+		if sent == 0 then
+			-- queue is full
+			-- there seems to be some problem with busy waiting on the tx_burst function in some weird scenarios (low rate, fast cpu)
+			-- NOTE: this calculation does not take the IFG/preamble into account (but neither does the hw rate control)
+			-- also, we want to sleep slightly shorter anyways as this is not supposed to be a bottleneck, just a limit to the number of tx calls
+			local rate = self.rate or self.speed or 10000
+			local size = 0
+			--for i = totalSent, bufs.size - 1 do
+			--	size = size + bufs.array[i].pkt.pkt_len
+			--end
+			--dpdk.sleepMicros(math.floor((size * 8) / rate))
+		end
+		if totalSent >= bufs.size then
 			break
 		end
 	end
-	return sent
+	return totalSent
 end
 
 --- Receive packets from a rx queue.

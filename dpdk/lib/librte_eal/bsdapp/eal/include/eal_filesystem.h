@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -62,7 +62,7 @@ eal_runtime_config_path(void)
 
 	if (getuid() != 0 && home_dir != NULL)
 		directory = home_dir;
-	rte_snprintf(buffer, sizeof(buffer) - 1, RUNTIME_CONFIG_FMT, directory,
+	snprintf(buffer, sizeof(buffer) - 1, RUNTIME_CONFIG_FMT, directory,
 			internal_config.hugefile_prefix);
 	return buffer;
 }
@@ -79,7 +79,7 @@ eal_hugepage_info_path(void)
 
 	if (getuid() != 0 && home_dir != NULL)
 		directory = home_dir;
-	rte_snprintf(buffer, sizeof(buffer) - 1, HUGEPAGE_INFO_FMT, directory,
+	snprintf(buffer, sizeof(buffer) - 1, HUGEPAGE_INFO_FMT, directory,
 			internal_config.hugefile_prefix);
 	return buffer;
 }
@@ -91,7 +91,7 @@ eal_hugepage_info_path(void)
 static inline const char *
 eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id)
 {
-	rte_snprintf(buffer, buflen, HUGEFILE_FMT, hugedir,
+	snprintf(buffer, buflen, HUGEFILE_FMT, hugedir,
 			internal_config.hugefile_prefix, f_id);
 	buffer[buflen - 1] = '\0';
 	return buffer;
@@ -101,7 +101,7 @@ eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id
 static inline const char *
 eal_get_hugefile_temp_path(char *buffer, size_t buflen, const char *hugedir, int f_id)
 {
-	rte_snprintf(buffer, buflen, TEMP_HUGEFILE_FMT, hugedir,
+	snprintf(buffer, buflen, TEMP_HUGEFILE_FMT, hugedir,
 			internal_config.hugefile_prefix, f_id);
 	buffer[buflen - 1] = '\0';
 	return buffer;

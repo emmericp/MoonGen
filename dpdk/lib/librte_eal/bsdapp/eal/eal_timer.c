@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -70,8 +70,6 @@ static uint64_t eal_tsc_resolution_hz = 0;
 /* General capabilities register */
 #define CLK_PERIOD_SHIFT     32 /* Clock period shift. */
 #define CLK_PERIOD_MASK      0xffffffff00000000ULL /* Clock period mask. */
-#define COUNT_SIZE_CAP_SHIFT 13 /* Count size capa. shift. */
-#define COUNT_SIZE_CAP_MASK 0x0000000000002000ULL /* Count size capa. mask. */
 
 /**
  * HPET timer registers. From the Intel IA-PC HPET (High Precision Event

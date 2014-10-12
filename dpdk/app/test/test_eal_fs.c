@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -32,10 +32,10 @@
  */
 
 #include "test.h"
-#ifndef RTE_EXEC_ENV_BAREMETAL
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 /* eal_filesystem.h is not a public header file, so use relative path */
 #include "../../lib/librte_eal/linuxapp/eal/include/eal_filesystem.h"
@@ -65,7 +65,7 @@ test_parse_sysfs_value(void)
 		perror("mkstemp() failure");
 		goto error;
 	}
-	rte_snprintf(proc_path, sizeof(proc_path), "/proc/self/fd/%d", tmp_file_handle);
+	snprintf(proc_path, sizeof(proc_path), "/proc/self/fd/%d", tmp_file_handle);
 	if (readlink(proc_path, filename, sizeof(filename)) < 0) {
 		perror("readlink() failure");
 		goto error;
@@ -195,18 +195,16 @@ error:
 	return -1;
 }
 
-int
+static int
 test_eal_fs(void)
 {
 	if (test_parse_sysfs_value() < 0)
 		return -1;
 	return 0;
 }
-#else
-/* baremetal does not have a filesystem */
-int
-test_eal_fs(void)
-{
-	return 0;
-}
-#endif
+
+static struct test_command eal_fs_cmd = {
+	.command = "eal_fs_autotest",
+	.callback = test_eal_fs,
+};
+REGISTER_TEST_COMMAND(eal_fs_cmd);

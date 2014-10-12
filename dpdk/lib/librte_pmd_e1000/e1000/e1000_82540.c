@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -47,12 +47,12 @@ POSSIBILITY OF SUCH DAMAGE.
 STATIC s32  e1000_init_phy_params_82540(struct e1000_hw *hw);
 STATIC s32  e1000_init_nvm_params_82540(struct e1000_hw *hw);
 STATIC s32  e1000_init_mac_params_82540(struct e1000_hw *hw);
-static s32  e1000_adjust_serdes_amplitude_82540(struct e1000_hw *hw);
+STATIC s32  e1000_adjust_serdes_amplitude_82540(struct e1000_hw *hw);
 STATIC void e1000_clear_hw_cntrs_82540(struct e1000_hw *hw);
 STATIC s32  e1000_init_hw_82540(struct e1000_hw *hw);
 STATIC s32  e1000_reset_hw_82540(struct e1000_hw *hw);
-static s32  e1000_set_phy_mode_82540(struct e1000_hw *hw);
-static s32  e1000_set_vco_speed_82540(struct e1000_hw *hw);
+STATIC s32  e1000_set_phy_mode_82540(struct e1000_hw *hw);
+STATIC s32  e1000_set_vco_speed_82540(struct e1000_hw *hw);
 STATIC s32  e1000_setup_copper_link_82540(struct e1000_hw *hw);
 STATIC s32  e1000_setup_fiber_serdes_link_82540(struct e1000_hw *hw);
 STATIC void e1000_power_down_phy_copper_82540(struct e1000_hw *hw);
@@ -65,7 +65,7 @@ STATIC s32  e1000_read_mac_addr_82540(struct e1000_hw *hw);
 STATIC s32 e1000_init_phy_params_82540(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	phy->addr		= 1;
 	phy->autoneg_mask	= AUTONEG_ADVERTISE_SPEED_DEFAULT;
@@ -328,7 +328,7 @@ STATIC s32 e1000_init_hw_82540(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
 	u32 txdctl, ctrl_ext;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 i;
 
 	DEBUGFUNC("e1000_init_hw_82540");
@@ -410,7 +410,7 @@ STATIC s32 e1000_init_hw_82540(struct e1000_hw *hw)
 STATIC s32 e1000_setup_copper_link_82540(struct e1000_hw *hw)
 {
 	u32 ctrl;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 data;
 
 	DEBUGFUNC("e1000_setup_copper_link_82540");
@@ -495,9 +495,9 @@ out:
  *
  *  Adjust the SERDES output amplitude based on the EEPROM settings.
  **/
-static s32 e1000_adjust_serdes_amplitude_82540(struct e1000_hw *hw)
+STATIC s32 e1000_adjust_serdes_amplitude_82540(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 nvm_data;
 
 	DEBUGFUNC("e1000_adjust_serdes_amplitude_82540");
@@ -525,9 +525,9 @@ out:
  *
  *  Set the VCO speed to improve Bit Error Rate (BER) performance.
  **/
-static s32 e1000_set_vco_speed_82540(struct e1000_hw *hw)
+STATIC s32 e1000_set_vco_speed_82540(struct e1000_hw *hw)
 {
-	s32  ret_val = E1000_SUCCESS;
+	s32  ret_val;
 	u16 default_page = 0;
 	u16 phy_data;
 
@@ -584,7 +584,7 @@ out:
  *    1.  Do a PHY soft reset.
  *    2.  Restart auto-negotiation or force link.
  **/
-static s32 e1000_set_phy_mode_82540(struct e1000_hw *hw)
+STATIC s32 e1000_set_phy_mode_82540(struct e1000_hw *hw)
 {
 	s32 ret_val = E1000_SUCCESS;
 	u16 nvm_data;

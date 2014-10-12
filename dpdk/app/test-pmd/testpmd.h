@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -63,7 +63,9 @@ int main(int argc, char **argv);
 #define RTE_MAX_SEGS_PER_PKT 255 /**< pkt.nb_segs is a 8-bit unsigned char. */
 
 #define MAX_PKT_BURST 512
-#define DEF_PKT_BURST 16
+#define DEF_PKT_BURST 32
+
+#define DEF_MBUF_CACHE 250
 
 #define CACHE_LINE_SIZE_ROUNDUP(size) \
 	(CACHE_LINE_SIZE * ((size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE))
@@ -80,7 +82,8 @@ typedef uint16_t streamid_t;
 
 enum {
 	PORT_TOPOLOGY_PAIRED,
-	PORT_TOPOLOGY_CHAINED
+	PORT_TOPOLOGY_CHAINED,
+	PORT_TOPOLOGY_LOOP,
 };
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
@@ -199,9 +202,12 @@ struct fwd_engine {
 extern struct fwd_engine io_fwd_engine;
 extern struct fwd_engine mac_fwd_engine;
 extern struct fwd_engine mac_retry_fwd_engine;
+extern struct fwd_engine mac_swap_engine;
+extern struct fwd_engine flow_gen_engine;
 extern struct fwd_engine rx_only_engine;
 extern struct fwd_engine tx_only_engine;
 extern struct fwd_engine csum_fwd_engine;
+extern struct fwd_engine icmp_echo_engine;
 #ifdef RTE_LIBRTE_IEEE1588
 extern struct fwd_engine ieee1588_fwd_engine;
 #endif
@@ -237,7 +243,7 @@ struct dcb_config {
 	enum rte_eth_nb_tcs num_tcs;
 	uint8_t pfc_en;
 };
- 
+
 /*
  * In DCB io FWD mode, 128 RX queue to 128 TX queue mapping
  */
@@ -269,10 +275,13 @@ extern uint16_t nb_rx_queue_stats_mappings;
 /* globals used for configuration */
 extern uint16_t verbose_level; /**< Drives messages being displayed, if any. */
 extern uint8_t  interactive;
+extern uint8_t  auto_start;
 extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
 extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
 extern uint8_t  mp_anon; /**< set by "--mp-anon" parameter */
+extern uint8_t no_link_check; /**<set by "--disable-link-check" parameter */
+extern volatile int test_done; /* stop packet forwarding when set to 1. */
 
 #ifdef RTE_NIC_BYPASS
 extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
@@ -281,20 +290,20 @@ extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
 #define MAX_SOCKET 2 /*MAX SOCKET:currently, it is 2 */
 
 /*
- * Store specified sockets on which memory pool to be used by ports 
- * is allocated. 
+ * Store specified sockets on which memory pool to be used by ports
+ * is allocated.
  */
 uint8_t port_numa[RTE_MAX_ETHPORTS];
 
 /*
  * Store specified sockets on which RX ring to be used by ports
- * is allocated. 
+ * is allocated.
  */
 uint8_t rxring_numa[RTE_MAX_ETHPORTS];
 
 /*
  * Store specified sockets on which TX ring to be used by ports
- * is allocated. 
+ * is allocated.
  */
 uint8_t txring_numa[RTE_MAX_ETHPORTS];
 
@@ -320,7 +329,7 @@ extern portid_t fwd_ports_ids[RTE_MAX_ETHPORTS];
 extern struct rte_port *ports;
 
 extern struct rte_eth_rxmode rx_mode;
-extern uint16_t rss_hf;
+extern uint64_t rss_hf;
 
 extern queueid_t nb_rxq;
 extern queueid_t nb_txq;
@@ -389,7 +398,7 @@ current_fwd_lcore(void)
 static inline void
 mbuf_poolname_build(unsigned int sock_id, char* mp_name, int name_size)
 {
-	rte_snprintf(mp_name, name_size, "mbuf_pool_socket_%u", sock_id);
+	snprintf(mp_name, name_size, "mbuf_pool_socket_%u", sock_id);
 }
 
 static inline struct rte_mempool *
@@ -446,9 +455,10 @@ void fwd_config_display(void);
 void rxtx_config_display(void);
 void fwd_config_setup(void);
 void set_def_fwd_config(void);
+void reconfig(portid_t new_port_id);
 int init_fwd_streams(void);
 
-
+void port_mtu_set(portid_t port_id, uint16_t mtu);
 void port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_pos);
 void port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,
 		      uint8_t bit_v);
@@ -480,7 +490,7 @@ void vlan_extend_set(portid_t port_id, int on);
 void vlan_tpid_set(portid_t port_id, uint16_t tp_id);
 void tx_vlan_set(portid_t port_id, uint16_t vlan_id);
 void tx_vlan_reset(portid_t port_id);
-
+void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 
 void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
 
@@ -489,15 +499,19 @@ void tx_cksum_set(portid_t port_id, uint8_t cksum_mask);
 void set_verbose_level(uint16_t vb_level);
 void set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs);
 void set_nb_pkt_per_burst(uint16_t pkt_burst);
+char *list_pkt_forwarding_modes(void);
 void set_pkt_forwarding_mode(const char *fwd_mode);
 void start_packet_forwarding(int with_tx_first);
 void stop_packet_forwarding(void);
+void dev_set_link_up(portid_t pid);
+void dev_set_link_down(portid_t pid);
 void init_port_config(void);
 int init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf);
 int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);
 int all_ports_stopped(void);
+int port_is_started(portid_t port_id);
 void pmd_test_exit(void);
 
 void fdir_add_signature_filter(portid_t port_id, uint8_t queue_id,
@@ -516,10 +530,27 @@ void fdir_update_perfect_filter(portid_t port_id, uint16_t soft_id,
 void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
 				struct rte_fdir_filter *fdir_filter);
 void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
+
 void port_rss_reta_info(portid_t port_id, struct rte_eth_rss_reta *reta_conf);
+
 void set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on);
-void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, 
+void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id,
 		uint64_t vf_mask, uint8_t on);
+
+int set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate);
+int set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate,
+				uint64_t q_msk);
+
+void port_rss_hash_conf_show(portid_t port_id, int show_rss_key);
+void port_rss_hash_key_update(portid_t port_id, uint8_t *hash_key);
+void get_syn_filter(uint8_t port_id);
+void get_ethertype_filter(uint8_t port_id, uint16_t index);
+void get_2tuple_filter(uint8_t port_id, uint16_t index);
+void get_5tuple_filter(uint8_t port_id, uint16_t index);
+void get_flex_filter(uint8_t port_id, uint16_t index);
+int port_id_is_invalid(portid_t port_id);
+int rx_queue_id_is_invalid(queueid_t rxq_id);
+int tx_queue_id_is_invalid(queueid_t txq_id);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the

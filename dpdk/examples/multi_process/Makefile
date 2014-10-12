@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -33,15 +33,13 @@ ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
 
+# Default target, can be overriden by command line or environment
+RTE_TARGET ?= x86_64-native-linuxapp-gcc
+
 include $(RTE_SDK)/mk/rte.vars.mk
-unexport RTE_SRCDIR RTE_OUTPUT RTE_EXTMK
 
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += $(wildcard *_mp)
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += client_server_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += simple_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += symmetric_mp
 
-.PHONY: all clean $(DIRS-y)
-
-all: $(DIRS-y)
-clean: $(DIRS-y)
-
-$(DIRS-y):
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+include $(RTE_SDK)/mk/rte.extsubdir.mk

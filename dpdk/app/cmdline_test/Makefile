@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -31,6 +31,8 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+ifeq ($(CONFIG_RTE_LIBRTE_CMDLINE),y)
+
 #
 # library name
 #
@@ -39,10 +41,12 @@ APP = cmdline_test
 #
 # all sources are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_test.c
-SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += commands.c
+SRCS-y += cmdline_test.c
+SRCS-y += commands.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
 include $(RTE_SDK)/mk/rte.app.mk
+
+endif

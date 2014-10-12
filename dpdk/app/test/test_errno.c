@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -42,7 +42,7 @@
 
 #include "test.h"
 
-int
+static int
 test_errno(void)
 {
 	const char *rte_retval;
@@ -86,7 +86,7 @@ test_errno(void)
 		/* generate appropriate error string for unknown error number
 		 * and then check that this is what we got back. If not, we have
 		 * a duplicate error number that conflicts with errno.h */
-		rte_snprintf(expected_libc_retval, sizeof(expected_libc_retval),
+		snprintf(expected_libc_retval, sizeof(expected_libc_retval),
 				unknown_code_result, rte_errs[i]);
 		if ((strcmp(expected_libc_retval, libc_retval) != 0) &&
 				(strcmp("", libc_retval) != 0)){
@@ -98,7 +98,7 @@ test_errno(void)
 	/* ensure that beyond RTE_MAX_ERRNO, we always get an unknown code */
 	rte_retval = rte_strerror(RTE_MAX_ERRNO + 1);
 	libc_retval = strerror(RTE_MAX_ERRNO + 1);
-	rte_snprintf(expected_libc_retval, sizeof(expected_libc_retval),
+	snprintf(expected_libc_retval, sizeof(expected_libc_retval),
 			unknown_code_result, RTE_MAX_ERRNO + 1);
 	printf("rte_strerror: '%s', strerror: '%s'\n",
 			rte_retval, libc_retval);
@@ -112,3 +112,9 @@ test_errno(void)
 
 	return 0;
 }
+
+static struct test_command errno_cmd = {
+	.command = "errno_autotest",
+	.callback = test_errno,
+};
+REGISTER_TEST_COMMAND(errno_cmd);

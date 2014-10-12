@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -34,16 +34,16 @@
 #ifndef _VMXNET3_RING_H_
 #define _VMXNET3_RING_H_
 
-#define VMXNET3_RX_CMDRING_SIZE	2
+#define VMXNET3_RX_CMDRING_SIZE 2
 
-#define VMXNET3_DRIVER_VERSION_NUM  0x01012000
+#define VMXNET3_DRIVER_VERSION_NUM 0x01012000
 
 /* Default ring size */
-#define VMXNET3_DEF_TX_RING_SIZE 	512
-#define VMXNET3_DEF_RX_RING_SIZE 	128
+#define VMXNET3_DEF_TX_RING_SIZE 512
+#define VMXNET3_DEF_RX_RING_SIZE 128
 
-#define VMXNET3_SUCCESS 	0
-#define VMXNET3_FAIL 	   -1
+#define VMXNET3_SUCCESS 0
+#define VMXNET3_FAIL   -1
 
 #define TRUE  1
 #define FALSE 0
@@ -73,13 +73,13 @@ vmxnet3_cmd_ring_adv_next2fill(struct vmxnet3_cmd_ring *ring)
 	if (unlikely(ring->next2fill == ring->size)) {
 		ring->next2fill = 0;
 		ring->gen = (uint8_t)(ring->gen ^ 1);
-   	}
+	}
 }
 
 static inline void
 vmxnet3_cmd_ring_adv_next2comp(struct vmxnet3_cmd_ring *ring)
 {
-   VMXNET3_INC_RING_IDX_ONLY(ring->next2comp, ring->size);
+	VMXNET3_INC_RING_IDX_ONLY(ring->next2comp, ring->size);
 }
 
 static inline uint32_t
@@ -96,12 +96,12 @@ vmxnet3_cmd_ring_desc_empty(struct vmxnet3_cmd_ring *ring)
 }
 
 typedef struct vmxnet3_comp_ring {
-	uint32_t               size;
-	uint32_t               next2proc;
-	uint8_t                gen;
-	uint8_t                intr_idx;
+	uint32_t	       size;
+	uint32_t	       next2proc;
+	uint8_t		       gen;
+	uint8_t		       intr_idx;
 	Vmxnet3_GenericDesc    *base;
-	uint64_t               basePA;
+	uint64_t	       basePA;
 } vmxnet3_comp_ring_t;
 
 static inline void
@@ -140,15 +140,15 @@ typedef struct vmxnet3_tx_ctx {
 } vmxnet3_tx_ctx_t;
 
 typedef struct vmxnet3_tx_queue {
-	struct vmxnet3_hw       	 *hw;
+	struct vmxnet3_hw            *hw;
 	struct vmxnet3_cmd_ring      cmd_ring;
 	struct vmxnet3_comp_ring     comp_ring;
 	uint32_t                     qid;
 	struct Vmxnet3_TxQueueDesc   *shared;
 	struct vmxnet3_txq_stats     stats;
 	bool                         stopped;
-	uint16_t            		 queue_id;      /**< Device TX queue index. */
-	uint8_t             		 port_id;       /**< Device port identifier. */
+	uint16_t                     queue_id;      /**< Device TX queue index. */
+	uint8_t                      port_id;       /**< Device port identifier. */
 } vmxnet3_tx_queue_t;
 
 
@@ -160,8 +160,8 @@ struct vmxnet3_rxq_stats {
 };
 
 typedef struct vmxnet3_rx_queue {
-	struct rte_mempool 			*mp;
-	struct vmxnet3_hw        	*hw;
+	struct rte_mempool          *mp;
+	struct vmxnet3_hw           *hw;
 	struct vmxnet3_cmd_ring     cmd_ring[VMXNET3_RX_CMDRING_SIZE];
 	struct vmxnet3_comp_ring    comp_ring;
 	uint32_t                    qid1;
@@ -169,8 +169,8 @@ typedef struct vmxnet3_rx_queue {
 	Vmxnet3_RxQueueDesc         *shared;
 	struct vmxnet3_rxq_stats    stats;
 	bool                        stopped;
-	uint16_t          			queue_id;      /**< Device RX queue index. */
-	uint8_t             		port_id;       /**< Device port identifier. */
+	uint16_t                    queue_id;      /**< Device RX queue index. */
+	uint8_t                     port_id;       /**< Device port identifier. */
 } vmxnet3_rx_queue_t;
 
 #endif /* _VMXNET3_RING_H_ */

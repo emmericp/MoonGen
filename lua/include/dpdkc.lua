@@ -74,7 +74,7 @@ ffi.cdef[[
 	uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value);
 
 	// devices
-	int rte_pmd_init_all_export();
+	void register_pmd_drivers();
 	int rte_eal_pci_probe();
 	int rte_eth_dev_count();
 	uint64_t get_mac_addr(int port, char* buf);

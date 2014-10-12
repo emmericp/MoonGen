@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -95,9 +95,9 @@ ixgbe_bypass_set_time(struct ixgbe_adapter *adapter)
 }
 
 /**
- * ixgbe_bypass_init - Make some enviroment changes for bypass
+ * ixgbe_bypass_init - Make some environment changes for bypass
  *
- * @adapter: pointer to ixgbe_adapter sturcture for access to state bits
+ * @adapter: pointer to ixgbe_adapter structure for access to state bits
  *
  * This function collects all the modifications needed by the bypass
  * driver.
@@ -173,7 +173,7 @@ ixgbe_bypass_state_store(struct rte_eth_dev *dev, u32 *new_state)
 	if (ret_val)
 		goto exit;
 
-	/* Set AUTO back on so FW can recieve events */
+	/* Set AUTO back on so FW can receive events */
 	ret_val = adapter->bps.ops.bypass_set(hw, BYPASS_PAGE_CTL0,
 					 BYPASS_MODE_OFF_M, BYPASS_AUTO);
 

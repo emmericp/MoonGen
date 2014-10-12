@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -71,10 +71,6 @@ enum rte_proc_type_t {
  * The global RTE configuration structure.
  */
 struct rte_config {
-	uint32_t version; /**< Configuration [structure] version. */
-	uint32_t magic;   /**< Magic number - Sanity check. */
-
-
 	uint32_t master_lcore;       /**< Id of the master lcore */
 	uint32_t lcore_count;        /**< Number of available logical cores. */
 	enum rte_lcore_role_t lcore_role[RTE_MAX_LCORE]; /**< State of cores. */
@@ -93,7 +89,7 @@ struct rte_config {
 } __attribute__((__packed__));
 
 /* Flag definitions for rte_config flags */
-#define EAL_FLG_HIGH_IOPL 1 /**< indicates high IO privilage in a linux env */
+#define EAL_FLG_HIGH_IOPL 1 /**< indicates high IO privilege in a linux env */
 
 /**
  * Get the global configuration structure.
@@ -183,7 +179,7 @@ rte_usage_hook_t
 rte_set_application_usage_hook( rte_usage_hook_t usage_func );
 
 /**
- * macro to get the lock of tailq in mem_config 
+ * macro to get the lock of tailq in mem_config
  */
 #define RTE_EAL_TAILQ_RWLOCK         (&rte_eal_get_configuration()->mem_config->qlock)
 
@@ -212,7 +208,7 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func );
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);            \
 	TAILQ_INSERT_TAIL(list, elm, next);                     \
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);          \
-} while (0)  
+} while (0)
 
 /**
  * Utility macro to do a thread-safe tailq 'REMOVE' of rte_mem_config

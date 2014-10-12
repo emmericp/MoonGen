@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -134,10 +134,10 @@ static void cmd_obj_del_show_parsed(void *parsed_result,
 	char ip_str[INET6_ADDRSTRLEN];
 
 	if (res->obj->ip.family == AF_INET)
-		rte_snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
+		snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
 			 NIPQUAD(res->obj->ip.addr.ipv4));
 	else
-		rte_snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
+		snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
 			 NIP6(res->obj->ip.addr.ipv6));
 
 	if (strcmp(res->action, "del") == 0) {
@@ -199,15 +199,15 @@ static void cmd_obj_add_parsed(void *parsed_result,
 		cmdline_printf(cl, "mem error\n");
 		return;
 	}
-	rte_snprintf(o->name, sizeof(o->name), "%s", res->name);
+	snprintf(o->name, sizeof(o->name), "%s", res->name);
 	o->ip = res->ip;
 	SLIST_INSERT_HEAD(&global_obj_list, o, next);
 
 	if (o->ip.family == AF_INET)
-		rte_snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
+		snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
 			 NIPQUAD(o->ip.addr.ipv4));
 	else
-		rte_snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
+		snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
 			 NIP6(o->ip.addr.ipv6));
 
 	cmdline_printf(cl, "Object %s added, ip=%s\n",

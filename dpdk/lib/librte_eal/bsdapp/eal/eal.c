@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -66,6 +66,7 @@
 #include <rte_cpuflags.h>
 #include <rte_interrupts.h>
 #include <rte_pci.h>
+#include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_common.h>
 #include <rte_version.h>
@@ -94,27 +95,9 @@
 #define OPT_VDEV        "vdev"
 #define OPT_SYSLOG      "syslog"
 
-#define RTE_EAL_BLACKLIST_SIZE	0x100
-
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
-#define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
-
-#define HIGHEST_RPL 3
-
 #define BITS_PER_HEX 4
-
-#define GET_BLACKLIST_FIELD(in, fd, lim, dlm)                   \
-{                                                               \
-	unsigned long val;                                      \
-	char *end;                                              \
-	errno = 0;                                              \
-	val = strtoul((in), &end, 16);                          \
-	if (errno != 0 || end[0] != (dlm) || val > (lim))       \
-		return (-EINVAL);                               \
-	(fd) = (typeof (fd))val;                                \
-	(in) = end + 1;                                         \
-}
 
 /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook = NULL;
@@ -247,7 +230,7 @@ rte_eal_config_attach(void)
 			rte_panic("Cannot open '%s' for rte_mem_config\n", pathname);
 	}
 
-	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config), 
+	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
 				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
 	close(mem_cfg_fd);
 	if (rte_mem_cfg_addr == MAP_FAILED)
@@ -280,8 +263,6 @@ eal_proc_type_detect(void)
 static void
 rte_config_init(void)
 {
-	/* set the magic in configuration structure */
-	rte_config.magic = RTE_MAGIC;
 	rte_config.process_type = (internal_config.process_type == RTE_PROC_AUTO) ?
 			eal_proc_type_detect() : /* for auto, detect the type */
 			internal_config.process_type; /* otherwise use what's already set */
@@ -324,8 +305,7 @@ eal_usage(const char *prgname)
 	       "  --"OPT_VDEV": add a virtual device.\n"
 	       "               The argument format is <driver><id>[,key=val,...]\n"
 	       "               (ex: --vdev=eth_pcap0,iface=eth2).\n"
-	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
-	    		   "native RDTSC\n"
+	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of native RDTSC\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
 	       "  --"OPT_NO_PCI"   : disable pci\n"
@@ -360,11 +340,11 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func )
 static int xdigit2val(unsigned char c)
 {
 	int val;
-	if(isdigit(c)) 
+	if(isdigit(c))
 		val = c - '0';
 	else if(isupper(c))
 		val = c - 'A' + 10;
-	else 
+	else
 		val = c - 'a' + 10;
 	return val;
 }
@@ -768,7 +748,7 @@ sync_func(__attribute__((unused)) void *arg)
 	return 0;
 }
 
-inline static void 
+inline static void
 rte_eal_mcfg_complete(void)
 {
 	/* ALL shared mem_config related INIT DONE */
@@ -782,7 +762,7 @@ int rte_eal_has_hugepages(void)
 	return !internal_config.no_hugetlbfs;
 }
 
-/* Abstraction for port I/0 privilage */
+/* Abstraction for port I/0 privilege */
 static int
 rte_eal_iopl_init(void)
 {
@@ -877,8 +857,8 @@ rte_eal_init(int argc, char **argv)
 
 	rte_eal_mcfg_complete();
 
-	if (rte_eal_vdev_init() < 0)
-		rte_panic("Cannot init virtual devices\n");
+	if (rte_eal_dev_init(PMD_INIT_PRE_PCI_PROBE) < 0)
+		rte_panic("Cannot init pmd devices\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
@@ -908,6 +888,14 @@ rte_eal_init(int argc, char **argv)
 	 */
 	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MASTER);
 	rte_eal_mp_wait_lcore();
+
+	/* Probe & Initialize PCI devices */
+	if (rte_eal_pci_probe())
+			rte_panic("Cannot probe PCI\n");
+
+	/* Initialize any outstanding devices */
+	if (rte_eal_dev_init(PMD_INIT_POST_PCI_PROBE) < 0)
+		rte_panic("Cannot init pmd devices\n");
 
 	return fctret;
 }

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -79,15 +79,15 @@ MAIN(int argc, char **argv)
 		rte_panic("Cannot init EAL\n");
 
 	printf("----------- MEMORY_SEGMENTS -----------\n");
-	rte_dump_physmem_layout();
+	rte_dump_physmem_layout(stdout);
 	printf("--------- END_MEMORY_SEGMENTS ---------\n");
 
 	printf("------------ MEMORY_ZONES -------------\n");
-	rte_memzone_dump();
+	rte_memzone_dump(stdout);
 	printf("---------- END_MEMORY_ZONES -----------\n");
 
 	printf("------------- TAIL_QUEUES -------------\n");
-	rte_dump_tailq();
+	rte_dump_tailq(stdout);
 	printf("---------- END_TAIL_QUEUES ------------\n");
 
 	return 0;

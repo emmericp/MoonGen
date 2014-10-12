@@ -180,13 +180,45 @@ uint32_t get_clock_difference(uint8_t port1, uint8_t port2) {
 	return (((int64_t) p1timeh << 32) | p1time) - (((int64_t) p2timeh << 32) | p2time);
 }
 
-// the following functions are static inline function in header files
-// this is the easiest/least ugly way to make them available to luajit (#defining static before including the header breaks stuff)
-int rte_pmd_init_all_export() {
-	return rte_pmd_init_all();
+
+
+// registers all libraries
+// this should be done on startup via a __attribute__((__constructor__)) function
+// however, there seems to be a bug: the init functions don't seem to work if called in the wrong order (note that the order depends on the linker)
+// calling devinitfn_bond_drv() last causes problems
+// so we just add them here again in an order that actually works independent from the link order
+void devinitfn_rte_vmxnet3_driver();
+void devinitfn_rte_virtio_driver();
+void devinitfn_pmd_ring_drv();
+void devinitfn_rte_ixgbe_driver();
+void devinitfn_rte_ixgbevf_driver();
+void devinitfn_rte_i40evf_driver();
+void devinitfn_rte_i40e_driver();
+void devinitfn_pmd_igb_drv();
+void devinitfn_pmd_igbvf_drv();
+void devinitfn_em_pmd_drv();
+void devinitfn_bond_drv();
+void devinitfn_pmd_xenvirt_drv();
+void devinitfn_pmd_pcap_drv();
+void register_pmd_drivers() {
+	devinitfn_bond_drv();
+	devinitfn_rte_vmxnet3_driver();
+	devinitfn_rte_virtio_driver();
+	devinitfn_pmd_ring_drv();
+	devinitfn_rte_ixgbevf_driver();
+	devinitfn_rte_ixgbe_driver();
+	devinitfn_rte_i40evf_driver();
+	devinitfn_rte_i40e_driver();
+	devinitfn_pmd_igb_drv();
+	devinitfn_pmd_igbvf_drv();
+	devinitfn_em_pmd_drv();
+	// TODO: what's wrong with these two?
+	//devinitfn_pmd_xenvirt_drv();
+	//devinitfn_pmd_pcap_drv();
 }
 
-// rx and tx functions that are static inline functions in the header
+// the following functions are static inline function in header files
+// this is the easiest/least ugly way to make them available to luajit (#defining static before including the header breaks stuff)
 uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, void* rx_pkts, uint16_t nb_pkts) {
 	return rte_eth_rx_burst(port_id, queue_id, rx_pkts, nb_pkts);
 }

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -50,6 +50,7 @@
 #include <rte_errno.h>
 #include <rte_ring.h>
 #include <rte_mempool.h>
+#include <rte_malloc.h>
 #include <rte_common.h>
 #include <rte_ivshmem.h>
 #include <rte_tailq_elem.h>
@@ -61,7 +62,6 @@
 #define PCI_DEVICE_ID_IVSHMEM 0x1110
 
 #define IVSHMEM_MAGIC 0x0BADC0DE
-#define IVSHMEM_METADATA_SIZE 0x1000
 
 #define IVSHMEM_RESOURCE_PATH "/sys/bus/pci/devices/%04x:%02x:%02x.%x/resource2"
 #define IVSHMEM_CONFIG_PATH "/var/run/.%s_ivshmem_config"
@@ -101,7 +101,7 @@ static int memseg_idx;
 static int pagesz;
 
 /* Tailq heads to add rings to */
-TAILQ_HEAD(rte_ring_list, rte_ring);
+TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
 
 /*
  * Utility functions
@@ -364,7 +364,7 @@ read_metadata(char * path, int path_len, int fd, uint64_t flen)
 				sizeof(struct rte_ivshmem_metadata_entry));
 
 		/* copy path */
-		rte_snprintf(ivshmem_config->segment[idx].path, path_len, "%s", path);
+		snprintf(ivshmem_config->segment[idx].path, path_len, "%s", path);
 
 		idx++;
 	}
@@ -469,7 +469,7 @@ create_shared_config(void)
 	int fd;
 
 	/* build ivshmem config file path */
-	rte_snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
+	snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
 			internal_config.hugefile_prefix);
 
 	fd = open(path, O_CREAT | O_RDWR, 0600);
@@ -520,7 +520,7 @@ open_shared_config(void)
 	int fd;
 
 	/* build ivshmem config file path */
-	rte_snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
+	snprintf(path, sizeof(path), IVSHMEM_CONFIG_PATH,
 			internal_config.hugefile_prefix);
 
 	fd = open(path, O_RDONLY);
@@ -586,7 +586,7 @@ static inline int
 map_all_segments(void)
 {
 	struct ivshmem_segment ms_tbl[RTE_MAX_MEMSEG];
-	struct ivshmem_pci_device * pci_dev; 
+	struct ivshmem_pci_device * pci_dev;
 	struct rte_mem_config * mcfg;
 	struct ivshmem_segment * seg;
 	int fd, fd_zero;
@@ -754,6 +754,7 @@ rte_eal_ivshmem_obj_init(void)
 	struct ivshmem_segment * seg;
 	struct rte_memzone * mz;
 	struct rte_ring * r;
+	struct rte_tailq_entry *te;
 	unsigned i, ms, idx;
 	uint64_t offset;
 
@@ -808,6 +809,8 @@ rte_eal_ivshmem_obj_init(void)
 		mcfg->memzone_idx++;
 	}
 
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
 	/* find rings */
 	for (i = 0; i < mcfg->memzone_idx; i++) {
 		mz = &mcfg->memzone[i];
@@ -819,14 +822,23 @@ rte_eal_ivshmem_obj_init(void)
 
 		r = (struct rte_ring*) (mz->addr_64);
 
-		TAILQ_INSERT_TAIL(ring_list, r, next);
+		te = rte_zmalloc("RING_TAILQ_ENTRY", sizeof(*te), 0);
+		if (te == NULL) {
+			RTE_LOG(ERR, EAL, "Cannot allocate ring tailq entry!\n");
+			return -1;
+		}
+
+		te->data = (void *) r;
+
+		TAILQ_INSERT_TAIL(ring_list, te, next);
 
 		RTE_LOG(DEBUG, EAL, "Found ring: '%s' at %p\n", r->name, mz->addr);
 	}
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 #ifdef RTE_LIBRTE_IVSHMEM_DEBUG
-	rte_memzone_dump();
-	rte_ring_list_dump();
+	rte_memzone_dump(stdout);
+	rte_ring_list_dump(stdout);
 #endif
 
 	return 0;
@@ -843,7 +855,7 @@ int rte_eal_ivshmem_init(void)
 	/* initialize everything to 0 */
 	memset(path, 0, sizeof(path));
 	ivshmem_config = NULL;
-	
+
 	pagesz = getpagesize();
 
 	RTE_LOG(DEBUG, EAL, "Searching for IVSHMEM devices...\n");
@@ -869,7 +881,7 @@ int rte_eal_ivshmem_init(void)
 					continue;
 
 				/* construct pci device path */
-				rte_snprintf(path, sizeof(path), IVSHMEM_RESOURCE_PATH,
+				snprintf(path, sizeof(path), IVSHMEM_RESOURCE_PATH,
 						dev->addr.domain, dev->addr.bus, dev->addr.devid,
 						dev->addr.function);
 
@@ -916,9 +928,9 @@ int rte_eal_ivshmem_init(void)
 							dev->addr.bus, dev->addr.devid, dev->addr.function);
 
 					ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].ioremap_addr = res->phys_addr;
-					rte_snprintf(ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].path,
+					snprintf(ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].path,
 							sizeof(ivshmem_config->pci_devs[ivshmem_config->pci_devs_idx].path),
-							path);
+							"%s", path);
 
 					ivshmem_config->pci_devs_idx++;
 				}

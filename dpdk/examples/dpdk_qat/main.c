@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -170,7 +170,7 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
+			.rss_hf = ETH_RSS_IP,
 		},
 	},
 	.txmode = {
@@ -543,7 +543,7 @@ parse_config(const char *q_arg)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++) {
@@ -654,7 +654,7 @@ init_mem(void)
 			return -1;
 		}
 		if (pktmbuf_pool[socketid] == NULL) {
-			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
+			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
 				rte_mempool_create(s, NB_MBUF, MBUF_SIZE, 32,
 					sizeof(struct rte_pktmbuf_pool_private),
@@ -695,16 +695,6 @@ MAIN(int argc, char **argv)
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		return -1;
-
-	/* init driver */
-#ifdef RTE_LIBRTE_IGB_PMD
-	if (rte_igb_pmd_init() < 0)
-		rte_panic("Cannot init igb pmd\n");
-#endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
-	if (rte_ixgbe_pmd_init() < 0)
-		rte_panic("Cannot init ixgbe pmd\n");
-#endif
 
 	if (rte_eal_pci_probe() < 0)
 		rte_panic("Cannot probe PCI\n");

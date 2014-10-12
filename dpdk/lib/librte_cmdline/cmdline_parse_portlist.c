@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -145,7 +145,7 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 	if (token_len >= PORTLIST_TOKEN_SIZE)
 		return (-1);
 
-	rte_snprintf(portlist_str, token_len+1, "%s", buf);
+	snprintf(portlist_str, token_len+1, "%s", buf);
 
 	if (pl) {
 		pl->map = 0;
@@ -163,7 +163,7 @@ cmdline_get_help_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 		char *dstbuf, unsigned int size)
 {
 	int ret;
-	ret = rte_snprintf(dstbuf, size, "range of ports as 3,4-6,8-19,20");
+	ret = snprintf(dstbuf, size, "range of ports as 3,4-6,8-19,20");
 	if (ret < 0)
 		return -1;
 	return 0;

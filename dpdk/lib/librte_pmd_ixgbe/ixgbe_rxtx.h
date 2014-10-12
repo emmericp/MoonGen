@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -39,6 +39,8 @@
 
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 #define RTE_PMD_IXGBE_RX_MAX_BURST 32
+#define RTE_IXGBE_DESCS_PER_LOOP           4
+#elif defined(RTE_IXGBE_INC_VECTOR)
 #define RTE_IXGBE_DESCS_PER_LOOP           4
 #else
 #define RTE_IXGBE_DESCS_PER_LOOP           1
@@ -67,6 +69,10 @@
 #define rte_packet_prefetch(p)  do {} while(0)
 #endif
 
+#define RTE_IXGBE_REGISTER_POLL_WAIT_10_MS  10
+#define RTE_IXGBE_WAIT_100_US               100
+#define RTE_IXGBE_VMTXSW_REGISTER_COUNT     2
+
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
@@ -91,7 +97,7 @@ struct igb_tx_entry_v {
 };
 
 /**
- * continous entry sequence, gather by the same mempool 
+ * continuous entry sequence, gather by the same mempool
  */
 struct igb_tx_entry_seq {
 	const struct rte_mempool* pool;
@@ -129,6 +135,7 @@ struct igb_rx_queue {
 	uint8_t             port_id;  /**< Device port identifier. */
 	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
+	uint8_t             start_rx_per_q;
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
@@ -165,8 +172,8 @@ struct igb_tx_queue {
 	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
 	struct igb_tx_entry *sw_ring;      /**< virtual address of SW ring. */
 #ifdef RTE_IXGBE_INC_VECTOR
-	/** continous tx entry sequence within the same mempool */
-	struct igb_tx_entry_seq *sw_ring_seq; 
+	/** continuous tx entry sequence within the same mempool */
+	struct igb_tx_entry_seq *sw_ring_seq;
 #endif
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
@@ -193,6 +200,7 @@ struct igb_tx_queue {
 	/** Hardware context0 history. */
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
 	struct ixgbe_txq_ops *ops;          /**< txq ops */
+	uint8_t             start_tx_per_q;
 };
 
 struct ixgbe_txq_ops {

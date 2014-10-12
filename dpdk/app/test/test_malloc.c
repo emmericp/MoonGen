@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -66,7 +66,7 @@
  * ======
  *
  * Allocate some dynamic memory from heap (3 areas). Check that areas
- * don't overlap an that alignment constraints match. This test is
+ * don't overlap and that alignment constraints match. This test is
  * done many times on different lcores simultaneously.
  */
 
@@ -162,7 +162,7 @@ test_align_overlap_per_lcore(__attribute__((unused)) void *arg)
 		rte_free(p2);
 		rte_free(p3);
 	}
-	rte_malloc_dump_stats("dummy");
+	rte_malloc_dump_stats(stdout, "dummy");
 
 	return ret;
 }
@@ -258,7 +258,7 @@ test_reordered_free_per_lcore(__attribute__((unused)) void *arg)
 			break;
 		}
 	}
-	rte_malloc_dump_stats("dummy");
+	rte_malloc_dump_stats(stdout, "dummy");
 
 	return ret;
 }
@@ -313,9 +313,9 @@ test_big_alloc(void)
 	rte_malloc_get_socket_stats(socket,&post_stats);
 
 	/* Check statistics reported are correct */
-	/* Allocation increase, cannot be the same as before big allocation */
-	if (post_stats.heap_totalsz_bytes == pre_stats.heap_totalsz_bytes) {
-		printf("Malloc statistics are incorrect - heap_totalz_bytes\n");
+	/* Allocation may increase, or may be the same as before big allocation */
+	if (post_stats.heap_totalsz_bytes < pre_stats.heap_totalsz_bytes) {
+		printf("Malloc statistics are incorrect - heap_totalsz_bytes\n");
 		return -1;
 	}
 	/* Check that allocated size adds up correctly */
@@ -336,7 +336,8 @@ test_big_alloc(void)
 		return -1;
 	}
 	/* New blocks now available - just allocated 1 but also 1 new free */
-	if(post_stats.free_count != pre_stats.free_count ) {
+	if (post_stats.free_count != pre_stats.free_count &&
+			post_stats.free_count != pre_stats.free_count - 1) {
 		printf("Malloc statistics are incorrect - free_count\n");
 		return -1;
 	}
@@ -365,7 +366,7 @@ test_multi_alloc_statistics(void)
 	if (!p1)
 		return -1;
 	rte_free(p1);
-	rte_malloc_dump_stats("stats");
+	rte_malloc_dump_stats(stdout, "stats");
 
 	rte_malloc_get_socket_stats(socket,&post_stats);
 	/* Check statistics reported are correct */
@@ -425,7 +426,7 @@ test_multi_alloc_statistics(void)
 	}
 
 	/* Make sure that we didn't touch our greatest chunk: 2 * 11M)  */
-	if (second_stats.greatest_free_size != pre_stats.greatest_free_size) {
+	if (post_stats.greatest_free_size != pre_stats.greatest_free_size) {
 		printf("Incorrect heap statistics: Greatest free size \n");
 		return -1;
 	}
@@ -466,7 +467,7 @@ test_rte_malloc_type_limits(void)
 	 */
 	const char *typename = "limit_test";
 	rte_malloc_set_limit(typename, 64 * 1024);
-	rte_malloc_dump_stats(typename);
+	rte_malloc_dump_stats(stdout, typename);
 	return 0;
 }
 
@@ -485,7 +486,7 @@ test_realloc(void)
 		printf("NULL pointer returned from rte_zmalloc\n");
 		return -1;
 	}
-	rte_snprintf(ptr1, size1, "%s" ,hello_str);
+	snprintf(ptr1, size1, "%s" ,hello_str);
 	char *ptr2 = rte_realloc(ptr1, size2, CACHE_LINE_SIZE);
 	if (!ptr2){
 		rte_free(ptr1);
@@ -923,7 +924,7 @@ test_alloc_socket(void)
 	return 0;
 }
 
-int
+static int
 test_malloc(void)
 {
 	unsigned lcore_id;
@@ -1036,11 +1037,17 @@ test_malloc(void)
 
 	ret = test_multi_alloc_statistics();
 	if (ret < 0) {
-		printf("test_muti_alloc_statistics() failed\n");
+		printf("test_multi_alloc_statistics() failed\n");
 		return ret;
 	}
 	else
-		printf("test_muti_alloc_statistics() passed\n");
+		printf("test_multi_alloc_statistics() passed\n");
 
 	return 0;
 }
+
+static struct test_command malloc_cmd = {
+	.command = "malloc_autotest",
+	.callback = test_malloc,
+};
+REGISTER_TEST_COMMAND(malloc_cmd);

@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -57,6 +57,9 @@ endif
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_thread.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_log.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_pci.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_pci_uio.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_pci_vfio.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_pci_vfio_mp_sync.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_debug.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_lcore.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_timer.c
@@ -75,9 +78,10 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_memory.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_tailqs.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_errno.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_cpuflags.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_string_fns.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_hexdump.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_devargs.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_vdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_dev.c
 
 CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_thread.o := -D_GNU_SOURCE
@@ -85,13 +89,13 @@ CFLAGS_eal_log.o := -D_GNU_SOURCE
 CFLAGS_eal_common_log.o := -D_GNU_SOURCE
 CFLAGS_eal_hugepage_info.o := -D_GNU_SOURCE
 CFLAGS_eal_pci.o := -D_GNU_SOURCE
+CFLAGS_eal_pci_vfio.o := -D_GNU_SOURCE
 CFLAGS_eal_common_whitelist.o := -D_GNU_SOURCE
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_eal_thread.o += -Wno-return-type
-CFLAGS_eal_hpet.o += -Wno-return-type
 endif
 
 INC := rte_per_lcore.h rte_lcore.h rte_interrupts.h rte_kni_common.h rte_dom0_common.h

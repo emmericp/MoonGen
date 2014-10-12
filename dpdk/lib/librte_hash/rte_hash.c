@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -60,7 +60,7 @@
 #include "rte_hash.h"
 
 
-TAILQ_HEAD(rte_hash_list, rte_hash);
+TAILQ_HEAD(rte_hash_list, rte_tailq_entry);
 
 /* Macro to enable/disable run-time checking of function parameters */
 #if defined(RTE_LIBRTE_HASH_DEBUG)
@@ -141,24 +141,29 @@ find_first(uint32_t sig, const uint32_t *sig_bucket, uint32_t num_sigs)
 struct rte_hash *
 rte_hash_find_existing(const char *name)
 {
-	struct rte_hash *h;
+	struct rte_hash *h = NULL;
+	struct rte_tailq_entry *te;
 	struct rte_hash_list *hash_list;
 
 	/* check that we have an initialised tail queue */
-	if ((hash_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
+	if ((hash_list =
+			RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
 		return NULL;
 	}
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
-	TAILQ_FOREACH(h, hash_list, next) {
+	TAILQ_FOREACH(te, hash_list, next) {
+		h = (struct rte_hash *) te->data;
 		if (strncmp(name, h->name, RTE_HASH_NAMESIZE) == 0)
 			break;
 	}
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 
-	if (h == NULL)
+	if (te == NULL) {
 		rte_errno = ENOENT;
+		return NULL;
+	}
 	return h;
 }
 
@@ -166,16 +171,17 @@ struct rte_hash *
 rte_hash_create(const struct rte_hash_parameters *params)
 {
 	struct rte_hash *h = NULL;
+	struct rte_tailq_entry *te;
 	uint32_t num_buckets, sig_bucket_size, key_size,
 		hash_tbl_size, sig_tbl_size, key_tbl_size, mem_size;
 	char hash_name[RTE_HASH_NAMESIZE];
 	struct rte_hash_list *hash_list;
 
 	/* check that we have an initialised tail queue */
-	if ((hash_list = 
+	if ((hash_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
+		return NULL;
 	}
 
 	/* Check for valid parameters */
@@ -192,7 +198,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		return NULL;
 	}
 
-	rte_snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
+	snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
 
 	/* Calculate hash dimensions */
 	num_buckets = params->entries / params->bucket_entries;
@@ -205,29 +211,37 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				  CACHE_LINE_SIZE);
 	key_tbl_size = align_size(num_buckets * key_size *
 				  params->bucket_entries, CACHE_LINE_SIZE);
-	
+
 	/* Total memory required for hash context */
 	mem_size = hash_tbl_size + sig_tbl_size + key_tbl_size;
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
 	/* guarantee there's no existing */
-	TAILQ_FOREACH(h, hash_list, next) {
+	TAILQ_FOREACH(te, hash_list, next) {
+		h = (struct rte_hash *) te->data;
 		if (strncmp(params->name, h->name, RTE_HASH_NAMESIZE) == 0)
 			break;
 	}
-	if (h != NULL)
+	if (te != NULL)
 		goto exit;
+
+	te = rte_zmalloc("HASH_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, HASH, "tailq entry allocation failed\n");
+		goto exit;
+	}
 
 	h = (struct rte_hash *)rte_zmalloc_socket(hash_name, mem_size,
 					   CACHE_LINE_SIZE, params->socket_id);
 	if (h == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		rte_free(te);
 		goto exit;
 	}
 
 	/* Setup hash context */
-	rte_snprintf(h->name, sizeof(h->name), "%s", params->name);
+	snprintf(h->name, sizeof(h->name), "%s", params->name);
 	h->entries = params->entries;
 	h->bucket_entries = params->bucket_entries;
 	h->key_len = params->key_len;
@@ -242,7 +256,9 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	h->hash_func = (params->hash_func == NULL) ?
 		DEFAULT_HASH_FUNC : params->hash_func;
 
-	TAILQ_INSERT_TAIL(hash_list, h, next);
+	te->data = (void *) h;
+
+	TAILQ_INSERT_TAIL(hash_list, te, next);
 
 exit:
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
@@ -253,15 +269,42 @@ exit:
 void
 rte_hash_free(struct rte_hash *h)
 {
+	struct rte_tailq_entry *te;
+	struct rte_hash_list *hash_list;
+
 	if (h == NULL)
 		return;
 
-	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_HASH, rte_hash_list, h);
+	/* check that we have an initialised tail queue */
+	if ((hash_list =
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_HASH, rte_hash_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return;
+	}
+
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
+	/* find out tailq entry */
+	TAILQ_FOREACH(te, hash_list, next) {
+		if (te->data == (void *) h)
+			break;
+	}
+
+	if (te == NULL) {
+		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		return;
+	}
+
+	TAILQ_REMOVE(hash_list, te, next);
+
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+
 	rte_free(h);
+	rte_free(te);
 }
 
 static inline int32_t
-__rte_hash_add_key_with_hash(const struct rte_hash *h, 
+__rte_hash_add_key_with_hash(const struct rte_hash *h,
 				const void *key, hash_sig_t sig)
 {
 	hash_sig_t *sig_bucket;
@@ -297,7 +340,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h,
 }
 
 int32_t
-rte_hash_add_key_with_hash(const struct rte_hash *h, 
+rte_hash_add_key_with_hash(const struct rte_hash *h,
 				const void *key, hash_sig_t sig)
 {
 	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
@@ -312,7 +355,7 @@ rte_hash_add_key(const struct rte_hash *h, const void *key)
 }
 
 static inline int32_t
-__rte_hash_del_key_with_hash(const struct rte_hash *h, 
+__rte_hash_del_key_with_hash(const struct rte_hash *h,
 				const void *key, hash_sig_t sig)
 {
 	hash_sig_t *sig_bucket;
@@ -339,7 +382,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h,
 }
 
 int32_t
-rte_hash_del_key_with_hash(const struct rte_hash *h, 
+rte_hash_del_key_with_hash(const struct rte_hash *h,
 				const void *key, hash_sig_t sig)
 {
 	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
@@ -354,7 +397,7 @@ rte_hash_del_key(const struct rte_hash *h, const void *key)
 }
 
 static inline int32_t
-__rte_hash_lookup_with_hash(const struct rte_hash *h, 
+__rte_hash_lookup_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
 {
 	hash_sig_t *sig_bucket;
@@ -380,7 +423,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h,
 }
 
 int32_t
-rte_hash_lookup_with_hash(const struct rte_hash *h, 
+rte_hash_lookup_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
 {
 	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);

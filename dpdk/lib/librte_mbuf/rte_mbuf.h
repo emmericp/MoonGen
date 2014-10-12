@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -85,6 +85,11 @@ struct rte_ctrlmbuf {
 #define PKT_RX_FDIR          0x0004 /**< RX packet with FDIR infos. */
 #define PKT_RX_L4_CKSUM_BAD  0x0008 /**< L4 cksum of RX pkt. is not OK. */
 #define PKT_RX_IP_CKSUM_BAD  0x0010 /**< IP cksum of RX pkt. is not OK. */
+#define PKT_RX_EIP_CKSUM_BAD 0x0000 /**< External IP header checksum error. */
+#define PKT_RX_OVERSIZE      0x0000 /**< Num of desc of an RX pkt oversize. */
+#define PKT_RX_HBUF_OVERFLOW 0x0000 /**< Header buffer overflow. */
+#define PKT_RX_RECIP_ERR     0x0000 /**< Hardware processing error. */
+#define PKT_RX_MAC_ERR       0x0000 /**< MAC error. */
 #define PKT_RX_IPV4_HDR      0x0020 /**< RX packet with IPv4 header. */
 #define PKT_RX_IPV4_HDR_EXT  0x0040 /**< RX packet with extended IPv4 header. */
 #define PKT_RX_IPV6_HDR      0x0080 /**< RX packet with IPv6 header. */
@@ -94,6 +99,9 @@ struct rte_ctrlmbuf {
 
 #define PKT_TX_VLAN_PKT      0x0800 /**< TX packet is a 802.1q VLAN packet. */
 #define PKT_TX_IP_CKSUM      0x1000 /**< IP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_IPV4_CSUM     0x1000 /**< Alias of PKT_TX_IP_CKSUM. */
+#define PKT_TX_IPV4          PKT_RX_IPV4_HDR /**< IPv4 with no IP checksum offload. */
+#define PKT_TX_IPV6          PKT_RX_IPV6_HDR /**< IPv6 packet */
 /*
  * Bit 14~13 used for L4 packet type with checksum enabled.
  *     00: Reserved
@@ -201,7 +209,32 @@ struct rte_mbuf {
 		struct rte_ctrlmbuf ctrl;
 		struct rte_pktmbuf pkt;
 	};
+
+	union {
+		uint8_t metadata[0];
+		uint16_t metadata16[0];
+		uint32_t metadata32[0];
+		uint64_t metadata64[0];
+	};
 } __rte_cache_aligned;
+
+#define RTE_MBUF_METADATA_UINT8(mbuf, offset)              \
+	(mbuf->metadata[offset])
+#define RTE_MBUF_METADATA_UINT16(mbuf, offset)             \
+	(mbuf->metadata16[offset/sizeof(uint16_t)])
+#define RTE_MBUF_METADATA_UINT32(mbuf, offset)             \
+	(mbuf->metadata32[offset/sizeof(uint32_t)])
+#define RTE_MBUF_METADATA_UINT64(mbuf, offset)             \
+	(mbuf->metadata64[offset/sizeof(uint64_t)])
+
+#define RTE_MBUF_METADATA_UINT8_PTR(mbuf, offset)          \
+	(&mbuf->metadata[offset])
+#define RTE_MBUF_METADATA_UINT16_PTR(mbuf, offset)         \
+	(&mbuf->metadata16[offset/sizeof(uint16_t)])
+#define RTE_MBUF_METADATA_UINT32_PTR(mbuf, offset)         \
+	(&mbuf->metadata32[offset/sizeof(uint32_t)])
+#define RTE_MBUF_METADATA_UINT64_PTR(mbuf, offset)         \
+	(&mbuf->metadata64[offset/sizeof(uint64_t)])
 
 /**
  * Given the buf_addr returns the pointer to corresponding mbuf.
@@ -1026,13 +1059,15 @@ static inline int rte_pktmbuf_is_contiguous(const struct rte_mbuf *m)
  * Dump all fields for the given packet mbuf and all its associated
  * segments (in the case of a chained buffer).
  *
+ * @param f
+ *   A pointer to a file for output
  * @param m
  *   The packet mbuf.
  * @param dump_len
  *   If dump_len != 0, also dump the "dump_len" first data bytes of
  *   the packet.
  */
-void rte_pktmbuf_dump(const struct rte_mbuf *m, unsigned dump_len);
+void rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len);
 
 #ifdef __cplusplus
 }

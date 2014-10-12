@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -122,7 +122,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define PCIE_ICH8_SNOOP_ALL	PCIE_NO_SNOOP_ALL
 
 #define E1000_ICH_RAR_ENTRIES	7
-#define E1000_PCH2_RAR_ENTRIES	11 /* RAR[0-6], SHRA[0-3] */
+#define E1000_PCH2_RAR_ENTRIES	5 /* RAR[0], SHRA[0-3] */
 #define E1000_PCH_LPT_RAR_ENTRIES	12 /* RAR[0], SHRA[0-10] */
 
 #define PHY_PAGE_SHIFT		5
@@ -231,9 +231,7 @@ POSSIBILITY OF SUCH DAMAGE.
 /* PHY Power Management Control */
 #define HV_PM_CTRL		PHY_REG(770, 17)
 #define HV_PM_CTRL_PLL_STOP_IN_K1_GIGA	0x100
-#if !defined(EXTERNAL_RELEASE) || (defined(NAHUM6LP_HW) && defined(ULP_SUPPORT))
 #define HV_PM_CTRL_K1_ENABLE		0x4000
-#endif /* !EXTERNAL_RELEASE || (NAHUM6LP_HW && ULP_SUPPORT) */
 
 #define SW_FLAG_TIMEOUT		1000 /* SW Semaphore flag timeout in ms */
 
@@ -251,7 +249,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I82579_LPI_CTRL_100_ENABLE		0x2000
 #define I82579_LPI_CTRL_1000_ENABLE		0x4000
 #define I82579_LPI_CTRL_ENABLE_MASK		0x6000
-#define I82579_LPI_CTRL_FORCE_PLL_LOCK_COUNT	0x80
 
 /* 82579 DFT Control */
 #define I82579_DFT_CTRL			PHY_REG(769, 20)
@@ -275,6 +272,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I217_EEE_CAPABILITY	0x8000   /* IEEE MMD Register 3.20 */
 #define I217_EEE_ADVERTISEMENT	0x8001   /* IEEE MMD Register 7.60 */
 #define I217_EEE_LP_ABILITY	0x8002   /* IEEE MMD Register 7.61 */
+#define I217_RX_CONFIG		0xB20C /* Receive configuration */
 
 #define E1000_EEE_RX_LPI_RCVD	0x0400	/* Tx LP idle received */
 #define E1000_EEE_TX_LPI_RCVD	0x0800	/* Rx LP idle received */
@@ -310,9 +308,6 @@ s32 e1000_set_eee_pchlan(struct e1000_hw *hw);
 #if defined(NAHUM6LP_HW) && defined(ULP_SUPPORT)
 s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx);
 s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force);
-void e1000_toggle_lanphypc_pch_lpt(struct e1000_hw *hw);
 #endif /* NAHUM6LP_HW && ULP_SUPPORT */
 #endif /* _E1000_ICH8LAN_H_ */
-#ifdef C10_SUPPORT
 void e1000_demote_ltr(struct e1000_hw *hw, bool demote, bool link);
-#endif /* C10_SUPPORT */

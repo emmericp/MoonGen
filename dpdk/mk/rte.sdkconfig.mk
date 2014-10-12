@@ -1,12 +1,12 @@
 #   BSD LICENSE
-# 
+#
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
-# 
+#
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
 #   are met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 #     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-# 
+#
 #   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 #   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -31,50 +31,59 @@
 
 .PHONY: showversion
 showversion:
-	@sed -rn 's,^#define RTE_VER_[A-Z_]*[[:space:]]+([0-9]+).*,\1,p' \
-		$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h | \
-		tr '\n' '.' | sed -r 's,\.([0-9]+)\.$$,r\1\n,'
+	@set -- \
+		$$(sed -rne 's,^#define RTE_VER_[A-Z_]*[[:space:]]+([0-9]+).*,\1,p' \
+			-e 's,^#define RTE_VER_SUFFIX[[:space:]]+"(.*)",\1,p' \
+			$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h) ;\
+		printf '%d.%d.%d' "$$1" "$$2" "$$3"; \
+		if [ -z "$$5" ]; then echo; \
+		else printf '%s' "$$4"; \
+			if [ $$5 -lt 16 ] ; then echo $$5; \
+			else echo $$(($$5 - 16)); fi; \
+		fi
 
-INSTALL_CONFIGS := $(filter-out %~,\
+INSTALL_CONFIGS := $(sort $(filter-out %~,\
 	$(patsubst $(RTE_SRCDIR)/config/defconfig_%,%,\
-	$(wildcard $(RTE_SRCDIR)/config/defconfig_*)))
+	$(wildcard $(RTE_SRCDIR)/config/defconfig_*))))
 INSTALL_TARGETS := $(addsuffix _install,$(INSTALL_CONFIGS))
 
 .PHONY: showconfigs
 showconfigs:
 	@$(foreach CONFIG, $(INSTALL_CONFIGS), echo $(CONFIG);)
 
-.PHONY: config
-ifeq ($(RTE_CONFIG_TEMPLATE),)
-config:
+.PHONY: notemplate
+notemplate:
 	@printf "No template specified. "
 	@echo "Use T=template among the following list:"
 	@$(MAKE) -rR showconfigs | sed 's,^,  ,'
+
+.PHONY: config
+ifeq ($(RTE_CONFIG_TEMPLATE),)
+config: notemplate
 else
 config: $(RTE_OUTPUT)/include/rte_config.h $(RTE_OUTPUT)/Makefile
 	$(Q)$(MAKE) depdirs
 	@echo "Configuration done"
 endif
 
+$(RTE_OUTPUT):
+	$(Q)mkdir -p $@
+
 ifdef NODOTCONF
 $(RTE_OUTPUT)/.config: ;
 else
-$(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE
-	@[ -d $(RTE_OUTPUT) ] || mkdir -p $(RTE_OUTPUT)
+$(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE | $(RTE_OUTPUT)
 	$(Q)if [ "$(RTE_CONFIG_TEMPLATE)" != "" -a -f "$(RTE_CONFIG_TEMPLATE)" ]; then \
 		$(CPP) -undef -P -x assembler-with-cpp \
 		-fdirectives-only -ffreestanding \
 		-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
 		if ! cmp -s $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config; then \
 			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config ; \
+			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config.orig ; \
 		fi ; \
 		rm -f $(RTE_OUTPUT)/.config_tmp ; \
 	else \
-		echo -n "No template specified. Use T=template " ; \
-		echo "among the following list:" ; \
-		for t in $(INSTALL_CONFIGS); do \
-			echo "  $$t" ; \
-		done ; \
+		$(MAKE) -rRf $(RTE_SDK)/mk/rte.sdkconfig.mk notemplate; \
 	fi
 endif
 
@@ -84,8 +93,7 @@ SDK_RELPATH=$(shell $(RTE_SDK)/scripts/relpath.sh $(abspath $(RTE_SRCDIR)) \
 				$(abspath $(RTE_OUTPUT)))
 OUTPUT_RELPATH=$(shell $(RTE_SDK)/scripts/relpath.sh $(abspath $(RTE_OUTPUT)) \
 				$(abspath $(RTE_SRCDIR)))
-$(RTE_OUTPUT)/Makefile:
-	@[ -d $(RTE_OUTPUT) ] || mkdir -p $(RTE_OUTPUT)
+$(RTE_OUTPUT)/Makefile: | $(RTE_OUTPUT)
 	$(Q)$(RTE_SDK)/scripts/gen-build-mk.sh $(SDK_RELPATH) $(OUTPUT_RELPATH) \
 		> $(RTE_OUTPUT)/Makefile
 
@@ -95,7 +103,7 @@ $(RTE_OUTPUT)/include/rte_config.h: $(RTE_OUTPUT)/.config
 	$(Q)rm -rf $(RTE_OUTPUT)/include $(RTE_OUTPUT)/app \
 		$(RTE_OUTPUT)/hostapp $(RTE_OUTPUT)/lib \
 		$(RTE_OUTPUT)/hostlib $(RTE_OUTPUT)/kmod $(RTE_OUTPUT)/build
-	@[ -d $(RTE_OUTPUT)/include ] || mkdir -p $(RTE_OUTPUT)/include
+	$(Q)mkdir -p $(RTE_OUTPUT)/include
 	$(Q)$(RTE_SDK)/scripts/gen-config-h.sh $(RTE_OUTPUT)/.config \
 		> $(RTE_OUTPUT)/include/rte_config.h
 

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -92,7 +92,7 @@ static rte_atomic32_t synchro = RTE_ATOMIC32_INIT(0);
 } while(0)
 
 /*
- * rte_eal_init only init once 
+ * rte_eal_init only init once
  */
 static int
 test_eal_init_once(__attribute__((unused)) void *arg)
@@ -119,7 +119,7 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 	int i;
 
 	WAIT_SYNCHRO_FOR_SLAVES();
-	
+
 	/* create the same ring simultaneously on all threads */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
 		rp = rte_ring_create("fr_test_once", 4096, SOCKET_ID_ANY, 0);
@@ -129,7 +129,7 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 
 	/* create/lookup new ring several times */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
 		rp = rte_ring_create(ring_name, 4096, SOCKET_ID_ANY, 0);
 		if (NULL == rp)
 			return -1;
@@ -139,7 +139,7 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 
 	/* verify all ring created sucessful */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
 		if (rte_ring_lookup(ring_name) == NULL)
 			return -1;
 	}
@@ -179,7 +179,7 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 
 	/* create/lookup new ring several times */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
 		mp = rte_mempool_create(mempool_name, MEMPOOL_SIZE,
 						MEMPOOL_ELT_SIZE, 0, 0,
 						NULL, NULL,
@@ -193,7 +193,7 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 
 	/* verify all ring created sucessful */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
 		if (rte_mempool_lookup(mempool_name) == NULL)
 			return -1;
 	}
@@ -210,7 +210,7 @@ hash_clean(unsigned lcore_id)
 	int i;
 
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_id, i);
+		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_id, i);
 
 		if ((handle = rte_hash_find_existing(hash_name)) != NULL)
 			rte_hash_free(handle);
@@ -235,7 +235,7 @@ hash_create_free(__attribute__((unused)) void *arg)
 	};
 
 	WAIT_SYNCHRO_FOR_SLAVES();
-	
+
 	/* create the same hash simultaneously on all threads */
 	hash_params.name = "fr_test_once";
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
@@ -246,11 +246,11 @@ hash_create_free(__attribute__((unused)) void *arg)
 
 	/* create mutiple times simultaneously */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d", lcore_self, i);
 		hash_params.name = hash_name;
 
 		handle = rte_hash_create(&hash_params);
-		if (NULL == handle) 
+		if (NULL == handle)
 			return -1;
 
 		/* verify correct existing and then free all */
@@ -262,7 +262,7 @@ hash_create_free(__attribute__((unused)) void *arg)
 
 	/* verify free correct */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_self, i);
+		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_self, i);
 
 		if (NULL != rte_hash_find_existing(hash_name))
 			return -1;
@@ -279,7 +279,7 @@ fbk_clean(unsigned lcore_id)
 	int i;
 
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_id, i);
+		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_id, i);
 
 		if ((handle = rte_fbk_hash_find_existing(fbk_name)) != NULL)
 			rte_fbk_hash_free(handle);
@@ -303,7 +303,7 @@ fbk_create_free(__attribute__((unused)) void *arg)
 	};
 
 	WAIT_SYNCHRO_FOR_SLAVES();
-	
+
 	/* create the same fbk hash table simultaneously on all threads */
 	fbk_params.name = "fr_test_once";
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
@@ -314,12 +314,12 @@ fbk_create_free(__attribute__((unused)) void *arg)
 
 	/* create mutiple fbk tables simultaneously */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d", lcore_self, i);
 		fbk_params.name = fbk_name;
 
 		handle = rte_fbk_hash_create(&fbk_params);
 		if (NULL == handle)
-			return -1;	
+			return -1;
 
 		/* verify correct existing and then free all */
 		if (handle != rte_fbk_hash_find_existing(fbk_name))
@@ -330,7 +330,7 @@ fbk_create_free(__attribute__((unused)) void *arg)
 
 	/* verify free correct */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		rte_snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_self, i);
+		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_self, i);
 
 		if (NULL != rte_fbk_hash_find_existing(fbk_name))
 			return -1;
@@ -349,7 +349,7 @@ lpm_clean(unsigned lcore_id)
 	int i;
 
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
-		rte_snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_id, i);
+		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_id, i);
 
 		if ((lpm = rte_lpm_find_existing(lpm_name)) != NULL)
 			rte_lpm_free(lpm);
@@ -365,7 +365,7 @@ lpm_create_free(__attribute__((unused)) void *arg)
 	int i;
 
 	WAIT_SYNCHRO_FOR_SLAVES();
-	
+
 	/* create the same lpm simultaneously on all threads */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
 		lpm = rte_lpm_create("fr_test_once",  SOCKET_ID_ANY, 4, RTE_LPM_HEAP);
@@ -375,10 +375,10 @@ lpm_create_free(__attribute__((unused)) void *arg)
 
 	/* create mutiple fbk tables simultaneously */
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
-		rte_snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d", lcore_self, i);
+		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d", lcore_self, i);
 		lpm = rte_lpm_create(lpm_name, SOCKET_ID_ANY, 4, RTE_LPM_HEAP);
 		if (NULL == lpm)
-			return -1;	
+			return -1;
 
 		/* verify correct existing and then free all */
 		if (lpm != rte_lpm_find_existing(lpm_name))
@@ -389,7 +389,7 @@ lpm_create_free(__attribute__((unused)) void *arg)
 
 	/* verify free correct */
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
-		rte_snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_self, i);
+		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_self, i);
 		if (NULL != rte_lpm_find_existing(lpm_name))
 			return -1;
 	}
@@ -419,8 +419,8 @@ struct test_case test_cases[] = {
 #endif /* RTE_LIBRTE_LPM */
 };
 
-/** 
- * launch test case in two separate thread 
+/**
+ * launch test case in two separate thread
  */
 static int
 launch_test(struct test_case *pt_case)
@@ -454,18 +454,18 @@ launch_test(struct test_case *pt_case)
 		cores--;
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			ret = -1;
-		
+
 		if (pt_case->clean != NULL)
 			pt_case->clean(lcore_id);
 	}
-	
+
 	return ret;
 }
 
 /**
  * Main entry of func_reentrancy test
  */
-int
+static int
 test_func_reentrancy(void)
 {
 	uint32_t case_id;
@@ -482,7 +482,7 @@ test_func_reentrancy(void)
 		pt_case = &test_cases[case_id];
 		if (pt_case->func == NULL)
 			continue;
-		       
+
 		if (launch_test(pt_case) < 0) {
 			printf("Func-ReEnt CASE %"PRIu32": %s FAIL\n", case_id, pt_case->name);
 			return -1;
@@ -492,3 +492,9 @@ test_func_reentrancy(void)
 
 	return 0;
 }
+
+static struct test_command func_reentrancy_cmd = {
+	.command = "func_reentrancy_autotest",
+	.callback = test_func_reentrancy,
+};
+REGISTER_TEST_COMMAND(func_reentrancy_cmd);

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -33,7 +33,6 @@
 
 #include <sys/queue.h>
 
-#include <endian.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -90,7 +89,7 @@ static uint32_t rxprod_reg[2] = {VMXNET3_REG_RXPROD, VMXNET3_REG_RXPROD2};
 
 static inline int vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t* , uint8_t);
 static inline void vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *);
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
+#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
 static void vmxnet3_rxq_dump(struct vmxnet3_rx_queue *);
 static void vmxnet3_txq_dump(struct vmxnet3_tx_queue *);
 #endif
@@ -102,32 +101,38 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 
 	m = __rte_mbuf_raw_alloc(mp);
 	__rte_mbuf_sanity_check_raw(m, RTE_MBUF_PKT, 0);
-	return (m);
+	return m;
 }
 
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
+#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
 static void
 vmxnet3_rxq_dump(struct vmxnet3_rx_queue *rxq)
 {
 	uint32_t avail = 0;
+
 	if (rxq == NULL)
 		return;
 
-	PMD_RX_LOG(DEBUG, "RXQ: cmd0 base : 0x%p cmd1 base : 0x%p comp ring base : 0x%p.\n",
-		        rxq->cmd_ring[0].base, rxq->cmd_ring[1].base, rxq->comp_ring.base);
-	PMD_RX_LOG(DEBUG, "RXQ: cmd0 basePA : 0x%lx cmd1 basePA : 0x%lx comp ring basePA : 0x%lx.\n",
-				(unsigned long)rxq->cmd_ring[0].basePA, (unsigned long)rxq->cmd_ring[1].basePA,
-		        (unsigned long)rxq->comp_ring.basePA);
+	PMD_RX_LOG(DEBUG,
+		   "RXQ: cmd0 base : 0x%p cmd1 base : 0x%p comp ring base : 0x%p.",
+		   rxq->cmd_ring[0].base, rxq->cmd_ring[1].base, rxq->comp_ring.base);
+	PMD_RX_LOG(DEBUG,
+		   "RXQ: cmd0 basePA : 0x%lx cmd1 basePA : 0x%lx comp ring basePA : 0x%lx.",
+		   (unsigned long)rxq->cmd_ring[0].basePA,
+		   (unsigned long)rxq->cmd_ring[1].basePA,
+		   (unsigned long)rxq->comp_ring.basePA);
 
 	avail = vmxnet3_cmd_ring_desc_avail(&rxq->cmd_ring[0]);
-	PMD_RX_LOG(DEBUG, "RXQ:cmd0: size=%u; free=%u; next2proc=%u; queued=%u\n",
-		    (uint32_t)rxq->cmd_ring[0].size, avail, rxq->comp_ring.next2proc,
-		    rxq->cmd_ring[0].size - avail);
+	PMD_RX_LOG(DEBUG,
+		   "RXQ:cmd0: size=%u; free=%u; next2proc=%u; queued=%u",
+		   (uint32_t)rxq->cmd_ring[0].size, avail,
+		   rxq->comp_ring.next2proc,
+		   rxq->cmd_ring[0].size - avail);
 
 	avail = vmxnet3_cmd_ring_desc_avail(&rxq->cmd_ring[1]);
-	PMD_RX_LOG(DEBUG, "RXQ:cmd1 size=%u; free=%u; next2proc=%u; queued=%u\n",
-			(uint32_t)rxq->cmd_ring[1].size, avail, rxq->comp_ring.next2proc,
-			rxq->cmd_ring[1].size - avail);
+	PMD_RX_LOG(DEBUG, "RXQ:cmd1 size=%u; free=%u; next2proc=%u; queued=%u",
+		   (uint32_t)rxq->cmd_ring[1].size, avail, rxq->comp_ring.next2proc,
+		   rxq->cmd_ring[1].size - avail);
 
 }
 
@@ -135,18 +140,20 @@ static void
 vmxnet3_txq_dump(struct vmxnet3_tx_queue *txq)
 {
 	uint32_t avail = 0;
+
 	if (txq == NULL)
 		return;
 
-	PMD_TX_LOG(DEBUG, "TXQ: cmd base : 0x%p comp ring base : 0x%p.\n",
-		                txq->cmd_ring.base, txq->comp_ring.base);
-	PMD_TX_LOG(DEBUG, "TXQ: cmd basePA : 0x%lx comp ring basePA : 0x%lx.\n",
-		                (unsigned long)txq->cmd_ring.basePA, (unsigned long)txq->comp_ring.basePA);
+	PMD_TX_LOG(DEBUG, "TXQ: cmd base : 0x%p comp ring base : 0x%p.",
+		   txq->cmd_ring.base, txq->comp_ring.base);
+	PMD_TX_LOG(DEBUG, "TXQ: cmd basePA : 0x%lx comp ring basePA : 0x%lx.",
+		   (unsigned long)txq->cmd_ring.basePA,
+		   (unsigned long)txq->comp_ring.basePA);
 
 	avail = vmxnet3_cmd_ring_desc_avail(&txq->cmd_ring);
-	PMD_TX_LOG(DEBUG, "TXQ: size=%u; free=%u; next2proc=%u; queued=%u\n",
-			(uint32_t)txq->cmd_ring.size, avail,
-			txq->comp_ring.next2proc, txq->cmd_ring.size - avail);
+	PMD_TX_LOG(DEBUG, "TXQ: size=%u; free=%u; next2proc=%u; queued=%u",
+		   (uint32_t)txq->cmd_ring.size, avail,
+		   txq->comp_ring.next2proc, txq->cmd_ring.size - avail);
 }
 #endif
 
@@ -156,7 +163,8 @@ vmxnet3_cmd_ring_release(vmxnet3_cmd_ring_t *ring)
 	while (ring->next2comp != ring->next2fill) {
 		/* No need to worry about tx desc ownership, device is quiesced by now. */
 		vmxnet3_buf_info_t *buf_info = ring->buf_info + ring->next2comp;
-		if(buf_info->m) {
+
+		if (buf_info->m) {
 			rte_pktmbuf_free(buf_info->m);
 			buf_info->m = NULL;
 			buf_info->bufPA = 0;
@@ -165,12 +173,14 @@ vmxnet3_cmd_ring_release(vmxnet3_cmd_ring_t *ring)
 		vmxnet3_cmd_ring_adv_next2comp(ring);
 	}
 	rte_free(ring->buf_info);
+	ring->buf_info = NULL;
 }
 
 void
 vmxnet3_dev_tx_queue_release(void *txq)
 {
 	vmxnet3_tx_queue_t *tq = txq;
+
 	if (txq != NULL) {
 		/* Release the cmd_ring */
 		vmxnet3_cmd_ring_release(&tq->cmd_ring);
@@ -182,9 +192,10 @@ vmxnet3_dev_rx_queue_release(void *rxq)
 {
 	int i;
 	vmxnet3_rx_queue_t *rq = rxq;
+
 	if (rxq != NULL) {
 		/* Release both the cmd_rings */
-		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++) 
+		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++)
 			vmxnet3_cmd_ring_release(&rq->cmd_ring[i]);
 	}
 }
@@ -198,6 +209,7 @@ vmxnet3_dev_clear_queues(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct vmxnet3_tx_queue *txq = dev->data->tx_queues[i];
+
 		if (txq != NULL) {
 			txq->stopped = TRUE;
 			vmxnet3_dev_tx_queue_release(txq);
@@ -206,7 +218,8 @@ vmxnet3_dev_clear_queues(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct vmxnet3_rx_queue *rxq = dev->data->rx_queues[i];
-		if(rxq != NULL) {
+
+		if (rxq != NULL) {
 			rxq->stopped = TRUE;
 			vmxnet3_dev_rx_queue_release(rxq);
 		}
@@ -216,24 +229,24 @@ vmxnet3_dev_clear_queues(struct rte_eth_dev *dev)
 static inline void
 vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 {
-   int completed = 0;
-   struct rte_mbuf *mbuf;
-   vmxnet3_comp_ring_t *comp_ring = &txq->comp_ring;
-   struct Vmxnet3_TxCompDesc *tcd = (struct Vmxnet3_TxCompDesc *)
-                                    (comp_ring->base + comp_ring->next2proc);
+	int completed = 0;
+	struct rte_mbuf *mbuf;
+	vmxnet3_comp_ring_t *comp_ring = &txq->comp_ring;
+	struct Vmxnet3_TxCompDesc *tcd = (struct Vmxnet3_TxCompDesc *)
+		(comp_ring->base + comp_ring->next2proc);
 
-   while (tcd->gen == comp_ring->gen) {
+	while (tcd->gen == comp_ring->gen) {
 
-	   /* Release cmd_ring descriptor and free mbuf */
+		/* Release cmd_ring descriptor and free mbuf */
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
-	    VMXNET3_ASSERT(txq->cmd_ring.base[tcd->txdIdx].txd.eop == 1);
+		VMXNET3_ASSERT(txq->cmd_ring.base[tcd->txdIdx].txd.eop == 1);
 #endif
-	    mbuf = txq->cmd_ring.buf_info[tcd->txdIdx].m;
+		mbuf = txq->cmd_ring.buf_info[tcd->txdIdx].m;
 		if (unlikely(mbuf == NULL))
 			rte_panic("EOP desc does not point to a valid mbuf");
-		else 
+		else
 			rte_pktmbuf_free(mbuf);
-		
+
 
 		txq->cmd_ring.buf_info[tcd->txdIdx].m = NULL;
 		/* Mark the txd for which tcd was generated as completed */
@@ -241,16 +254,16 @@ vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 
 		vmxnet3_comp_ring_adv_next2proc(comp_ring);
 		tcd = (struct Vmxnet3_TxCompDesc *)(comp_ring->base +
-										  comp_ring->next2proc);
+						    comp_ring->next2proc);
 		completed++;
-   }
+	}
 
-   PMD_TX_LOG(DEBUG, "Processed %d tx comps & command descs.\n", completed);
+	PMD_TX_LOG(DEBUG, "Processed %d tx comps & command descs.", completed);
 }
 
 uint16_t
-vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
-		uint16_t nb_pkts)
+vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		  uint16_t nb_pkts)
 {
 	uint16_t nb_tx;
 	Vmxnet3_TxDesc *txd = NULL;
@@ -261,8 +274,8 @@ vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	hw = txq->hw;
 
-	if(txq->stopped) {
-		PMD_TX_LOG(DEBUG, "Tx queue is stopped.\n");
+	if (txq->stopped) {
+		PMD_TX_LOG(DEBUG, "Tx queue is stopped.");
 		return 0;
 	}
 
@@ -270,14 +283,14 @@ vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
 	vmxnet3_tq_tx_complete(txq);
 
 	nb_tx = 0;
-	while(nb_tx < nb_pkts) {
+	while (nb_tx < nb_pkts) {
 
-		if(vmxnet3_cmd_ring_desc_avail(&txq->cmd_ring)) {
+		if (vmxnet3_cmd_ring_desc_avail(&txq->cmd_ring)) {
 
 			txm = tx_pkts[nb_tx];
 			/* Don't support scatter packets yet, free them if met */
 			if (txm->pkt.nb_segs != 1) {
-				PMD_TX_LOG(DEBUG, "Don't support scatter packets yet, drop!\n");
+				PMD_TX_LOG(DEBUG, "Don't support scatter packets yet, drop!");
 				rte_pktmbuf_free(tx_pkts[nb_tx]);
 				txq->stats.drop_total++;
 
@@ -286,8 +299,8 @@ vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
 			}
 
 			/* Needs to minus ether header len */
-			if(txm->pkt.data_len > (hw->cur_mtu + ETHER_HDR_LEN)) {
-				PMD_TX_LOG(DEBUG, "Packet data_len higher than MTU\n");
+			if (txm->pkt.data_len > (hw->cur_mtu + ETHER_HDR_LEN)) {
+				PMD_TX_LOG(DEBUG, "Packet data_len higher than MTU");
 				rte_pktmbuf_free(tx_pkts[nb_tx]);
 				txq->stats.drop_total++;
 
@@ -297,7 +310,7 @@ vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			txd = (Vmxnet3_TxDesc *)(txq->cmd_ring.base + txq->cmd_ring.next2fill);
 
-			/* Fill the tx decriptor */
+			/* Fill the tx descriptor */
 			tbi = txq->cmd_ring.buf_info + txq->cmd_ring.next2fill;
 			tbi->bufPA = RTE_MBUF_DATA_DMA_ADDR(txm);
 			txd->addr = tbi->bufPA;
@@ -327,7 +340,7 @@ vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
 			nb_tx++;
 
 		} else {
-			PMD_TX_LOG(DEBUG, "No free tx cmd desc(s)\n");
+			PMD_TX_LOG(DEBUG, "No free tx cmd desc(s)");
 			txq->stats.drop_total += (nb_pkts - nb_tx);
 			break;
 		}
@@ -340,10 +353,10 @@ vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
 		txq->shared->ctrl.txNumDeferred = 0;
 		/* Notify vSwitch that packets are available. */
 		VMXNET3_WRITE_BAR0_REG(hw, (VMXNET3_REG_TXPROD + txq->queue_id * VMXNET3_REG_ALIGN),
-				txq->cmd_ring.next2fill);
+				       txq->cmd_ring.next2fill);
 	}
 
-	return (nb_tx);
+	return nb_tx;
 }
 
 /*
@@ -358,24 +371,24 @@ vmxnet3_xmit_pkts( void *tx_queue, struct rte_mbuf **tx_pkts,
  *
  */
 static inline int
-vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t* rxq, uint8_t ring_id)
+vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 {
-   int err = 0;
-   uint32_t i = 0, val = 0;
-   struct vmxnet3_cmd_ring *ring = &rxq->cmd_ring[ring_id];
+	int err = 0;
+	uint32_t i = 0, val = 0;
+	struct vmxnet3_cmd_ring *ring = &rxq->cmd_ring[ring_id];
 
-   while (vmxnet3_cmd_ring_desc_avail(ring) > 0) {
-
+	while (vmxnet3_cmd_ring_desc_avail(ring) > 0) {
 		struct Vmxnet3_RxDesc *rxd;
 		struct rte_mbuf *mbuf;
 		vmxnet3_buf_info_t *buf_info = &ring->buf_info[ring->next2fill];
+
 		rxd = (struct Vmxnet3_RxDesc *)(ring->base + ring->next2fill);
 
 		if (ring->rid == 0) {
-			 /* Usually: One HEAD type buf per packet
-			   * val = (ring->next2fill % rxq->hw->bufs_per_pkt) ? 
-			   * VMXNET3_RXD_BTYPE_BODY : VMXNET3_RXD_BTYPE_HEAD;
-			   */
+			/* Usually: One HEAD type buf per packet
+			 * val = (ring->next2fill % rxq->hw->bufs_per_pkt) ?
+			 * VMXNET3_RXD_BTYPE_BODY : VMXNET3_RXD_BTYPE_HEAD;
+			 */
 
 			/* We use single packet buffer so all heads here */
 			val = VMXNET3_RXD_BTYPE_HEAD;
@@ -387,7 +400,7 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t* rxq, uint8_t ring_id)
 		/* Allocate blank mbuf for the current Rx Descriptor */
 		mbuf = rte_rxmbuf_alloc(rxq->mp);
 		if (mbuf == NULL) {
-			PMD_RX_LOG(ERR, "Error allocating mbuf in %s\n", __func__);
+			PMD_RX_LOG(ERR, "Error allocating mbuf in %s", __func__);
 			rxq->stats.rx_buf_alloc_failure++;
 			err = ENOMEM;
 			break;
@@ -399,7 +412,7 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t* rxq, uint8_t ring_id)
 		 */
 		buf_info->m = mbuf;
 		buf_info->len = (uint16_t)(mbuf->buf_len -
-			RTE_PKTMBUF_HEADROOM);
+					   RTE_PKTMBUF_HEADROOM);
 		buf_info->bufPA = RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf);
 
 		/* Load Rx Descriptor with the buffer's GPA */
@@ -413,13 +426,13 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t* rxq, uint8_t ring_id)
 
 		vmxnet3_cmd_ring_adv_next2fill(ring);
 		i++;
-   }
+	}
 
-   /* Return error only if no buffers are posted at present */
-   if (vmxnet3_cmd_ring_desc_avail(ring) >= (ring->size -1))
-      return -err;
-   else
-      return i;
+	/* Return error only if no buffers are posted at present */
+	if (vmxnet3_cmd_ring_desc_avail(ring) >= (ring->size - 1))
+		return -err;
+	else
+		return i;
 }
 
 /*
@@ -449,21 +462,21 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	rcd = &rxq->comp_ring.base[rxq->comp_ring.next2proc].rcd;
 
-	if(rxq->stopped) {
-		PMD_RX_LOG(DEBUG, "Rx queue is stopped.\n");
+	if (rxq->stopped) {
+		PMD_RX_LOG(DEBUG, "Rx queue is stopped.");
 		return 0;
 	}
 
 	while (rcd->gen == rxq->comp_ring.gen) {
 
-		if(nb_rx >= nb_pkts)
+		if (nb_rx >= nb_pkts)
 			break;
 		idx = rcd->rxdIdx;
 		ring_idx = (uint8_t)((rcd->rqID == rxq->qid1) ? 0 : 1);
 		rxd = (Vmxnet3_RxDesc *)rxq->cmd_ring[ring_idx].base + idx;
 		rbi = rxq->cmd_ring[ring_idx].buf_info + idx;
 
-		if(rcd->sop !=1 || rcd->eop != 1) {
+		if (rcd->sop != 1 || rcd->eop != 1) {
 			rte_pktmbuf_free_seg(rbi->m);
 
 			PMD_RX_LOG(DEBUG, "Packet spread across multiple buffers\n)");
@@ -471,7 +484,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		} else {
 
-			PMD_RX_LOG(DEBUG, "rxd idx: %d ring idx: %d.\n", idx, ring_idx);
+			PMD_RX_LOG(DEBUG, "rxd idx: %d ring idx: %d.", idx, ring_idx);
 
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 			VMXNET3_ASSERT(rcd->len <= rxd->len);
@@ -479,7 +492,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 #endif
 			if (rcd->len == 0) {
 				PMD_RX_LOG(DEBUG, "Rx buf was skipped. rxring[%d][%d]\n)",
-							 ring_idx, idx);
+					   ring_idx, idx);
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 				VMXNET3_ASSERT(rcd->sop && rcd->eop);
 #endif
@@ -490,8 +503,9 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			/* Assuming a packet is coming in a single packet buffer */
 			if (rxd->btype != VMXNET3_RXD_BTYPE_HEAD) {
-				PMD_RX_LOG(DEBUG, "Alert : Misbehaving device, incorrect "
-						  " buffer type used. iPacket dropped.\n");
+				PMD_RX_LOG(DEBUG,
+					   "Alert : Misbehaving device, incorrect "
+					   " buffer type used. iPacket dropped.");
 				rte_pktmbuf_free_seg(rbi->m);
 				goto rcd_done;
 			}
@@ -513,13 +527,13 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				rxq->stats.drop_total++;
 				rxq->stats.drop_err++;
 
-				if(!rcd->fcs) {
+				if (!rcd->fcs) {
 					rxq->stats.drop_fcs++;
-					PMD_RX_LOG(ERR, "Recv packet dropped due to frame err.\n");
+					PMD_RX_LOG(ERR, "Recv packet dropped due to frame err.");
 				}
-				PMD_RX_LOG(ERR, "Error in received packet rcd#:%d rxd:%d\n",
-						 (int)(rcd - (struct Vmxnet3_RxCompDesc *)
-							   rxq->comp_ring.base), rcd->rxdIdx);
+				PMD_RX_LOG(ERR, "Error in received packet rcd#:%d rxd:%d",
+					   (int)(rcd - (struct Vmxnet3_RxCompDesc *)
+						 rxq->comp_ring.base), rcd->rxdIdx);
 				rte_pktmbuf_free_seg(rxm);
 
 				goto rcd_done;
@@ -528,15 +542,15 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			/* Check for hardware stripped VLAN tag */
 			if (rcd->ts) {
 
-				PMD_RX_LOG(ERR, "Received packet with vlan ID: %d.\n",
-						 rcd->tci);
+				PMD_RX_LOG(ERR, "Received packet with vlan ID: %d.",
+					   rcd->tci);
 				rxm->ol_flags = PKT_RX_VLAN_PKT;
 
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
 				VMXNET3_ASSERT(rxm &&
-					rte_pktmbuf_mtod(rxm, void *));
+					       rte_pktmbuf_mtod(rxm, void *));
 #endif
-				//Copy vlan tag in packet buffer
+				/* Copy vlan tag in packet buffer */
 				rxm->pkt.vlan_macip.f.vlan_tci =
 					rte_le_to_cpu_16((uint16_t)rcd->tci);
 
@@ -563,7 +577,7 @@ rcd_done:
 			vmxnet3_post_rx_bufs(rxq, ring_idx);
 			if (unlikely(rxq->shared->ctrl.updateRxProd)) {
 				VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[ring_idx] + (rxq->queue_id * VMXNET3_REG_ALIGN),
-								  rxq->cmd_ring[ring_idx].next2fill);
+						       rxq->cmd_ring[ring_idx].next2fill);
 			}
 
 			/* Advance to the next descriptor in comp_ring */
@@ -572,14 +586,15 @@ rcd_done:
 			rcd = &rxq->comp_ring.base[rxq->comp_ring.next2proc].rcd;
 			nb_rxd++;
 			if (nb_rxd > rxq->cmd_ring[0].size) {
-				PMD_RX_LOG(ERR, "Used up quota of receiving packets,"
-						 " relinquish control.\n");
+				PMD_RX_LOG(ERR,
+					   "Used up quota of receiving packets,"
+					   " relinquish control.");
 				break;
 			}
 		}
 	}
 
-	return (nb_rx);
+	return nb_rx;
 }
 
 /*
@@ -594,7 +609,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
-	rte_snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
+	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
 			dev->driver->pci_drv.name, ring_name,
 			dev->data->port_id, queue_id);
 
@@ -608,78 +623,77 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 
 int
 vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
-			 uint16_t queue_idx,
-			 uint16_t nb_desc,
-			 unsigned int socket_id,
-			 __attribute__((unused)) const struct rte_eth_txconf *tx_conf)
+			   uint16_t queue_idx,
+			   uint16_t nb_desc,
+			   unsigned int socket_id,
+			   __attribute__((unused)) const struct rte_eth_txconf *tx_conf)
 {
+	struct vmxnet3_hw     *hw = dev->data->dev_private;
 	const struct rte_memzone *mz;
 	struct vmxnet3_tx_queue *txq;
-	struct vmxnet3_hw     *hw;
-    struct vmxnet3_cmd_ring *ring;
-    struct vmxnet3_comp_ring *comp_ring;
-    int size;
+	struct vmxnet3_cmd_ring *ring;
+	struct vmxnet3_comp_ring *comp_ring;
+	int size;
 
 	PMD_INIT_FUNC_TRACE();
-	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
- 	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS) !=
-		ETH_TXQ_FLAGS_NOMULTSEGS) {
-		PMD_INIT_LOG(ERR, "TX Multi segment not support yet\n");
-		return (-EINVAL);
+	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS) !=
+	    ETH_TXQ_FLAGS_NOMULTSEGS) {
+		PMD_INIT_LOG(ERR, "TX Multi segment not support yet");
+		return -EINVAL;
 	}
 
-	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOOFFLOADS) != 
-		ETH_TXQ_FLAGS_NOOFFLOADS) {
-		PMD_INIT_LOG(ERR, "TX not support offload function yet\n");
-		return (-EINVAL);
+	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOOFFLOADS) !=
+	    ETH_TXQ_FLAGS_NOOFFLOADS) {
+		PMD_INIT_LOG(ERR, "TX not support offload function yet");
+		return -EINVAL;
 	}
 
 	txq = rte_zmalloc("ethdev_tx_queue", sizeof(struct vmxnet3_tx_queue), CACHE_LINE_SIZE);
 	if (txq == NULL) {
-		PMD_INIT_LOG(ERR, "Can not allocate tx queue structure\n");
-		return (-ENOMEM);
+		PMD_INIT_LOG(ERR, "Can not allocate tx queue structure");
+		return -ENOMEM;
 	}
 
 	txq->queue_id = queue_idx;
 	txq->port_id = dev->data->port_id;
 	txq->shared = &hw->tqd_start[queue_idx];
-    txq->hw = hw;
-    txq->qid = queue_idx;
-    txq->stopped = TRUE;
+	txq->hw = hw;
+	txq->qid = queue_idx;
+	txq->stopped = TRUE;
 
-    ring = &txq->cmd_ring;
-    comp_ring = &txq->comp_ring;
+	ring = &txq->cmd_ring;
+	comp_ring = &txq->comp_ring;
 
-    /* Tx vmxnet ring length should be between 512-4096 */
-    if (nb_desc < VMXNET3_DEF_TX_RING_SIZE) {
-    	PMD_INIT_LOG(ERR, "VMXNET3 Tx Ring Size Min: %u\n",
-					VMXNET3_DEF_TX_RING_SIZE);
-    	return -EINVAL;
-	} else if (nb_desc > VMXNET3_TX_RING_MAX_SIZE) {
-		PMD_INIT_LOG(ERR, "VMXNET3 Tx Ring Size Max: %u\n",
-					VMXNET3_TX_RING_MAX_SIZE);
+	/* Tx vmxnet ring length should be between 512-4096 */
+	if (nb_desc < VMXNET3_DEF_TX_RING_SIZE) {
+		PMD_INIT_LOG(ERR, "VMXNET3 Tx Ring Size Min: %u",
+			     VMXNET3_DEF_TX_RING_SIZE);
 		return -EINVAL;
-    } else {
-    	ring->size = nb_desc;
-    	ring->size &= ~VMXNET3_RING_SIZE_MASK;
-    }
-    comp_ring->size = ring->size;
+	} else if (nb_desc > VMXNET3_TX_RING_MAX_SIZE) {
+		PMD_INIT_LOG(ERR, "VMXNET3 Tx Ring Size Max: %u",
+			     VMXNET3_TX_RING_MAX_SIZE);
+		return -EINVAL;
+	} else {
+		ring->size = nb_desc;
+		ring->size &= ~VMXNET3_RING_SIZE_MASK;
+	}
+	comp_ring->size = ring->size;
 
-    /* Tx vmxnet rings structure initialization*/
-    ring->next2fill = 0;
-    ring->next2comp = 0;
-    ring->gen = VMXNET3_INIT_GEN;
-    comp_ring->next2proc = 0;
-    comp_ring->gen = VMXNET3_INIT_GEN;
+	/* Tx vmxnet rings structure initialization*/
+	ring->next2fill = 0;
+	ring->next2comp = 0;
+	ring->gen = VMXNET3_INIT_GEN;
+	comp_ring->next2proc = 0;
+	comp_ring->gen = VMXNET3_INIT_GEN;
 
-    size = sizeof(struct Vmxnet3_TxDesc) * ring->size;
-    size += sizeof(struct Vmxnet3_TxCompDesc) * comp_ring->size;
+	size = sizeof(struct Vmxnet3_TxDesc) * ring->size;
+	size += sizeof(struct Vmxnet3_TxCompDesc) * comp_ring->size;
 
-    mz = ring_dma_zone_reserve(dev, "txdesc", queue_idx, size, socket_id);
+	mz = ring_dma_zone_reserve(dev, "txdesc", queue_idx, size, socket_id);
 	if (mz == NULL) {
-		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone\n");
-		return (-ENOMEM);
+		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone");
+		return -ENOMEM;
 	}
 	memset(mz->addr, 0, mz->len);
 
@@ -688,16 +702,16 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	ring->basePA = mz->phys_addr;
 
 	/* comp_ring initialization */
-    comp_ring->base = ring->base + ring->size;
-    comp_ring->basePA = ring->basePA +
-    					(sizeof(struct Vmxnet3_TxDesc) * ring->size);
+	comp_ring->base = ring->base + ring->size;
+	comp_ring->basePA = ring->basePA +
+		(sizeof(struct Vmxnet3_TxDesc) * ring->size);
 
-    /* cmd_ring0 buf_info allocation */
+	/* cmd_ring0 buf_info allocation */
 	ring->buf_info = rte_zmalloc("tx_ring_buf_info",
-						ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
+				     ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
 	if (ring->buf_info == NULL) {
-		PMD_INIT_LOG(ERR, "ERROR: Creating tx_buf_info structure\n");
-		return (-ENOMEM);
+		PMD_INIT_LOG(ERR, "ERROR: Creating tx_buf_info structure");
+		return -ENOMEM;
 	}
 
 	/* Update the data portion with txq */
@@ -708,15 +722,15 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 int
 vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
-			 uint16_t queue_idx,
-			 uint16_t nb_desc,
-			 unsigned int socket_id,
-			 __attribute__((unused)) const struct rte_eth_rxconf *rx_conf,
-			 struct rte_mempool *mp)
+			   uint16_t queue_idx,
+			   uint16_t nb_desc,
+			   unsigned int socket_id,
+			   __attribute__((unused)) const struct rte_eth_rxconf *rx_conf,
+			   struct rte_mempool *mp)
 {
 	const struct rte_memzone *mz;
 	struct vmxnet3_rx_queue *rxq;
-	struct vmxnet3_hw     *hw;
+	struct vmxnet3_hw     *hw = dev->data->dev_private;
 	struct vmxnet3_cmd_ring *ring0, *ring1, *ring;
 	struct vmxnet3_comp_ring *comp_ring;
 	int size;
@@ -726,24 +740,23 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct rte_pktmbuf_pool_private *mbp_priv;
 
 	PMD_INIT_FUNC_TRACE();
-	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	mbp_priv = (struct rte_pktmbuf_pool_private *)
-				rte_mempool_get_priv(mp);
+		rte_mempool_get_priv(mp);
 	buf_size = (uint16_t) (mbp_priv->mbuf_data_room_size -
-				   RTE_PKTMBUF_HEADROOM);
+			       RTE_PKTMBUF_HEADROOM);
 
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size) {
 		PMD_INIT_LOG(ERR, "buf_size = %u, max_pkt_len = %u, "
-				"VMXNET3 don't support scatter packets yet\n",
-				buf_size, dev->data->dev_conf.rxmode.max_rx_pkt_len);
-		return (-EINVAL);
+			     "VMXNET3 don't support scatter packets yet",
+			     buf_size, dev->data->dev_conf.rxmode.max_rx_pkt_len);
+		return -EINVAL;
 	}
 
 	rxq = rte_zmalloc("ethdev_rx_queue", sizeof(struct vmxnet3_rx_queue), CACHE_LINE_SIZE);
 	if (rxq == NULL) {
-		PMD_INIT_LOG(ERR, "Can not allocate rx queue structure\n");
-		return (-ENOMEM);
+		PMD_INIT_LOG(ERR, "Can not allocate rx queue structure");
+		return -ENOMEM;
 	}
 
 	rxq->mp = mp;
@@ -760,11 +773,11 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	comp_ring = &rxq->comp_ring;
 
 	/* Rx vmxnet rings length should be between 256-4096 */
-	if(nb_desc < VMXNET3_DEF_RX_RING_SIZE) {
-		PMD_INIT_LOG(ERR, "VMXNET3 Rx Ring Size Min: 256\n");
+	if (nb_desc < VMXNET3_DEF_RX_RING_SIZE) {
+		PMD_INIT_LOG(ERR, "VMXNET3 Rx Ring Size Min: 256");
 		return -EINVAL;
-	} else if(nb_desc > VMXNET3_RX_RING_MAX_SIZE) {
-		PMD_INIT_LOG(ERR, "VMXNET3 Rx Ring Size Max: 4096\n");
+	} else if (nb_desc > VMXNET3_RX_RING_MAX_SIZE) {
+		PMD_INIT_LOG(ERR, "VMXNET3 Rx Ring Size Max: 4096");
 		return -EINVAL;
 	} else {
 		ring0->size = nb_desc;
@@ -789,8 +802,8 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	mz = ring_dma_zone_reserve(dev, "rxdesc", queue_idx, size, socket_id);
 	if (mz == NULL) {
-		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone\n");
-		return (-ENOMEM);
+		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone");
+		return -ENOMEM;
 	}
 	memset(mz->addr, 0, mz->len);
 
@@ -805,24 +818,24 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/* comp_ring initialization */
 	comp_ring->base = ring1->base +  ring1->size;
 	comp_ring->basePA = ring1->basePA + sizeof(struct Vmxnet3_RxDesc) *
-					   ring1->size;
+		ring1->size;
 
 	/* cmd_ring0-cmd_ring1 buf_info allocation */
-	for(i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++) {
+	for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++) {
 
-	  ring = &rxq->cmd_ring[i];
-	  ring->rid = i;
-	  rte_snprintf(mem_name, sizeof(mem_name), "rx_ring_%d_buf_info", i);
+		ring = &rxq->cmd_ring[i];
+		ring->rid = i;
+		snprintf(mem_name, sizeof(mem_name), "rx_ring_%d_buf_info", i);
 
-	  ring->buf_info = rte_zmalloc(mem_name, ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
-	  if (ring->buf_info == NULL) {
-		  PMD_INIT_LOG(ERR, "ERROR: Creating rx_buf_info structure\n");
-		  return (-ENOMEM);
-	  }
+		ring->buf_info = rte_zmalloc(mem_name, ring->size * sizeof(vmxnet3_buf_info_t), CACHE_LINE_SIZE);
+		if (ring->buf_info == NULL) {
+			PMD_INIT_LOG(ERR, "ERROR: Creating rx_buf_info structure");
+			return -ENOMEM;
+		}
 	}
 
-    /* Update the data portion with rxq */
-    dev->data->rx_queues[queue_idx] = rxq;
+	/* Update the data portion with rxq */
+	dev->data->rx_queues[queue_idx] = rxq;
 
 	return 0;
 }
@@ -834,27 +847,27 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 int
 vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw;
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+
 	int i, ret;
 	uint8_t j;
 
 	PMD_INIT_FUNC_TRACE();
-	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	for (i = 0; i < hw->num_rx_queues; i++) {
-
 		vmxnet3_rx_queue_t *rxq = dev->data->rx_queues[i];
-		for(j = 0;j < VMXNET3_RX_CMDRING_SIZE;j++) {
+
+		for (j = 0; j < VMXNET3_RX_CMDRING_SIZE; j++) {
 			/* Passing 0 as alloc_num will allocate full ring */
 			ret = vmxnet3_post_rx_bufs(rxq, j);
 			if (ret <= 0) {
-			  PMD_INIT_LOG(ERR, "ERROR: Posting Rxq: %d buffers ring: %d\n", i, j);
-			  return (-ret);
+				PMD_INIT_LOG(ERR, "ERROR: Posting Rxq: %d buffers ring: %d", i, j);
+				return -ret;
 			}
 			/* Updating device with the index:next2fill to fill the mbufs for coming packets */
 			if (unlikely(rxq->shared->ctrl.updateRxProd)) {
 				VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[j] + (rxq->queue_id * VMXNET3_REG_ALIGN),
-						rxq->cmd_ring[j].next2fill);
+						       rxq->cmd_ring[j].next2fill);
 			}
 		}
 		rxq->stopped = FALSE;
@@ -862,6 +875,7 @@ vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct vmxnet3_tx_queue *txq = dev->data->tx_queues[i];
+
 		txq->stopped = FALSE;
 	}
 
@@ -882,13 +896,20 @@ static uint8_t rss_intel_key[40] = {
 int
 vmxnet3_rss_configure(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw;
+#define VMXNET3_RSS_OFFLOAD_ALL ( \
+		ETH_RSS_IPV4 | \
+		ETH_RSS_IPV4_TCP | \
+		ETH_RSS_IPV6 | \
+		ETH_RSS_IPV6_TCP)
+
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 	struct VMXNET3_RSSConf *dev_rss_conf;
 	struct rte_eth_rss_conf *port_rss_conf;
+	uint64_t rss_hf;
 	uint8_t i, j;
 
 	PMD_INIT_FUNC_TRACE();
-	hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	dev_rss_conf = hw->rss_conf;
 	port_rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
 
@@ -916,13 +937,14 @@ vmxnet3_rss_configure(struct rte_eth_dev *dev)
 
 	/* loading hashType */
 	dev_rss_conf->hashType = 0;
-	if (port_rss_conf->rss_hf & ETH_RSS_IPV4)
+	rss_hf = port_rss_conf->rss_hf & VMXNET3_RSS_OFFLOAD_ALL;
+	if (rss_hf & ETH_RSS_IPV4)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_IPV4;
-	if (port_rss_conf->rss_hf & ETH_RSS_IPV4_TCP)
+	if (rss_hf & ETH_RSS_IPV4_TCP)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_TCP_IPV4;
-	if (port_rss_conf->rss_hf & ETH_RSS_IPV6)
+	if (rss_hf & ETH_RSS_IPV6)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_IPV6;
-	if (port_rss_conf->rss_hf & ETH_RSS_IPV6_TCP)
+	if (rss_hf & ETH_RSS_IPV6_TCP)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_TCP_IPV6;
 
 	return VMXNET3_SUCCESS;
@@ -935,7 +957,7 @@ int
 vmxnet3_vlan_configure(struct rte_eth_dev *dev)
 {
 	uint8_t i;
-	struct vmxnet3_hw *hw = VMXNET3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 	uint32_t *vf_table = hw->shared->devRead.rxFilterConf.vfTable;
 
 	PMD_INIT_FUNC_TRACE();
@@ -946,7 +968,7 @@ vmxnet3_vlan_configure(struct rte_eth_dev *dev)
 		vf_table[i] = 0;
 		/* To-Do: Provide another routine in dev_ops for user config */
 
-		PMD_INIT_LOG(DEBUG, "Registering VLAN portid: %"PRIu8" tag %u\n",
+		PMD_INIT_LOG(DEBUG, "Registering VLAN portid: %"PRIu8" tag %u",
 					dev->data->port_id, vf_table[i]);
 	}
 

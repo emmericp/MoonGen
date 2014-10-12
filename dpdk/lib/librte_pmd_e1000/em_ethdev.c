@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -51,6 +51,7 @@
 #include <rte_eal.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
+#include <rte_dev.h>
 
 #include "e1000_logs.h"
 #include "e1000/e1000_api.h"
@@ -76,6 +77,8 @@ static void eth_em_stats_get(struct rte_eth_dev *dev,
 static void eth_em_stats_reset(struct rte_eth_dev *dev);
 static void eth_em_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
+static int eth_em_flow_ctrl_get(struct rte_eth_dev *dev,
+				struct rte_eth_fc_conf *fc_conf);
 static int eth_em_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
 static int eth_em_interrupt_setup(struct rte_eth_dev *dev);
@@ -90,6 +93,8 @@ static void em_hw_control_acquire(struct e1000_hw *hw);
 static void em_hw_control_release(struct e1000_hw *hw);
 static void em_init_manageability(struct e1000_hw *hw);
 static void em_release_manageability(struct e1000_hw *hw);
+
+static int eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int eth_em_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
@@ -142,6 +147,7 @@ static struct eth_dev_ops eth_em_ops = {
 	.stats_get            = eth_em_stats_get,
 	.stats_reset          = eth_em_stats_reset,
 	.dev_infos_get        = eth_em_infos_get,
+	.mtu_set              = eth_em_mtu_set,
 	.vlan_filter_set      = eth_em_vlan_filter_set,
 	.vlan_offload_set     = eth_em_vlan_offload_set,
 	.rx_queue_setup       = eth_em_rx_queue_setup,
@@ -152,6 +158,7 @@ static struct eth_dev_ops eth_em_ops = {
 	.tx_queue_release     = eth_em_tx_queue_release,
 	.dev_led_on           = eth_em_led_on,
 	.dev_led_off          = eth_em_led_off,
+	.flow_ctrl_get        = eth_em_flow_ctrl_get,
 	.flow_ctrl_set        = eth_em_flow_ctrl_set,
 	.mac_addr_add         = eth_em_rar_set,
 	.mac_addr_remove      = eth_em_rar_clear,
@@ -279,14 +286,14 @@ static struct eth_driver rte_em_pmd = {
 	{
 		.name = "rte_em_pmd",
 		.id_table = pci_id_em_map,
-		.drv_flags = RTE_PCI_DRV_NEED_IGB_UIO,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	},
 	.eth_dev_init = eth_em_dev_init,
 	.dev_private_size = sizeof(struct e1000_adapter),
 };
 
-int
-rte_em_pmd_init(void)
+static int
+rte_em_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
 {
 	rte_eth_driver_register(&rte_em_pmd);
 	return 0;
@@ -644,7 +651,7 @@ em_hardware_init(struct e1000_hw *hw)
 	 *   frames to be received after sending an XOFF.
 	 * - Low water mark works best when it is very near the high water mark.
 	 *   This allows the receiver to restart by sending XON when it has
-	 *   drained a bit. Here we use an arbitary value of 1500 which will
+	 *   drained a bit. Here we use an arbitrary value of 1500 which will
 	 *   restart after one full frame is pulled from the buffer. There
 	 *   could be several smaller frames in the buffer and if so they will
 	 *   not trigger the XON until their total number reduces the buffer
@@ -792,8 +799,13 @@ eth_em_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 		return;
 
 	/* Rx Errors */
-	rte_stats->ierrors = stats->rxerrc + stats->crcerrs + stats->algnerrc +
-		stats->ruc + stats->roc + stats->mpc + stats->cexterr;
+	rte_stats->ibadcrc = stats->crcerrs;
+	rte_stats->ibadlen = stats->rlec + stats->ruc + stats->roc;
+	rte_stats->imissed = stats->mpc;
+	rte_stats->ierrors = rte_stats->ibadcrc +
+	                     rte_stats->ibadlen +
+	                     rte_stats->imissed +
+	                     stats->rxerrc + stats->algnerrc + stats->cexterr;
 
 	/* Tx Errors */
 	rte_stats->oerrors = stats->ecol + stats->latecol;
@@ -1181,7 +1193,7 @@ eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		else
 			em_vlan_hw_strip_disable(dev);
 	}
-	
+
 	if(mask & ETH_VLAN_FILTER_MASK){
 		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
 			em_vlan_hw_filter_enable(dev);
@@ -1357,6 +1369,48 @@ eth_em_led_off(struct rte_eth_dev *dev)
 }
 
 static int
+eth_em_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct e1000_hw *hw;
+	uint32_t ctrl;
+	int tx_pause;
+	int rx_pause;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	fc_conf->pause_time = hw->fc.pause_time;
+	fc_conf->high_water = hw->fc.high_water;
+	fc_conf->low_water = hw->fc.low_water;
+	fc_conf->send_xon = hw->fc.send_xon;
+	fc_conf->autoneg = hw->mac.autoneg;
+
+	/*
+	 * Return rx_pause and tx_pause status according to actual setting of
+	 * the TFCE and RFCE bits in the CTRL register.
+	 */
+	ctrl = E1000_READ_REG(hw, E1000_CTRL);
+	if (ctrl & E1000_CTRL_TFCE)
+		tx_pause = 1;
+	else
+		tx_pause = 0;
+
+	if (ctrl & E1000_CTRL_RFCE)
+		rx_pause = 1;
+	else
+		rx_pause = 0;
+
+	if (rx_pause && tx_pause)
+		fc_conf->mode = RTE_FC_FULL;
+	else if (rx_pause)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else if (tx_pause)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+	else
+		fc_conf->mode = RTE_FC_NONE;
+
+	return 0;
+}
+
+static int
 eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct e1000_hw *hw;
@@ -1372,6 +1426,8 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	uint32_t rctl;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (fc_conf->autoneg != hw->mac.autoneg)
+		return -ENOTSUP;
 	rx_buf_size = em_get_rx_buffer_size(hw);
 	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x \n", rx_buf_size);
 
@@ -1433,3 +1489,49 @@ eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 
 	e1000_rar_set(hw, addr, index);
 }
+
+static int
+eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct rte_eth_dev_info dev_info;
+	struct e1000_hw *hw;
+	uint32_t frame_size;
+	uint32_t rctl;
+
+	eth_em_infos_get(dev, &dev_info);
+	frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE;
+
+	/* check that mtu is within the allowed range */
+	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen))
+		return -EINVAL;
+
+	/* refuse mtu that requires the support of scattered packets when this
+	 * feature has not been enabled before. */
+	if (!dev->data->scattered_rx &&
+	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)
+		return -EINVAL;
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+
+	/* switch to jumbo mode if needed */
+	if (frame_size > ETHER_MAX_LEN) {
+		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		rctl |= E1000_RCTL_LPE;
+	} else {
+		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		rctl &= ~E1000_RCTL_LPE;
+	}
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+	return 0;
+}
+
+struct rte_driver em_pmd_drv = {
+	.type = PMD_PDEV,
+	.init = rte_em_pmd_init,
+};
+
+PMD_REGISTER_DRIVER(em_pmd_drv);

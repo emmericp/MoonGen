@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -87,7 +87,7 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
+			.rss_hf = ETH_RSS_IP,
 		},
 	},
 	.txmode = {
@@ -146,7 +146,7 @@ app_init_mbuf_pools(void)
 			continue;
 		}
 
-		rte_snprintf(name, sizeof(name), "mbuf_pool_%u", socket);
+		snprintf(name, sizeof(name), "mbuf_pool_%u", socket);
 		printf("Creating the mbuf pool for socket %u ...\n", socket);
 		app.pools[socket] = rte_mempool_create(
 			name,
@@ -187,7 +187,7 @@ app_init_lpm_tables(void)
 			continue;
 		}
 
-		rte_snprintf(name, sizeof(name), "lpm_table_%u", socket);
+		snprintf(name, sizeof(name), "lpm_table_%u", socket);
 		printf("Creating the LPM table for socket %u ...\n", socket);
 		app.lpm_tables[socket] = rte_lpm_create(
 			name,
@@ -259,7 +259,7 @@ app_init_rings_rx(void)
 				lcore,
 				socket_io,
 				lcore_worker);
-			rte_snprintf(name, sizeof(name), "app_ring_rx_s%u_io%u_w%u",
+			snprintf(name, sizeof(name), "app_ring_rx_s%u_io%u_w%u",
 				socket_io,
 				lcore,
 				lcore_worker);
@@ -342,7 +342,7 @@ app_init_rings_tx(void)
 
 			printf("Creating ring to connect worker lcore %u with TX port %u (through I/O lcore %u) (socket %u) ...\n",
 				lcore, port, (unsigned)lcore_io, (unsigned)socket_io);
-			rte_snprintf(name, sizeof(name), "app_ring_tx_s%u_w%u_p%u", socket_io, lcore, port);
+			snprintf(name, sizeof(name), "app_ring_tx_s%u_w%u_p%u", socket_io, lcore, port);
 			ring = rte_ring_create(
 				name,
 				app.ring_tx_size,
@@ -449,12 +449,6 @@ app_init_nics(void)
 	uint8_t port, queue;
 	int ret;
 	uint32_t n_rx_queues, n_tx_queues;
-
-	/* Init driver */
-	printf("Initializing the PMD driver ...\n");
-	if (rte_pmd_init_all() < 0) {
-		rte_panic("Cannot init PMD\n");
-	}
 
 	if (rte_eal_pci_probe() < 0) {
 		rte_panic("Cannot probe PCI\n");

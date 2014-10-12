@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -55,7 +55,7 @@ static int
 cpu_detected(unsigned lcore_id)
 {
 	char path[PATH_MAX];
-	int len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR
+	int len = snprintf(path, sizeof(path), SYS_CPU_DIR
 		"/"CORE_ID_FILE, lcore_id);
 	if (len <= 0 || (unsigned)len >= sizeof(path))
 		return 0;
@@ -77,12 +77,12 @@ cpu_socket_id(unsigned lcore_id)
 	const char node_prefix[] = "node";
 	const size_t prefix_len = sizeof(node_prefix) - 1;
 	char path[PATH_MAX];
-	DIR *d;
+	DIR *d = NULL;
 	unsigned long id = 0;
 	struct dirent *e;
 	char *endptr = NULL;
 
-	int len = rte_snprintf(path, sizeof(path),
+	int len = snprintf(path, sizeof(path),
 			       SYS_CPU_DIR, lcore_id);
 	if (len <= 0 || (unsigned)len >= sizeof(path))
 		goto err;
@@ -97,22 +97,24 @@ cpu_socket_id(unsigned lcore_id)
 			break;
 		}
 	}
-	closedir(d);
 	if (endptr == NULL || *endptr!='\0' || endptr == e->d_name+prefix_len) {
 		RTE_LOG(WARNING, EAL, "Cannot read numa node link "
 				"for lcore %u - using physical package id instead\n",
 				lcore_id);
 
-		len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR "/%s",
+		len = snprintf(path, sizeof(path), SYS_CPU_DIR "/%s",
 				lcore_id, PHYS_PKG_FILE);
 		if (len <= 0 || (unsigned)len >= sizeof(path))
 			goto err;
 		if (eal_parse_sysfs_value(path, &id) != 0)
 			goto err;
 	}
+	closedir(d);
 	return (unsigned)id;
 
 err:
+	if (d)
+		closedir(d);
 	RTE_LOG(ERR, EAL, "Error getting NUMA socket information from %s "
 			"for lcore %u - assuming NUMA socket 0\n", SYS_CPU_DIR, lcore_id);
 	return 0;
@@ -125,7 +127,7 @@ cpu_core_id(unsigned lcore_id)
 	char path[PATH_MAX];
 	unsigned long id;
 
-	int len = rte_snprintf(path, sizeof(path), SYS_CPU_DIR "/%s", lcore_id, CORE_ID_FILE);
+	int len = snprintf(path, sizeof(path), SYS_CPU_DIR "/%s", lcore_id, CORE_ID_FILE);
 	if (len <= 0 || (unsigned)len >= sizeof(path))
 		goto err;
 	if (eal_parse_sysfs_value(path, &id) != 0)
@@ -158,7 +160,6 @@ rte_eal_cpu_init(void)
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		lcore_config[lcore_id].detected = cpu_detected(lcore_id);
 		if (lcore_config[lcore_id].detected == 0) {
-			RTE_LOG(DEBUG, EAL, "Skip lcore %u (not detected)\n", lcore_id);
 			config->lcore_role[lcore_id] = ROLE_OFF;
 			continue;
 		}
@@ -182,6 +183,9 @@ rte_eal_cpu_init(void)
 	}
 	/* Set the count of enabled logical cores of the EAL configuration */
 	config->lcore_count = count;
+	RTE_LOG(DEBUG, EAL, "Support maximum %u logical core(s) by configuration.\n",
+		RTE_MAX_LCORE);
+	RTE_LOG(DEBUG, EAL, "Detected %u lcore(s)\n", config->lcore_count);
 
 	return 0;
 }

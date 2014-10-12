@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -37,7 +37,17 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
-#include <rte_vdev.h>
+#include <rte_dev.h>
+#include <rte_kvargs.h>
+
+#define ETH_RING_NUMA_NODE_ACTION_ARG	"nodeaction"
+#define ETH_RING_ACTION_CREATE		"CREATE"
+#define ETH_RING_ACTION_ATTACH		"ATTACH"
+
+static const char *valid_arguments[] = {
+	ETH_RING_NUMA_NODE_ACTION_ARG,
+	NULL
+};
 
 struct ring_queue {
 	struct rte_ring *rng;
@@ -68,7 +78,7 @@ eth_ring_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	void **ptrs = (void *)&bufs[0];
 	struct ring_queue *r = q;
-	const uint16_t nb_rx = (uint16_t)rte_ring_dequeue_burst(r->rng, 
+	const uint16_t nb_rx = (uint16_t)rte_ring_dequeue_burst(r->rng,
 			ptrs, nb_bufs);
 	if (r->rng->flags & RING_F_SC_DEQ)
 		r->rx_pkts.cnt += nb_rx;
@@ -82,7 +92,7 @@ eth_ring_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	void **ptrs = (void *)&bufs[0];
 	struct ring_queue *r = q;
-	const uint16_t nb_tx = (uint16_t)rte_ring_enqueue_burst(r->rng, 
+	const uint16_t nb_tx = (uint16_t)rte_ring_enqueue_burst(r->rng,
 			ptrs, nb_bufs);
 	if (r->rng->flags & RING_F_SP_ENQ) {
 		r->tx_pkts.cnt += nb_tx;
@@ -209,7 +219,7 @@ static struct eth_dev_ops ops = {
 };
 
 int
-rte_eth_from_rings(struct rte_ring *const rx_queues[],
+rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		const unsigned nb_rx_queues,
 		struct rte_ring *const tx_queues[],
 		const unsigned nb_tx_queues,
@@ -221,7 +231,7 @@ rte_eth_from_rings(struct rte_ring *const rx_queues[],
 	struct rte_eth_dev *eth_dev = NULL;
 	unsigned i;
 
-	/* do some paramter checking */
+	/* do some parameter checking */
 	if (rx_queues == NULL && nb_rx_queues > 0)
 		goto error;
 	if (tx_queues == NULL && nb_tx_queues > 0)
@@ -233,20 +243,20 @@ rte_eth_from_rings(struct rte_ring *const rx_queues[],
 	/* now do all data allocation - for eth_dev structure, dummy pci driver
 	 * and internal (private) data
 	 */
-	data = rte_zmalloc_socket(NULL, sizeof(*data), 0, numa_node);
+	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
 		goto error;
 
-	pci_dev = rte_zmalloc_socket(NULL, sizeof(*pci_dev), 0, numa_node);
+	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
 	if (pci_dev == NULL)
 		goto error;
 
-	internals = rte_zmalloc_socket(NULL, sizeof(*internals), 0, numa_node);
+	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
 	if (internals == NULL)
 		goto error;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate();
+	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL)
 		goto error;
 
@@ -316,7 +326,7 @@ eth_dev_ring_create(const char *name, const unsigned numa_node,
 			RTE_PMD_RING_MAX_TX_RINGS);
 
 	for (i = 0; i < num_rings; i++) {
-		rte_snprintf(rng_name, sizeof(rng_name), "ETH_RXTX%u_%s", i, name);
+		snprintf(rng_name, sizeof(rng_name), "ETH_RXTX%u_%s", i, name);
 		rxtx[i] = (action == DEV_CREATE) ?
 				rte_ring_create(rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ) :
@@ -325,7 +335,7 @@ eth_dev_ring_create(const char *name, const unsigned numa_node,
 			return -1;
 	}
 
-	if (rte_eth_from_rings(rxtx, num_rings, rxtx, num_rings, numa_node))
+	if (rte_eth_from_rings(name, rxtx, num_rings, rxtx, num_rings, numa_node))
 		return -1;
 
 	return 0;
@@ -342,29 +352,31 @@ eth_dev_ring_pair_create(const char *name, const unsigned numa_node,
 	struct rte_ring *rx[RTE_PMD_RING_MAX_RX_RINGS];
 	struct rte_ring *tx[RTE_PMD_RING_MAX_TX_RINGS];
 	unsigned i;
-	char rng_name[RTE_RING_NAMESIZE];
+	char rx_rng_name[RTE_RING_NAMESIZE];
+	char tx_rng_name[RTE_RING_NAMESIZE];
 	unsigned num_rings = RTE_MIN(RTE_PMD_RING_MAX_RX_RINGS,
 			RTE_PMD_RING_MAX_TX_RINGS);
 
 	for (i = 0; i < num_rings; i++) {
-		rte_snprintf(rng_name, sizeof(rng_name), "ETH_RX%u_%s", i, name);
+		snprintf(rx_rng_name, sizeof(rx_rng_name), "ETH_RX%u_%s", i, name);
 		rx[i] = (action == DEV_CREATE) ?
-				rte_ring_create(rng_name, 1024, numa_node,
+				rte_ring_create(rx_rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ) :
-				rte_ring_lookup(rng_name);
+				rte_ring_lookup(rx_rng_name);
 		if (rx[i] == NULL)
 			return -1;
-		rte_snprintf(rng_name, sizeof(rng_name), "ETH_TX%u_%s", i, name);
+		snprintf(tx_rng_name, sizeof(tx_rng_name), "ETH_TX%u_%s", i, name);
 		tx[i] = (action == DEV_CREATE) ?
-				rte_ring_create(rng_name, 1024, numa_node,
+				rte_ring_create(tx_rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ):
-				rte_ring_lookup(rng_name);
+				rte_ring_lookup(tx_rng_name);
 		if (tx[i] == NULL)
 			return -1;
 	}
 
-	if (rte_eth_from_rings(rx, num_rings, tx, num_rings, numa_node) ||
-			rte_eth_from_rings(tx, num_rings, rx, num_rings, numa_node) )
+	if (rte_eth_from_rings(rx_rng_name, rx, num_rings, tx, num_rings,
+			numa_node) || rte_eth_from_rings(tx_rng_name, tx, num_rings, rx,
+					num_rings, numa_node))
 		return -1;
 
 	return 0;
@@ -373,38 +385,146 @@ eth_dev_ring_pair_create(const char *name, const unsigned numa_node,
 int
 rte_eth_ring_pair_create(const char *name, const unsigned numa_node)
 {
+	RTE_LOG(WARNING, PMD, "rte_eth_ring_pair_create is deprecated\n");
 	return eth_dev_ring_pair_create(name, numa_node, DEV_CREATE);
 }
 
 int
 rte_eth_ring_pair_attach(const char *name, const unsigned numa_node)
 {
+	RTE_LOG(WARNING, PMD, "rte_eth_ring_pair_attach is deprecated\n");
 	return eth_dev_ring_pair_create(name, numa_node, DEV_ATTACH);
+}
+
+struct node_action_pair {
+	char name[PATH_MAX];
+	unsigned node;
+	enum dev_action action;
+};
+
+struct node_action_list {
+	unsigned total;
+	unsigned count;
+	struct node_action_pair *list;
+};
+
+static int parse_kvlist (const char *key __rte_unused, const char *value, void *data)
+{
+	struct node_action_list *info = data;
+	int ret;
+	char *name;
+	char *action;
+	char *node;
+	char *end;
+
+	name = strdup(value);
+
+	ret = -EINVAL;
+
+	if (!name) {
+		RTE_LOG(WARNING, PMD, "command line paramter is empty for ring pmd!\n");
+		goto out;
+	}
+
+	node = strchr(name, ':');
+	if (!node) {
+		RTE_LOG(WARNING, PMD, "could not parse node value from %s", name);
+		goto out;
+	}
+
+	*node = '\0';
+	node++;
+
+	action = strchr(node, ':');
+	if (!action) {
+		RTE_LOG(WARNING, PMD, "could not action value from %s", node);
+		goto out;
+	}
+
+	*action = '\0';
+	action++;
+
+	/*
+	 * Need to do some sanity checking here
+	 */
+
+	if (strcmp(action, ETH_RING_ACTION_ATTACH) == 0)
+		info->list[info->count].action = DEV_ATTACH;
+	else if (strcmp(action, ETH_RING_ACTION_CREATE) == 0)
+		info->list[info->count].action = DEV_CREATE;
+	else
+		goto out;
+
+	errno = 0;
+	info->list[info->count].node = strtol(node, &end, 10);
+
+	if ((errno != 0) || (*end != '\0')) {
+		RTE_LOG(WARNING, PMD, "node value %s is unparseable as a number\n", node);
+		goto out;
+	}
+
+	snprintf(info->list[info->count].name, sizeof(info->list[info->count].name), "%s", name);
+
+	info->count++;
+
+	ret = 0;
+out:
+	free(name);
+	return ret;
 }
 
 int
 rte_pmd_ring_devinit(const char *name, const char *params)
 {
+	struct rte_kvargs *kvlist;
+	int ret = 0;
+	struct node_action_list *info = NULL;
+
 	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
 
 	if (params == NULL || params[0] == '\0')
 		eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
 	else {
-		RTE_LOG(INFO, PMD, "Ignoring unsupported parameters when creating"
-				" rings-backed ethernet device\n");
-		eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
+		kvlist = rte_kvargs_parse(params, valid_arguments);
+
+		if (!kvlist) {
+			RTE_LOG(INFO, PMD, "Ignoring unsupported parameters when creating"
+					" rings-backed ethernet device\n");
+			eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
+			return 0;
+		} else {
+			ret = rte_kvargs_count(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG);
+			info = rte_zmalloc("struct node_action_list", sizeof(struct node_action_list) +
+					   (sizeof(struct node_action_pair) * ret), 0);
+			if (!info)
+				goto out;
+
+			info->total = ret;
+			info->list = (struct node_action_pair*)(info + 1);
+
+			ret = rte_kvargs_process(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG,
+						 parse_kvlist, info);
+
+			if (ret < 0)
+				goto out_free;
+
+			for (info->count = 0; info->count < info->total; info->count++) {
+				eth_dev_ring_create(name, info->list[info->count].node,
+						    info->list[info->count].action);
+			}
+		}
 	}
-	return 0;
+
+out_free:
+	rte_free(info);
+out:
+	return ret;
 }
 
-static struct rte_vdev_driver pmd_ring_drv = {
+static struct rte_driver pmd_ring_drv = {
 	.name = "eth_ring",
+	.type = PMD_VDEV,
 	.init = rte_pmd_ring_devinit,
 };
 
-__attribute__((constructor))
-static void
-rte_pmd_ring_init(void)
-{
-	rte_eal_vdev_driver_register(&pmd_ring_drv);
-}
+PMD_REGISTER_DRIVER(pmd_ring_drv);

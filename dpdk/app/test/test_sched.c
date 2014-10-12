@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -38,8 +38,6 @@
 #include <unistd.h>
 
 #include "test.h"
-
-#if defined(RTE_LIBRTE_SCHED) && defined(RTE_ARCH_X86_64)
 
 #include <rte_cycles.h>
 #include <rte_ether.h>
@@ -83,7 +81,6 @@ static struct rte_sched_pipe_params pipe_profile[] = {
 };
 
 static struct rte_sched_port_params port_param = {
-	.name = "port_0",
 	.socket = 0, /* computed */
 	.rate = 0, /* computed */
 	.mtu = 1522,
@@ -156,7 +153,7 @@ prepare_pkt(struct rte_mbuf *mbuf)
 /**
  * test main entrance for library sched
  */
-int 
+static int
 test_sched(void)
 {
 	struct rte_mempool *mp = NULL;
@@ -172,12 +169,11 @@ test_sched(void)
 
 	port_param.socket = 0;
 	port_param.rate = (uint64_t) 10000 * 1000 * 1000 / 8;
-	port_param.name = "port_0";
 
 	port = rte_sched_port_config(&port_param);
 	VERIFY(port != NULL, "Error config sched port\n");
 
-	
+
 	err = rte_sched_subport_config(port, SUBPORT, subport_param);
 	VERIFY(err == 0, "Error config sched, err=%d\n", err);
 
@@ -231,12 +227,8 @@ test_sched(void)
 	return 0;
 }
 
-#else /* RTE_LIBRTE_SCHED */
-
-int
-test_sched(void)
-{
-	printf("The Scheduler library is not included in this build\n");
-	return 0;
-}
-#endif /* RTE_LIBRTE_SCHED */
+static struct test_command sched_cmd = {
+	.command = "sched_autotest",
+	.callback = test_sched,
+};
+REGISTER_TEST_COMMAND(sched_cmd);

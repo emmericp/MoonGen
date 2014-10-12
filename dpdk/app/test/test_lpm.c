@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -46,8 +46,6 @@
 #include <time.h>
 
 #include "test.h"
-
-#ifdef RTE_LIBRTE_LPM
 
 #include "rte_lpm.h"
 #include "test_lpm_routes.h"
@@ -310,6 +308,8 @@ test6(void)
 int32_t
 test7(void)
 {
+	__m128i ipx4;
+	uint16_t hop[4];
 	struct rte_lpm *lpm = NULL;
 	uint32_t ip = IPv4(0, 0, 0, 0);
 	uint8_t depth = 32, next_hop_add = 100, next_hop_return = 0;
@@ -323,6 +323,13 @@ test7(void)
 
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
+
+	ipx4 = _mm_set_epi32(ip, ip + 0x100, ip - 0x100, ip);
+	rte_lpm_lookupx4(lpm, ipx4, hop, UINT16_MAX);
+	TEST_LPM_ASSERT(hop[0] == next_hop_add);
+	TEST_LPM_ASSERT(hop[1] == UINT16_MAX);
+	TEST_LPM_ASSERT(hop[2] == UINT16_MAX);
+	TEST_LPM_ASSERT(hop[3] == next_hop_add);
 
 	status = rte_lpm_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
@@ -347,6 +354,8 @@ test7(void)
 int32_t
 test8(void)
 {
+	__m128i ipx4;
+	uint16_t hop[4];
 	struct rte_lpm *lpm = NULL;
 	uint32_t ip1 = IPv4(127, 255, 255, 255), ip2 = IPv4(128, 0, 0, 0);
 	uint8_t depth, next_hop_add, next_hop_return;
@@ -370,6 +379,13 @@ test8(void)
 		status = rte_lpm_lookup(lpm, ip2, &next_hop_return);
 		TEST_LPM_ASSERT((status == 0) &&
 			(next_hop_return == next_hop_add));
+
+		ipx4 = _mm_set_epi32(ip2, ip1, ip2, ip1);
+		rte_lpm_lookupx4(lpm, ipx4, hop, UINT16_MAX);
+		TEST_LPM_ASSERT(hop[0] == UINT16_MAX);
+		TEST_LPM_ASSERT(hop[1] == next_hop_add);
+		TEST_LPM_ASSERT(hop[2] == UINT16_MAX);
+		TEST_LPM_ASSERT(hop[3] == next_hop_add);
 	}
 
 	/* Loop with rte_lpm_delete. */
@@ -391,6 +407,18 @@ test8(void)
 
 		status = rte_lpm_lookup(lpm, ip1, &next_hop_return);
 		TEST_LPM_ASSERT(status == -ENOENT);
+
+		ipx4 = _mm_set_epi32(ip1, ip1, ip2, ip2);
+		rte_lpm_lookupx4(lpm, ipx4, hop, UINT16_MAX);
+		if (depth != 1) {
+			TEST_LPM_ASSERT(hop[0] == next_hop_add);
+			TEST_LPM_ASSERT(hop[1] == next_hop_add);
+		} else {
+			TEST_LPM_ASSERT(hop[0] == UINT16_MAX);
+			TEST_LPM_ASSERT(hop[1] == UINT16_MAX);
+		}
+		TEST_LPM_ASSERT(hop[2] == UINT16_MAX);
+		TEST_LPM_ASSERT(hop[3] == UINT16_MAX);
 	}
 
 	rte_lpm_free(lpm);
@@ -822,6 +850,8 @@ test11(void)
 int32_t
 test12(void)
 {
+	__m128i ipx4;
+	uint16_t hop[4];
 	struct rte_lpm *lpm = NULL;
 	uint32_t ip, i;
 	uint8_t depth, next_hop_add, next_hop_return;
@@ -841,6 +871,13 @@ test12(void)
 		status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 		TEST_LPM_ASSERT((status == 0) &&
 				(next_hop_return == next_hop_add));
+
+		ipx4 = _mm_set_epi32(ip, ip + 1, ip, ip - 1);
+		rte_lpm_lookupx4(lpm, ipx4, hop, UINT16_MAX);
+		TEST_LPM_ASSERT(hop[0] == UINT16_MAX);
+		TEST_LPM_ASSERT(hop[1] == next_hop_add);
+		TEST_LPM_ASSERT(hop[2] == UINT16_MAX);
+		TEST_LPM_ASSERT(hop[3] == next_hop_add);
 
 		status = rte_lpm_delete(lpm, ip, depth);
 		TEST_LPM_ASSERT(status == 0);
@@ -1237,6 +1274,37 @@ perf_test(void)
 			(double)total_time / ((double)ITERATIONS * BATCH_SIZE),
 			(count * 100.0) / (double)(ITERATIONS * BATCH_SIZE));
 
+	/* Measure LookupX4 */
+	total_time = 0;
+	count = 0;
+	for (i = 0; i < ITERATIONS; i++) {
+		static uint32_t ip_batch[BATCH_SIZE];
+		uint16_t next_hops[4];
+
+		/* Create array of random IP addresses */
+		for (j = 0; j < BATCH_SIZE; j++)
+			ip_batch[j] = rte_rand();
+
+		/* Lookup per batch */
+		begin = rte_rdtsc();
+		for (j = 0; j < BATCH_SIZE; j += RTE_DIM(next_hops)) {
+			unsigned k;
+			__m128i ipx4;
+
+			ipx4 = _mm_loadu_si128((__m128i *)(ip_batch + j));
+			ipx4 = *(__m128i *)(ip_batch + j);
+			rte_lpm_lookupx4(lpm, ipx4, next_hops, UINT16_MAX);
+			for (k = 0; k < RTE_DIM(next_hops); k++)
+				if (unlikely(next_hops[k] == UINT16_MAX))
+					count++;
+		}
+
+		total_time += rte_rdtsc() - begin;
+	}
+	printf("LPM LookupX4: %.1f cycles (fails = %.1f%%)\n",
+			(double)total_time / ((double)ITERATIONS * BATCH_SIZE),
+			(count * 100.0) / (double)(ITERATIONS * BATCH_SIZE));
+
 	/* Delete */
 	status = 0;
 	begin = rte_rdtsc();
@@ -1262,7 +1330,7 @@ perf_test(void)
  * Do all unit and performance tests.
  */
 
-int
+static int
 test_lpm(void)
 {
 	unsigned i;
@@ -1279,13 +1347,8 @@ test_lpm(void)
 	return global_status;
 }
 
-#else /* RTE_LIBRTE_LPM */
-
-int
-test_lpm(void)
-{
-	printf("The LPM library is not included in this build\n");
-	return 0;
-}
-
-#endif /* RTE_LIBRTE_LPM */
+static struct test_command lpm_cmd = {
+	.command = "lpm_autotest",
+	.callback = test_lpm,
+};
+REGISTER_TEST_COMMAND(lpm_cmd);

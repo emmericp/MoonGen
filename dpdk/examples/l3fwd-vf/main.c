@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -207,7 +207,7 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
+			.rss_hf = ETH_RSS_IP,
 		},
 	},
 	.txmode = {
@@ -711,9 +711,9 @@ signal_handler(int signum)
 	if (signum == SIGINT) {
 		for (portid = 0; portid < nb_ports; portid++) {
 			/* skip ports that are not enabled */
-			if ((enabled_port_mask & (1 << portid)) == 0) 
+			if ((enabled_port_mask & (1 << portid)) == 0)
 				continue;
-			rte_eth_dev_close(portid); 
+			rte_eth_dev_close(portid);
 		}
 	}
 	rte_exit(EXIT_SUCCESS, "\n User forced exit\n");
@@ -763,7 +763,7 @@ parse_config(const char *q_arg)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++){
@@ -868,7 +868,7 @@ setup_hash(int socketid)
 	char s[64];
 
 	/* create  hashes */
-	rte_snprintf(s, sizeof(s), "l3fwd_hash_%d", socketid);
+	snprintf(s, sizeof(s), "l3fwd_hash_%d", socketid);
 	l3fwd_hash_params.name = s;
 	l3fwd_hash_params.socket_id = socketid;
 	l3fwd_lookup_struct[socketid] = rte_hash_create(&l3fwd_hash_params);
@@ -900,7 +900,7 @@ setup_lpm(int socketid)
 	char s[64];
 
 	/* create the LPM table */
-	rte_snprintf(s, sizeof(s), "L3FWD_LPM_%d", socketid);
+	snprintf(s, sizeof(s), "L3FWD_LPM_%d", socketid);
 	l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid,
 				L3FWD_LPM_MAX_RULES, 0);
 	if (l3fwd_lookup_struct[socketid] == NULL)
@@ -950,9 +950,9 @@ init_mem(unsigned nb_mbuf)
 				socketid, lcore_id, NB_SOCKETS);
 		}
 		if (pktmbuf_pool[socketid] == NULL) {
-			rte_snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
+			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
 			pktmbuf_pool[socketid] =
-				rte_mempool_create(s, nb_mbuf, MBUF_SIZE, 
+				rte_mempool_create(s, nb_mbuf, MBUF_SIZE,
 						   MEMPOOL_CACHE_SIZE,
 					sizeof(struct rte_pktmbuf_pool_private),
 					rte_pktmbuf_pool_init, NULL,
@@ -1006,10 +1006,6 @@ MAIN(int argc, char **argv)
 	ret = init_lcore_rx_queues();
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "init_lcore_rx_queues failed\n");
-
-	/* init driver */
-	if (rte_pmd_init_all() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot init pmd\n");
 
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");

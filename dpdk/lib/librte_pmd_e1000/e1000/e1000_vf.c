@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -378,7 +378,7 @@ STATIC u32 e1000_hash_mc_addr_vf(struct e1000_hw *hw, u8 *mc_addr)
 	return hash_value;
 }
 
-static void e1000_write_msg_read_ack(struct e1000_hw *hw,
+STATIC void e1000_write_msg_read_ack(struct e1000_hw *hw,
 				     u32 *msg, u16 size)
 {
 	struct e1000_mbx_info *mbx = &hw->mbx;

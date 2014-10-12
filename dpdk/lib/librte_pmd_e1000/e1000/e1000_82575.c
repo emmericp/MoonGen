@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,6 @@ STATIC s32  e1000_check_for_link_media_swap(struct e1000_hw *hw);
 STATIC s32  e1000_get_cfg_done_82575(struct e1000_hw *hw);
 STATIC s32  e1000_get_link_up_info_82575(struct e1000_hw *hw, u16 *speed,
 					 u16 *duplex);
-STATIC s32  e1000_init_hw_82575(struct e1000_hw *hw);
 STATIC s32  e1000_phy_hw_reset_sgmii_82575(struct e1000_hw *hw);
 STATIC s32  e1000_read_phy_reg_sgmii_82575(struct e1000_hw *hw, u32 offset,
 					   u16 *data);
@@ -80,11 +79,11 @@ STATIC s32  e1000_write_phy_reg_sgmii_82575(struct e1000_hw *hw,
 					    u32 offset, u16 data);
 STATIC void e1000_clear_hw_cntrs_82575(struct e1000_hw *hw);
 STATIC s32  e1000_acquire_swfw_sync_82575(struct e1000_hw *hw, u16 mask);
-static s32  e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
+STATIC s32  e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
 						 u16 *speed, u16 *duplex);
-static s32  e1000_get_phy_id_82575(struct e1000_hw *hw);
+STATIC s32  e1000_get_phy_id_82575(struct e1000_hw *hw);
 STATIC void e1000_release_swfw_sync_82575(struct e1000_hw *hw, u16 mask);
-static bool e1000_sgmii_active_82575(struct e1000_hw *hw);
+STATIC bool e1000_sgmii_active_82575(struct e1000_hw *hw);
 STATIC s32  e1000_reset_init_script_82575(struct e1000_hw *hw);
 STATIC s32  e1000_read_mac_addr_82575(struct e1000_hw *hw);
 STATIC void e1000_config_collision_dist_82575(struct e1000_hw *hw);
@@ -116,10 +115,11 @@ STATIC void e1000_lower_i2c_clk(struct e1000_hw *hw, u32 *i2cctl);
 STATIC s32 e1000_set_i2c_data(struct e1000_hw *hw, u32 *i2cctl, bool data);
 STATIC bool e1000_get_i2c_data(u32 *i2cctl);
 
-static const u16 e1000_82580_rxpbs_table[] = {
+STATIC const u16 e1000_82580_rxpbs_table[] = {
 	36, 72, 144, 1, 2, 4, 8, 16, 35, 70, 140 };
 #define E1000_82580_RXPBS_TABLE_SIZE \
-	(sizeof(e1000_82580_rxpbs_table)/sizeof(u16))
+	(sizeof(e1000_82580_rxpbs_table) / \
+	 sizeof(e1000_82580_rxpbs_table[0]))
 
 
 /**
@@ -272,6 +272,11 @@ STATIC s32 e1000_init_phy_params_82575(struct e1000_hw *hw)
 				hw->mac.ops.check_for_link =
 						e1000_check_for_link_media_swap;
 		}
+		if (phy->id == M88E1512_E_PHY_ID) {
+			ret_val = e1000_initialize_M88E1512_phy(hw);
+			if (ret_val)
+				goto out;
+		}
 		break;
 	case IGP03E1000_E_PHY_ID:
 	case IGP04E1000_E_PHY_ID:
@@ -386,6 +391,7 @@ s32 e1000_init_nvm_params_82575(struct e1000_hw *hw)
 		nvm->ops.update = e1000_update_nvm_checksum_82580;
 		break;
 	case e1000_i350:
+	case e1000_i354:
 		nvm->ops.validate = e1000_validate_nvm_checksum_i350;
 		nvm->ops.update = e1000_update_nvm_checksum_i350;
 		break;
@@ -448,6 +454,9 @@ STATIC s32 e1000_init_mac_params_82575(struct e1000_hw *hw)
 	else
 	mac->ops.reset_hw = e1000_reset_hw_82575;
 	/* hw initialization */
+	if ((mac->type == e1000_i210) || (mac->type == e1000_i211))
+		mac->ops.init_hw = e1000_init_hw_i210;
+	else
 	mac->ops.init_hw = e1000_init_hw_82575;
 	/* link setup */
 	mac->ops.setup_link = e1000_setup_link_generic;
@@ -748,6 +757,7 @@ out:
 STATIC s32 e1000_phy_hw_reset_sgmii_82575(struct e1000_hw *hw)
 {
 	s32 ret_val = E1000_SUCCESS;
+	struct e1000_phy_info *phy = &hw->phy;
 
 	DEBUGFUNC("e1000_phy_hw_reset_sgmii_82575");
 
@@ -770,7 +780,11 @@ STATIC s32 e1000_phy_hw_reset_sgmii_82575(struct e1000_hw *hw)
 		goto out;
 
 	ret_val = hw->phy.ops.commit(hw);
+	if (ret_val)
+		goto out;
 
+	if (phy->id == M88E1512_E_PHY_ID)
+		ret_val = e1000_initialize_M88E1512_phy(hw);
 out:
 	return ret_val;
 }
@@ -1244,6 +1258,11 @@ STATIC s32 e1000_check_for_link_media_swap(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
+	/* reset page to 0 */
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1112_PAGE_ADDR, 0);
+	if (ret_val)
+		return ret_val;
+
 	if (data & E1000_M88E1112_STATUS_LINK)
 		port = E1000_MEDIA_PORT_OTHER;
 
@@ -1296,7 +1315,7 @@ STATIC void e1000_power_up_serdes_link_82575(struct e1000_hw *hw)
  *  Using the physical coding sub-layer (PCS), retrieve the current speed and
  *  duplex, then store the values in the pointers provided.
  **/
-static s32 e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
+STATIC s32 e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
 						u16 *speed, u16 *duplex)
 {
 	struct e1000_mac_info *mac = &hw->mac;
@@ -1459,7 +1478,7 @@ STATIC s32 e1000_reset_hw_82575(struct e1000_hw *hw)
  *
  *  This inits the hardware readying it for operation.
  **/
-STATIC s32 e1000_init_hw_82575(struct e1000_hw *hw)
+s32 e1000_init_hw_82575(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
 	s32 ret_val;
@@ -1928,7 +1947,7 @@ out:
  *  which can be enabled for use in the embedded applications.  Simply
  *  return the current state of the sgmii interface.
  **/
-static bool e1000_sgmii_active_82575(struct e1000_hw *hw)
+STATIC bool e1000_sgmii_active_82575(struct e1000_hw *hw)
 {
 	struct e1000_dev_spec_82575 *dev_spec = &hw->dev_spec._82575;
 	return dev_spec->sgmii_active;
@@ -1978,7 +1997,7 @@ STATIC s32 e1000_reset_init_script_82575(struct e1000_hw *hw)
  **/
 STATIC s32 e1000_read_mac_addr_82575(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_read_mac_addr_82575");
 
@@ -2610,7 +2629,7 @@ out:
  **/
 STATIC s32 e1000_validate_nvm_checksum_82580(struct e1000_hw *hw)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 	u16 eeprom_regions_count = 1;
 	u16 j, nvm_data;
 	u16 nvm_offset;
@@ -2750,7 +2769,7 @@ out:
 STATIC s32 __e1000_access_emi_reg(struct e1000_hw *hw, u16 address,
 				  u16 *data, bool read)
 {
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("__e1000_access_emi_reg");
 
@@ -2777,6 +2796,95 @@ s32 e1000_read_emi_reg(struct e1000_hw *hw, u16 addr, u16 *data)
 	DEBUGFUNC("e1000_read_emi_reg");
 
 	return __e1000_access_emi_reg(hw, addr, data, true);
+}
+
+/**
+ *  e1000_initialize_M88E1512_phy - Initialize M88E1512 PHY
+ *  @hw: pointer to the HW structure
+ *
+ *  Initialize Marverl 1512 to work correctly with Avoton.
+ **/
+s32 e1000_initialize_M88E1512_phy(struct e1000_hw *hw)
+{
+	struct e1000_phy_info *phy = &hw->phy;
+	s32 ret_val = E1000_SUCCESS;
+
+	DEBUGFUNC("e1000_initialize_M88E1512_phy");
+
+	/* Check if this is correct PHY. */
+	if (phy->id != M88E1512_E_PHY_ID)
+		goto out;
+
+	/* Switch to PHY page 0xFF. */
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1543_PAGE_ADDR, 0x00FF);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_2, 0x214B);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_1, 0x2144);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_2, 0x0C28);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_1, 0x2146);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_2, 0xB233);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_1, 0x214D);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_2, 0xCC0C);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_1, 0x2159);
+	if (ret_val)
+		goto out;
+
+	/* Switch to PHY page 0xFB. */
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1543_PAGE_ADDR, 0x00FB);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_CFG_REG_3, 0x000D);
+	if (ret_val)
+		goto out;
+
+	/* Switch to PHY page 0x12. */
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1543_PAGE_ADDR, 0x12);
+	if (ret_val)
+		goto out;
+
+	/* Change mode to SGMII-to-Copper */
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1512_MODE, 0x8001);
+	if (ret_val)
+		goto out;
+
+	/* Return the PHY to page 0. */
+	ret_val = phy->ops.write_reg(hw, E1000_M88E1543_PAGE_ADDR, 0);
+	if (ret_val)
+		goto out;
+
+	ret_val = phy->ops.commit(hw);
+	if (ret_val) {
+		DEBUGOUT("Error committing the PHY changes\n");
+		return ret_val;
+	}
+
+	msec_delay(1000);
+out:
+	return ret_val;
 }
 
 /**

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -152,7 +152,7 @@ cfg_load(const char *filename, int flags)
 				goto error1;
 			}
 
-			rte_snprintf(cfg->sections[curr_section]->name,
+			snprintf(cfg->sections[curr_section]->name,
 					sizeof(cfg->sections[0]->name),
 					"%s", &buffer[1]);
 		}
@@ -189,8 +189,8 @@ cfg_load(const char *filename, int flags)
 			}
 
 			struct cfg_entry *entry = sect->entries[curr_entry];
-			rte_snprintf(entry->name, sizeof(entry->name), "%s", split[0]);
-			rte_snprintf(entry->value, sizeof(entry->value), "%s", split[1]);
+			snprintf(entry->name, sizeof(entry->name), "%s", split[0]);
+			snprintf(entry->value, sizeof(entry->value), "%s", split[1]);
 			_strip(entry->name, strnlen(entry->name, sizeof(entry->name)));
 			_strip(entry->value, strnlen(entry->value, sizeof(entry->value)));
 		}
@@ -249,7 +249,7 @@ cfg_sections(struct cfg_file *cfg, char *sections[], int max_sections)
 {
 	int i;
 	for (i = 0; i < cfg->num_sections && i < max_sections; i++) {
-		rte_snprintf(sections[i], CFG_NAME_LEN, "%s",  cfg->sections[i]->name);
+		snprintf(sections[i], CFG_NAME_LEN, "%s",  cfg->sections[i]->name);
 	}
 	return i;
 }
@@ -333,7 +333,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 	entry = cfg_get_entry(cfg, "port", "number of subports per port");
 	if (entry)
 		port_params->n_subports_per_port = (uint32_t)atoi(entry);
-	
+
 	entry = cfg_get_entry(cfg, "port", "number of pipes per subport");
 	if (entry)
 		port_params->n_pipes_per_subport = (uint32_t)atoi(entry);
@@ -341,7 +341,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 	entry = cfg_get_entry(cfg, "port", "queue sizes");
 	if (entry) {
 		char *next;
-		
+
 		for(j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j++) {
 			port_params->qsize[j] = (uint16_t)strtol(entry, &next, 10);
 			if (next == NULL)
@@ -355,7 +355,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		char str[32];
 
 		/* Parse WRED min thresholds */
-		rte_snprintf(str, sizeof(str), "tc %d wred min", j);
+		snprintf(str, sizeof(str), "tc %d wred min", j);
 		entry = cfg_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
@@ -371,7 +371,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		}
 
 		/* Parse WRED max thresholds */
-		rte_snprintf(str, sizeof(str), "tc %d wred max", j);
+		snprintf(str, sizeof(str), "tc %d wred max", j);
 		entry = cfg_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
@@ -387,7 +387,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		}
 
 		/* Parse WRED inverse mark probabilities */
-		rte_snprintf(str, sizeof(str), "tc %d wred inv prob", j);
+		snprintf(str, sizeof(str), "tc %d wred inv prob", j);
 		entry = cfg_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
@@ -404,7 +404,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		}
 
 		/* Parse WRED EWMA filter weights */
-		rte_snprintf(str, sizeof(str), "tc %d wred weight", j);
+		snprintf(str, sizeof(str), "tc %d wred weight", j);
 		entry = cfg_get_entry(cfg, "red", str);
 		if (entry) {
 			char *next;
@@ -420,7 +420,7 @@ cfg_load_port(struct cfg_file *cfg, struct rte_sched_port_params *port_params)
 		}
 	}
 #endif /* RTE_SCHED_RED */
-	
+
 	return 0;
 }
 
@@ -440,7 +440,7 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 
 	for (j = 0; j < profiles; j++) {
 		char pipe_name[32];
-		rte_snprintf(pipe_name, sizeof(pipe_name), "pipe profile %d", j);
+		snprintf(pipe_name, sizeof(pipe_name), "pipe profile %d", j);
 
 		entry = cfg_get_entry(cfg, pipe_name, "tb rate");
 		if (entry)
@@ -457,15 +457,15 @@ cfg_load_pipe(struct cfg_file *cfg, struct rte_sched_pipe_params *pipe_params)
 		entry = cfg_get_entry(cfg, pipe_name, "tc 0 rate");
 		if (entry)
 			pipe_params[j].tc_rate[0] = (uint32_t)atoi(entry);
-			
+
 		entry = cfg_get_entry(cfg, pipe_name, "tc 1 rate");
 		if (entry)
 			pipe_params[j].tc_rate[1] = (uint32_t)atoi(entry);
-			
+
 		entry = cfg_get_entry(cfg, pipe_name, "tc 2 rate");
 		if (entry)
 			pipe_params[j].tc_rate[2] = (uint32_t)atoi(entry);
-			
+
 		entry = cfg_get_entry(cfg, pipe_name, "tc 3 rate");
 		if (entry)
 			pipe_params[j].tc_rate[3] = (uint32_t)atoi(entry);
@@ -533,7 +533,7 @@ cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_
 
 	for (i = 0; i < MAX_SCHED_SUBPORTS; i++) {
 		char sec_name[CFG_NAME_LEN];
-		rte_snprintf(sec_name, sizeof(sec_name), "subport %d", i);
+		snprintf(sec_name, sizeof(sec_name), "subport %d", i);
 
 		if (cfg_has_section(cfg, sec_name)) {
 			entry = cfg_get_entry(cfg, sec_name, "tb rate");
@@ -592,7 +592,7 @@ cfg_load_subport(struct cfg_file *cfg, struct rte_sched_subport_params *subport_
 					for (k = begin; k <= end; k++) {
 						char profile_name[CFG_NAME_LEN];
 
-						rte_snprintf(profile_name, sizeof(profile_name),
+						snprintf(profile_name, sizeof(profile_name),
 								"pipe profile %d", profile);
 						if (cfg_has_section(cfg, profile_name))
 							app_pipe_to_profile[i][k] = profile;

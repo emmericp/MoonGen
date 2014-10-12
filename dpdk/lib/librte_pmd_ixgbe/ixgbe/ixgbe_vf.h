@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-Copyright (c) 2001-2012, Intel Corporation
+Copyright (c) 2001-2014, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef __IXGBE_VF_H__
 #define __IXGBE_VF_H__
-#ident "$Id: ixgbe_vf.h,v 1.34 2012/08/09 17:04:18 cmwyborn Exp $"
+#ident "$Id: ixgbe_vf.h,v 1.37 2013/11/07 08:18:53 jtkirshe Exp $"
 
 #define IXGBE_VF_IRQ_CLEAR_MASK	7
 #define IXGBE_VF_MAX_TX_QUEUES	8
@@ -120,7 +120,7 @@ u32 ixgbe_get_num_of_tx_queues_vf(struct ixgbe_hw *hw);
 u32 ixgbe_get_num_of_rx_queues_vf(struct ixgbe_hw *hw);
 s32 ixgbe_get_mac_addr_vf(struct ixgbe_hw *hw, u8 *mac_addr);
 s32 ixgbe_setup_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed speed,
-			    bool autoneg, bool autoneg_wait_to_complete);
+			    bool autoneg_wait_to_complete);
 s32 ixgbe_check_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 			    bool *link_up, bool autoneg_wait_to_complete);
 s32 ixgbe_set_rar_vf(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
@@ -135,4 +135,8 @@ int ixgbevf_negotiate_api_version(struct ixgbe_hw *hw, int api);
 int ixgbevf_get_queues(struct ixgbe_hw *hw, unsigned int *num_tcs,
 		       unsigned int *default_tc);
 
+#ifdef IXGBEVF_OSDEP2
+#include "ixgbevf_osdep2.h"
+
+#endif /* IXGBEVF_OSDEP2 */
 #endif /* __IXGBE_VF_H__ */

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -217,7 +217,7 @@ print_to_file(const char *cmdline, const char *config_name)
 	FILE *file;
 	char path[PATH_MAX];
 
-	rte_snprintf(path, sizeof(path), QEMU_CMD_FMT, config_name);
+	snprintf(path, sizeof(path), QEMU_CMD_FMT, config_name);
 	file = fopen(path, "w");
 	if (file == NULL) {
 		RTE_LOG(ERR, L2FWD_IVSHMEM, "Could not open '%s' \n", path);
@@ -243,7 +243,7 @@ generate_ivshmem_cmdline(const char *config_name)
 	if (print_to_file(cmdline, config_name) < 0)
 		return -1;
 
-	rte_ivshmem_metadata_dump(config_name);
+	rte_ivshmem_metadata_dump(stdout, config_name);
 	return 0;
 }
 
@@ -716,10 +716,6 @@ int main(int argc, char **argv)
 	if (l2fwd_ivshmem_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 
-	/* init driver(s) */
-	if (rte_pmd_init_all() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot init pmd\n");
-
 	if (rte_eal_pci_probe() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
@@ -875,7 +871,7 @@ int main(int argc, char **argv)
 	for (portid = 0; portid < nb_ports_available; portid++) {
 
 		/* RX ring. SP/SC because it's only used by host and a single VM */
-		rte_snprintf(name, sizeof(name), "%s%i", RX_RING_PREFIX, portid);
+		snprintf(name, sizeof(name), "%s%i", RX_RING_PREFIX, portid);
 		r = rte_ring_create(name, NB_MBUF,
 				SOCKET_ID_ANY, RING_F_SP_ENQ | RING_F_SC_DEQ);
 		if (r == NULL)
@@ -884,7 +880,7 @@ int main(int argc, char **argv)
 		ctrl->vm_ports[portid].rx_ring = r;
 
 		/* TX ring. SP/SC because it's only used by host and a single VM */
-		rte_snprintf(name, sizeof(name), "%s%i", TX_RING_PREFIX, portid);
+		snprintf(name, sizeof(name), "%s%i", TX_RING_PREFIX, portid);
 		r = rte_ring_create(name, NB_MBUF,
 				SOCKET_ID_ANY, RING_F_SP_ENQ | RING_F_SC_DEQ);
 		if (r == NULL)

@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2012-2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -75,6 +75,7 @@
 #include <rte_atomic.h>
 #include <malloc_heap.h>
 #include <rte_eth_ring.h>
+#include <rte_dev.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"
@@ -99,8 +100,7 @@
 #define OPT_BASE_VIRTADDR   "base-virtaddr"
 #define OPT_XEN_DOM0    "xen-dom0"
 #define OPT_CREATE_UIO_DEV "create-uio-dev"
-
-#define RTE_EAL_BLACKLIST_SIZE	0x100
+#define OPT_VFIO_INTR    "vfio-intr"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
@@ -211,6 +211,14 @@ rte_eal_config_create(void)
 	if (internal_config.no_shconf)
 		return;
 
+	/* map the config before hugepage address so that we don't waste a page */
+	if (internal_config.base_virtaddr != 0)
+		rte_mem_cfg_addr = (void *)
+			RTE_ALIGN_FLOOR(internal_config.base_virtaddr -
+			sizeof(struct rte_mem_config), sysconf(_SC_PAGE_SIZE));
+	else
+		rte_mem_cfg_addr = NULL;
+
 	if (mem_cfg_fd < 0){
 		mem_cfg_fd = open(pathname, O_RDWR | O_CREAT, 0660);
 		if (mem_cfg_fd < 0)
@@ -230,7 +238,7 @@ rte_eal_config_create(void)
 				"process running?\n", pathname);
 	}
 
-	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
+	rte_mem_cfg_addr = mmap(rte_mem_cfg_addr, sizeof(*rte_config.mem_config),
 				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
 
 	if (rte_mem_cfg_addr == MAP_FAILED){
@@ -238,13 +246,19 @@ rte_eal_config_create(void)
 	}
 	memcpy(rte_mem_cfg_addr, &early_mem_config, sizeof(early_mem_config));
 	rte_config.mem_config = (struct rte_mem_config *) rte_mem_cfg_addr;
+
+	/* store address of the config in the config itself so that secondary
+	 * processes could later map the config into this exact location */
+	rte_config.mem_config->mem_cfg_addr = (uintptr_t) rte_mem_cfg_addr;
+
 }
 
 /* attach to an existing shared memory config */
 static void
 rte_eal_config_attach(void)
 {
-	void *rte_mem_cfg_addr;
+	struct rte_mem_config *mem_config;
+
 	const char *pathname = eal_runtime_config_path();
 
 	if (internal_config.no_shconf)
@@ -256,13 +270,40 @@ rte_eal_config_attach(void)
 			rte_panic("Cannot open '%s' for rte_mem_config\n", pathname);
 	}
 
-	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config), 
-				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
-	close(mem_cfg_fd);
-	if (rte_mem_cfg_addr == MAP_FAILED)
+	/* map it as read-only first */
+	mem_config = (struct rte_mem_config *) mmap(NULL, sizeof(*mem_config),
+			PROT_READ, MAP_SHARED, mem_cfg_fd, 0);
+	if (mem_config == MAP_FAILED)
 		rte_panic("Cannot mmap memory for rte_config\n");
 
-	rte_config.mem_config = (struct rte_mem_config *) rte_mem_cfg_addr;
+	rte_config.mem_config = mem_config;
+}
+
+/* reattach the shared config at exact memory location primary process has it */
+static void
+rte_eal_config_reattach(void)
+{
+	struct rte_mem_config *mem_config;
+	void *rte_mem_cfg_addr;
+
+	if (internal_config.no_shconf)
+		return;
+
+	/* save the address primary process has mapped shared config to */
+	rte_mem_cfg_addr = (void *) (uintptr_t) rte_config.mem_config->mem_cfg_addr;
+
+	/* unmap original config */
+	munmap(rte_config.mem_config, sizeof(struct rte_mem_config));
+
+	/* remap the config at proper address */
+	mem_config = (struct rte_mem_config *) mmap(rte_mem_cfg_addr,
+			sizeof(*mem_config), PROT_READ | PROT_WRITE, MAP_SHARED,
+			mem_cfg_fd, 0);
+	close(mem_cfg_fd);
+	if (mem_config == MAP_FAILED || mem_config != rte_mem_cfg_addr)
+		rte_panic("Cannot mmap memory for rte_config\n");
+
+	rte_config.mem_config = mem_config;
 }
 
 /* Detect if we are a primary or a secondary process */
@@ -289,8 +330,6 @@ eal_proc_type_detect(void)
 static void
 rte_config_init(void)
 {
-	/* set the magic in configuration structure */
-	rte_config.magic = RTE_MAGIC;
 	rte_config.process_type = (internal_config.process_type == RTE_PROC_AUTO) ?
 			eal_proc_type_detect() : /* for auto, detect the type */
 			internal_config.process_type; /* otherwise use what's already set */
@@ -302,6 +341,7 @@ rte_config_init(void)
 	case RTE_PROC_SECONDARY:
 		rte_eal_config_attach();
 		rte_eal_mcfg_wait_complete(rte_config.mem_config);
+		rte_eal_config_reattach();
 		break;
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:
@@ -360,9 +400,10 @@ eal_usage(const char *prgname)
 	       "  --"OPT_VDEV": add a virtual device.\n"
 	       "               The argument format is <driver><id>[,key=val,...]\n"
 	       "               (ex: --vdev=eth_pcap0,iface=eth2).\n"
-	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of "
-	    		   "native RDTSC\n"
+	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of native RDTSC\n"
 	       "  --"OPT_BASE_VIRTADDR": specify base virtual address\n"
+	       "  --"OPT_VFIO_INTR": specify desired interrupt mode for VFIO "
+			   "(legacy|msi|msix)\n"
 	       "  --"OPT_CREATE_UIO_DEV": create /dev/uioX (usually done by hotplug)\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
@@ -399,11 +440,11 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func )
 static int xdigit2val(unsigned char c)
 {
 	int val;
-	if(isdigit(c)) 
+	if(isdigit(c))
 		val = c - '0';
 	else if(isupper(c))
 		val = c - 'A' + 10;
-	else 
+	else
 		val = c - 'a' + 10;
 	return val;
 }
@@ -562,6 +603,7 @@ eal_parse_base_virtaddr(const char *arg)
 	char *end;
 	uint64_t addr;
 
+	errno = 0;
 	addr = strtoull(arg, &end, 16);
 
 	/* check for errors */
@@ -579,6 +621,28 @@ eal_parse_base_virtaddr(const char *arg)
 	                                                   RTE_PGSIZE_2M);
 
 	return 0;
+}
+
+static int
+eal_parse_vfio_intr(const char *mode)
+{
+	unsigned i;
+	static struct {
+		const char *name;
+		enum rte_intr_mode value;
+	} map[] = {
+		{ "legacy", RTE_INTR_MODE_LEGACY },
+		{ "msi", RTE_INTR_MODE_MSI },
+		{ "msix", RTE_INTR_MODE_MSIX },
+	};
+
+	for (i = 0; i < RTE_DIM(map); i++) {
+		if (!strcmp(mode, map[i].name)) {
+			internal_config.vfio_intr_mode = map[i].value;
+			return 0;
+		}
+	}
+	return -1;
 }
 
 static inline size_t
@@ -635,6 +699,7 @@ eal_parse_args(int argc, char **argv)
 		{OPT_PCI_BLACKLIST, 1, 0, 0},
 		{OPT_VDEV, 1, 0, 0},
 		{OPT_SYSLOG, 1, NULL, 0},
+		{OPT_VFIO_INTR, 1, NULL, 0},
 		{OPT_BASE_VIRTADDR, 1, 0, 0},
 		{OPT_XEN_DOM0, 0, 0, 0},
 		{OPT_CREATE_UIO_DEV, 1, NULL, 0},
@@ -652,6 +717,8 @@ eal_parse_args(int argc, char **argv)
 	internal_config.force_sockets = 0;
 	internal_config.syslog_facility = LOG_DAEMON;
 	internal_config.xen_dom0_support = 0;
+	/* if set to NONE, interrupt mode is determined automatically */
+	internal_config.vfio_intr_mode = RTE_INTR_MODE_NONE;
 #ifdef RTE_LIBEAL_USE_HPET
 	internal_config.no_hpet = 0;
 #else
@@ -755,7 +822,7 @@ eal_parse_args(int argc, char **argv)
 					"running on Dom0, please configure"
 					" RTE_LIBRTE_XEN_DOM0=y\n");
 				return -1;
-		#endif 
+		#endif
 			}
 			else if (!strcmp(lgopts[option_index].name, OPT_NO_PCI)) {
 				internal_config.no_pci = 1;
@@ -825,6 +892,14 @@ eal_parse_args(int argc, char **argv)
 				if (eal_parse_base_virtaddr(optarg) < 0) {
 					RTE_LOG(ERR, EAL, "invalid parameter for --"
 							OPT_BASE_VIRTADDR "\n");
+					eal_usage(prgname);
+					return -1;
+				}
+			}
+			else if (!strcmp(lgopts[option_index].name, OPT_VFIO_INTR)) {
+				if (eal_parse_vfio_intr(optarg) < 0) {
+					RTE_LOG(ERR, EAL, "invalid parameters for --"
+							OPT_VFIO_INTR "\n");
 					eal_usage(prgname);
 					return -1;
 				}
@@ -934,7 +1009,7 @@ sync_func(__attribute__((unused)) void *arg)
 	return 0;
 }
 
-inline static void 
+inline static void
 rte_eal_mcfg_complete(void)
 {
 	/* ALL shared mem_config related INIT DONE */
@@ -943,7 +1018,7 @@ rte_eal_mcfg_complete(void)
 }
 
 /*
- * Request iopl priviledge for all RPL, returns 0 on success
+ * Request iopl privilege for all RPL, returns 0 on success
  */
 static int
 rte_eal_iopl_init(void)
@@ -1009,7 +1084,7 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_iopl_init() == 0)
 		rte_config.flags |= EAL_FLG_HIGH_IOPL;
-	
+
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
 
@@ -1023,7 +1098,7 @@ rte_eal_init(int argc, char **argv)
 
 	/* the directories are locked during eal_hugepage_info_init */
 	eal_hugedirs_unlock();
-	
+
 	if (rte_eal_memzone_init() < 0)
 		rte_panic("Cannot init memzone\n");
 
@@ -1063,8 +1138,8 @@ rte_eal_init(int argc, char **argv)
 	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%x)\n",
 		rte_config.master_lcore, (int)thread_id);
 
-	if (rte_eal_vdev_init() < 0)
-		rte_panic("Cannot init virtual devices\n");
+	if (rte_eal_dev_init(PMD_INIT_PRE_PCI_PROBE) < 0)
+		rte_panic("Cannot init pmd devices\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
@@ -1092,6 +1167,14 @@ rte_eal_init(int argc, char **argv)
 	 */
 	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MASTER);
 	rte_eal_mp_wait_lcore();
+
+	/* Probe & Initialize PCI devices */
+	if (rte_eal_pci_probe())
+			rte_panic("Cannot probe PCI\n");
+
+	/* Initialize any outstanding devices */
+	if (rte_eal_dev_init(PMD_INIT_POST_PCI_PROBE) < 0)
+		rte_panic("Cannot init pmd devices\n");
 
 	return fctret;
 }

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -39,6 +39,8 @@
  * Simple API to dump out memory in a special hex format.
  */
 
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,6 +48,8 @@ extern "C" {
 /**
 * Dump out memory in a special hex dump format.
 *
+* @param f
+*   		A pointer to a file for output
 * @param title
 * 		If not NULL this string is printed as a header to the output.
 * @param buf
@@ -57,11 +61,13 @@ extern "C" {
 */
 
 extern void
-rte_hexdump(const char * title, const void * buf, unsigned int len);
+rte_hexdump(FILE *f, const char * title, const void * buf, unsigned int len);
 
 /**
 * Dump out memory in a hex format with colons between bytes.
 *
+* @param f
+*   		A pointer to a file for output
 * @param title
 * 		If not NULL this string is printed as a header to the output.
 * @param buf
@@ -73,7 +79,7 @@ rte_hexdump(const char * title, const void * buf, unsigned int len);
 */
 
 void
-rte_memdump(const char * title, const void * buf, unsigned int len);
+rte_memdump(FILE *f, const char * title, const void * buf, unsigned int len);
 
 
 #ifdef __cplusplus

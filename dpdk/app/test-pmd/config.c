@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -100,12 +100,12 @@ static void
 print_ethaddr(const char *name, struct ether_addr *eth_addr)
 {
 	printf("%s%02X:%02X:%02X:%02X:%02X:%02X", name,
-	       eth_addr->addr_bytes[0],
-	       eth_addr->addr_bytes[1],
-	       eth_addr->addr_bytes[2],
-	       eth_addr->addr_bytes[3],
-	       eth_addr->addr_bytes[4],
-	       eth_addr->addr_bytes[5]);
+	       (unsigned int)eth_addr->addr_bytes[0],
+	       (unsigned int)eth_addr->addr_bytes[1],
+	       (unsigned int)eth_addr->addr_bytes[2],
+	       (unsigned int)eth_addr->addr_bytes[3],
+	       (unsigned int)eth_addr->addr_bytes[4],
+	       (unsigned int)eth_addr->addr_bytes[5]);
 }
 
 void
@@ -126,19 +126,29 @@ nic_stats_display(portid_t port_id)
 	       nic_stats_border, port_id, nic_stats_border);
 
 	if ((!port->rx_queue_stats_mapping_enabled) && (!port->tx_queue_stats_mapping_enabled)) {
-		printf("  RX-packets: %-10"PRIu64" RX-errors: %-10"PRIu64"RX-bytes: "
-		       "%-"PRIu64"\n"
-		       "  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64"TX-bytes: "
+		printf("  RX-packets: %-10"PRIu64" RX-missed: %-10"PRIu64" RX-bytes:  "
 		       "%-"PRIu64"\n",
-		       stats.ipackets, stats.ierrors, stats.ibytes,
+		       stats.ipackets, stats.imissed, stats.ibytes);
+		printf("  RX-badcrc:  %-10"PRIu64" RX-badlen: %-10"PRIu64" RX-errors: "
+		       "%-"PRIu64"\n",
+		       stats.ibadcrc, stats.ibadlen, stats.ierrors);
+		printf("  RX-nombuf:  %-10"PRIu64"\n",
+		       stats.rx_nombuf);
+		printf("  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64" TX-bytes:  "
+		       "%-"PRIu64"\n",
 		       stats.opackets, stats.oerrors, stats.obytes);
 	}
 	else {
 		printf("  RX-packets:              %10"PRIu64"    RX-errors: %10"PRIu64
-		       "    RX-bytes: %10"PRIu64"\n"
-		       "  TX-packets:              %10"PRIu64"    TX-errors: %10"PRIu64
+		       "    RX-bytes: %10"PRIu64"\n",
+		       stats.ipackets, stats.ierrors, stats.ibytes);
+		printf("  RX-badcrc:               %10"PRIu64"    RX-badlen: %10"PRIu64
+		       "  RX-errors:  %10"PRIu64"\n",
+		       stats.ibadcrc, stats.ibadlen, stats.ierrors);
+		printf("  RX-nombuf:               %10"PRIu64"\n",
+		       stats.rx_nombuf);
+		printf("  TX-packets:              %10"PRIu64"    TX-errors: %10"PRIu64
 		       "    TX-bytes: %10"PRIu64"\n",
-		       stats.ipackets, stats.ierrors, stats.ibytes,
 		       stats.opackets, stats.oerrors, stats.obytes);
 	}
 
@@ -242,6 +252,7 @@ void
 port_infos_display(portid_t port_id)
 {
 	struct rte_port *port;
+	struct ether_addr mac_addr;
 	struct rte_eth_link link;
 	int vlan_offload;
 	struct rte_mempool * mp;
@@ -255,8 +266,9 @@ port_infos_display(portid_t port_id)
 	rte_eth_link_get_nowait(port_id, &link);
 	printf("\n%s Infos for port %-2d %s\n",
 	       info_border, port_id, info_border);
-	print_ethaddr("MAC address: ", &port->eth_addr);
-	printf("\nConnect to socket: %d", port->socket_id);
+	rte_eth_macaddr_get(port_id, &mac_addr);
+	print_ethaddr("MAC address: ", &mac_addr);
+	printf("\nConnect to socket: %u", port->socket_id);
 
 	if (port_numa[port_id] != NUMA_NO_CONFIG) {
 		mp = mbuf_pool_find(port_numa[port_id]);
@@ -264,7 +276,7 @@ port_infos_display(portid_t port_id)
 			printf("\nmemory allocation on the socket: %d",
 							port_numa[port_id]);
 	} else
-		printf("\nmemory allocation on the socket: %d",port->socket_id);
+		printf("\nmemory allocation on the socket: %u",port->socket_id);
 
 	printf("\nLink status: %s\n", (link.link_status) ? ("up") : ("down"));
 	printf("Link speed: %u Mbps\n", (unsigned) link.link_speed);
@@ -299,7 +311,7 @@ port_infos_display(portid_t port_id)
 	}
 }
 
-static int
+int
 port_id_is_invalid(portid_t port_id)
 {
 	if (port_id < nb_ports)
@@ -493,10 +505,23 @@ port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
 	display_port_reg_value(port_id, reg_off, reg_v);
 }
 
+void
+port_mtu_set(portid_t port_id, uint16_t mtu)
+{
+	int diag;
+
+	if (port_id_is_invalid(port_id))
+		return;
+	diag = rte_eth_dev_set_mtu(port_id, mtu);
+	if (diag == 0)
+		return;
+	printf("Set MTU failed. diag=%d\n", diag);
+}
+
 /*
  * RX/TX ring descriptors display functions.
  */
-static int
+int
 rx_queue_id_is_invalid(queueid_t rxq_id)
 {
 	if (rxq_id < nb_rxq)
@@ -505,7 +530,7 @@ rx_queue_id_is_invalid(queueid_t rxq_id)
 	return 1;
 }
 
-static int
+int
 tx_queue_id_is_invalid(queueid_t txq_id)
 {
 	if (txq_id < nb_txq)
@@ -540,7 +565,7 @@ ring_dma_zone_lookup(const char *ring_name, uint8_t port_id, uint16_t q_id)
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
-	rte_snprintf(mz_name, sizeof(mz_name), "%s_%s_%d_%d",
+	snprintf(mz_name, sizeof(mz_name), "%s_%s_%d_%d",
 		 ports[port_id].dev_info.driver_name, ring_name, port_id, q_id);
 	mz = rte_memzone_lookup(mz_name);
 	if (mz == NULL)
@@ -558,23 +583,78 @@ union igb_ring_dword {
 	} words;
 };
 
-struct igb_ring_desc {
+struct igb_ring_desc_32_bytes {
+	union igb_ring_dword lo_dword;
+	union igb_ring_dword hi_dword;
+	union igb_ring_dword resv1;
+	union igb_ring_dword resv2;
+};
+
+struct igb_ring_desc_16_bytes {
 	union igb_ring_dword lo_dword;
 	union igb_ring_dword hi_dword;
 };
 
 static void
-ring_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
+ring_rxd_display_dword(union igb_ring_dword dword)
 {
-	struct igb_ring_desc *ring;
-	struct igb_ring_desc rd;
+	printf("    0x%08X - 0x%08X\n", (unsigned)dword.words.lo,
+					(unsigned)dword.words.hi);
+}
 
-	ring = (struct igb_ring_desc *) ring_mz->addr;
-	rd.lo_dword = rte_le_to_cpu_64(ring[desc_id].lo_dword);
-	rd.hi_dword = rte_le_to_cpu_64(ring[desc_id].hi_dword);
+static void
+ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+			   uint8_t port_id,
+#else
+			   __rte_unused uint8_t port_id,
+#endif
+			   uint16_t desc_id)
+{
+	struct igb_ring_desc_16_bytes *ring =
+		(struct igb_ring_desc_16_bytes *)ring_mz->addr;
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+	struct rte_eth_dev_info dev_info;
+
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (strstr(dev_info.driver_name, "i40e") != NULL) {
+		/* 32 bytes RX descriptor, i40e only */
+		struct igb_ring_desc_32_bytes *ring =
+			(struct igb_ring_desc_32_bytes *)ring_mz->addr;
+
+		ring_rxd_display_dword(rte_le_to_cpu_64(
+				ring[desc_id].lo_dword));
+		ring_rxd_display_dword(rte_le_to_cpu_64(
+				ring[desc_id].hi_dword));
+		ring_rxd_display_dword(rte_le_to_cpu_64(
+				ring[desc_id].resv1));
+		ring_rxd_display_dword(rte_le_to_cpu_64(
+				ring[desc_id].resv2));
+		return;
+	}
+#endif
+	/* 16 bytes RX descriptor */
+	ring_rxd_display_dword(rte_le_to_cpu_64(
+			ring[desc_id].lo_dword));
+	ring_rxd_display_dword(rte_le_to_cpu_64(
+			ring[desc_id].hi_dword));
+}
+
+static void
+ring_tx_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
+{
+	struct igb_ring_desc_16_bytes *ring;
+	struct igb_ring_desc_16_bytes txd;
+
+	ring = (struct igb_ring_desc_16_bytes *)ring_mz->addr;
+	txd.lo_dword = rte_le_to_cpu_64(ring[desc_id].lo_dword);
+	txd.hi_dword = rte_le_to_cpu_64(ring[desc_id].hi_dword);
 	printf("    0x%08X - 0x%08X / 0x%08X - 0x%08X\n",
-		(unsigned)rd.lo_dword.words.lo, (unsigned)rd.lo_dword.words.hi,
-		(unsigned)rd.hi_dword.words.lo, (unsigned)rd.hi_dword.words.hi);
+			(unsigned)txd.lo_dword.words.lo,
+			(unsigned)txd.lo_dword.words.hi,
+			(unsigned)txd.hi_dword.words.lo,
+			(unsigned)txd.hi_dword.words.hi);
 }
 
 void
@@ -591,7 +671,7 @@ rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id)
 	rx_mz = ring_dma_zone_lookup("rx_ring", port_id, rxq_id);
 	if (rx_mz == NULL)
 		return;
-	ring_descriptor_display(rx_mz, rxd_id);
+	ring_rx_descriptor_display(rx_mz, port_id, rxd_id);
 }
 
 void
@@ -608,7 +688,7 @@ tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id)
 	tx_mz = ring_dma_zone_lookup("tx_ring", port_id, txq_id);
 	if (tx_mz == NULL)
 		return;
-	ring_descriptor_display(tx_mz, txd_id);
+	ring_tx_descriptor_display(tx_mz, txd_id);
 }
 
 void
@@ -653,7 +733,7 @@ port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
 	uint8_t i,j;
 	int ret;
 
-	if (port_id_is_invalid(port_id)) 
+	if (port_id_is_invalid(port_id))
 		return;
 
 	ret = rte_eth_dev_rss_reta_query(port_id, reta_conf);
@@ -666,18 +746,111 @@ port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
 		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
 			if (reta_conf->mask_lo & (uint64_t)(1ULL << i))
 				printf("RSS RETA configuration: hash index=%d,"
-					"queue=%d\n",i,reta_conf->reta[i]);	
+					"queue=%d\n",i,reta_conf->reta[i]);
 		}
 	}
-	
+
 	if (reta_conf->mask_hi != 0) {
 		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
 			if(reta_conf->mask_hi & (uint64_t)(1ULL << i)) {
-				j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);		
+				j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);
 				printf("RSS RETA configuration: hash index=%d,"
 					"queue=%d\n",j,reta_conf->reta[j]);
 			}
 		}
+	}
+}
+
+/*
+ * Displays the RSS hash functions of a port, and, optionaly, the RSS hash
+ * key of the port.
+ */
+void
+port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
+{
+	struct rte_eth_rss_conf rss_conf;
+	uint8_t rss_key[10 * 4];
+	uint16_t rss_hf;
+	uint8_t i;
+	int diag;
+
+	if (port_id_is_invalid(port_id))
+		return;
+	/* Get RSS hash key if asked to display it */
+	rss_conf.rss_key = (show_rss_key) ? rss_key : NULL;
+	diag = rte_eth_dev_rss_hash_conf_get(port_id, &rss_conf);
+	if (diag != 0) {
+		switch (diag) {
+		case -ENODEV:
+			printf("port index %d invalid\n", port_id);
+			break;
+		case -ENOTSUP:
+			printf("operation not supported by device\n");
+			break;
+		default:
+			printf("operation failed - diag=%d\n", diag);
+			break;
+		}
+		return;
+	}
+	rss_hf = rss_conf.rss_hf;
+	if (rss_hf == 0) {
+		printf("RSS disabled\n");
+		return;
+	}
+	printf("RSS functions:\n ");
+	if (rss_hf & ETH_RSS_IPV4)
+		printf("ip4");
+	if (rss_hf & ETH_RSS_IPV4_TCP)
+		printf(" tcp4");
+	if (rss_hf & ETH_RSS_IPV4_UDP)
+		printf(" udp4");
+	if (rss_hf & ETH_RSS_IPV6)
+		printf(" ip6");
+	if (rss_hf & ETH_RSS_IPV6_EX)
+		printf(" ip6-ex");
+	if (rss_hf & ETH_RSS_IPV6_TCP)
+		printf(" tcp6");
+	if (rss_hf & ETH_RSS_IPV6_TCP_EX)
+		printf(" tcp6-ex");
+	if (rss_hf & ETH_RSS_IPV6_UDP)
+		printf(" udp6");
+	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
+		printf(" udp6-ex");
+	printf("\n");
+	if (!show_rss_key)
+		return;
+	printf("RSS key:\n");
+	for (i = 0; i < sizeof(rss_key); i++)
+		printf("%02X", rss_key[i]);
+	printf("\n");
+}
+
+void
+port_rss_hash_key_update(portid_t port_id, uint8_t *hash_key)
+{
+	struct rte_eth_rss_conf rss_conf;
+	int diag;
+
+	rss_conf.rss_key = NULL;
+	diag = rte_eth_dev_rss_hash_conf_get(port_id, &rss_conf);
+	if (diag == 0) {
+		rss_conf.rss_key = hash_key;
+		diag = rte_eth_dev_rss_hash_update(port_id, &rss_conf);
+	}
+	if (diag == 0)
+		return;
+
+	switch (diag) {
+	case -ENODEV:
+		printf("port index %d invalid\n", port_id);
+		break;
+	case -ENOTSUP:
+		printf("operation not supported by device\n");
+		break;
+	default:
+		printf("operation failed - diag=%d\n", diag);
+		break;
 	}
 }
 
@@ -731,7 +904,8 @@ simple_fwd_config_setup(void)
 	portid_t j;
 	portid_t inc = 2;
 
-	if (port_topology == PORT_TOPOLOGY_CHAINED) {
+	if (port_topology == PORT_TOPOLOGY_CHAINED ||
+	    port_topology == PORT_TOPOLOGY_LOOP) {
 		inc = 1;
 	} else if (nb_fwd_ports % 2) {
 		printf("\nWarning! Cannot handle an odd number of ports "
@@ -759,7 +933,10 @@ simple_fwd_config_setup(void)
 	setup_fwd_config_of_each_lcore(&cur_fwd_config);
 
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i = (portid_t) (i + inc)) {
-		j = (portid_t) ((i + 1) % cur_fwd_config.nb_fwd_ports);
+		if (port_topology != PORT_TOPOLOGY_LOOP)
+			j = (portid_t) ((i + 1) % cur_fwd_config.nb_fwd_ports);
+		else
+			j = i;
 		fwd_streams[i]->rx_port   = fwd_ports_ids[i];
 		fwd_streams[i]->rx_queue  = 0;
 		fwd_streams[i]->tx_port   = fwd_ports_ids[j];
@@ -823,10 +1000,18 @@ rss_fwd_config_setup(void)
 		struct fwd_stream *fs;
 
 		fs = fwd_streams[lc_id];
+
 		if ((rxp & 0x1) == 0)
 			txp = (portid_t) (rxp + 1);
 		else
 			txp = (portid_t) (rxp - 1);
+		/*
+		 * if we are in loopback, simply send stuff out through the
+		 * ingress port
+		 */
+		if (port_topology == PORT_TOPOLOGY_LOOP)
+			txp = rxp;
+
 		fs->rx_port = fwd_ports_ids[rxp];
 		fs->rx_queue = rxq;
 		fs->tx_port = fwd_ports_ids[txp];
@@ -857,13 +1042,13 @@ dcb_rxq_2_txq_mapping(queueid_t rxq, queueid_t *txq)
 	if(dcb_q_mapping == DCB_4_TCS_Q_MAPPING) {
 
 		if (rxq < 32)
-			/* tc0: 0-31 */ 
-			*txq = rxq;  
+			/* tc0: 0-31 */
+			*txq = rxq;
 		else if (rxq < 64) {
-			/* tc1: 64-95 */ 
+			/* tc1: 64-95 */
 			*txq =  (uint16_t)(rxq + 32);
-		} 
-		else {  
+		}
+		else {
 			/* tc2: 96-111;tc3:112-127 */
 			*txq =  (uint16_t)(rxq/2 + 64);
 		}
@@ -889,7 +1074,7 @@ dcb_rxq_2_txq_mapping(queueid_t rxq, queueid_t *txq)
 
 /**
  * For the DCB forwarding test, each core is assigned on every port multi-transmit
- * queue. 
+ * queue.
  *
  * Each core is assigned a multi-stream, each stream being composed of
  * a RX queue to poll on a RX port for input messages, associated with
@@ -901,7 +1086,7 @@ dcb_rxq_2_txq_mapping(queueid_t rxq, queueid_t *txq)
  *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd
  *    - TxQl = RxQj
  * In non-VT mode,
- *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd  
+ *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd
  *    There is a mapping of RxQj to TxQl to be required,and the mapping was implemented
  *    in dcb_rxq_2_txq_mapping function.
  */
@@ -919,7 +1104,7 @@ dcb_fwd_config_setup(void)
 
 	cur_fwd_config.nb_fwd_lcores = (lcoreid_t) nb_fwd_lcores;
 	cur_fwd_config.nb_fwd_ports = nb_fwd_ports;
-	cur_fwd_config.nb_fwd_streams = 
+	cur_fwd_config.nb_fwd_streams =
 		(streamid_t) (nb_q * cur_fwd_config.nb_fwd_ports);
 
 	/* reinitialize forwarding streams */
@@ -958,10 +1143,69 @@ dcb_fwd_config_setup(void)
 	}
 }
 
+static void
+icmp_echo_config_setup(void)
+{
+	portid_t  rxp;
+	queueid_t rxq;
+	lcoreid_t lc_id;
+	uint16_t  sm_id;
+
+	if ((nb_txq * nb_fwd_ports) < nb_fwd_lcores)
+		cur_fwd_config.nb_fwd_lcores = (lcoreid_t)
+			(nb_txq * nb_fwd_ports);
+	else
+		cur_fwd_config.nb_fwd_lcores = (lcoreid_t) nb_fwd_lcores;
+	cur_fwd_config.nb_fwd_ports = nb_fwd_ports;
+	cur_fwd_config.nb_fwd_streams =
+		(streamid_t) (nb_rxq * cur_fwd_config.nb_fwd_ports);
+	if (cur_fwd_config.nb_fwd_streams < cur_fwd_config.nb_fwd_lcores)
+		cur_fwd_config.nb_fwd_lcores =
+			(lcoreid_t)cur_fwd_config.nb_fwd_streams;
+	if (verbose_level > 0) {
+		printf("%s fwd_cores=%d fwd_ports=%d fwd_streams=%d\n",
+		       __FUNCTION__,
+		       cur_fwd_config.nb_fwd_lcores,
+		       cur_fwd_config.nb_fwd_ports,
+		       cur_fwd_config.nb_fwd_streams);
+	}
+
+	/* reinitialize forwarding streams */
+	init_fwd_streams();
+	setup_fwd_config_of_each_lcore(&cur_fwd_config);
+	rxp = 0; rxq = 0;
+	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_lcores; lc_id++) {
+		if (verbose_level > 0)
+			printf("  core=%d: \n", lc_id);
+		for (sm_id = 0; sm_id < fwd_lcores[lc_id]->stream_nb; sm_id++) {
+			struct fwd_stream *fs;
+			fs = fwd_streams[fwd_lcores[lc_id]->stream_idx + sm_id];
+			fs->rx_port = fwd_ports_ids[rxp];
+			fs->rx_queue = rxq;
+			fs->tx_port = fs->rx_port;
+			fs->tx_queue = lc_id;
+			fs->peer_addr = fs->tx_port;
+			if (verbose_level > 0)
+				printf("  stream=%d port=%d rxq=%d txq=%d\n",
+				       sm_id, fs->rx_port, fs->rx_queue,
+				       fs->tx_queue);
+			rxq = (queueid_t) (rxq + 1);
+			if (rxq == nb_rxq) {
+				rxq = 0;
+				rxp = (portid_t) (rxp + 1);
+			}
+		}
+	}
+}
+
 void
 fwd_config_setup(void)
 {
 	cur_fwd_config.fwd_eng = cur_fwd_eng;
+	if (strcmp(cur_fwd_eng->fwd_mode_name, "icmpecho") == 0) {
+		icmp_echo_config_setup();
+		return;
+	}
 	if ((nb_rxq > 1) && (nb_txq > 1)){
 		if (dcb_config)
 			dcb_fwd_config_setup();
@@ -1018,7 +1262,7 @@ fwd_config_display(void)
 	if((dcb_config) && (nb_fwd_lcores == 1)) {
 		printf("In DCB mode,the nb forwarding cores should be larger than 1\n");
 		return;
-	} 
+	}
 	fwd_config_setup();
 	pkt_fwd_config_display(&cur_fwd_config);
 }
@@ -1219,6 +1463,25 @@ set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
 	tx_pkt_nb_segs = (uint8_t) nb_segs;
 }
 
+char*
+list_pkt_forwarding_modes(void)
+{
+	static char fwd_modes[128] = "";
+	const char *separator = "|";
+	struct fwd_engine *fwd_eng;
+	unsigned i = 0;
+
+	if (strlen (fwd_modes) == 0) {
+		while ((fwd_eng = fwd_engines[i++]) != NULL) {
+			strcat(fwd_modes, fwd_eng->fwd_mode_name);
+			strcat(fwd_modes, separator);
+		}
+		fwd_modes[strlen(fwd_modes) - strlen(separator)] = '\0';
+	}
+
+	return fwd_modes;
+}
+
 void
 set_pkt_forwarding_mode(const char *fwd_mode_name)
 {
@@ -1387,6 +1650,15 @@ tx_vlan_reset(portid_t port_id)
 	if (port_id_is_invalid(port_id))
 		return;
 	ports[port_id].tx_ol_flags &= ~PKT_TX_VLAN_PKT;
+}
+
+void
+tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on)
+{
+	if (port_id_is_invalid(port_id))
+		return;
+
+	rte_eth_dev_set_vlan_pvid(port_id, vlan_id, on);
 }
 
 void
@@ -1603,11 +1875,11 @@ fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks)
 	       "diag=%d\n", port_id, diag);
 }
 
-void 
+void
 set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
 	int diag;
-	
+
 	if (port_id_is_invalid(port_id))
 		return;
 	if (is_rx)
@@ -1616,13 +1888,13 @@ set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 		diag = rte_eth_dev_set_vf_tx(port_id,vf,on);
 	if (diag == 0)
 		return;
-	if(is_rx)	
+	if(is_rx)
 		printf("rte_eth_dev_set_vf_rx for port_id=%d failed "
 	       		"diag=%d\n", port_id, diag);
 	else
 		printf("rte_eth_dev_set_vf_tx for port_id=%d failed "
 	       		"diag=%d\n", port_id, diag);
-		
+
 }
 
 void
@@ -1641,3 +1913,197 @@ set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, uint64_t vf_mask, uint8_t on)
 	       "diag=%d\n", port_id, diag);
 }
 
+int
+set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
+{
+	int diag;
+	struct rte_eth_link link;
+
+	if (port_id_is_invalid(port_id))
+		return 1;
+	rte_eth_link_get_nowait(port_id, &link);
+	if (rate > link.link_speed) {
+		printf("Invalid rate value:%u bigger than link speed: %u\n",
+			rate, link.link_speed);
+		return 1;
+	}
+	diag = rte_eth_set_queue_rate_limit(port_id, queue_idx, rate);
+	if (diag == 0)
+		return diag;
+	printf("rte_eth_set_queue_rate_limit for port_id=%d failed diag=%d\n",
+		port_id, diag);
+	return diag;
+}
+
+int
+set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
+{
+	int diag;
+	struct rte_eth_link link;
+
+	if (q_msk == 0)
+		return 0;
+
+	if (port_id_is_invalid(port_id))
+		return 1;
+	rte_eth_link_get_nowait(port_id, &link);
+	if (rate > link.link_speed) {
+		printf("Invalid rate value:%u bigger than link speed: %u\n",
+			rate, link.link_speed);
+		return 1;
+	}
+	diag = rte_eth_set_vf_rate_limit(port_id, vf, rate, q_msk);
+	if (diag == 0)
+		return diag;
+	printf("rte_eth_set_vf_rate_limit for port_id=%d failed diag=%d\n",
+		port_id, diag);
+	return diag;
+}
+
+void
+get_ethertype_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_ethertype_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_ethertype_filter(port_id, index,
+				&filter, &rx_queue);
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("filter[%d] is not enabled\n", index);
+		else
+			printf("get ethertype filter fails(%s)\n", strerror(-ret));
+		return;
+	} else {
+		printf("filter[%d]:\n", index);
+		printf("    ethertype:  0x%04x\n",
+			rte_le_to_cpu_32(filter.ethertype));
+		printf("    priority: %s, %d\n",
+			filter.priority_en ? "enable" : "disable",
+			filter.priority);
+		printf("    queue: %d\n", rx_queue);
+	}
+}
+
+void
+get_syn_filter(uint8_t port_id)
+{
+	struct rte_syn_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_syn_filter(port_id, &filter, &rx_queue);
+
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("syn filter is not enabled\n");
+		else
+			printf("get syn filter fails(%s)\n", strerror(-ret));
+		return;
+	}
+	printf("syn filter: priority: %s, queue: %d\n",
+		filter.hig_pri ? "high" : "low",
+		rx_queue);
+}
+void
+get_2tuple_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_2tuple_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_2tuple_filter(port_id, index,
+				&filter, &rx_queue);
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("filter[%d] is not enabled\n", index);
+		else
+			printf("get 2tuple filter fails(%s)\n", strerror(-ret));
+		return;
+	} else {
+		printf("filter[%d]:\n", index);
+		printf("    Destination Port:     0x%04x    mask: %d\n",
+			rte_be_to_cpu_16(filter.dst_port),
+			filter.dst_port_mask ? 0 : 1);
+		printf("    protocol:  0x%02x     mask:%d     tcp_flags: 0x%02x\n",
+			filter.protocol, filter.protocol_mask ? 0 : 1,
+			filter.tcp_flags);
+		printf("    priority: %d    queue: %d\n",
+			filter.priority, rx_queue);
+	}
+}
+
+void
+get_5tuple_filter(uint8_t port_id, uint16_t index)
+{
+	struct rte_5tuple_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_5tuple_filter(port_id, index,
+				&filter, &rx_queue);
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("filter[%d] is not enabled\n", index);
+		else
+			printf("get 5tuple filter fails(%s)\n", strerror(-ret));
+		return;
+	} else {
+		printf("filter[%d]:\n", index);
+		printf("    Destination IP:  0x%08x    mask: %d\n",
+			(unsigned)rte_be_to_cpu_32(filter.dst_ip),
+			filter.dst_ip_mask ? 0 : 1);
+		printf("    Source IP:       0x%08x    mask: %d\n",
+			(unsigned)rte_be_to_cpu_32(filter.src_ip),
+			filter.src_ip_mask ? 0 : 1);
+		printf("    Destination Port:       0x%04x    mask: %d\n",
+			rte_be_to_cpu_16(filter.dst_port),
+			filter.dst_port_mask ? 0 : 1);
+		printf("    Source Port:       0x%04x    mask: %d\n",
+			rte_be_to_cpu_16(filter.src_port),
+			filter.src_port_mask ? 0 : 1);
+		printf("    protocol:           0x%02x    mask: %d\n",
+			filter.protocol,
+			filter.protocol_mask ? 0 : 1);
+		printf("    priority: %d    flags: 0x%02x    queue: %d\n",
+			filter.priority, filter.tcp_flags, rx_queue);
+	}
+}
+void
+get_flex_filter(uint8_t port_id, uint16_t index)
+
+{
+	struct rte_flex_filter filter;
+	int ret = 0;
+	uint16_t rx_queue;
+	int i, j;
+
+	memset(&filter, 0, sizeof(filter));
+	ret = rte_eth_dev_get_flex_filter(port_id, index,
+				&filter, &rx_queue);
+	if (ret < 0) {
+		if (ret == (-ENOENT))
+			printf("filter[%d] is not enabled\n", index);
+		else
+			printf("get flex filter fails(%s)\n", strerror(-ret));
+		return;
+	} else {
+		printf("filter[%d]: ", index);
+		printf("\n    length: %d", filter.len);
+		printf("\n    dword[]: 0x");
+		for (i = 0; i < 32; i++)
+			printf("%08x ", (unsigned)rte_be_to_cpu_32(filter.dwords[i]));
+		printf("\n    mask[]: 0b");
+		for (i = 0; i < 16; i++) {
+			for (j = 0; j < 8; j++)
+				printf("%c", (filter.mask[i] & (1 << j)) ? '1' : '0');
+		}
+		printf("\n    priority: %d    queue: %d\n",
+			filter.priority, rx_queue);
+	}
+}

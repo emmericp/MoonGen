@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -75,6 +75,7 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
+#include <rte_malloc.h>
 #include <rte_launch.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
@@ -89,23 +90,34 @@
 
 #include "rte_ring.h"
 
-TAILQ_HEAD(rte_ring_list, rte_ring);
+TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
 
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
 
-/* create the ring */
-struct rte_ring *
-rte_ring_create(const char *name, unsigned count, int socket_id,
-		unsigned flags)
+/* return the size of memory occupied by a ring */
+ssize_t
+rte_ring_get_memsize(unsigned count)
 {
-	char mz_name[RTE_MEMZONE_NAMESIZE];
-	struct rte_ring *r;
-	const struct rte_memzone *mz;
-	size_t ring_size;
-	int mz_flags = 0;
-	struct rte_ring_list* ring_list = NULL;
+	ssize_t sz;
 
+	/* count must be a power of 2 */
+	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
+		RTE_LOG(ERR, RING,
+			"Requested size is invalid, must be power of 2, and "
+			"do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
+		return -EINVAL;
+	}
+
+	sz = sizeof(struct rte_ring) + count * sizeof(void *);
+	sz = RTE_ALIGN(sz, CACHE_LINE_SIZE);
+	return sz;
+}
+
+int
+rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
+	unsigned flags)
+{
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
 			  CACHE_LINE_MASK) != 0);
@@ -122,23 +134,55 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 			  CACHE_LINE_MASK) != 0);
 #endif
 
+	/* init the ring structure */
+	memset(r, 0, sizeof(*r));
+	snprintf(r->name, sizeof(r->name), "%s", name);
+	r->flags = flags;
+	r->prod.watermark = count;
+	r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
+	r->cons.sc_dequeue = !!(flags & RING_F_SC_DEQ);
+	r->prod.size = r->cons.size = count;
+	r->prod.mask = r->cons.mask = count-1;
+	r->prod.head = r->cons.head = 0;
+	r->prod.tail = r->cons.tail = 0;
+
+	return 0;
+}
+
+/* create the ring */
+struct rte_ring *
+rte_ring_create(const char *name, unsigned count, int socket_id,
+		unsigned flags)
+{
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	struct rte_ring *r;
+	struct rte_tailq_entry *te;
+	const struct rte_memzone *mz;
+	ssize_t ring_size;
+	int mz_flags = 0;
+	struct rte_ring_list* ring_list = NULL;
+
 	/* check that we have an initialised tail queue */
-	if ((ring_list = 
+	if ((ring_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
-	}
-
-	/* count must be a power of 2 */
-	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
-		rte_errno = EINVAL;
-		RTE_LOG(ERR, RING, "Requested size is invalid, must be power of 2, and "
-				"do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
 		return NULL;
 	}
 
-	rte_snprintf(mz_name, sizeof(mz_name), "%s%s", RTE_RING_MZ_PREFIX, name);
-	ring_size = count * sizeof(void *) + sizeof(struct rte_ring);
+	ring_size = rte_ring_get_memsize(count);
+	if (ring_size < 0) {
+		rte_errno = ring_size;
+		return NULL;
+	}
+
+	te = rte_zmalloc("RING_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, RING, "Cannot reserve memory for tailq\n");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	snprintf(mz_name, sizeof(mz_name), "%s%s", RTE_RING_MZ_PREFIX, name);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
@@ -148,26 +192,20 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	mz = rte_memzone_reserve(mz_name, ring_size, socket_id, mz_flags);
 	if (mz != NULL) {
 		r = mz->addr;
+		/* no need to check return value here, we already checked the
+		 * arguments above */
+		rte_ring_init(r, name, count, flags);
 
-		/* init the ring structure */
-		memset(r, 0, sizeof(*r));
-		rte_snprintf(r->name, sizeof(r->name), "%s", name);
-		r->flags = flags;
-		r->prod.watermark = count;
-		r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
-		r->cons.sc_dequeue = !!(flags & RING_F_SC_DEQ);
-		r->prod.size = r->cons.size = count;
-		r->prod.mask = r->cons.mask = count-1;
-		r->prod.head = r->cons.head = 0;
-		r->prod.tail = r->cons.tail = 0;
+		te->data = (void *) r;
 
-		TAILQ_INSERT_TAIL(ring_list, r, next);
+		TAILQ_INSERT_TAIL(ring_list, te, next);
 	} else {
 		r = NULL;
 		RTE_LOG(ERR, RING, "Cannot reserve memory\n");
+		rte_free(te);
 	}
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
-	
+
 	return r;
 }
 
@@ -191,26 +229,26 @@ rte_ring_set_water_mark(struct rte_ring *r, unsigned count)
 
 /* dump the status of the ring on the console */
 void
-rte_ring_dump(const struct rte_ring *r)
+rte_ring_dump(FILE *f, const struct rte_ring *r)
 {
 #ifdef RTE_LIBRTE_RING_DEBUG
 	struct rte_ring_debug_stats sum;
 	unsigned lcore_id;
 #endif
 
-	printf("ring <%s>@%p\n", r->name, r);
-	printf("  flags=%x\n", r->flags);
-	printf("  size=%"PRIu32"\n", r->prod.size);
-	printf("  ct=%"PRIu32"\n", r->cons.tail);
-	printf("  ch=%"PRIu32"\n", r->cons.head);
-	printf("  pt=%"PRIu32"\n", r->prod.tail);
-	printf("  ph=%"PRIu32"\n", r->prod.head);
-	printf("  used=%u\n", rte_ring_count(r));
-	printf("  avail=%u\n", rte_ring_free_count(r));
+	fprintf(f, "ring <%s>@%p\n", r->name, r);
+	fprintf(f, "  flags=%x\n", r->flags);
+	fprintf(f, "  size=%"PRIu32"\n", r->prod.size);
+	fprintf(f, "  ct=%"PRIu32"\n", r->cons.tail);
+	fprintf(f, "  ch=%"PRIu32"\n", r->cons.head);
+	fprintf(f, "  pt=%"PRIu32"\n", r->prod.tail);
+	fprintf(f, "  ph=%"PRIu32"\n", r->prod.head);
+	fprintf(f, "  used=%u\n", rte_ring_count(r));
+	fprintf(f, "  avail=%u\n", rte_ring_free_count(r));
 	if (r->prod.watermark == r->prod.size)
-		printf("  watermark=0\n");
+		fprintf(f, "  watermark=0\n");
 	else
-		printf("  watermark=%"PRIu32"\n", r->prod.watermark);
+		fprintf(f, "  watermark=%"PRIu32"\n", r->prod.watermark);
 
 	/* sum and dump statistics */
 #ifdef RTE_LIBRTE_RING_DEBUG
@@ -227,40 +265,40 @@ rte_ring_dump(const struct rte_ring *r)
 		sum.deq_fail_bulk += r->stats[lcore_id].deq_fail_bulk;
 		sum.deq_fail_objs += r->stats[lcore_id].deq_fail_objs;
 	}
-	printf("  size=%"PRIu32"\n", r->prod.size);
-	printf("  enq_success_bulk=%"PRIu64"\n", sum.enq_success_bulk);
-	printf("  enq_success_objs=%"PRIu64"\n", sum.enq_success_objs);
-	printf("  enq_quota_bulk=%"PRIu64"\n", sum.enq_quota_bulk);
-	printf("  enq_quota_objs=%"PRIu64"\n", sum.enq_quota_objs);
-	printf("  enq_fail_bulk=%"PRIu64"\n", sum.enq_fail_bulk);
-	printf("  enq_fail_objs=%"PRIu64"\n", sum.enq_fail_objs);
-	printf("  deq_success_bulk=%"PRIu64"\n", sum.deq_success_bulk);
-	printf("  deq_success_objs=%"PRIu64"\n", sum.deq_success_objs);
-	printf("  deq_fail_bulk=%"PRIu64"\n", sum.deq_fail_bulk);
-	printf("  deq_fail_objs=%"PRIu64"\n", sum.deq_fail_objs);
+	fprintf(f, "  size=%"PRIu32"\n", r->prod.size);
+	fprintf(f, "  enq_success_bulk=%"PRIu64"\n", sum.enq_success_bulk);
+	fprintf(f, "  enq_success_objs=%"PRIu64"\n", sum.enq_success_objs);
+	fprintf(f, "  enq_quota_bulk=%"PRIu64"\n", sum.enq_quota_bulk);
+	fprintf(f, "  enq_quota_objs=%"PRIu64"\n", sum.enq_quota_objs);
+	fprintf(f, "  enq_fail_bulk=%"PRIu64"\n", sum.enq_fail_bulk);
+	fprintf(f, "  enq_fail_objs=%"PRIu64"\n", sum.enq_fail_objs);
+	fprintf(f, "  deq_success_bulk=%"PRIu64"\n", sum.deq_success_bulk);
+	fprintf(f, "  deq_success_objs=%"PRIu64"\n", sum.deq_success_objs);
+	fprintf(f, "  deq_fail_bulk=%"PRIu64"\n", sum.deq_fail_bulk);
+	fprintf(f, "  deq_fail_objs=%"PRIu64"\n", sum.deq_fail_objs);
 #else
-	printf("  no statistics available\n");
+	fprintf(f, "  no statistics available\n");
 #endif
 }
 
 /* dump the status of all rings on the console */
 void
-rte_ring_list_dump(void)
+rte_ring_list_dump(FILE *f)
 {
-	const struct rte_ring *mp;
+	const struct rte_tailq_entry *te;
 	struct rte_ring_list *ring_list;
 
 	/* check that we have an initialised tail queue */
-	if ((ring_list = 
+	if ((ring_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return;	
+		return;
 	}
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 
-	TAILQ_FOREACH(mp, ring_list, next) {
-		rte_ring_dump(mp);
+	TAILQ_FOREACH(te, ring_list, next) {
+		rte_ring_dump(f, (struct rte_ring *) te->data);
 	}
 
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
@@ -270,27 +308,31 @@ rte_ring_list_dump(void)
 struct rte_ring *
 rte_ring_lookup(const char *name)
 {
-	struct rte_ring *r;
+	struct rte_tailq_entry *te;
+	struct rte_ring *r = NULL;
 	struct rte_ring_list *ring_list;
 
 	/* check that we have an initialized tail queue */
-	if ((ring_list = 
+	if ((ring_list =
 	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
+		return NULL;
 	}
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
-	
-	TAILQ_FOREACH(r, ring_list, next) {
+
+	TAILQ_FOREACH(te, ring_list, next) {
+		r = (struct rte_ring *) te->data;
 		if (strncmp(name, r->name, RTE_RING_NAMESIZE) == 0)
 			break;
 	}
 
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 
-	if (r == NULL)
+	if (te == NULL) {
 		rte_errno = ENOENT;
+		return NULL;
+	}
 
 	return r;
 }

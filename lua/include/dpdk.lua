@@ -17,8 +17,10 @@ end
 
 local cores
 
---- Inits the dpdk rte eal, *must* be called from the master core before any other DPDK function is called.
+--- Inits DPDK. Called by MoonGen on startup.
 function mod.init()
+	-- register drivers
+	dpdkc.register_pmd_drivers();
 	-- TODO: support arbitrary dpdk configurations by allowing configuration in the form ["cmdLine"] = "foo"
 	local cfgFileLocations = { "./dpdk-conf.lua", "./include/dpdk-conf.lua", "/etc/moongen/dpdk-conf.lua" }
 	local cfg

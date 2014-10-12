@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -42,6 +42,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #ifdef RTE_EXEC_ENV_LINUXAPP
 #include <exec-env/rte_dom0_common.h>
@@ -94,7 +95,7 @@ struct rte_memseg {
 	uint32_t nrank;             /**< Number of ranks. */
 #ifdef RTE_LIBRTE_XEN_DOM0
 	 /**< store segment MFNs */
-	uint64_t mfn[DOM0_NUM_MEMBLOCK]; 
+	uint64_t mfn[DOM0_NUM_MEMBLOCK];
 #endif
 } __attribute__((__packed__));
 
@@ -139,8 +140,11 @@ const struct rte_memseg *rte_eal_get_physmem_layout(void);
 
 /**
  * Dump the physical memory layout to the console.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_dump_physmem_layout(void);
+void rte_dump_physmem_layout(FILE *f);
 
 /**
  * Get the total amount of available physical memory.
@@ -172,7 +176,7 @@ unsigned rte_memory_get_nrank(void);
 /**
  * Return the physical address of elt, which is an element of the pool mp.
  *
- * @param memseg_id 
+ * @param memseg_id
  *   The mempool is from which memory segment.
  * @param phy_addr
  *   physical address of elt.
@@ -183,22 +187,22 @@ unsigned rte_memory_get_nrank(void);
 phys_addr_t rte_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr);
 
 /**
- * Memory init for supporting application running on Xen domain0. 
- * 
- * @param void 
- * 
- * @return 
+ * Memory init for supporting application running on Xen domain0.
+ *
+ * @param void
+ *
+ * @return
  *       0: successfully
  *    	 negative: error
- */ 
+ */
 int rte_xen_dom0_memory_init(void);
 
 /**
- * Attach to memory setments of primary process on Xen domain0. 
- * 
- * @param void 
- * 
- * @return 
+ * Attach to memory setments of primary process on Xen domain0.
+ *
+ * @param void
+ *
+ * @return
  *       0: successfully
  *       negative: error
  */

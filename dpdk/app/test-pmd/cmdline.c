@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -84,6 +84,9 @@
 #include <cmdline_socket.h>
 #include <cmdline.h>
 #include <rte_pci_dev_ids.h>
+#ifdef RTE_LIBRTE_PMD_BOND
+#include <rte_eth_bond.h>
+#endif
 
 #include "testpmd.h"
 
@@ -113,6 +116,7 @@ static void cmd_help_brief_parsed(__attribute__((unused)) void *parsed_result,
 		"    help ports      : Configuring ports.\n"
 		"    help flowdir    : Flow Director filter help.\n"
 		"    help registers  : Reading and setting port registers.\n"
+		"    help filters    : Filters configuration help.\n"
 		"    help all        : All of the above sections.\n\n"
 	);
 
@@ -181,6 +185,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (info|stats|fdir|stat_qmap) (port_id|all)\n"
 			"    Display information for port_id, or all.\n\n"
+
+			"show port rss-hash [key]\n"
+			"    Display the RSS hash functions and RSS hash key"
+			" of port X\n\n"
 
 			"clear port (info|stats|fdir|stat_qmap) (port_id|all)\n"
 			"    Clear information for port_id, or all.\n\n"
@@ -268,10 +276,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"rx_vlan add (vlan_id) port (port_id) vf (vf_mask)\n"
 			"    Add a vlan_id, to the set of VLAN identifiers"
 			"filtered for VF(s) from port_id.\n\n"
-			
+
 			"rx_vlan rm (vlan_id) port (port_id) vf (vf_mask)\n"
 			"    Remove a vlan_id, to the set of VLAN identifiers"
-			"filtered for VF(s) from port_id.\n\n"			
+			"filtered for VF(s) from port_id.\n\n"
 
 			"rx_vlan set tpid (value) (port_id)\n"
 			"    Set the outer VLAN TPID for Packet Filtering on"
@@ -280,6 +288,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"tx_vlan set vlan_id (port_id)\n"
 			"    Set hardware insertion of VLAN ID in packets sent"
 			" on a port.\n\n"
+
+			"tx_vlan set pvid port_id vlan_id (on|off)\n"
+			"    Set port based TX VLAN insertion.\n\n"
 
 			"tx_vlan reset (port_id)\n"
 			"    Disable hardware insertion of a VLAN header in"
@@ -294,17 +305,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"        bit 3 - insert sctp checksum offload if set\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
 
-#ifdef RTE_LIBRTE_IEEE1588
-			"set fwd (io|mac|mac_retry|rxonly|txonly|csum|ieee1588)\n"
-			"    Set IO, MAC, MAC_RETRY, RXONLY, CSUM or TXONLY or ieee1588"
-			" packet forwarding mode.\n\n"
+			"set fwd (%s)\n"
+			"    Set packet forwarding mode.\n\n"
 
-#else
-			"set fwd (io|mac|mac_retry|rxonly|txonly|csum)\n"
-			"    Set IO, MAC, MAC_RETRY, RXONLY, CSUM or TXONLY packet"
-			" forwarding mode.\n\n"
-
-#endif
 			"mac_addr add (port_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Add a MAC address on port_id.\n\n"
 
@@ -313,9 +316,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"mac_addr add port (port_id) vf (vf_id) (mac_address)\n"
 			"    Add a MAC address for a VF on the port.\n\n"
-			
+
 			"set port (port_id) uta (mac_address|all) (on|off)\n"
-			"    Add/Remove a or all unicast hash filter(s)" 
+			"    Add/Remove a or all unicast hash filter(s)"
 			"from port X.\n\n"
 
 			"set promisc (port_id|all) (on|off)\n"
@@ -326,7 +329,15 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set flow_ctrl rx (on|off) tx (on|off) (high_water)"
 			" (low_water) (pause_time) (send_xon) mac_ctrl_frame_fwd"
-                        " (on|off) (port_id)\n"
+			" (on|off) autoneg (on|off) (port_id)\n"
+			"set flow_ctrl rx (on|off) (portid)\n"
+			"set flow_ctrl tx (on|off) (portid)\n"
+			"set flow_ctrl high_water (high_water) (portid)\n"
+			"set flow_ctrl low_water (low_water) (portid)\n"
+			"set flow_ctrl pause_time (pause_time) (portid)\n"
+			"set flow_ctrl send_xon (send_xon) (portid)\n"
+			"set flow_ctrl mac_ctrl_frame_fwd (on|off) (portid)\n"
+			"set flow_ctrl autoneg (on|off) (port_id)\n"
 			"    Set the link flow control parameter on a port.\n\n"
 
 			"set pfc_ctrl rx (on|off) tx (on|off) (high_water)"
@@ -350,8 +361,15 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    BAM:accepts broadcast packets;"
 			"MPE:accepts all multicast packets\n\n"
 			"    Enable/Disable a VF receive mode of a port\n\n"
-			
-			"set port (port_id) mirror-rule (rule_id)" 
+
+			"set port (port_id) queue (queue_id) rate (rate_num)\n"
+			"    Set rate limit for a queue of a port\n\n"
+
+			"set port (port_id) vf (vf_id) rate (rate_num) "
+			"queue_mask (queue_mask_value)\n"
+			"    Set rate limit for queues in VF of a port\n\n"
+
+			"set port (port_id) mirror-rule (rule_id)"
 			"(pool-mirror|vlan-mirror)\n"
 			" (poolmask|vlanid[,vlanid]*) dst-pool (pool_id) (on|off)\n"
 			"   Set pool or vlan type mirror rule on a port.\n"
@@ -397,7 +415,33 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"   Show the bypass configuration for a bypass enabled NIC"
 			" using the lowest port on the NIC.\n\n"
 #endif
+#ifdef RTE_LIBRTE_PMD_BOND
+			"create bonded device (mode) (socket)\n"
+			"	Create a new bonded device with specific bonding mode and socket.\n\n"
 
+			"add bonding slave (slave_id) (port_id)\n"
+			"	Add a slave device to a bonded device.\n\n"
+
+			"remove bonding slave (slave_id) (port_id)\n"
+			"	Remove a slave device from a bonded device.\n\n"
+
+			"set bonding mode (value) (port_id)\n"
+			"	Set the bonding mode on a bonded device.\n\n"
+
+			"set bonding primary (slave_id) (port_id)\n"
+			"	Set the primary slave for a bonded device.\n\n"
+
+			"show bonding config (port_id)\n"
+			"	Show the bonding config for port_id.\n\n"
+
+			"set bonding mac_addr (port_id) (address)\n"
+			"	Set the MAC address of a bonded device.\n\n"
+
+			"set bonding xmit_balance_policy (port_id) (l2|l23|l34)\n"
+			"	Set the transmit balance policy for bonded device running in balance mode.\n\n"
+#endif
+
+			, list_pkt_forwarding_modes()
 		);
 	}
 
@@ -483,7 +527,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port close (port_id|all)\n"
 			"    Close all ports or port_id.\n\n"
 
-			"port config (port_id|all) speed (10|100|1000|10000|auto)"
+			"port config (port_id|all)"
+			" speed (10|100|1000|10000|40000|auto)"
 			" duplex (half|full|auto)\n"
 			"    Set speed and duplex for all ports or port_id\n\n"
 
@@ -519,6 +564,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config all (txfreet|txrst|rxfreet) (value)\n"
 			"    Set free threshold for rx/tx, or set"
 			" tx rs bit threshold.\n\n"
+			"port config mtu X value\n"
+			"    Set the MTU of port X to a given value\n\n"
+
+			"port (port_id) (rxq|txq) (queue_id) (start|stop)\n"
+			"    Start/stop a rx/tx queue of port X. Only take effect"
+			" when port X is started\n"
 		);
 	}
 
@@ -550,6 +601,67 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set single bit value of a port register.\n\n"
 		);
 	}
+	if (show_all || !strcmp(res->section, "filters")) {
+
+		cmdline_printf(
+			cl,
+			"\n"
+			"filters:\n"
+			"--------\n\n"
+
+			"add_ethertype_filter (port_id) ethertype (eth_value)"
+			" priority (enable|disable)(pri_value) queue (queue_id) index (idx)\n"
+			"    add an ethertype filter.\n\n"
+
+			"remove_ethertype_filter (port_id) index (idx)\n"
+			"    remove an ethertype filter.\n\n"
+
+			"get_ethertype_filter (port_id) index (idx)\n"
+			"    get info of a ethertype filter.\n\n"
+
+			"add_2tuple_filter (port_id) protocol (pro_value) (pro_mask)"
+			" dst_port (port_value) (port_mask) flags (flg_value) priority (prio_value)"
+			" queue (queue_id) index (idx)\n"
+			"    add a 2tuple filter.\n\n"
+
+			"remove_2tuple_filter (port_id) index (idx)\n"
+			"    remove a 2tuple filter.\n\n"
+
+			"get_2tuple_filter (port_id) index (idx)\n"
+			"    get info of a 2tuple filter.\n\n"
+
+			"add_5tuple_filter (port_id) dst_ip (dst_address) src_ip (src_address)"
+			" dst_port (dst_port_value) src_port (src_port_value) protocol (protocol_value)"
+			" mask (mask_value) flags (flags_value) priority (prio_value)"
+			" queue (queue_id) index (idx)\n"
+			"    add a 5tuple filter.\n\n"
+
+			"remove_5tuple_filter (port_id) index (idx)\n"
+			"    remove a 5tuple filter.\n\n"
+
+			"get_5tuple_filter (port_id) index (idx)\n"
+			"    get info of a 5tuple filter.\n\n"
+
+			"add_syn_filter (port_id) priority (high|low) queue (queue_id)"
+			"    add syn filter.\n\n"
+
+			"remove_syn_filter (port_id)"
+			"    remove syn filter.\n\n"
+
+			"get_syn_filter (port_id) "
+			"    get syn filter info.\n\n"
+
+			"add_flex_filter (port_id) len (len_value) bytes (bytes_string) mask (mask_value)"
+			" priority (prio_value) queue (queue_id) index (idx)\n"
+			"    add a flex filter.\n\n"
+
+			"remove_flex_filter (port_id) index (idx)\n"
+			"    remove a flex filter.\n\n"
+
+			"get_flex_filter (port_id) index (idx)\n"
+			"    get info of a flex filter.\n\n"
+		);
+	}
 }
 
 cmdline_parse_token_string_t cmd_help_long_help =
@@ -558,7 +670,7 @@ cmdline_parse_token_string_t cmd_help_long_help =
 cmdline_parse_token_string_t cmd_help_long_section =
 	TOKEN_STRING_INITIALIZER(struct cmd_help_long_result, section,
 			"all#control#display#config#flowdir#"
-			"ports#registers");
+			"ports#registers#filters");
 
 cmdline_parse_inst_t cmd_help_long = {
 	.f = cmd_help_long_parsed,
@@ -694,7 +806,9 @@ cmd_config_speed_all_parsed(void *parsed_result,
 	else if (!strcmp(res->value1, "1000"))
 		link_speed = ETH_LINK_SPEED_1000;
 	else if (!strcmp(res->value1, "10000"))
-		link_speed = ETH_LINK_SPEED_10000;
+		link_speed = ETH_LINK_SPEED_10G;
+	else if (!strcmp(res->value1, "40000"))
+		link_speed = ETH_LINK_SPEED_40G;
 	else if (!strcmp(res->value1, "auto"))
 		link_speed = ETH_LINK_SPEED_AUTONEG;
 	else {
@@ -732,7 +846,7 @@ cmdline_parse_token_string_t cmd_config_speed_all_item1 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, item1, "speed");
 cmdline_parse_token_string_t cmd_config_speed_all_value1 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, value1,
-						"10#100#1000#10000#auto");
+						"10#100#1000#10000#40000#auto");
 cmdline_parse_token_string_t cmd_config_speed_all_item2 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, item2, "duplex");
 cmdline_parse_token_string_t cmd_config_speed_all_value2 =
@@ -742,7 +856,7 @@ cmdline_parse_token_string_t cmd_config_speed_all_value2 =
 cmdline_parse_inst_t cmd_config_speed_all = {
 	.f = cmd_config_speed_all_parsed,
 	.data = NULL,
-	.help_str = "port config all speed 10|100|1000|10000|auto duplex "
+	.help_str = "port config all speed 10|100|1000|10000|40000|auto duplex "
 							"half|full|auto",
 	.tokens = {
 		(void *)&cmd_config_speed_all_port,
@@ -794,6 +908,8 @@ cmd_config_speed_specific_parsed(void *parsed_result,
 		link_speed = ETH_LINK_SPEED_1000;
 	else if (!strcmp(res->value1, "10000"))
 		link_speed = ETH_LINK_SPEED_10000;
+	else if (!strcmp(res->value1, "40000"))
+		link_speed = ETH_LINK_SPEED_40G;
 	else if (!strcmp(res->value1, "auto"))
 		link_speed = ETH_LINK_SPEED_AUTONEG;
 	else {
@@ -832,7 +948,7 @@ cmdline_parse_token_string_t cmd_config_speed_specific_item1 =
 								"speed");
 cmdline_parse_token_string_t cmd_config_speed_specific_value1 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, value1,
-						"10#100#1000#10000#auto");
+						"10#100#1000#10000#40000#auto");
 cmdline_parse_token_string_t cmd_config_speed_specific_item2 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, item2,
 								"duplex");
@@ -843,7 +959,7 @@ cmdline_parse_token_string_t cmd_config_speed_specific_value2 =
 cmdline_parse_inst_t cmd_config_speed_specific = {
 	.f = cmd_config_speed_specific_parsed,
 	.data = NULL,
-	.help_str = "port config X speed 10|100|1000|10000|auto duplex "
+	.help_str = "port config X speed 10|100|1000|10000|40000|auto duplex "
 							"half|full|auto",
 	.tokens = {
 		(void *)&cmd_config_speed_specific_port,
@@ -1017,6 +1133,57 @@ cmdline_parse_inst_t cmd_config_max_pkt_len = {
 	},
 };
 
+/* *** configure port MTU *** */
+struct cmd_config_mtu_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t mtu;
+	uint8_t port_id;
+	uint16_t value;
+};
+
+static void
+cmd_config_mtu_parsed(void *parsed_result,
+		      __attribute__((unused)) struct cmdline *cl,
+		      __attribute__((unused)) void *data)
+{
+	struct cmd_config_mtu_result *res = parsed_result;
+
+	if (res->value < ETHER_MIN_LEN) {
+		printf("mtu cannot be less than %d\n", ETHER_MIN_LEN);
+		return;
+	}
+	port_mtu_set(res->port_id, res->value);
+}
+
+cmdline_parse_token_string_t cmd_config_mtu_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_mtu_result, port,
+				 "port");
+cmdline_parse_token_string_t cmd_config_mtu_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_mtu_result, keyword,
+				 "config");
+cmdline_parse_token_string_t cmd_config_mtu_mtu =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_mtu_result, keyword,
+				 "mtu");
+cmdline_parse_token_num_t cmd_config_mtu_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_mtu_result, port_id, UINT8);
+cmdline_parse_token_num_t cmd_config_mtu_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_mtu_result, value, UINT16);
+
+cmdline_parse_inst_t cmd_config_mtu = {
+	.f = cmd_config_mtu_parsed,
+	.data = NULL,
+	.help_str = "port config mtu value",
+	.tokens = {
+		(void *)&cmd_config_mtu_port,
+		(void *)&cmd_config_mtu_keyword,
+		(void *)&cmd_config_mtu_mtu,
+		(void *)&cmd_config_mtu_port_id,
+		(void *)&cmd_config_mtu_value,
+		NULL,
+	},
+};
+
 /* *** configure rx mode *** */
 struct cmd_config_rx_mode_flag {
 	cmdline_fixed_string_t port;
@@ -1131,26 +1298,22 @@ cmd_config_rss_parsed(void *parsed_result,
 			__attribute__((unused)) void *data)
 {
 	struct cmd_config_rss *res = parsed_result;
-
-	if (!all_ports_stopped()) {
-		printf("Please stop all ports first\n");
-		return;
-	}
+	struct rte_eth_rss_conf rss_conf;
+	uint8_t i;
 
 	if (!strcmp(res->value, "ip"))
-		rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6;
+		rss_conf.rss_hf = ETH_RSS_IP;
 	else if (!strcmp(res->value, "udp"))
-		rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6 | ETH_RSS_IPV4_UDP;
+		rss_conf.rss_hf = ETH_RSS_UDP;
 	else if (!strcmp(res->value, "none"))
-		rss_hf = 0;
+		rss_conf.rss_hf = 0;
 	else {
 		printf("Unknown parameter\n");
 		return;
 	}
-
-	init_port_config();
-
-	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+	rss_conf.rss_key = NULL;
+	for (i = 0; i < rte_eth_dev_count(); i++)
+		rte_eth_dev_rss_hash_update(i, &rss_conf);
 }
 
 cmdline_parse_token_string_t cmd_config_rss_port =
@@ -1174,6 +1337,189 @@ cmdline_parse_inst_t cmd_config_rss = {
 		(void *)&cmd_config_rss_all,
 		(void *)&cmd_config_rss_name,
 		(void *)&cmd_config_rss_value,
+		NULL,
+	},
+};
+
+/* *** configure rss hash key *** */
+struct cmd_config_rss_hash_key {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	uint8_t port_id;
+	cmdline_fixed_string_t rss_hash_key;
+	cmdline_fixed_string_t key;
+};
+
+#define RSS_HASH_KEY_LENGTH 40
+static uint8_t
+hexa_digit_to_value(char hexa_digit)
+{
+	if ((hexa_digit >= '0') && (hexa_digit <= '9'))
+		return (uint8_t) (hexa_digit - '0');
+	if ((hexa_digit >= 'a') && (hexa_digit <= 'f'))
+		return (uint8_t) ((hexa_digit - 'a') + 10);
+	if ((hexa_digit >= 'A') && (hexa_digit <= 'F'))
+		return (uint8_t) ((hexa_digit - 'A') + 10);
+	/* Invalid hexa digit */
+	return 0xFF;
+}
+
+static uint8_t
+parse_and_check_key_hexa_digit(char *key, int idx)
+{
+	uint8_t hexa_v;
+
+	hexa_v = hexa_digit_to_value(key[idx]);
+	if (hexa_v == 0xFF)
+		printf("invalid key: character %c at position %d is not a "
+		       "valid hexa digit\n", key[idx], idx);
+	return hexa_v;
+}
+
+static void
+cmd_config_rss_hash_key_parsed(void *parsed_result,
+			       __attribute__((unused)) struct cmdline *cl,
+			       __attribute__((unused)) void *data)
+{
+	struct cmd_config_rss_hash_key *res = parsed_result;
+	uint8_t hash_key[RSS_HASH_KEY_LENGTH];
+	uint8_t xdgt0;
+	uint8_t xdgt1;
+	int i;
+
+	/* Check the length of the RSS hash key */
+	if (strlen(res->key) != (RSS_HASH_KEY_LENGTH * 2)) {
+		printf("key length: %d invalid - key must be a string of %d"
+		       "hexa-decimal numbers\n", (int) strlen(res->key),
+		       RSS_HASH_KEY_LENGTH * 2);
+		return;
+	}
+	/* Translate RSS hash key into binary representation */
+	for (i = 0; i < RSS_HASH_KEY_LENGTH; i++) {
+		xdgt0 = parse_and_check_key_hexa_digit(res->key, (i * 2));
+		if (xdgt0 == 0xFF)
+			return;
+		xdgt1 = parse_and_check_key_hexa_digit(res->key, (i * 2) + 1);
+		if (xdgt1 == 0xFF)
+			return;
+		hash_key[i] = (uint8_t) ((xdgt0 * 16) + xdgt1);
+	}
+	port_rss_hash_key_update(res->port_id, hash_key);
+}
+
+cmdline_parse_token_string_t cmd_config_rss_hash_key_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, port, "port");
+cmdline_parse_token_string_t cmd_config_rss_hash_key_config =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, config,
+				 "config");
+cmdline_parse_token_num_t cmd_config_rss_hash_key_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rss_hash_key, port_id, UINT8);
+cmdline_parse_token_string_t cmd_config_rss_hash_key_rss_hash_key =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key,
+				 rss_hash_key, "rss-hash-key");
+cmdline_parse_token_string_t cmd_config_rss_hash_key_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, key, NULL);
+
+cmdline_parse_inst_t cmd_config_rss_hash_key = {
+	.f = cmd_config_rss_hash_key_parsed,
+	.data = NULL,
+	.help_str = "port config X rss-hash-key 80 hexa digits",
+	.tokens = {
+		(void *)&cmd_config_rss_hash_key_port,
+		(void *)&cmd_config_rss_hash_key_config,
+		(void *)&cmd_config_rss_hash_key_port_id,
+		(void *)&cmd_config_rss_hash_key_rss_hash_key,
+		(void *)&cmd_config_rss_hash_key_value,
+		NULL,
+	},
+};
+
+/* *** configure port rxq/txq start/stop *** */
+struct cmd_config_rxtx_queue {
+	cmdline_fixed_string_t port;
+	uint8_t portid;
+	cmdline_fixed_string_t rxtxq;
+	uint16_t qid;
+	cmdline_fixed_string_t opname;
+};
+
+static void
+cmd_config_rxtx_queue_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_rxtx_queue *res = parsed_result;
+	uint8_t isrx;
+	uint8_t isstart;
+
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
+	if (port_id_is_invalid(res->portid))
+		return;
+
+	if (port_is_started(res->portid) != 1) {
+		printf("Please start port %u first\n", res->portid);
+		return;
+	}
+
+	if (!strcmp(res->rxtxq, "rxq"))
+		isrx = 1;
+	else if (!strcmp(res->rxtxq, "txq"))
+		isrx = 0;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	if (isrx && rx_queue_id_is_invalid(res->qid))
+		return;
+	else if (!isrx && tx_queue_id_is_invalid(res->qid))
+		return;
+
+	if (!strcmp(res->opname, "start"))
+		isstart = 1;
+	else if (!strcmp(res->opname, "stop"))
+		isstart = 0;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	if (isstart && isrx)
+		rte_eth_dev_rx_queue_start(res->portid, res->qid);
+	else if (!isstart && isrx)
+		rte_eth_dev_rx_queue_stop(res->portid, res->qid);
+	else if (isstart && !isrx)
+		rte_eth_dev_tx_queue_start(res->portid, res->qid);
+	else
+		rte_eth_dev_tx_queue_stop(res->portid, res->qid);
+}
+
+cmdline_parse_token_string_t cmd_config_rxtx_queue_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_queue, port, "port");
+cmdline_parse_token_num_t cmd_config_rxtx_queue_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_queue, portid, UINT8);
+cmdline_parse_token_string_t cmd_config_rxtx_queue_rxtxq =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_queue, rxtxq, "rxq#txq");
+cmdline_parse_token_num_t cmd_config_rxtx_queue_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_queue, qid, UINT16);
+cmdline_parse_token_string_t cmd_config_rxtx_queue_opname =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_queue, opname,
+						"start#stop");
+
+cmdline_parse_inst_t cmd_config_rxtx_queue = {
+	.f = cmd_config_rxtx_queue_parsed,
+	.data = NULL,
+	.help_str = "port X rxq|txq ID start|stop",
+	.tokens = {
+		(void *)&cmd_config_speed_all_port,
+		(void *)&cmd_config_rxtx_queue_portid,
+		(void *)&cmd_config_rxtx_queue_rxtxq,
+		(void *)&cmd_config_rxtx_queue_qid,
+		(void *)&cmd_config_rxtx_queue_opname,
 		NULL,
 	},
 };
@@ -1215,7 +1561,7 @@ parse_reta_config(const char *str, struct rte_eth_rss_reta *reta_conf)
 		if(size >= sizeof(s))
 			return -1;
 
-		rte_snprintf(s, sizeof(s), "%.*s", size, p);
+		snprintf(s, sizeof(s), "%.*s", size, p);
 		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
 			return -1;
 		for (i = 0; i < _NUM_FLD; i++) {
@@ -1350,6 +1696,63 @@ cmdline_parse_inst_t cmd_showport_reta = {
 		(void *)&cmd_showport_reta_reta,
 		(void *)&cmd_showport_reta_mask_lo,
 		(void *)&cmd_showport_reta_mask_hi,
+		NULL,
+	},
+};
+
+/* *** Show RSS hash configuration *** */
+struct cmd_showport_rss_hash {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t rss_hash;
+	cmdline_fixed_string_t key; /* optional argument */
+};
+
+static void cmd_showport_rss_hash_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				void *show_rss_key)
+{
+	struct cmd_showport_rss_hash *res = parsed_result;
+
+	port_rss_hash_conf_show(res->port_id, show_rss_key != NULL);
+}
+
+cmdline_parse_token_string_t cmd_showport_rss_hash_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, show, "show");
+cmdline_parse_token_string_t cmd_showport_rss_hash_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, port, "port");
+cmdline_parse_token_num_t cmd_showport_rss_hash_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_rss_hash, port_id, UINT8);
+cmdline_parse_token_string_t cmd_showport_rss_hash_rss_hash =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, rss_hash,
+				 "rss-hash");
+cmdline_parse_token_string_t cmd_showport_rss_hash_rss_key =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, key, "key");
+
+cmdline_parse_inst_t cmd_showport_rss_hash = {
+	.f = cmd_showport_rss_hash_parsed,
+	.data = NULL,
+	.help_str = "show port X rss-hash (X = port number)\n",
+	.tokens = {
+		(void *)&cmd_showport_rss_hash_show,
+		(void *)&cmd_showport_rss_hash_port,
+		(void *)&cmd_showport_rss_hash_port_id,
+		(void *)&cmd_showport_rss_hash_rss_hash,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_showport_rss_hash_key = {
+	.f = cmd_showport_rss_hash_parsed,
+	.data = (void *)1,
+	.help_str = "show port X rss-hash key (X = port number)\n",
+	.tokens = {
+		(void *)&cmd_showport_rss_hash_show,
+		(void *)&cmd_showport_rss_hash_port,
+		(void *)&cmd_showport_rss_hash_port_id,
+		(void *)&cmd_showport_rss_hash_rss_hash,
+		(void *)&cmd_showport_rss_hash_rss_key,
 		NULL,
 	},
 };
@@ -2209,6 +2612,63 @@ cmdline_parse_inst_t cmd_tx_vlan_set = {
 	},
 };
 
+/* *** ENABLE/DISABLE PORT BASED TX VLAN INSERTION *** */
+struct cmd_tx_vlan_set_pvid_result {
+	cmdline_fixed_string_t tx_vlan;
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t pvid;
+	uint8_t port_id;
+	uint16_t vlan_id;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_tx_vlan_set_pvid_parsed(void *parsed_result,
+			    __attribute__((unused)) struct cmdline *cl,
+			    __attribute__((unused)) void *data)
+{
+	struct cmd_tx_vlan_set_pvid_result *res = parsed_result;
+
+	if (strcmp(res->mode, "on") == 0)
+		tx_vlan_pvid_set(res->port_id, res->vlan_id, 1);
+	else
+		tx_vlan_pvid_set(res->port_id, res->vlan_id, 0);
+}
+
+cmdline_parse_token_string_t cmd_tx_vlan_set_pvid_tx_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+				 tx_vlan, "tx_vlan");
+cmdline_parse_token_string_t cmd_tx_vlan_set_pvid_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+				 set, "set");
+cmdline_parse_token_string_t cmd_tx_vlan_set_pvid_pvid =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+				 pvid, "pvid");
+cmdline_parse_token_num_t cmd_tx_vlan_set_pvid_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+			     port_id, UINT8);
+cmdline_parse_token_num_t cmd_tx_vlan_set_pvid_vlan_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+			      vlan_id, UINT16);
+cmdline_parse_token_string_t cmd_tx_vlan_set_pvid_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_pvid_result,
+				 mode, "on#off");
+
+cmdline_parse_inst_t cmd_tx_vlan_set_pvid = {
+	.f = cmd_tx_vlan_set_pvid_parsed,
+	.data = NULL,
+	.help_str = "tx_vlan set pvid port_id vlan_id (on|off)",
+	.tokens = {
+		(void *)&cmd_tx_vlan_set_pvid_tx_vlan,
+		(void *)&cmd_tx_vlan_set_pvid_set,
+		(void *)&cmd_tx_vlan_set_pvid_pvid,
+		(void *)&cmd_tx_vlan_set_pvid_port_id,
+		(void *)&cmd_tx_vlan_set_pvid_vlan_id,
+		(void *)&cmd_tx_vlan_set_pvid_mode,
+		NULL,
+	},
+};
+
 /* *** DISABLE HARDWARE INSERTION OF VLAN HEADER IN TX PACKETS *** */
 struct cmd_tx_vlan_reset_result {
 	cmdline_fixed_string_t tx_vlan;
@@ -2331,6 +2791,46 @@ cmdline_parse_inst_t cmd_set_flush_rx = {
 		(void *)&cmd_setflushrx_set,
 		(void *)&cmd_setflushrx_flush_rx,
 		(void *)&cmd_setflushrx_mode,
+		NULL,
+	},
+};
+
+/* *** ENABLE/DISABLE LINK STATUS CHECK *** */
+struct cmd_set_link_check {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t link_check;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_set_link_check_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_link_check *res = parsed_result;
+	no_link_check = (uint8_t)((strcmp(res->mode, "on") == 0) ? 0 : 1);
+}
+
+cmdline_parse_token_string_t cmd_setlinkcheck_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_check,
+			set, "set");
+cmdline_parse_token_string_t cmd_setlinkcheck_link_check =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_check,
+			link_check, "link_check");
+cmdline_parse_token_string_t cmd_setlinkcheck_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_check,
+			mode, "on#off");
+
+
+cmdline_parse_inst_t cmd_set_link_check = {
+	.f = cmd_set_link_check_parsed,
+	.help_str = "set link_check on|off: enable/disable link status check "
+	            "when starting/stopping a port",
+	.data = NULL,
+	.tokens = {
+		(void *)&cmd_setlinkcheck_set,
+		(void *)&cmd_setlinkcheck_link_check,
+		(void *)&cmd_setlinkcheck_mode,
 		NULL,
 	},
 };
@@ -2666,6 +3166,547 @@ cmdline_parse_inst_t cmd_show_bypass_config = {
 };
 #endif
 
+#ifdef RTE_LIBRTE_PMD_BOND
+/* *** SET BONDING MODE *** */
+struct cmd_set_bonding_mode_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t mode;
+	uint8_t value;
+	uint8_t port_id;
+};
+
+static void cmd_set_bonding_mode_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bonding_mode_result *res = parsed_result;
+	portid_t port_id = res->port_id;
+
+	/* Set the bonding mode for the relevant port. */
+	if (0 != rte_eth_bond_mode_set(port_id, res->value))
+		printf("\t Failed to set bonding mode for port = %d.\n", port_id);
+}
+
+cmdline_parse_token_string_t cmd_setbonding_mode_set =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_mode_result,
+		set, "set");
+cmdline_parse_token_string_t cmd_setbonding_mode_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_mode_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_setbonding_mode_mode =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_mode_result,
+		mode, "mode");
+cmdline_parse_token_num_t cmd_setbonding_mode_value =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_mode_result,
+		value, UINT8);
+cmdline_parse_token_num_t cmd_setbonding_mode_port =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_mode_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_set_bonding_mode = {
+		.f = cmd_set_bonding_mode_parsed,
+		.help_str = "set bonding mode (mode_value) (port_id): Set the bonding mode for port_id",
+		.data = NULL,
+		.tokens = {
+				(void *) &cmd_setbonding_mode_set,
+				(void *) &cmd_setbonding_mode_bonding,
+				(void *) &cmd_setbonding_mode_mode,
+				(void *) &cmd_setbonding_mode_value,
+				(void *) &cmd_setbonding_mode_port,
+				NULL
+		}
+};
+
+/* *** SET BALANCE XMIT POLICY *** */
+struct cmd_set_bonding_balance_xmit_policy_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t balance_xmit_policy;
+	uint8_t port_id;
+	cmdline_fixed_string_t policy;
+};
+
+static void cmd_set_bonding_balance_xmit_policy_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bonding_balance_xmit_policy_result *res = parsed_result;
+	portid_t port_id = res->port_id;
+	uint8_t policy;
+
+	if (!strcmp(res->policy, "l2")) {
+		policy = BALANCE_XMIT_POLICY_LAYER2;
+	} else if (!strcmp(res->policy, "l23")) {
+		policy = BALANCE_XMIT_POLICY_LAYER23;
+	} else if (!strcmp(res->policy, "l34")) {
+		policy = BALANCE_XMIT_POLICY_LAYER34;
+	} else {
+		printf("\t Invalid xmit policy selection");
+		return;
+	}
+
+	/* Set the bonding mode for the relevant port. */
+	if (0 != rte_eth_bond_xmit_policy_set(port_id, policy)) {
+		printf("\t Failed to set bonding balance xmit policy for port = %d.\n",
+				port_id);
+	}
+}
+
+cmdline_parse_token_string_t cmd_setbonding_balance_xmit_policy_set =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		set, "set");
+cmdline_parse_token_string_t cmd_setbonding_balance_xmit_policy_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_setbonding_balance_xmit_policy_balance_xmit_policy =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		balance_xmit_policy, "balance_xmit_policy");
+cmdline_parse_token_num_t cmd_setbonding_balance_xmit_policy_port =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		port_id, UINT8);
+cmdline_parse_token_string_t cmd_setbonding_balance_xmit_policy_policy =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_balance_xmit_policy_result,
+		policy, "l2#l23#l34");
+
+cmdline_parse_inst_t cmd_set_balance_xmit_policy = {
+		.f = cmd_set_bonding_balance_xmit_policy_parsed,
+		.help_str = "set bonding balance_xmit_policy (port_id) (policy_value): Set the bonding balance_xmit_policy for port_id",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_setbonding_balance_xmit_policy_set,
+				(void *)&cmd_setbonding_balance_xmit_policy_bonding,
+				(void *)&cmd_setbonding_balance_xmit_policy_balance_xmit_policy,
+				(void *)&cmd_setbonding_balance_xmit_policy_port,
+				(void *)&cmd_setbonding_balance_xmit_policy_policy,
+				NULL
+		}
+};
+
+/* *** SHOW NIC BONDING CONFIGURATION *** */
+struct cmd_show_bonding_config_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t config;
+	uint8_t port_id;
+};
+
+static void cmd_show_bonding_config_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_show_bonding_config_result *res = parsed_result;
+	int bonding_mode;
+	uint8_t slaves[RTE_MAX_ETHPORTS];
+	int num_slaves, num_active_slaves;
+	int primary_id;
+	int i;
+	portid_t port_id = res->port_id;
+
+	/* Display the bonding mode.*/
+	bonding_mode = rte_eth_bond_mode_get(port_id);
+	if (bonding_mode < 0) {
+		printf("\tFailed to get bonding mode for port = %d\n", port_id);
+		return;
+	} else
+		printf("\tBonding mode: %d\n", bonding_mode);
+
+	if (bonding_mode == BONDING_MODE_BALANCE) {
+		int balance_xmit_policy;
+
+		balance_xmit_policy = rte_eth_bond_xmit_policy_get(port_id);
+		if (balance_xmit_policy < 0) {
+			printf("\tFailed to get balance xmit policy for port = %d\n",
+					port_id);
+			return;
+		} else {
+			printf("\tBalance Xmit Policy: ");
+
+			switch (balance_xmit_policy) {
+			case BALANCE_XMIT_POLICY_LAYER2:
+				printf("BALANCE_XMIT_POLICY_LAYER2");
+				break;
+			case BALANCE_XMIT_POLICY_LAYER23:
+				printf("BALANCE_XMIT_POLICY_LAYER23");
+				break;
+			case BALANCE_XMIT_POLICY_LAYER34:
+				printf("BALANCE_XMIT_POLICY_LAYER34");
+				break;
+			}
+			printf("\n");
+		}
+	}
+
+	num_slaves = rte_eth_bond_slaves_get(port_id, slaves, RTE_MAX_ETHPORTS);
+
+	if (num_slaves < 0) {
+		printf("\tFailed to get slave list for port = %d\n", port_id);
+		return;
+	}
+	if (num_slaves > 0) {
+		printf("\tSlaves (%d): [", num_slaves);
+		for (i = 0; i < num_slaves - 1; i++)
+			printf("%d ", slaves[i]);
+
+		printf("%d]\n", slaves[num_slaves - 1]);
+	} else {
+		printf("\tSlaves: []\n");
+
+	}
+
+	num_active_slaves = rte_eth_bond_active_slaves_get(port_id, slaves,
+			RTE_MAX_ETHPORTS);
+
+	if (num_active_slaves < 0) {
+		printf("\tFailed to get active slave list for port = %d\n", port_id);
+		return;
+	}
+	if (num_active_slaves > 0) {
+		printf("\tActive Slaves (%d): [", num_active_slaves);
+		for (i = 0; i < num_active_slaves - 1; i++)
+			printf("%d ", slaves[i]);
+
+		printf("%d]\n", slaves[num_active_slaves - 1]);
+
+	} else {
+		printf("\tActive Slaves: []\n");
+
+	}
+
+	primary_id = rte_eth_bond_primary_get(port_id);
+	if (primary_id < 0) {
+		printf("\tFailed to get primary slave for port = %d\n", port_id);
+		return;
+	} else
+		printf("\tPrimary: [%d]\n", primary_id);
+
+}
+
+cmdline_parse_token_string_t cmd_showbonding_config_show =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_config_result,
+		show, "show");
+cmdline_parse_token_string_t cmd_showbonding_config_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_config_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_showbonding_config_config =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_config_result,
+		config, "config");
+cmdline_parse_token_num_t cmd_showbonding_config_port =
+TOKEN_NUM_INITIALIZER(struct cmd_show_bonding_config_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_show_bonding_config = {
+		.f = cmd_show_bonding_config_parsed,
+		.help_str =	"show bonding config (port_id): Show the bonding config for port_id",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_showbonding_config_show,
+				(void *)&cmd_showbonding_config_bonding,
+				(void *)&cmd_showbonding_config_config,
+				(void *)&cmd_showbonding_config_port,
+				NULL
+		}
+};
+
+/* *** SET BONDING PRIMARY *** */
+struct cmd_set_bonding_primary_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t primary;
+	uint8_t slave_id;
+	uint8_t port_id;
+};
+
+static void cmd_set_bonding_primary_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bonding_primary_result *res = parsed_result;
+	portid_t master_port_id = res->port_id;
+	portid_t slave_port_id = res->slave_id;
+
+	/* Set the primary slave for a bonded device. */
+	if (0 != rte_eth_bond_primary_set(master_port_id, slave_port_id)) {
+		printf("\t Failed to set primary slave for port = %d.\n",
+				master_port_id);
+		return;
+	}
+	init_port_config();
+}
+
+cmdline_parse_token_string_t cmd_setbonding_primary_set =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_primary_result,
+		set, "set");
+cmdline_parse_token_string_t cmd_setbonding_primary_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_primary_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_setbonding_primary_primary =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_primary_result,
+		primary, "primary");
+cmdline_parse_token_num_t cmd_setbonding_primary_slave =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_primary_result,
+		slave_id, UINT8);
+cmdline_parse_token_num_t cmd_setbonding_primary_port =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_primary_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_set_bonding_primary = {
+		.f = cmd_set_bonding_primary_parsed,
+		.help_str = "set bonding primary (slave_id) (port_id): Set the primary slave for port_id",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_setbonding_primary_set,
+				(void *)&cmd_setbonding_primary_bonding,
+				(void *)&cmd_setbonding_primary_primary,
+				(void *)&cmd_setbonding_primary_slave,
+				(void *)&cmd_setbonding_primary_port,
+				NULL
+		}
+};
+
+/* *** ADD SLAVE *** */
+struct cmd_add_bonding_slave_result {
+	cmdline_fixed_string_t add;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t slave;
+	uint8_t slave_id;
+	uint8_t port_id;
+};
+
+static void cmd_add_bonding_slave_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_add_bonding_slave_result *res = parsed_result;
+	portid_t master_port_id = res->port_id;
+	portid_t slave_port_id = res->slave_id;
+
+	/* Set the primary slave for a bonded device. */
+	if (0 != rte_eth_bond_slave_add(master_port_id, slave_port_id)) {
+		printf("\t Failed to add slave %d to master port = %d.\n",
+				slave_port_id, master_port_id);
+		return;
+	}
+	init_port_config();
+}
+
+cmdline_parse_token_string_t cmd_addbonding_slave_add =
+TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
+		add, "add");
+cmdline_parse_token_string_t cmd_addbonding_slave_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_addbonding_slave_slave =
+TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
+		slave, "slave");
+cmdline_parse_token_num_t cmd_addbonding_slave_slaveid =
+TOKEN_NUM_INITIALIZER(struct cmd_add_bonding_slave_result,
+		slave_id, UINT8);
+cmdline_parse_token_num_t cmd_addbonding_slave_port =
+TOKEN_NUM_INITIALIZER(struct cmd_add_bonding_slave_result,
+		port_id, UINT8);
+
+cmdline_parse_inst_t cmd_add_bonding_slave = {
+		.f = cmd_add_bonding_slave_parsed,
+		.help_str = "add bonding slave (slave_id) (port_id): Add a slave device to a bonded device",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_addbonding_slave_add,
+				(void *)&cmd_addbonding_slave_bonding,
+				(void *)&cmd_addbonding_slave_slave,
+				(void *)&cmd_addbonding_slave_slaveid,
+				(void *)&cmd_addbonding_slave_port,
+				NULL
+		}
+};
+
+/* *** REMOVE SLAVE *** */
+struct cmd_remove_bonding_slave_result {
+	cmdline_fixed_string_t remove;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t slave;
+	uint8_t slave_id;
+	uint8_t port_id;
+};
+
+static void cmd_remove_bonding_slave_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_remove_bonding_slave_result *res = parsed_result;
+	portid_t master_port_id = res->port_id;
+	portid_t slave_port_id = res->slave_id;
+
+	/* Set the primary slave for a bonded device. */
+	if (0 != rte_eth_bond_slave_remove(master_port_id, slave_port_id)) {
+		printf("\t Failed to remove slave %d from master port = %d.\n",
+				slave_port_id, master_port_id);
+		return;
+	}
+	init_port_config();
+}
+
+cmdline_parse_token_string_t cmd_removebonding_slave_remove =
+		TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				remove, "remove");
+cmdline_parse_token_string_t cmd_removebonding_slave_bonding =
+		TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				bonding, "bonding");
+cmdline_parse_token_string_t cmd_removebonding_slave_slave =
+		TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				slave, "slave");
+cmdline_parse_token_num_t cmd_removebonding_slave_slaveid =
+		TOKEN_NUM_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				slave_id, UINT8);
+cmdline_parse_token_num_t cmd_removebonding_slave_port =
+		TOKEN_NUM_INITIALIZER(struct cmd_remove_bonding_slave_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_remove_bonding_slave = {
+		.f = cmd_remove_bonding_slave_parsed,
+		.help_str = "remove bonding slave (slave_id) (port_id): Remove a slave device from a bonded device",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_removebonding_slave_remove,
+				(void *)&cmd_removebonding_slave_bonding,
+				(void *)&cmd_removebonding_slave_slave,
+				(void *)&cmd_removebonding_slave_slaveid,
+				(void *)&cmd_removebonding_slave_port,
+				NULL
+		}
+};
+
+/* *** CREATE BONDED DEVICE *** */
+struct cmd_create_bonded_device_result {
+	cmdline_fixed_string_t create;
+	cmdline_fixed_string_t bonded;
+	cmdline_fixed_string_t device;
+	uint8_t mode;
+	uint8_t socket;
+};
+
+static int bond_dev_num = 0;
+
+static void cmd_create_bonded_device_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_create_bonded_device_result *res = parsed_result;
+	char ethdev_name[RTE_ETH_NAME_MAX_LEN];
+	int port_id;
+
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
+	snprintf(ethdev_name, RTE_ETH_NAME_MAX_LEN, "eth_bond_testpmd_%d",
+			bond_dev_num++);
+
+	/* Create a new bonded device. */
+	port_id = rte_eth_bond_create(ethdev_name, res->mode, res->socket);
+	if (port_id < 0) {
+		printf("\t Failed to create bonded device.\n");
+		return;
+	} else {
+		printf("Created new bonded device %s on (port %d).\n", ethdev_name,
+				port_id);
+
+		/* Update number of ports */
+		nb_ports = rte_eth_dev_count();
+		reconfig(port_id);
+		rte_eth_promiscuous_enable(port_id);
+	}
+
+}
+
+cmdline_parse_token_string_t cmd_createbonded_device_create =
+		TOKEN_STRING_INITIALIZER(struct cmd_create_bonded_device_result,
+				create, "create");
+cmdline_parse_token_string_t cmd_createbonded_device_bonded =
+		TOKEN_STRING_INITIALIZER(struct cmd_create_bonded_device_result,
+				bonded, "bonded");
+cmdline_parse_token_string_t cmd_createbonded_device_device =
+		TOKEN_STRING_INITIALIZER(struct cmd_create_bonded_device_result,
+				device, "device");
+cmdline_parse_token_num_t cmd_createbonded_device_mode =
+		TOKEN_NUM_INITIALIZER(struct cmd_create_bonded_device_result,
+				mode, UINT8);
+cmdline_parse_token_num_t cmd_createbonded_device_socket =
+		TOKEN_NUM_INITIALIZER(struct cmd_create_bonded_device_result,
+				socket, UINT8);
+
+cmdline_parse_inst_t cmd_create_bonded_device = {
+		.f = cmd_create_bonded_device_parsed,
+		.help_str = "create bonded device (mode) (socket): Create a new bonded device with specific bonding mode and socket",
+		.data = NULL,
+		.tokens = {
+				(void *)&cmd_createbonded_device_create,
+				(void *)&cmd_createbonded_device_bonded,
+				(void *)&cmd_createbonded_device_device,
+				(void *)&cmd_createbonded_device_mode,
+				(void *)&cmd_createbonded_device_socket,
+				NULL
+		}
+};
+
+/* *** SET MAC ADDRESS IN BONDED DEVICE *** */
+struct cmd_set_bond_mac_addr_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t mac_addr;
+	uint8_t port_num;
+	struct ether_addr address;
+};
+
+static void cmd_set_bond_mac_addr_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bond_mac_addr_result *res = parsed_result;
+	int ret;
+
+	if (res->port_num >= nb_ports) {
+		printf("Port id %d must be less than %d\n", res->port_num, nb_ports);
+		return;
+	}
+
+	ret = rte_eth_bond_mac_address_set(res->port_num, &res->address);
+
+	/* check the return value and print it if is < 0 */
+	if (ret < 0)
+		printf("set_bond_mac_addr error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_string_t cmd_set_bond_mac_addr_set =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mac_addr_result, set, "set");
+cmdline_parse_token_string_t cmd_set_bond_mac_addr_bonding =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mac_addr_result, bonding,
+				"bonding");
+cmdline_parse_token_string_t cmd_set_bond_mac_addr_mac =
+		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mac_addr_result, mac_addr,
+				"mac_addr");
+cmdline_parse_token_num_t cmd_set_bond_mac_addr_portnum =
+		TOKEN_NUM_INITIALIZER(struct cmd_set_bond_mac_addr_result, port_num, UINT8);
+cmdline_parse_token_etheraddr_t cmd_set_bond_mac_addr_addr =
+		TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_bond_mac_addr_result, address);
+
+cmdline_parse_inst_t cmd_set_bond_mac_addr = {
+		.f = cmd_set_bond_mac_addr_parsed,
+		.data = (void *) 0,
+		.help_str = "set bonding mac_addr (port_id) (address): ",
+		.tokens = {
+				(void *)&cmd_set_bond_mac_addr_set,
+				(void *)&cmd_set_bond_mac_addr_bonding,
+				(void *)&cmd_set_bond_mac_addr_mac,
+				(void *)&cmd_set_bond_mac_addr_portnum,
+				(void *)&cmd_set_bond_mac_addr_addr,
+				NULL
+		}
+};
+
+#endif /* RTE_LIBRTE_PMD_BOND */
+
 /* *** SET FORWARDING MODE *** */
 struct cmd_set_fwd_mode_result {
 	cmdline_fixed_string_t set;
@@ -2688,22 +3729,12 @@ cmdline_parse_token_string_t cmd_setfwd_fwd =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, fwd, "fwd");
 cmdline_parse_token_string_t cmd_setfwd_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, mode,
-#ifdef RTE_LIBRTE_IEEE1588
-				 "io#mac#mac_retry#rxonly#txonly#csum#ieee1588");
-#else
-				 "io#mac#mac_retry#rxonly#txonly#csum");
-#endif
+		"" /* defined at init */);
 
 cmdline_parse_inst_t cmd_set_fwd_mode = {
 	.f = cmd_set_fwd_mode_parsed,
 	.data = NULL,
-#ifdef RTE_LIBRTE_IEEE1588
-	.help_str = "set fwd io|mac|mac_retry|rxonly|txonly|csum|ieee1588 - set IO, MAC,"
-	" MAC_RETRY, RXONLY, TXONLY, CSUM or IEEE1588 packet forwarding mode",
-#else
-	.help_str = "set fwd io|mac|mac_retry|rxonly|txonly|csum - set IO, MAC,"
-	" MAC_RETRY, RXONLY, CSUM or TXONLY packet forwarding mode",
-#endif
+	.help_str = NULL, /* defined at init */
 	.tokens = {
 		(void *)&cmd_setfwd_set,
 		(void *)&cmd_setfwd_fwd,
@@ -2711,6 +3742,28 @@ cmdline_parse_inst_t cmd_set_fwd_mode = {
 		NULL,
 	},
 };
+
+static void cmd_set_fwd_mode_init(void)
+{
+	char *modes, *c;
+	static char token[128];
+	static char help[256];
+	cmdline_parse_token_string_t *token_struct;
+
+	modes = list_pkt_forwarding_modes();
+	snprintf(help, sizeof help, "set fwd %s - "
+		"set packet forwarding mode", modes);
+	cmd_set_fwd_mode.help_str = help;
+
+	/* string token separator is # */
+	for (c = token; *modes != '\0'; modes++)
+		if (*modes == '|')
+			*c++ = '#';
+		else
+			*c++ = *modes;
+	token_struct = (cmdline_parse_token_string_t*)cmd_set_fwd_mode.tokens[2];
+	token_struct->string_data.str = token;
+}
 
 /* *** SET BURST TX DELAY TIME RETRY NUMBER *** */
 struct cmd_set_burst_tx_retry_result {
@@ -2732,9 +3785,9 @@ static void cmd_set_burst_tx_retry_parsed(void *parsed_result,
 	if (!strcmp(res->set, "set") && !strcmp(res->burst, "burst")
 		&& !strcmp(res->tx, "tx")) {
 		if (!strcmp(res->delay, "delay"))
-			burst_tx_delay_time = res->time;	
+			burst_tx_delay_time = res->time;
 		if (!strcmp(res->retry, "retry"))
-			burst_tx_retry_num = res->retry_num;	
+			burst_tx_retry_num = res->retry_num;
 	}
 
 }
@@ -3437,48 +4490,18 @@ struct cmd_link_flow_ctrl_set_result {
 	cmdline_fixed_string_t tx_lfc_mode;
 	cmdline_fixed_string_t mac_ctrl_frame_fwd;
 	cmdline_fixed_string_t mac_ctrl_frame_fwd_mode;
+	cmdline_fixed_string_t autoneg_str;
+	cmdline_fixed_string_t autoneg;
+	cmdline_fixed_string_t hw_str;
 	uint32_t high_water;
+	cmdline_fixed_string_t lw_str;
 	uint32_t low_water;
+	cmdline_fixed_string_t pt_str;
 	uint16_t pause_time;
+	cmdline_fixed_string_t xon_str;
 	uint16_t send_xon;
 	uint8_t  port_id;
 };
-
-static void
-cmd_link_flow_ctrl_set_parsed(void *parsed_result,
-		       __attribute__((unused)) struct cmdline *cl,
-		       __attribute__((unused)) void *data)
-{
-	struct cmd_link_flow_ctrl_set_result *res = parsed_result;
-	struct rte_eth_fc_conf fc_conf;
-	int rx_fc_enable, tx_fc_enable, mac_ctrl_frame_fwd;
-	int ret;
-
-	/*
-	 * Rx on/off, flow control is enabled/disabled on RX side. This can indicate
-	 * the RTE_FC_TX_PAUSE, Transmit pause frame at the Rx side.
-	 * Tx on/off, flow control is enabled/disabled on TX side. This can indicate
-	 * the RTE_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
-	 */
-	static enum rte_eth_fc_mode rx_tx_onoff_2_lfc_mode[2][2] = {
-			{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
-	};
-
-	rx_fc_enable = (!strcmp(res->rx_lfc_mode, "on")) ? 1 : 0;
-	tx_fc_enable = (!strcmp(res->tx_lfc_mode, "on")) ? 1 : 0;
-	mac_ctrl_frame_fwd = (!strcmp(res->mac_ctrl_frame_fwd_mode, "on")) ? 1 : 0;
-
-	fc_conf.mode       = rx_tx_onoff_2_lfc_mode[rx_fc_enable][tx_fc_enable];
-	fc_conf.high_water = res->high_water;
-	fc_conf.low_water  = res->low_water;
-	fc_conf.pause_time = res->pause_time;
-	fc_conf.send_xon   = res->send_xon;
-	fc_conf.mac_ctrl_frame_fwd = (uint8_t)mac_ctrl_frame_fwd;
-
-	ret = rte_eth_dev_flow_ctrl_set(res->port_id, &fc_conf);
-	if (ret != 0)
-		printf("bad flow contrl parameter, return code = %d \n", ret);
-}
 
 cmdline_parse_token_string_t cmd_lfc_set_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
@@ -3498,15 +4521,27 @@ cmdline_parse_token_string_t cmd_lfc_set_tx =
 cmdline_parse_token_string_t cmd_lfc_set_tx_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				tx_lfc_mode, "on#off");
+cmdline_parse_token_string_t cmd_lfc_set_high_water_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				hw_str, "high_water");
 cmdline_parse_token_num_t cmd_lfc_set_high_water =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				high_water, UINT32);
+cmdline_parse_token_string_t cmd_lfc_set_low_water_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				lw_str, "low_water");
 cmdline_parse_token_num_t cmd_lfc_set_low_water =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				low_water, UINT32);
+cmdline_parse_token_string_t cmd_lfc_set_pause_time_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				pt_str, "pause_time");
 cmdline_parse_token_num_t cmd_lfc_set_pause_time =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				pause_time, UINT16);
+cmdline_parse_token_string_t cmd_lfc_set_send_xon_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				xon_str, "send_xon");
 cmdline_parse_token_num_t cmd_lfc_set_send_xon =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				send_xon, UINT16);
@@ -3516,16 +4551,27 @@ cmdline_parse_token_string_t cmd_lfc_set_mac_ctrl_frame_fwd_mode =
 cmdline_parse_token_string_t cmd_lfc_set_mac_ctrl_frame_fwd =
 	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				mac_ctrl_frame_fwd_mode, "on#off");
+cmdline_parse_token_string_t cmd_lfc_set_autoneg_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				autoneg_str, "autoneg");
+cmdline_parse_token_string_t cmd_lfc_set_autoneg =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
+				autoneg, "on#off");
 cmdline_parse_token_num_t cmd_lfc_set_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_set_result,
 				port_id, UINT8);
+
+/* forward declaration */
+static void
+cmd_link_flow_ctrl_set_parsed(void *parsed_result, struct cmdline *cl,
+			      void *data);
 
 cmdline_parse_inst_t cmd_link_flow_control_set = {
 	.f = cmd_link_flow_ctrl_set_parsed,
 	.data = NULL,
 	.help_str = "Configure the Ethernet flow control: set flow_ctrl rx on|off \
 tx on|off high_water low_water pause_time send_xon mac_ctrl_frame_fwd on|off \
-port_id",
+autoneg on|off port_id",
 	.tokens = {
 		(void *)&cmd_lfc_set_set,
 		(void *)&cmd_lfc_set_flow_ctrl,
@@ -3539,10 +4585,205 @@ port_id",
 		(void *)&cmd_lfc_set_send_xon,
 		(void *)&cmd_lfc_set_mac_ctrl_frame_fwd_mode,
 		(void *)&cmd_lfc_set_mac_ctrl_frame_fwd,
+		(void *)&cmd_lfc_set_autoneg_str,
+		(void *)&cmd_lfc_set_autoneg,
 		(void *)&cmd_lfc_set_portid,
 		NULL,
 	},
 };
+
+cmdline_parse_inst_t cmd_link_flow_control_set_rx = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_rx,
+	.help_str = "Change rx flow control parameter: set flow_ctrl "
+		    "rx on|off port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_rx,
+		(void *)&cmd_lfc_set_rx_mode,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_tx = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_tx,
+	.help_str = "Change tx flow control parameter: set flow_ctrl "
+		    "tx on|off port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_tx,
+		(void *)&cmd_lfc_set_tx_mode,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_hw = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_hw,
+	.help_str = "Change high water flow control parameter: set flow_ctrl "
+		    "high_water value port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_high_water_str,
+		(void *)&cmd_lfc_set_high_water,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_lw = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_lw,
+	.help_str = "Change low water flow control parameter: set flow_ctrl "
+		    "low_water value port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_low_water_str,
+		(void *)&cmd_lfc_set_low_water,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_pt = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_pt,
+	.help_str = "Change pause time flow control parameter: set flow_ctrl "
+		    "pause_time value port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_pause_time_str,
+		(void *)&cmd_lfc_set_pause_time,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_xon = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_xon,
+	.help_str = "Change send_xon flow control parameter: set flow_ctrl "
+		    "send_xon value port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_send_xon_str,
+		(void *)&cmd_lfc_set_send_xon,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_macfwd = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_macfwd,
+	.help_str = "Change mac ctrl fwd flow control parameter: set flow_ctrl "
+		    "mac_ctrl_frame_fwd on|off port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_mac_ctrl_frame_fwd_mode,
+		(void *)&cmd_lfc_set_mac_ctrl_frame_fwd,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_link_flow_control_set_autoneg = {
+	.f = cmd_link_flow_ctrl_set_parsed,
+	.data = (void *)&cmd_link_flow_control_set_autoneg,
+	.help_str = "Change autoneg flow control parameter: set flow_ctrl "
+		    "autoneg on|off port_id",
+	.tokens = {
+		(void *)&cmd_lfc_set_set,
+		(void *)&cmd_lfc_set_flow_ctrl,
+		(void *)&cmd_lfc_set_autoneg_str,
+		(void *)&cmd_lfc_set_autoneg,
+		(void *)&cmd_lfc_set_portid,
+		NULL,
+	},
+};
+
+static void
+cmd_link_flow_ctrl_set_parsed(void *parsed_result,
+			      __attribute__((unused)) struct cmdline *cl,
+			      void *data)
+{
+	struct cmd_link_flow_ctrl_set_result *res = parsed_result;
+	cmdline_parse_inst_t *cmd = data;
+	struct rte_eth_fc_conf fc_conf;
+	int rx_fc_en, tx_fc_en;
+	int ret;
+
+	/*
+	 * Rx on/off, flow control is enabled/disabled on RX side. This can indicate
+	 * the RTE_FC_TX_PAUSE, Transmit pause frame at the Rx side.
+	 * Tx on/off, flow control is enabled/disabled on TX side. This can indicate
+	 * the RTE_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
+	 */
+	static enum rte_eth_fc_mode rx_tx_onoff_2_lfc_mode[2][2] = {
+			{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
+	};
+
+	/* Partial command line, retrieve current configuration */
+	if (cmd) {
+		ret = rte_eth_dev_flow_ctrl_get(res->port_id, &fc_conf);
+		if (ret != 0) {
+			printf("cannot get current flow ctrl parameters, return"
+			       "code = %d\n", ret);
+			return;
+		}
+
+		if ((fc_conf.mode == RTE_FC_RX_PAUSE) ||
+		    (fc_conf.mode == RTE_FC_FULL))
+			rx_fc_en = 1;
+		if ((fc_conf.mode == RTE_FC_TX_PAUSE) ||
+		    (fc_conf.mode == RTE_FC_FULL))
+			tx_fc_en = 1;
+	}
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_rx)
+		rx_fc_en = (!strcmp(res->rx_lfc_mode, "on")) ? 1 : 0;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_tx)
+		tx_fc_en = (!strcmp(res->tx_lfc_mode, "on")) ? 1 : 0;
+
+	fc_conf.mode = rx_tx_onoff_2_lfc_mode[rx_fc_en][tx_fc_en];
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_hw)
+		fc_conf.high_water = res->high_water;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_lw)
+		fc_conf.low_water = res->low_water;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_pt)
+		fc_conf.pause_time = res->pause_time;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_xon)
+		fc_conf.send_xon = res->send_xon;
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_macfwd) {
+		if (!strcmp(res->mac_ctrl_frame_fwd_mode, "on"))
+			fc_conf.mac_ctrl_frame_fwd = 1;
+		else
+			fc_conf.mac_ctrl_frame_fwd = 0;
+	}
+
+	if (!cmd || cmd == &cmd_link_flow_control_set_autoneg)
+		fc_conf.autoneg = (!strcmp(res->autoneg, "on")) ? 1 : 0;
+
+	ret = rte_eth_dev_flow_ctrl_set(res->port_id, &fc_conf);
+	if (ret != 0)
+		printf("bad flow contrl parameter, return code = %d \n", ret);
+}
 
 /* *** SETUP ETHERNET PIRORITY FLOW CONTROL *** */
 struct cmd_priority_flow_ctrl_set_result {
@@ -3731,6 +4972,85 @@ cmdline_parse_inst_t cmd_start_tx_first = {
 	.tokens = {
 		(void *)&cmd_start_tx_first_start,
 		(void *)&cmd_start_tx_first_tx_first,
+		NULL,
+	},
+};
+
+/* *** SET LINK UP *** */
+struct cmd_set_link_up_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t link_up;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+};
+
+cmdline_parse_token_string_t cmd_set_link_up_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_up_result, set, "set");
+cmdline_parse_token_string_t cmd_set_link_up_link_up =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_up_result, link_up,
+				"link-up");
+cmdline_parse_token_string_t cmd_set_link_up_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_up_result, port, "port");
+cmdline_parse_token_num_t cmd_set_link_up_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_link_up_result, port_id, UINT8);
+
+static void cmd_set_link_up_parsed(__attribute__((unused)) void *parsed_result,
+			     __attribute__((unused)) struct cmdline *cl,
+			     __attribute__((unused)) void *data)
+{
+	struct cmd_set_link_up_result *res = parsed_result;
+	dev_set_link_up(res->port_id);
+}
+
+cmdline_parse_inst_t cmd_set_link_up = {
+	.f = cmd_set_link_up_parsed,
+	.data = NULL,
+	.help_str = "set link-up port (port id)",
+	.tokens = {
+		(void *)&cmd_set_link_up_set,
+		(void *)&cmd_set_link_up_link_up,
+		(void *)&cmd_set_link_up_port,
+		(void *)&cmd_set_link_up_port_id,
+		NULL,
+	},
+};
+
+/* *** SET LINK DOWN *** */
+struct cmd_set_link_down_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t link_down;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+};
+
+cmdline_parse_token_string_t cmd_set_link_down_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_down_result, set, "set");
+cmdline_parse_token_string_t cmd_set_link_down_link_down =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_down_result, link_down,
+				"link-down");
+cmdline_parse_token_string_t cmd_set_link_down_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_link_down_result, port, "port");
+cmdline_parse_token_num_t cmd_set_link_down_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_link_down_result, port_id, UINT8);
+
+static void cmd_set_link_down_parsed(
+				__attribute__((unused)) void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_set_link_down_result *res = parsed_result;
+	dev_set_link_down(res->port_id);
+}
+
+cmdline_parse_inst_t cmd_set_link_down = {
+	.f = cmd_set_link_down_parsed,
+	.data = NULL,
+	.help_str = "set link-down port (port id)",
+	.tokens = {
+		(void *)&cmd_set_link_down_set,
+		(void *)&cmd_set_link_down_link_down,
+		(void *)&cmd_set_link_down_port,
+		(void *)&cmd_set_link_down_port_id,
 		NULL,
 	},
 };
@@ -4369,15 +5689,15 @@ cmd_set_uc_hash_parsed(void *parsed_result,
 {
 	int ret=0;
 	struct cmd_set_uc_hash_table *res = parsed_result;
-	
+
 	int is_on = (strcmp(res->mode, "on") == 0) ? 1 : 0;
-	
+
 	if (strcmp(res->what, "uta") == 0)
-		ret = rte_eth_dev_uc_hash_table_set(res->port_id, 
+		ret = rte_eth_dev_uc_hash_table_set(res->port_id,
 						&res->address,(uint8_t)is_on);
 	if (ret < 0)
 		printf("bad unicast hash table parameter, return code = %d \n", ret);
-	
+
 }
 
 cmdline_parse_token_string_t cmd_set_uc_hash_set =
@@ -4393,7 +5713,7 @@ cmdline_parse_token_string_t cmd_set_uc_hash_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_hash_table,
 				 what, "uta");
 cmdline_parse_token_etheraddr_t cmd_set_uc_hash_mac =
-	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_uc_hash_table, 
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_uc_hash_table,
 				address);
 cmdline_parse_token_string_t cmd_set_uc_hash_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_hash_table,
@@ -4430,14 +5750,14 @@ cmd_set_uc_all_hash_parsed(void *parsed_result,
 {
 	int ret=0;
 	struct cmd_set_uc_all_hash_table *res = parsed_result;
-	
+
 	int is_on = (strcmp(res->mode, "on") == 0) ? 1 : 0;
-	
-	if ((strcmp(res->what, "uta") == 0) && 
+
+	if ((strcmp(res->what, "uta") == 0) &&
 		(strcmp(res->value, "all") == 0))
 		ret = rte_eth_dev_uc_all_hash_table_set(res->port_id,(uint8_t) is_on);
 	if (ret < 0)
-		printf("bad unicast hash table parameter," 
+		printf("bad unicast hash table parameter,"
 			"return code = %d \n", ret);
 }
 
@@ -4454,7 +5774,7 @@ cmdline_parse_token_string_t cmd_set_uc_all_hash_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
 				 what, "uta");
 cmdline_parse_token_string_t cmd_set_uc_all_hash_value =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table, 
+	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
 				value,"all");
 cmdline_parse_token_string_t cmd_set_uc_all_hash_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_uc_all_hash_table,
@@ -4556,7 +5876,7 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 	int ret;
 	uint16_t rx_mode = 0;
 	struct cmd_set_vf_rxmode *res = parsed_result;
-	
+
 	int is_on = (strcmp(res->on, "on") == 0) ? 1 : 0;
 	if (!strcmp(res->what,"rxmode")) {
 		if (!strcmp(res->mode, "AUPE"))
@@ -4636,7 +5956,7 @@ static void cmd_vf_mac_addr_parsed(void *parsed_result,
 	int ret = 0;
 
 	if (strcmp(res->what, "add") == 0)
-		ret = rte_eth_dev_mac_addr_add(res->port_num, 
+		ret = rte_eth_dev_mac_addr_add(res->port_num,
 					&res->address, res->vf_num);
 	if(ret < 0)
 		printf("vf_mac_addr_cmd error: (%s)\n", strerror(-ret));
@@ -4647,22 +5967,22 @@ cmdline_parse_token_string_t cmd_vf_mac_addr_cmd =
 	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				mac_addr_cmd,"mac_addr");
 cmdline_parse_token_string_t cmd_vf_mac_addr_what =
-	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				what,"add");
 cmdline_parse_token_string_t cmd_vf_mac_addr_port =
-	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				port,"port");
 cmdline_parse_token_num_t cmd_vf_mac_addr_portnum =
-	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result,
 				port_num, UINT8);
 cmdline_parse_token_string_t cmd_vf_mac_addr_vf =
-	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				vf,"vf");
 cmdline_parse_token_num_t cmd_vf_mac_addr_vfnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result,
 				vf_num, UINT8);
 cmdline_parse_token_etheraddr_t cmd_vf_mac_addr_addr =
-	TOKEN_ETHERADDR_INITIALIZER(struct cmd_vf_mac_addr_result, 
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_vf_mac_addr_result,
 				address);
 
 cmdline_parse_inst_t cmd_vf_mac_addr_filter = {
@@ -4745,6 +6065,152 @@ cmdline_parse_inst_t cmd_vf_rxvlan_filter = {
 	},
 };
 
+/* *** SET RATE LIMIT FOR A QUEUE OF A PORT *** */
+struct cmd_queue_rate_limit_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_num;
+	cmdline_fixed_string_t queue;
+	uint8_t queue_num;
+	cmdline_fixed_string_t rate;
+	uint16_t rate_num;
+};
+
+static void cmd_queue_rate_limit_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_queue_rate_limit_result *res = parsed_result;
+	int ret = 0;
+
+	if ((strcmp(res->set, "set") == 0) && (strcmp(res->port, "port") == 0)
+		&& (strcmp(res->queue, "queue") == 0)
+		&& (strcmp(res->rate, "rate") == 0))
+		ret = set_queue_rate_limit(res->port_num, res->queue_num,
+					res->rate_num);
+	if (ret < 0)
+		printf("queue_rate_limit_cmd error: (%s)\n", strerror(-ret));
+
+}
+
+cmdline_parse_token_string_t cmd_queue_rate_limit_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_queue_rate_limit_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
+				port, "port");
+cmdline_parse_token_num_t cmd_queue_rate_limit_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_rate_limit_result,
+				port_num, UINT8);
+cmdline_parse_token_string_t cmd_queue_rate_limit_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_queue_rate_limit_queuenum =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_rate_limit_result,
+				queue_num, UINT8);
+cmdline_parse_token_string_t cmd_queue_rate_limit_rate =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
+				rate, "rate");
+cmdline_parse_token_num_t cmd_queue_rate_limit_ratenum =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_rate_limit_result,
+				rate_num, UINT16);
+
+cmdline_parse_inst_t cmd_queue_rate_limit = {
+	.f = cmd_queue_rate_limit_parsed,
+	.data = (void *)0,
+	.help_str = "set port X queue Y rate Z:(X = port number,"
+	"Y = queue number,Z = rate number)set rate limit for a queue on port X",
+	.tokens = {
+		(void *)&cmd_queue_rate_limit_set,
+		(void *)&cmd_queue_rate_limit_port,
+		(void *)&cmd_queue_rate_limit_portnum,
+		(void *)&cmd_queue_rate_limit_queue,
+		(void *)&cmd_queue_rate_limit_queuenum,
+		(void *)&cmd_queue_rate_limit_rate,
+		(void *)&cmd_queue_rate_limit_ratenum,
+		NULL,
+	},
+};
+
+/* *** SET RATE LIMIT FOR A VF OF A PORT *** */
+struct cmd_vf_rate_limit_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t port_num;
+	cmdline_fixed_string_t vf;
+	uint8_t vf_num;
+	cmdline_fixed_string_t rate;
+	uint16_t rate_num;
+	cmdline_fixed_string_t q_msk;
+	uint64_t q_msk_val;
+};
+
+static void cmd_vf_rate_limit_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_vf_rate_limit_result *res = parsed_result;
+	int ret = 0;
+
+	if ((strcmp(res->set, "set") == 0) && (strcmp(res->port, "port") == 0)
+		&& (strcmp(res->vf, "vf") == 0)
+		&& (strcmp(res->rate, "rate") == 0)
+		&& (strcmp(res->q_msk, "queue_mask") == 0))
+		ret = set_vf_rate_limit(res->port_num, res->vf_num,
+					res->rate_num, res->q_msk_val);
+	if (ret < 0)
+		printf("vf_rate_limit_cmd error: (%s)\n", strerror(-ret));
+
+}
+
+cmdline_parse_token_string_t cmd_vf_rate_limit_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_vf_rate_limit_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				port, "port");
+cmdline_parse_token_num_t cmd_vf_rate_limit_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
+				port_num, UINT8);
+cmdline_parse_token_string_t cmd_vf_rate_limit_vf =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				vf, "vf");
+cmdline_parse_token_num_t cmd_vf_rate_limit_vfnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
+				vf_num, UINT8);
+cmdline_parse_token_string_t cmd_vf_rate_limit_rate =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				rate, "rate");
+cmdline_parse_token_num_t cmd_vf_rate_limit_ratenum =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
+				rate_num, UINT16);
+cmdline_parse_token_string_t cmd_vf_rate_limit_q_msk =
+	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
+				q_msk, "queue_mask");
+cmdline_parse_token_num_t cmd_vf_rate_limit_q_msk_val =
+	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
+				q_msk_val, UINT64);
+
+cmdline_parse_inst_t cmd_vf_rate_limit = {
+	.f = cmd_vf_rate_limit_parsed,
+	.data = (void *)0,
+	.help_str = "set port X vf Y rate Z queue_mask V:(X = port number,"
+	"Y = VF number,Z = rate number, V = queue mask value)set rate limit "
+	"for queues of VF on port X",
+	.tokens = {
+		(void *)&cmd_vf_rate_limit_set,
+		(void *)&cmd_vf_rate_limit_port,
+		(void *)&cmd_vf_rate_limit_portnum,
+		(void *)&cmd_vf_rate_limit_vf,
+		(void *)&cmd_vf_rate_limit_vfnum,
+		(void *)&cmd_vf_rate_limit_rate,
+		(void *)&cmd_vf_rate_limit_ratenum,
+		(void *)&cmd_vf_rate_limit_q_msk,
+		(void *)&cmd_vf_rate_limit_q_msk_val,
+		NULL,
+	},
+};
+
 /* *** CONFIGURE VM MIRROR VLAN/POOL RULE *** */
 struct cmd_set_mirror_mask_result {
 	cmdline_fixed_string_t set;
@@ -4765,7 +6231,7 @@ cmdline_parse_token_string_t cmd_mirror_mask_set =
 cmdline_parse_token_string_t cmd_mirror_mask_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_mask_result,
 				port, "port");
-cmdline_parse_token_string_t cmd_mirror_mask_portid =
+cmdline_parse_token_num_t cmd_mirror_mask_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_mask_result,
 				port_id, UINT8);
 cmdline_parse_token_string_t cmd_mirror_mask_mirror =
@@ -4839,7 +6305,7 @@ cmd_set_mirror_mask_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_set_mirror_mask = {
 		.f = cmd_set_mirror_mask_parsed,
 		.data = NULL,
-		.help_str = "set port X mirror-rule Y pool-mirror|vlan-mirror " 
+		.help_str = "set port X mirror-rule Y pool-mirror|vlan-mirror "
 				"pool_mask|vlan_id[,vlan_id]* dst-pool Z on|off",
 		.tokens = {
 			(void *)&cmd_mirror_mask_set,
@@ -4875,7 +6341,7 @@ cmdline_parse_token_string_t cmd_mirror_link_set =
 cmdline_parse_token_string_t cmd_mirror_link_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_mirror_link_result,
 				port, "port");
-cmdline_parse_token_string_t cmd_mirror_link_portid =
+cmdline_parse_token_num_t cmd_mirror_link_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_mirror_link_result,
 				port_id, UINT8);
 cmdline_parse_token_string_t cmd_mirror_link_mirror =
@@ -4961,7 +6427,7 @@ cmdline_parse_token_string_t cmd_rm_mirror_rule_reset =
 cmdline_parse_token_string_t cmd_rm_mirror_rule_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_rm_mirror_rule_result,
 				port, "port");
-cmdline_parse_token_string_t cmd_rm_mirror_rule_portid =
+cmdline_parse_token_num_t cmd_rm_mirror_rule_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_rm_mirror_rule_result,
 				port_id, UINT8);
 cmdline_parse_token_string_t cmd_rm_mirror_rule_mirror =
@@ -5023,19 +6489,19 @@ static void cmd_dump_parsed(void *parsed_result,
 	struct cmd_dump_result *res = parsed_result;
 
 	if (!strcmp(res->dump, "dump_physmem"))
-		rte_dump_physmem_layout();
+		rte_dump_physmem_layout(stdout);
 	else if (!strcmp(res->dump, "dump_memzone"))
-		rte_memzone_dump();
+		rte_memzone_dump(stdout);
 	else if (!strcmp(res->dump, "dump_log_history"))
-		rte_log_dump_history();
+		rte_log_dump_history(stdout);
 	else if (!strcmp(res->dump, "dump_struct_sizes"))
 		dump_struct_sizes();
 	else if (!strcmp(res->dump, "dump_ring"))
-		rte_ring_list_dump();
+		rte_ring_list_dump(stdout);
 	else if (!strcmp(res->dump, "dump_mempool"))
-		rte_mempool_list_dump();
+		rte_mempool_list_dump(stdout);
 	else if (!strcmp(res->dump, "dump_devargs"))
-		rte_eal_devargs_dump();
+		rte_eal_devargs_dump(stdout);
 }
 
 cmdline_parse_token_string_t cmd_dump_dump =
@@ -5077,7 +6543,7 @@ static void cmd_dump_one_parsed(void *parsed_result, struct cmdline *cl,
 			cmdline_printf(cl, "Cannot find ring\n");
 			return;
 		}
-		rte_ring_dump(r);
+		rte_ring_dump(stdout, r);
 	} else if (!strcmp(res->dump, "dump_mempool")) {
 		struct rte_mempool *mp;
 		mp = rte_mempool_lookup(res->name);
@@ -5085,7 +6551,7 @@ static void cmd_dump_one_parsed(void *parsed_result, struct cmdline *cl,
 			cmdline_printf(cl, "Cannot find mempool\n");
 			return;
 		}
-		rte_mempool_dump(mp);
+		rte_mempool_dump(stdout, mp);
 	}
 }
 
@@ -5107,6 +6573,836 @@ cmdline_parse_inst_t cmd_dump_one = {
 	},
 };
 
+/* *** ADD/REMOVE an ethertype FILTER *** */
+struct cmd_ethertype_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t ethertype;
+	uint16_t ethertype_value;
+	cmdline_fixed_string_t priority;
+	cmdline_fixed_string_t priority_en;
+	uint8_t priority_value;
+	cmdline_fixed_string_t queue;
+	uint16_t queue_id;
+	cmdline_fixed_string_t index;
+	uint16_t index_value;
+};
+
+static void
+cmd_ethertype_filter_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct cmd_ethertype_filter_result *res = parsed_result;
+	struct rte_ethertype_filter filter;
+
+	memset(&filter, 0, sizeof(struct rte_ethertype_filter));
+	filter.ethertype = rte_cpu_to_le_16(res->ethertype_value);
+	filter.priority = res->priority_value;
+
+	if (!strcmp(res->priority_en, "enable"))
+		filter.priority_en = 1;
+	if (!strcmp(res->filter, "add_ethertype_filter"))
+		ret = rte_eth_dev_add_ethertype_filter(res->port_id,
+				res->index_value,
+				&filter, res->queue_id);
+	else if (!strcmp(res->filter, "remove_ethertype_filter"))
+		ret = rte_eth_dev_remove_ethertype_filter(res->port_id,
+				res->index_value);
+	else if (!strcmp(res->filter, "get_ethertype_filter"))
+		get_ethertype_filter(res->port_id, res->index_value);
+
+	if (ret < 0)
+		printf("ethertype filter setting error: (%s)\n",
+			strerror(-ret));
+}
+
+cmdline_parse_token_num_t cmd_ethertype_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_ethertype_filter_ethertype =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				ethertype, "ethertype");
+cmdline_parse_token_ipaddr_t cmd_ethertype_filter_ethertype_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				ethertype_value, UINT16);
+cmdline_parse_token_string_t cmd_ethertype_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				priority, "priority");
+cmdline_parse_token_string_t cmd_ethertype_filter_priority_en =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				priority_en, "enable#disable");
+cmdline_parse_token_num_t cmd_ethertype_filter_priority_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				priority_value, UINT8);
+cmdline_parse_token_string_t cmd_ethertype_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_ethertype_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_ethertype_filter_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				index, "index");
+cmdline_parse_token_num_t cmd_ethertype_filter_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_ethertype_filter_result,
+				index_value, UINT16);
+cmdline_parse_token_string_t cmd_ethertype_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				filter, "add_ethertype_filter");
+cmdline_parse_inst_t cmd_add_ethertype_filter = {
+	.f = cmd_ethertype_filter_parsed,
+	.data = NULL,
+	.help_str = "add an ethertype filter",
+	.tokens = {
+		(void *)&cmd_ethertype_filter_add_filter,
+		(void *)&cmd_ethertype_filter_port_id,
+		(void *)&cmd_ethertype_filter_ethertype,
+		(void *)&cmd_ethertype_filter_ethertype_value,
+		(void *)&cmd_ethertype_filter_priority,
+		(void *)&cmd_ethertype_filter_priority_en,
+		(void *)&cmd_ethertype_filter_priority_value,
+		(void *)&cmd_ethertype_filter_queue,
+		(void *)&cmd_ethertype_filter_queue_id,
+		(void *)&cmd_ethertype_filter_index,
+		(void *)&cmd_ethertype_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_ethertype_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 filter, "remove_ethertype_filter");
+cmdline_parse_inst_t cmd_remove_ethertype_filter = {
+	.f = cmd_ethertype_filter_parsed,
+	.data = NULL,
+	.help_str = "remove an ethertype filter",
+	.tokens = {
+		(void *)&cmd_ethertype_filter_remove_filter,
+		(void *)&cmd_ethertype_filter_port_id,
+		(void *)&cmd_ethertype_filter_index,
+		(void *)&cmd_ethertype_filter_index_value,
+		NULL,
+	},
+};
+cmdline_parse_token_string_t cmd_ethertype_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_ethertype_filter_result,
+				 filter, "get_ethertype_filter");
+cmdline_parse_inst_t cmd_get_ethertype_filter = {
+	.f = cmd_ethertype_filter_parsed,
+	.data = NULL,
+	.help_str = "get an ethertype filter",
+	.tokens = {
+		(void *)&cmd_ethertype_filter_get_filter,
+		(void *)&cmd_ethertype_filter_port_id,
+		(void *)&cmd_ethertype_filter_index,
+		(void *)&cmd_ethertype_filter_index_value,
+		NULL,
+	},
+};
+
+/* *** set SYN filter *** */
+struct cmd_set_syn_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t priority;
+	cmdline_fixed_string_t high;
+	cmdline_fixed_string_t queue;
+	uint16_t  queue_id;
+};
+
+static void
+cmd_set_syn_filter_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct cmd_set_syn_filter_result *res = parsed_result;
+	struct rte_syn_filter filter;
+
+	if (!strcmp(res->filter, "add_syn_filter")) {
+		if (!strcmp(res->high, "high"))
+			filter.hig_pri = 1;
+		else
+			filter.hig_pri = 0;
+		ret = rte_eth_dev_add_syn_filter(res->port_id,
+				&filter, res->queue_id);
+	} else if (!strcmp(res->filter, "remove_syn_filter"))
+		ret = rte_eth_dev_remove_syn_filter(res->port_id);
+	else if (!strcmp(res->filter, "get_syn_filter"))
+		get_syn_filter(res->port_id);
+	if (ret < 0)
+		printf("syn filter setting error: (%s)\n", strerror(-ret));
+
+}
+cmdline_parse_token_num_t cmd_syn_filter_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_syn_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_syn_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				priority, "priority");
+cmdline_parse_token_string_t cmd_syn_filter_high =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				high, "high#low");
+cmdline_parse_token_string_t cmd_syn_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_syn_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_syn_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_syn_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				filter, "add_syn_filter");
+cmdline_parse_token_string_t cmd_syn_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				filter, "remove_syn_filter");
+cmdline_parse_inst_t cmd_add_syn_filter = {
+		.f = cmd_set_syn_filter_parsed,
+		.data = NULL,
+		.help_str = "add syn filter",
+		.tokens = {
+			(void *)&cmd_syn_filter_add_filter,
+			(void *)&cmd_syn_filter_portid,
+			(void *)&cmd_syn_filter_priority,
+			(void *)&cmd_syn_filter_high,
+			(void *)&cmd_syn_filter_queue,
+			(void *)&cmd_syn_filter_queue_id,
+			NULL,
+		},
+};
+cmdline_parse_inst_t cmd_remove_syn_filter = {
+		.f = cmd_set_syn_filter_parsed,
+		.data = NULL,
+		.help_str = "remove syn filter",
+		.tokens = {
+			(void *)&cmd_syn_filter_remove_filter,
+			(void *)&cmd_syn_filter_portid,
+			NULL,
+		},
+};
+
+cmdline_parse_token_string_t cmd_syn_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_syn_filter_result,
+				filter, "get_syn_filter");
+
+cmdline_parse_inst_t cmd_get_syn_filter = {
+		.f = cmd_set_syn_filter_parsed,
+		.data = NULL,
+		.help_str = "get syn filter",
+		.tokens = {
+			(void *)&cmd_syn_filter_get_filter,
+			(void *)&cmd_syn_filter_portid,
+			NULL,
+		},
+};
+
+/* *** ADD/REMOVE A 2tuple FILTER *** */
+struct cmd_2tuple_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t protocol;
+	uint8_t protocol_value;
+	uint8_t protocol_mask;
+	cmdline_fixed_string_t dst_port;
+	uint16_t dst_port_value;
+	uint16_t dst_port_mask;
+	cmdline_fixed_string_t flags;
+	uint8_t flags_value;
+	cmdline_fixed_string_t priority;
+	uint8_t priority_value;
+	cmdline_fixed_string_t queue;
+	uint16_t queue_id;
+	cmdline_fixed_string_t index;
+	uint16_t index_value;
+};
+
+static void
+cmd_2tuple_filter_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct rte_2tuple_filter filter;
+	struct cmd_2tuple_filter_result *res = parsed_result;
+
+	memset(&filter, 0, sizeof(struct rte_2tuple_filter));
+
+	if (!strcmp(res->filter, "add_2tuple_filter")) {
+		/* need convert to big endian. */
+		filter.dst_port = rte_cpu_to_be_16(res->dst_port_value);
+		filter.protocol = res->protocol_value;
+		filter.dst_port_mask = (res->dst_port_mask) ? 0 : 1;
+		filter.protocol_mask = (res->protocol_mask) ? 0 : 1;
+		filter.priority = res->priority_value;
+		filter.tcp_flags = res->flags_value;
+		ret = rte_eth_dev_add_2tuple_filter(res->port_id,
+			res->index_value, &filter, res->queue_id);
+	} else if (!strcmp(res->filter, "remove_2tuple_filter"))
+		ret = rte_eth_dev_remove_2tuple_filter(res->port_id,
+			res->index_value);
+	else if (!strcmp(res->filter, "get_2tuple_filter"))
+		get_2tuple_filter(res->port_id, res->index_value);
+
+	if (ret < 0)
+		printf("2tuple filter setting error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_num_t cmd_2tuple_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_protocol =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				 protocol, "protocol");
+cmdline_parse_token_num_t cmd_2tuple_filter_protocol_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				 protocol_value, UINT8);
+cmdline_parse_token_num_t cmd_2tuple_filter_protocol_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				protocol_mask, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_dst_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				dst_port, "dst_port");
+cmdline_parse_token_num_t cmd_2tuple_filter_dst_port_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				dst_port_value, UINT16);
+cmdline_parse_token_num_t cmd_2tuple_filter_dst_port_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				dst_port_mask, UINT16);
+cmdline_parse_token_string_t cmd_2tuple_filter_flags =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				flags, "flags");
+cmdline_parse_token_num_t cmd_2tuple_filter_flags_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				flags_value, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				priority, "priority");
+cmdline_parse_token_num_t cmd_2tuple_filter_priority_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				priority_value, UINT8);
+cmdline_parse_token_string_t cmd_2tuple_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_2tuple_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_2tuple_filter_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				index, "index");
+cmdline_parse_token_num_t cmd_2tuple_filter_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_2tuple_filter_result,
+				index_value, UINT16);
+cmdline_parse_token_string_t cmd_2tuple_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				filter, "add_2tuple_filter");
+cmdline_parse_inst_t cmd_add_2tuple_filter = {
+	.f = cmd_2tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "add a 2tuple filter",
+	.tokens = {
+		(void *)&cmd_2tuple_filter_add_filter,
+		(void *)&cmd_2tuple_filter_port_id,
+		(void *)&cmd_2tuple_filter_protocol,
+		(void *)&cmd_2tuple_filter_protocol_value,
+		(void *)&cmd_2tuple_filter_protocol_mask,
+		(void *)&cmd_2tuple_filter_dst_port,
+		(void *)&cmd_2tuple_filter_dst_port_value,
+		(void *)&cmd_2tuple_filter_dst_port_mask,
+		(void *)&cmd_2tuple_filter_flags,
+		(void *)&cmd_2tuple_filter_flags_value,
+		(void *)&cmd_2tuple_filter_priority,
+		(void *)&cmd_2tuple_filter_priority_value,
+		(void *)&cmd_2tuple_filter_queue,
+		(void *)&cmd_2tuple_filter_queue_id,
+		(void *)&cmd_2tuple_filter_index,
+		(void *)&cmd_2tuple_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_2tuple_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				filter, "remove_2tuple_filter");
+cmdline_parse_inst_t cmd_remove_2tuple_filter = {
+	.f = cmd_2tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "remove a 2tuple filter",
+	.tokens = {
+		(void *)&cmd_2tuple_filter_remove_filter,
+		(void *)&cmd_2tuple_filter_port_id,
+		(void *)&cmd_2tuple_filter_index,
+		(void *)&cmd_2tuple_filter_index_value,
+		NULL,
+	},
+};
+cmdline_parse_token_string_t cmd_2tuple_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_2tuple_filter_result,
+				filter, "get_2tuple_filter");
+cmdline_parse_inst_t cmd_get_2tuple_filter = {
+	.f = cmd_2tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "get a 2tuple filter",
+	.tokens = {
+		(void *)&cmd_2tuple_filter_get_filter,
+		(void *)&cmd_2tuple_filter_port_id,
+		(void *)&cmd_2tuple_filter_index,
+		(void *)&cmd_2tuple_filter_index_value,
+		NULL,
+	},
+};
+
+/* *** ADD/REMOVE A 5tuple FILTER *** */
+struct cmd_5tuple_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t  port_id;
+	cmdline_fixed_string_t dst_ip;
+	cmdline_ipaddr_t dst_ip_value;
+	cmdline_fixed_string_t src_ip;
+	cmdline_ipaddr_t src_ip_value;
+	cmdline_fixed_string_t dst_port;
+	uint16_t dst_port_value;
+	cmdline_fixed_string_t src_port;
+	uint16_t src_port_value;
+	cmdline_fixed_string_t protocol;
+	uint8_t protocol_value;
+	cmdline_fixed_string_t mask;
+	uint8_t  mask_value;
+	cmdline_fixed_string_t flags;
+	uint8_t flags_value;
+	cmdline_fixed_string_t priority;
+	uint8_t  priority_value;
+	cmdline_fixed_string_t queue;
+	uint16_t  queue_id;
+	cmdline_fixed_string_t index;
+	uint16_t  index_value;
+};
+
+static void
+cmd_5tuple_filter_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct rte_5tuple_filter filter;
+	struct cmd_5tuple_filter_result *res = parsed_result;
+
+	memset(&filter, 0, sizeof(struct rte_5tuple_filter));
+
+	if (!strcmp(res->filter, "add_5tuple_filter")) {
+		filter.dst_ip_mask = (res->mask_value & 0x10) ? 0 : 1;
+		filter.src_ip_mask = (res->mask_value & 0x08) ? 0 : 1;
+		filter.dst_port_mask = (res->mask_value & 0x04) ? 0 : 1;
+		filter.src_port_mask = (res->mask_value & 0x02) ? 0 : 1;
+		filter.protocol = res->protocol_value;
+		filter.protocol_mask = (res->mask_value & 0x01) ? 0 : 1;
+		filter.priority = res->priority_value;
+		filter.tcp_flags = res->flags_value;
+
+		if (res->dst_ip_value.family == AF_INET)
+			/* no need to convert, already big endian. */
+			filter.dst_ip = res->dst_ip_value.addr.ipv4.s_addr;
+		else {
+			if (filter.dst_ip_mask == 0) {
+				printf("can not support ipv6 involved compare.\n");
+				return;
+			}
+			filter.dst_ip = 0;
+		}
+
+		if (res->src_ip_value.family == AF_INET)
+			/* no need to convert, already big endian. */
+			filter.src_ip = res->src_ip_value.addr.ipv4.s_addr;
+		else {
+			if (filter.src_ip_mask == 0) {
+				printf("can not support ipv6 involved compare.\n");
+				return;
+			}
+			filter.src_ip = 0;
+		}
+		/* need convert to big endian. */
+		filter.dst_port = rte_cpu_to_be_16(res->dst_port_value);
+		filter.src_port = rte_cpu_to_be_16(res->src_port_value);
+
+		ret = rte_eth_dev_add_5tuple_filter(res->port_id,
+			res->index_value, &filter, res->queue_id);
+	} else if (!strcmp(res->filter, "remove_5tuple_filter"))
+		ret = rte_eth_dev_remove_5tuple_filter(res->port_id,
+			res->index_value);
+	else if (!strcmp(res->filter, "get_5tuple_filter"))
+		get_5tuple_filter(res->port_id, res->index_value);
+	if (ret < 0)
+		printf("5tuple filter setting error: (%s)\n", strerror(-ret));
+}
+
+
+cmdline_parse_token_num_t cmd_5tuple_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_dst_ip =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				dst_ip, "dst_ip");
+cmdline_parse_token_ipaddr_t cmd_5tuple_filter_dst_ip_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_5tuple_filter_result,
+				dst_ip_value);
+cmdline_parse_token_string_t cmd_5tuple_filter_src_ip =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				src_ip, "src_ip");
+cmdline_parse_token_ipaddr_t cmd_5tuple_filter_src_ip_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_5tuple_filter_result,
+				src_ip_value);
+cmdline_parse_token_string_t cmd_5tuple_filter_dst_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				dst_port, "dst_port");
+cmdline_parse_token_num_t cmd_5tuple_filter_dst_port_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				dst_port_value, UINT16);
+cmdline_parse_token_string_t cmd_5tuple_filter_src_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				src_port, "src_port");
+cmdline_parse_token_num_t cmd_5tuple_filter_src_port_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				src_port_value, UINT16);
+cmdline_parse_token_string_t cmd_5tuple_filter_protocol =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				protocol, "protocol");
+cmdline_parse_token_num_t cmd_5tuple_filter_protocol_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				protocol_value, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_mask =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				mask, "mask");
+cmdline_parse_token_num_t cmd_5tuple_filter_mask_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				mask_value, INT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_flags =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				flags, "flags");
+cmdline_parse_token_num_t cmd_5tuple_filter_flags_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				flags_value, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				priority, "priority");
+cmdline_parse_token_num_t cmd_5tuple_filter_priority_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				priority_value, UINT8);
+cmdline_parse_token_string_t cmd_5tuple_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_5tuple_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_5tuple_filter_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				index, "index");
+cmdline_parse_token_num_t cmd_5tuple_filter_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_5tuple_filter_result,
+				index_value, UINT16);
+
+cmdline_parse_token_string_t cmd_5tuple_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				 filter, "add_5tuple_filter");
+cmdline_parse_inst_t cmd_add_5tuple_filter = {
+	.f = cmd_5tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "add a 5tuple filter",
+	.tokens = {
+		(void *)&cmd_5tuple_filter_add_filter,
+		(void *)&cmd_5tuple_filter_port_id,
+		(void *)&cmd_5tuple_filter_dst_ip,
+		(void *)&cmd_5tuple_filter_dst_ip_value,
+		(void *)&cmd_5tuple_filter_src_ip,
+		(void *)&cmd_5tuple_filter_src_ip_value,
+		(void *)&cmd_5tuple_filter_dst_port,
+		(void *)&cmd_5tuple_filter_dst_port_value,
+		(void *)&cmd_5tuple_filter_src_port,
+		(void *)&cmd_5tuple_filter_src_port_value,
+		(void *)&cmd_5tuple_filter_protocol,
+		(void *)&cmd_5tuple_filter_protocol_value,
+		(void *)&cmd_5tuple_filter_mask,
+		(void *)&cmd_5tuple_filter_mask_value,
+		(void *)&cmd_5tuple_filter_flags,
+		(void *)&cmd_5tuple_filter_flags_value,
+		(void *)&cmd_5tuple_filter_priority,
+		(void *)&cmd_5tuple_filter_priority_value,
+		(void *)&cmd_5tuple_filter_queue,
+		(void *)&cmd_5tuple_filter_queue_id,
+		(void *)&cmd_5tuple_filter_index,
+		(void *)&cmd_5tuple_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_5tuple_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				filter, "remove_5tuple_filter");
+cmdline_parse_inst_t cmd_remove_5tuple_filter = {
+	.f = cmd_5tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "remove a 5tuple filter",
+	.tokens = {
+		(void *)&cmd_5tuple_filter_remove_filter,
+		(void *)&cmd_5tuple_filter_port_id,
+		(void *)&cmd_5tuple_filter_index,
+		(void *)&cmd_5tuple_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_5tuple_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_5tuple_filter_result,
+				filter, "get_5tuple_filter");
+cmdline_parse_inst_t cmd_get_5tuple_filter = {
+	.f = cmd_5tuple_filter_parsed,
+	.data = NULL,
+	.help_str = "get a 5tuple filter",
+	.tokens = {
+		(void *)&cmd_5tuple_filter_get_filter,
+		(void *)&cmd_5tuple_filter_port_id,
+		(void *)&cmd_5tuple_filter_index,
+		(void *)&cmd_5tuple_filter_index_value,
+		NULL,
+	},
+};
+
+/* *** ADD/REMOVE A flex FILTER *** */
+struct cmd_flex_filter_result {
+	cmdline_fixed_string_t filter;
+	uint8_t port_id;
+	cmdline_fixed_string_t len;
+	uint8_t len_value;
+	cmdline_fixed_string_t bytes;
+	cmdline_fixed_string_t bytes_value;
+	cmdline_fixed_string_t mask;
+	cmdline_fixed_string_t mask_value;
+	cmdline_fixed_string_t priority;
+	uint8_t priority_value;
+	cmdline_fixed_string_t queue;
+	uint16_t queue_id;
+	cmdline_fixed_string_t index;
+	uint16_t index_value;
+};
+
+static int xdigit2val(unsigned char c)
+{
+	int val;
+	if (isdigit(c))
+		val = c - '0';
+	else if (isupper(c))
+		val = c - 'A' + 10;
+	else
+		val = c - 'a' + 10;
+	return val;
+}
+
+static void
+cmd_flex_filter_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	int ret = 0;
+	struct rte_flex_filter filter;
+	struct cmd_flex_filter_result *res = parsed_result;
+	char *bytes_ptr, *mask_ptr;
+	uint16_t len, i, j;
+	char c;
+	int val, mod = 0;
+	uint32_t dword = 0;
+	uint8_t byte = 0;
+	uint8_t hex = 0;
+
+	if (!strcmp(res->filter, "add_flex_filter")) {
+		if (res->len_value > 128) {
+			printf("the len exceed the max length 128\n");
+			return;
+		}
+		memset(&filter, 0, sizeof(struct rte_flex_filter));
+		filter.len = res->len_value;
+		filter.priority = res->priority_value;
+		bytes_ptr = res->bytes_value;
+		mask_ptr = res->mask_value;
+
+		j = 0;
+		 /* translate bytes string to uint_32 array. */
+		if (bytes_ptr[0] == '0' && ((bytes_ptr[1] == 'x') ||
+			(bytes_ptr[1] == 'X')))
+			bytes_ptr += 2;
+		len = strnlen(bytes_ptr, res->len_value * 2);
+		if (len == 0 || (len % 8 != 0)) {
+			printf("please check len and bytes input\n");
+			return;
+		}
+		for (i = 0; i < len; i++) {
+			c = bytes_ptr[i];
+			if (isxdigit(c) == 0) {
+				/* invalid characters. */
+				printf("invalid input\n");
+				return;
+			}
+			val = xdigit2val(c);
+			mod = i % 8;
+			if (i % 2) {
+				byte |= val;
+				dword |= byte << (4 * mod - 4);
+				byte = 0;
+			} else
+				byte |= val << 4;
+			if (mod == 7) {
+				filter.dwords[j] = dword;
+				printf("dwords[%d]:%08x ", j, filter.dwords[j]);
+				j++;
+				dword = 0;
+			}
+		}
+		printf("\n");
+		 /* translate mask string to uint8_t array. */
+		j = 0;
+		if (mask_ptr[0] == '0' && ((mask_ptr[1] == 'x') ||
+			(mask_ptr[1] == 'X')))
+			mask_ptr += 2;
+		len = strnlen(mask_ptr, (res->len_value+3)/4);
+		if (len == 0) {
+			printf("invalid input\n");
+			return;
+		}
+		for (i = 0; i < len; i++) {
+			c = mask_ptr[i];
+			if (isxdigit(c) == 0) {
+				/* invalid characters. */
+				printf("invalid input\n");
+				return;
+			}
+			val = xdigit2val(c);
+			hex |= (uint8_t)(val & 0x8) >> 3;
+			hex |= (uint8_t)(val & 0x4) >> 1;
+			hex |= (uint8_t)(val & 0x2) << 1;
+			hex |= (uint8_t)(val & 0x1) << 3;
+			if (i % 2) {
+				byte |= hex << 4;
+				filter.mask[j] = byte;
+				printf("mask[%d]:%02x ", j, filter.mask[j]);
+				j++;
+				byte = 0;
+			} else
+				byte |= hex;
+			hex = 0;
+		}
+		printf("\n");
+		printf("call function rte_eth_dev_add_flex_filter: "
+			"index = %d, queue-id = %d, len = %d, priority = %d\n",
+			res->index_value, res->queue_id,
+			filter.len, filter.priority);
+		ret = rte_eth_dev_add_flex_filter(res->port_id, res->index_value,
+				&filter, res->queue_id);
+
+	} else if (!strcmp(res->filter, "remove_flex_filter"))
+		ret = rte_eth_dev_remove_flex_filter(res->port_id,
+			res->index_value);
+	else if (!strcmp(res->filter, "get_flex_filter"))
+		get_flex_filter(res->port_id, res->index_value);
+
+	if (ret < 0)
+		printf("flex filter setting error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_num_t cmd_flex_filter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_flex_filter_len =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				len, "len");
+cmdline_parse_token_num_t cmd_flex_filter_len_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				len_value, UINT8);
+cmdline_parse_token_string_t cmd_flex_filter_bytes =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				bytes, "bytes");
+cmdline_parse_token_string_t cmd_flex_filter_bytes_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				bytes_value, NULL);
+cmdline_parse_token_string_t cmd_flex_filter_mask =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				mask, "mask");
+cmdline_parse_token_string_t cmd_flex_filter_mask_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				mask_value, NULL);
+cmdline_parse_token_string_t cmd_flex_filter_priority =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				priority, "priority");
+cmdline_parse_token_num_t cmd_flex_filter_priority_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				priority_value, UINT8);
+cmdline_parse_token_string_t cmd_flex_filter_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				queue, "queue");
+cmdline_parse_token_num_t cmd_flex_filter_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				queue_id, UINT16);
+cmdline_parse_token_string_t cmd_flex_filter_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				index, "index");
+cmdline_parse_token_num_t cmd_flex_filter_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flex_filter_result,
+				index_value, UINT16);
+cmdline_parse_token_string_t cmd_flex_filter_add_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				filter, "add_flex_filter");
+cmdline_parse_inst_t cmd_add_flex_filter = {
+	.f = cmd_flex_filter_parsed,
+	.data = NULL,
+	.help_str = "add a flex filter",
+	.tokens = {
+		(void *)&cmd_flex_filter_add_filter,
+		(void *)&cmd_flex_filter_port_id,
+		(void *)&cmd_flex_filter_len,
+		(void *)&cmd_flex_filter_len_value,
+		(void *)&cmd_flex_filter_bytes,
+		(void *)&cmd_flex_filter_bytes_value,
+		(void *)&cmd_flex_filter_mask,
+		(void *)&cmd_flex_filter_mask_value,
+		(void *)&cmd_flex_filter_priority,
+		(void *)&cmd_flex_filter_priority_value,
+		(void *)&cmd_flex_filter_queue,
+		(void *)&cmd_flex_filter_queue_id,
+		(void *)&cmd_flex_filter_index,
+		(void *)&cmd_flex_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_flex_filter_remove_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				filter, "remove_flex_filter");
+cmdline_parse_inst_t cmd_remove_flex_filter = {
+	.f = cmd_flex_filter_parsed,
+	.data = NULL,
+	.help_str = "remove a flex filter",
+	.tokens = {
+		(void *)&cmd_flex_filter_remove_filter,
+		(void *)&cmd_flex_filter_port_id,
+		(void *)&cmd_flex_filter_index,
+		(void *)&cmd_flex_filter_index_value,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_flex_filter_get_filter =
+	TOKEN_STRING_INITIALIZER(struct cmd_flex_filter_result,
+				filter, "get_flex_filter");
+cmdline_parse_inst_t cmd_get_flex_filter = {
+	.f = cmd_flex_filter_parsed,
+	.data = NULL,
+	.help_str = "get a flex filter",
+	.tokens = {
+		(void *)&cmd_flex_filter_get_filter,
+		(void *)&cmd_flex_filter_port_id,
+		(void *)&cmd_flex_filter_index,
+		(void *)&cmd_flex_filter_index_value,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -5119,6 +7415,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_showcfg,
 	(cmdline_parse_inst_t *)&cmd_start,
 	(cmdline_parse_inst_t *)&cmd_start_tx_first,
+	(cmdline_parse_inst_t *)&cmd_set_link_up,
+	(cmdline_parse_inst_t *)&cmd_set_link_down,
 	(cmdline_parse_inst_t *)&cmd_reset,
 	(cmdline_parse_inst_t *)&cmd_set_numbers,
 	(cmdline_parse_inst_t *)&cmd_set_txpkts,
@@ -5131,11 +7429,22 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_one,
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_all,
 	(cmdline_parse_inst_t *)&cmd_set_flush_rx,
+	(cmdline_parse_inst_t *)&cmd_set_link_check,
 #ifdef RTE_NIC_BYPASS
 	(cmdline_parse_inst_t *)&cmd_set_bypass_mode,
 	(cmdline_parse_inst_t *)&cmd_set_bypass_event,
 	(cmdline_parse_inst_t *)&cmd_set_bypass_timeout,
 	(cmdline_parse_inst_t *)&cmd_show_bypass_config,
+#endif
+#ifdef RTE_LIBRTE_PMD_BOND
+	(cmdline_parse_inst_t *) &cmd_set_bonding_mode,
+	(cmdline_parse_inst_t *) &cmd_show_bonding_config,
+	(cmdline_parse_inst_t *) &cmd_set_bonding_primary,
+	(cmdline_parse_inst_t *) &cmd_add_bonding_slave,
+	(cmdline_parse_inst_t *) &cmd_remove_bonding_slave,
+	(cmdline_parse_inst_t *) &cmd_create_bonded_device,
+	(cmdline_parse_inst_t *) &cmd_set_bond_mac_addr,
+	(cmdline_parse_inst_t *) &cmd_set_balance_xmit_policy,
 #endif
 	(cmdline_parse_inst_t *)&cmd_vlan_offload,
 	(cmdline_parse_inst_t *)&cmd_vlan_tpid,
@@ -5143,8 +7452,17 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_rx_vlan_filter,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_set,
 	(cmdline_parse_inst_t *)&cmd_tx_vlan_reset,
+	(cmdline_parse_inst_t *)&cmd_tx_vlan_set_pvid,
 	(cmdline_parse_inst_t *)&cmd_tx_cksum_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_rx,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_tx,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_hw,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_lw,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_pt,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_xon,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_macfwd,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_autoneg,
 	(cmdline_parse_inst_t *)&cmd_priority_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_config_dcb,
 	(cmdline_parse_inst_t *)&cmd_read_reg,
@@ -5170,9 +7488,11 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_speed_all,
 	(cmdline_parse_inst_t *)&cmd_config_speed_specific,
 	(cmdline_parse_inst_t *)&cmd_config_rx_tx,
+	(cmdline_parse_inst_t *)&cmd_config_mtu,
 	(cmdline_parse_inst_t *)&cmd_config_max_pkt_len,
 	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
 	(cmdline_parse_inst_t *)&cmd_config_rss,
+	(cmdline_parse_inst_t *)&cmd_config_rxtx_queue,
 	(cmdline_parse_inst_t *)&cmd_config_rss_reta,
 	(cmdline_parse_inst_t *)&cmd_showport_reta,
 	(cmdline_parse_inst_t *)&cmd_config_burst,
@@ -5184,11 +7504,31 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_mac_addr_filter ,
 	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
+	(cmdline_parse_inst_t *)&cmd_queue_rate_limit,
+	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_mask,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_link,
 	(cmdline_parse_inst_t *)&cmd_reset_mirror_rule,
+	(cmdline_parse_inst_t *)&cmd_showport_rss_hash,
+	(cmdline_parse_inst_t *)&cmd_showport_rss_hash_key,
+	(cmdline_parse_inst_t *)&cmd_config_rss_hash_key,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
+	(cmdline_parse_inst_t *)&cmd_add_ethertype_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_ethertype_filter,
+	(cmdline_parse_inst_t *)&cmd_get_ethertype_filter,
+	(cmdline_parse_inst_t *)&cmd_add_syn_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_syn_filter,
+	(cmdline_parse_inst_t *)&cmd_get_syn_filter,
+	(cmdline_parse_inst_t *)&cmd_add_2tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_2tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_get_2tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_add_5tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_5tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_get_5tuple_filter,
+	(cmdline_parse_inst_t *)&cmd_add_flex_filter,
+	(cmdline_parse_inst_t *)&cmd_remove_flex_filter,
+	(cmdline_parse_inst_t *)&cmd_get_flex_filter,
 	NULL,
 };
 
@@ -5197,6 +7537,9 @@ void
 prompt(void)
 {
 	struct cmdline *cl;
+
+	/* initialize non-constant commands */
+	cmd_set_fwd_mode_init();
 
 	cl = cmdline_stdin_new(main_ctx, "testpmd> ");
 	if (cl == NULL) {

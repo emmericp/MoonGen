@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -49,7 +49,7 @@
 #ifdef RTE_LIBRTE_POWER_DEBUG
 #define POWER_DEBUG_TRACE(fmt, args...) do { \
 		RTE_LOG(ERR, POWER, "%s: " fmt, __func__, ## args); \
-	} while (0) 
+	} while (0)
 #else
 #define POWER_DEBUG_TRACE(fmt, args...)
 #endif
@@ -158,7 +158,7 @@ power_set_governor_userspace(struct rte_power_info *pi)
 	char *s;
 	int val;
 
-	rte_snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_GOVERNOR,
+	snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_GOVERNOR,
 							pi->lcore_id);
 	f = fopen(fullpath, "rw+");
 	FOPEN_OR_ERR_RET(f, ret);
@@ -175,7 +175,7 @@ power_set_governor_userspace(struct rte_power_info *pi)
 		goto out;
 	}
 	/* Save the original governor */
-	rte_snprintf(pi->governor_ori, sizeof(pi->governor_ori), "%s", buf);
+	snprintf(pi->governor_ori, sizeof(pi->governor_ori), "%s", buf);
 
 	/* Write 'userspace' to the governor */
 	val = fseek(f, 0, SEEK_SET);
@@ -208,7 +208,7 @@ power_get_available_freqs(struct rte_power_info *pi)
 	char *freqs[RTE_MAX_LCORE_FREQS];
 	char *s;
 
-	rte_snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_AVAIL_FREQ,
+	snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_AVAIL_FREQ,
 								pi->lcore_id);
 	f = fopen(fullpath, "r");
 	FOPEN_OR_ERR_RET(f, ret);
@@ -264,7 +264,7 @@ power_init_for_setting_freq(struct rte_power_info *pi)
 	uint32_t i, freq;
 	char *s;
 
-	rte_snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_SETSPEED,
+	snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_SETSPEED,
 							pi->lcore_id);
 	f = fopen(fullpath, "rw+");
 	FOPEN_OR_ERR_RET(f, -1);
@@ -361,7 +361,7 @@ power_set_governor_original(struct rte_power_info *pi)
 	char *s;
 	int val;
 
-	rte_snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_GOVERNOR,
+	snprintf(fullpath, sizeof(fullpath), POWER_SYSFILE_GOVERNOR,
 							pi->lcore_id);
 	f = fopen(fullpath, "rw+");
 	FOPEN_OR_ERR_RET(f, ret);
@@ -436,7 +436,7 @@ fail:
 
 	return -1;
 }
- 
+
 uint32_t
 rte_power_freqs(unsigned lcore_id, uint32_t *freqs, uint32_t num)
 {
@@ -456,7 +456,7 @@ rte_power_freqs(unsigned lcore_id, uint32_t *freqs, uint32_t num)
 
 	return pi->nb_freqs;
 }
- 
+
 uint32_t
 rte_power_get_freq(unsigned lcore_id)
 {
@@ -478,7 +478,7 @@ rte_power_set_freq(unsigned lcore_id, uint32_t index)
 
 	return set_freq_internal(&(lcore_power_info[lcore_id]), index);
 }
- 
+
 int
 rte_power_freq_down(unsigned lcore_id)
 {
@@ -496,7 +496,7 @@ rte_power_freq_down(unsigned lcore_id)
 	/* Frequencies in the array are from high to low. */
 	return set_freq_internal(pi, pi->curr_idx + 1);
 }
- 
+
 int
 rte_power_freq_up(unsigned lcore_id)
 {
@@ -514,7 +514,7 @@ rte_power_freq_up(unsigned lcore_id)
 	/* Frequencies in the array are from high to low. */
 	return set_freq_internal(pi, pi->curr_idx - 1);
 }
- 
+
 int
 rte_power_freq_max(unsigned lcore_id)
 {
@@ -526,7 +526,7 @@ rte_power_freq_max(unsigned lcore_id)
 	/* Frequencies in the array are from high to low. */
 	return set_freq_internal(&lcore_power_info[lcore_id], 0);
 }
- 
+
 int
 rte_power_freq_min(unsigned lcore_id)
 {

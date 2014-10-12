@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -67,6 +67,8 @@ extern "C" {
 
 #define ETHER_MAX_VLAN_ID  4095 /**< Maximum VLAN ID. */
 
+#define ETHER_MIN_MTU 68 /**< Minimum MTU for IPv4 packets, see RFC 791. */
+
 /**
  * Ethernet address:
  * A universally administered address is uniquely assigned to a device by its
@@ -84,6 +86,30 @@ struct ether_addr {
 
 #define ETHER_LOCAL_ADMIN_ADDR 0x02 /**< Locally assigned Eth. address. */
 #define ETHER_GROUP_ADDR       0x01 /**< Multicast or broadcast Eth. address. */
+
+/**
+ * Check if two Ethernet addresses are the same.
+ *
+ * @param ea1
+ *  A pointer to the first ether_addr structure containing
+ *  the ethernet address.
+ * @param ea2
+ *  A pointer to the second ether_addr structure containing
+ *  the ethernet address.
+ *
+ * @return
+ *  True  (1) if the given two ethernet address are the same;
+ *  False (0) otherwise.
+ */
+static inline int is_same_ether_addr(const struct ether_addr *ea1,
+				     const struct ether_addr *ea2)
+{
+	int i;
+	for (i = 0; i < ETHER_ADDR_LEN; i++)
+		if (ea1->addr_bytes[i] != ea2->addr_bytes[i])
+			return 0;
+	return 1;
+}
 
 /**
  * Check if an Ethernet address is filled with zeros.
@@ -179,7 +205,7 @@ static inline int is_universal_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_local_admin_ether_addr(const struct ether_addr *ea)
 {
-	return ((ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) == 1);
+	return ((ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) != 0);
 }
 
 /**

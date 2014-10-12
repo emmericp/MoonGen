@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -80,6 +80,7 @@ extern "C" {
 #include <sys/queue.h>
 #include <stdint.h>
 #include <inttypes.h>
+
 #include <rte_interrupts.h>
 
 TAILQ_HEAD(pci_device_list, rte_pci_device); /**< PCI devices in D-linked Q. */
@@ -190,12 +191,14 @@ struct rte_pci_driver {
 	uint32_t drv_flags;                     /**< Flags contolling handling of device. */
 };
 
-/** Device needs igb_uio kernel module */
-#define RTE_PCI_DRV_NEED_IGB_UIO 0x0001
+/** Device needs PCI BAR mapping (done with either IGB_UIO or VFIO) */
+#define RTE_PCI_DRV_NEED_MAPPING 0x0001
 /** Device driver must be registered several times until failure */
 #define RTE_PCI_DRV_MULTIPLE 0x0002
 /** Device needs to be unbound even if no module is provided */
 #define RTE_PCI_DRV_FORCE_UNBIND 0x0004
+/** Device driver supports link state interrupt */
+#define RTE_PCI_DRV_INTR_LSC	0x0008
 
 /**< Internal use only - Macro used by pci addr parsing functions **/
 #define GET_PCIADDR_FIELD(in, fd, lim, dlm)                   \
@@ -271,8 +274,11 @@ int rte_eal_pci_probe(void);
 
 /**
  * Dump the content of the PCI bus.
+ *
+ * @param f
+ *   A pointer to a file for output
  */
-void rte_eal_pci_dump(void);
+void rte_eal_pci_dump(FILE *f);
 
 /**
  * Register a PCI driver.

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -138,11 +138,6 @@ init_dpdk(void)
 {
     int ret;
 
-    /* Initialize the PMD */
-    ret = rte_pmd_init_all();
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Failed to initialize poll mode drivers (error %d)\n", ret);
-
     /* Bind the drivers to usable devices */
     ret = rte_eal_pci_probe();
     if (ret < 0)
@@ -157,7 +152,7 @@ void init_ring(int lcore_id, uint8_t port_id)
     struct rte_ring *ring;
     char ring_name[RTE_RING_NAMESIZE];
 
-    rte_snprintf(ring_name, RTE_RING_NAMESIZE,
+    snprintf(ring_name, RTE_RING_NAMESIZE,
     		"core%d_port%d", lcore_id, port_id);
     ring = rte_ring_create(ring_name, RING_SIZE, rte_socket_id(),
                            RING_F_SP_ENQ | RING_F_SC_DEQ);

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -216,7 +216,7 @@ rte_atomic64_add(rte_atomic64_t *v, int64_t inc)
  * @param v
  *   A pointer to the atomic counter.
  * @param dec
- *   The value to be substracted from the counter.
+ *   The value to be subtracted from the counter.
  */
 static inline void
 rte_atomic64_sub(rte_atomic64_t *v, int64_t dec)
@@ -287,14 +287,14 @@ rte_atomic64_add_return(rte_atomic64_t *v, int64_t inc)
  * Subtract a 64-bit value from an atomic counter and return the result.
  *
  * Atomically subtracts the 64-bit value (dec) from the atomic counter (v)
- * and returns the value of v after the substraction.
+ * and returns the value of v after the subtraction.
  *
  * @param v
  *   A pointer to the atomic counter.
  * @param dec
- *   The value to be substracted from the counter.
+ *   The value to be subtracted from the counter.
  * @return
- *   The value of v after the substraction.
+ *   The value of v after the subtraction.
  */
 static inline int64_t
 rte_atomic64_sub_return(rte_atomic64_t *v, int64_t dec)
@@ -336,7 +336,7 @@ static inline int rte_atomic64_inc_and_test(rte_atomic64_t *v)
  * @param v
  *   A pointer to the atomic counter.
  * @return
- *   True if the result after substraction is 0; false otherwise.
+ *   True if the result after subtraction is 0; false otherwise.
  */
 static inline int rte_atomic64_dec_and_test(rte_atomic64_t *v)
 {

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -49,8 +49,8 @@
 extern "C" {
 #endif
 
-#define IVSHMEM_MAGIC 		0x0BADC0DE
-#define IVSHMEM_NAME_LEN 	32
+#define IVSHMEM_MAGIC 0x0BADC0DE
+#define IVSHMEM_NAME_LEN 32
 
 /**
  * Structure that holds IVSHMEM shared metadata entry.
@@ -150,10 +150,12 @@ int rte_ivshmem_metadata_cmdline_generate(char *buffer, unsigned size,
 /**
  * Dump all metadata entries from a given metadata file to the console.
  *
+ * @param f
+ *   A pointer to a file for output
  * @name
  *  Name of the metadata file to be dumped to console.
  */
-void rte_ivshmem_metadata_dump(const char *name);
+void rte_ivshmem_metadata_dump(FILE *f, const char *name);
 
 
 #ifdef __cplusplus

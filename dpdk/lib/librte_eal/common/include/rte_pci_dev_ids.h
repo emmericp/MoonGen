@@ -1,38 +1,38 @@
 /*-
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  *   redistributing this file, you may do so under either license.
- * 
+ *
  *   GPL LICENSE SUMMARY
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
- * 
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of version 2 of the GNU General Public License as
  *   published by the Free Software Foundation.
- * 
+ *
  *   This program is distributed in the hope that it will be useful, but
  *   WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *   General Public License for more details.
- * 
+ *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  *   The full GNU General Public License is included in this distribution
  *   in the file called LICENSE.GPL.
- * 
+ *
  *   Contact Information:
  *   Intel Corporation
- * 
+ *
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -42,7 +42,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -54,7 +54,7 @@
  *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  */
 
 /**
@@ -73,6 +73,8 @@
  * RTE_PCI_DEV_ID_DECL_IGBVF
  * RTE_PCI_DEV_ID_DECL_IXGBE
  * RTE_PCI_DEV_ID_DECL_IXGBEVF
+ * RTE_PCI_DEV_ID_DECL_I40E
+ * RTE_PCI_DEV_ID_DECL_I40EVF
  * RTE_PCI_DEV_ID_DECL_VIRTIO
  * at the time when this file is included.
  *
@@ -112,6 +114,14 @@
 
 #ifndef RTE_PCI_DEV_ID_DECL_IXGBEVF
 #define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev)
+#endif
+
+#ifndef RTE_PCI_DEV_ID_DECL_I40E
+#define RTE_PCI_DEV_ID_DECL_I40E(vend, dev)
+#endif
+
+#ifndef RTE_PCI_DEV_ID_DECL_I40EVF
+#define RTE_PCI_DEV_ID_DECL_I40EVF(vend, dev)
 #endif
 
 #ifndef RTE_PCI_DEV_ID_DECL_VIRTIO
@@ -232,14 +242,6 @@
 #define E1000_DEV_ID_PCH_LPT_I217_V           0x153B
 #define E1000_DEV_ID_PCH_LPTLP_I218_LM	      0x155A
 #define E1000_DEV_ID_PCH_LPTLP_I218_V	      0x1559
-#ifdef NAHUM6_LPTH_I218_HW
-#define E1000_DEV_ID_PCH_I218_LM2             0x15A0
-#define E1000_DEV_ID_PCH_I218_V2              0x15A1
-#endif /* NAHUM6_LPTH_I218_HW */
-#ifdef NAHUM6_WPT_HW
-#define E1000_DEV_ID_PCH_I218_LM3             0x15A2 /* Wildcat Point PCH */
-#define E1000_DEV_ID_PCH_I218_V3              0x15A3 /* Wildcat Point PCH */
-#endif /* NAHUM6_WPT_HW */
 
 /*
  * Tested (supported) on VM emulated HW.
@@ -323,11 +325,7 @@ RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82576_NS)
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82576_NS_SERDES)
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82576_SERDES_QUAD)
 
-/* This device is the on-board NIC on some development boards. */
-#ifdef RTE_PCI_DEV_USE_82575EB_COPPER
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82575EB_COPPER)
-#endif
-
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82575EB_FIBER_SERDES)
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82575GB_QUAD_COPPER)
 
@@ -338,11 +336,7 @@ RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82580_SGMII)
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82580_COPPER_DUAL)
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_82580_QUAD_FIBER)
 
-/* This device is the on-board NIC on some development boards. */
-#ifndef RTE_PCI_DEV_NO_USE_I350_COPPER
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_I350_COPPER)
-#endif
-
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_I350_FIBER)
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_I350_SERDES)
 RTE_PCI_DEV_ID_DECL_IGB(PCI_VENDOR_ID_INTEL, E1000_DEV_ID_I350_SGMII)
@@ -444,6 +438,30 @@ RTE_PCI_DEV_ID_DECL_IXGBE(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X540T1)
 RTE_PCI_DEV_ID_DECL_IXGBE(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_82599_BYPASS)
 #endif
 
+/*************** Physical I40E devices from i40e_type.h *****************/
+
+#define I40E_DEV_ID_SFP_XL710           0x1572
+#define I40E_DEV_ID_SFP_X710            0x1573
+#define I40E_DEV_ID_QEMU                0x1574
+#define I40E_DEV_ID_KX_A                0x157F
+#define I40E_DEV_ID_KX_B                0x1580
+#define I40E_DEV_ID_KX_C                0x1581
+#define I40E_DEV_ID_KX_D                0x1582
+#define I40E_DEV_ID_QSFP_A              0x1583
+#define I40E_DEV_ID_QSFP_B              0x1584
+#define I40E_DEV_ID_QSFP_C              0x1585
+
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_SFP_XL710)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_SFP_X710)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_QEMU)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_KX_A)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_KX_B)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_KX_C)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_KX_D)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_QSFP_A)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_QSFP_B)
+RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_QSFP_C)
+
 /****************** Virtual IGB devices from e1000_hw.h ******************/
 
 #define E1000_DEV_ID_82576_VF                   0x10CA
@@ -468,9 +486,17 @@ RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_82599_VF_HV)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X540_VF)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X540_VF_HV)
 
+/****************** Virtual I40E devices from i40e_type.h ********************/
+
+#define I40E_DEV_ID_VF                  0x154C
+#define I40E_DEV_ID_VF_HV               0x1571
+
+RTE_PCI_DEV_ID_DECL_I40EVF(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_VF)
+RTE_PCI_DEV_ID_DECL_I40EVF(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_VF_HV)
+
 /****************** Virtio devices from virtio.h ******************/
 
-#define QUMRANET_DEV_ID_VIRTIO                   	0x1000
+#define QUMRANET_DEV_ID_VIRTIO                  0x1000
 
 RTE_PCI_DEV_ID_DECL_VIRTIO(PCI_VENDOR_ID_QUMRANET, QUMRANET_DEV_ID_VIRTIO)
 
@@ -488,5 +514,7 @@ RTE_PCI_DEV_ID_DECL_VMXNET3(PCI_VENDOR_ID_VMWARE, VMWARE_DEV_ID_VMXNET3)
 #undef RTE_PCI_DEV_ID_DECL_IGBVF
 #undef RTE_PCI_DEV_ID_DECL_IXGBE
 #undef RTE_PCI_DEV_ID_DECL_IXGBEVF
+#undef RTE_PCI_DEV_ID_DECL_I40E
+#undef RTE_PCI_DEV_ID_DECL_I40EVF
 #undef RTE_PCI_DEV_ID_DECL_VIRTIO
 #undef RTE_PCI_DEV_ID_DECL_VMXNET3

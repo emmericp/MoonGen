@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -49,29 +49,35 @@
 #define PAGE_SIZE 4096
 #endif
 
-#define VIRTIO_MAX_RX_QUEUES 1
-#define VIRTIO_MAX_TX_QUEUES 1
+#define VIRTIO_MAX_RX_QUEUES 128
+#define VIRTIO_MAX_TX_QUEUES 128
 #define VIRTIO_MAX_MAC_ADDRS 1
 #define VIRTIO_MIN_RX_BUFSIZE 64
 #define VIRTIO_MAX_RX_PKTLEN  1518
 
 /* Features desired/implemented by this driver. */
 #define VTNET_FEATURES \
-    (VIRTIO_NET_F_MAC        | \
-     VIRTIO_NET_F_STATUS     | \
-     VIRTIO_NET_F_CTRL_VQ    | \
-     VIRTIO_NET_F_CTRL_RX    | \
-     VIRTIO_NET_F_CTRL_VLAN  | \
-     VIRTIO_NET_F_CSUM       | \
-     VIRTIO_NET_F_HOST_TSO4  | \
-     VIRTIO_NET_F_HOST_TSO6  | \
-     VIRTIO_NET_F_HOST_ECN   | \
-     VIRTIO_NET_F_GUEST_CSUM | \
-     VIRTIO_NET_F_GUEST_TSO4 | \
-     VIRTIO_NET_F_GUEST_TSO6 | \
-     VIRTIO_NET_F_GUEST_ECN  | \
-     VIRTIO_NET_F_MRG_RXBUF  | \
-     VIRTIO_RING_F_INDIRECT_DESC)
+	(VIRTIO_NET_F_MAC       | \
+	VIRTIO_NET_F_STATUS     | \
+	VIRTIO_NET_F_MQ         | \
+	VIRTIO_NET_F_CTRL_VQ    | \
+	VIRTIO_NET_F_CTRL_RX    | \
+	VIRTIO_NET_F_CTRL_VLAN  | \
+	VIRTIO_NET_F_CSUM       | \
+	VIRTIO_NET_F_HOST_TSO4  | \
+	VIRTIO_NET_F_HOST_TSO6  | \
+	VIRTIO_NET_F_HOST_ECN   | \
+	VIRTIO_NET_F_GUEST_CSUM | \
+	VIRTIO_NET_F_GUEST_TSO4 | \
+	VIRTIO_NET_F_GUEST_TSO6 | \
+	VIRTIO_NET_F_GUEST_ECN  | \
+	VIRTIO_NET_F_MRG_RXBUF  | \
+	VIRTIO_RING_F_INDIRECT_DESC)
+
+/*
+ * CQ function prototype
+ */
+void virtio_dev_cq_start(struct rte_eth_dev *dev);
 
 /*
  * RX/TX function prototypes
@@ -98,6 +104,9 @@ int  virtio_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 uint16_t virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 
+uint16_t virtio_recv_mergeable_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+
 uint16_t virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
@@ -117,7 +126,7 @@ struct virtio_adapter {
  * via tcp_lro_rx().
  */
 #define VTNET_LRO_FEATURES (VIRTIO_NET_F_GUEST_TSO4 | \
-    VIRTIO_NET_F_GUEST_TSO6 | VIRTIO_NET_F_GUEST_ECN)
+			    VIRTIO_NET_F_GUEST_TSO6 | VIRTIO_NET_F_GUEST_ECN)
 
 
 #endif /* _VIRTIO_ETHDEV_H_ */

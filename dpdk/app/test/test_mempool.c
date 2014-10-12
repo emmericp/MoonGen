@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -110,12 +110,12 @@ test_mempool_basic(void)
 	unsigned i, j;
 
 	/* dump the mempool status */
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	printf("get an object\n");
 	if (rte_mempool_get(mp, &obj) < 0)
 		return -1;
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	/* tests that improve coverage */
 	printf("get object count\n");
@@ -136,7 +136,7 @@ test_mempool_basic(void)
 
 	printf("put the object back\n");
 	rte_mempool_put(mp, obj);
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	printf("get 2 objects\n");
 	if (rte_mempool_get(mp, &obj) < 0)
@@ -145,12 +145,12 @@ test_mempool_basic(void)
 		rte_mempool_put(mp, obj);
 		return -1;
 	}
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	printf("put the objects back\n");
 	rte_mempool_put(mp, obj);
 	rte_mempool_put(mp, obj2);
-	rte_mempool_dump(mp);
+	rte_mempool_dump(stdout, mp);
 
 	/*
 	 * get many objects: we cannot get them all because the cache
@@ -455,7 +455,7 @@ test_mempool_xmem_misc(void)
 	return (0);
 }
 
-int
+static int
 test_mempool(void)
 {
 	rte_atomic32_init(&synchro);
@@ -488,7 +488,7 @@ test_mempool(void)
 		return -1;
 	}
 
-	rte_mempool_list_dump();
+	rte_mempool_list_dump(stdout);
 
 	/* basic tests without cache */
 	mp = mp_nocache;
@@ -517,7 +517,13 @@ test_mempool(void)
 	if (test_mempool_xmem_misc() < 0)
 		return -1;
 
-	rte_mempool_list_dump();
+	rte_mempool_list_dump(stdout);
 
 	return 0;
 }
+
+static struct test_command mempool_cmd = {
+	.command = "mempool_autotest",
+	.callback = test_mempool,
+};
+REGISTER_TEST_COMMAND(mempool_cmd);

@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -77,7 +77,6 @@ rte_eal_cpu_init(void)
 
 		lcore_config[lcore_id].detected = (lcore_id < ncpus);
 		if (lcore_config[lcore_id].detected == 0) {
-			RTE_LOG(DEBUG, EAL, "Skip lcore %u (not detected)\n", lcore_id);
 			config->lcore_role[lcore_id] = ROLE_OFF;
 			continue;
 		}
@@ -97,6 +96,9 @@ rte_eal_cpu_init(void)
 	}
 
 	config->lcore_count = count;
+	RTE_LOG(DEBUG, EAL, "Support maximum %u logical core(s) by configuration.\n",
+		RTE_MAX_LCORE);
+	RTE_LOG(DEBUG, EAL, "Detected %u lcore(s)\n", config->lcore_count);
 
 	return 0;
 }

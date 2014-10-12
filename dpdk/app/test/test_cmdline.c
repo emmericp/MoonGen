@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -36,10 +36,9 @@
 #include "test.h"
 #include "test_cmdline.h"
 
-int
+static int
 test_cmdline(void)
 {
-#ifdef CONFIG_RTE_LIBRTE_CMDLINE
 	printf("Testind parsing ethernet addresses...\n");
 	if (test_parse_etheraddr_valid() < 0)
 		return -1;
@@ -87,9 +86,11 @@ test_cmdline(void)
 	printf("Testing library functions...\n");
 	if (test_cmdline_lib() < 0)
 		return -1;
-#else
-	printf("The cmdline library is not included in this build\n");
-#endif
 	return 0;
 }
 
+static struct test_command cmdline_cmd = {
+	.command = "cmdline_autotest",
+	.callback = test_cmdline,
+};
+REGISTER_TEST_COMMAND(cmdline_cmd);

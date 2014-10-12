@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -327,7 +327,7 @@ cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 	if (token_len >= INET6_ADDRSTRLEN+4)
 		return -1;
 
-	rte_snprintf(ip_str, token_len+1, "%s", buf);
+	snprintf(ip_str, token_len+1, "%s", buf);
 
 	/* convert the network prefix */
 	if (tk2->ipaddr_data.flags & CMDLINE_IPADDR_NETWORK) {
@@ -379,25 +379,25 @@ int cmdline_get_help_ipaddr(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 
 	switch (tk2->ipaddr_data.flags) {
 	case CMDLINE_IPADDR_V4:
-		rte_snprintf(dstbuf, size, "IPv4");
+		snprintf(dstbuf, size, "IPv4");
 		break;
 	case CMDLINE_IPADDR_V6:
-		rte_snprintf(dstbuf, size, "IPv6");
+		snprintf(dstbuf, size, "IPv6");
 		break;
 	case CMDLINE_IPADDR_V4|CMDLINE_IPADDR_V6:
-		rte_snprintf(dstbuf, size, "IPv4/IPv6");
+		snprintf(dstbuf, size, "IPv4/IPv6");
 		break;
 	case CMDLINE_IPADDR_NETWORK|CMDLINE_IPADDR_V4:
-		rte_snprintf(dstbuf, size, "IPv4 network");
+		snprintf(dstbuf, size, "IPv4 network");
 		break;
 	case CMDLINE_IPADDR_NETWORK|CMDLINE_IPADDR_V6:
-		rte_snprintf(dstbuf, size, "IPv6 network");
+		snprintf(dstbuf, size, "IPv6 network");
 		break;
 	case CMDLINE_IPADDR_NETWORK|CMDLINE_IPADDR_V4|CMDLINE_IPADDR_V6:
-		rte_snprintf(dstbuf, size, "IPv4/IPv6 network");
+		snprintf(dstbuf, size, "IPv4/IPv6 network");
 		break;
 	default:
-		rte_snprintf(dstbuf, size, "IPaddr (bad flags)");
+		snprintf(dstbuf, size, "IPaddr (bad flags)");
 		break;
 	}
 	return 0;

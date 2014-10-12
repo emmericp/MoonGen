@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -64,8 +64,39 @@
 
 /* Loopback operation modes */
 /* 82599 specific loopback operation types */
-#define IXGBE_LPBK_82599_NONE		0x0 /* Default value. Loopback is disabled. */
-#define IXGBE_LPBK_82599_TX_RX		0x1 /* Tx->Rx loopback operation is enabled. */
+#define IXGBE_LPBK_82599_NONE   0x0 /* Default value. Loopback is disabled. */
+#define IXGBE_LPBK_82599_TX_RX  0x1 /* Tx->Rx loopback operation is enabled. */
+
+#define IXGBE_MAX_JUMBO_FRAME_SIZE      0x2600 /* Maximum Jumbo frame size. */
+
+#define IXGBE_RTTBCNRC_RF_INT_MASK_BASE 0x000003FF
+#define IXGBE_RTTBCNRC_RF_INT_MASK_M \
+	(IXGBE_RTTBCNRC_RF_INT_MASK_BASE << IXGBE_RTTBCNRC_RF_INT_SHIFT)
+
+#define IXGBE_MAX_QUEUE_NUM_PER_VF  8
+
+#define IXGBE_SYN_FILTER_ENABLE         0x00000001 /* syn filter enable field */
+#define IXGBE_SYN_FILTER_QUEUE          0x000000FE /* syn filter queue field */
+#define IXGBE_SYN_FILTER_QUEUE_SHIFT    1          /* syn filter queue field shift */
+#define IXGBE_SYN_FILTER_SYNQFP         0x80000000 /* syn filter SYNQFP */
+
+#define IXGBE_ETQF_UP                   0x00070000 /* ethertype filter priority field */
+#define IXGBE_ETQF_SHIFT                16
+#define IXGBE_ETQF_UP_EN                0x00080000
+#define IXGBE_ETQF_ETHERTYPE            0x0000FFFF /* ethertype filter ethertype field */
+#define IXGBE_ETQF_MAX_PRI              7
+
+#define IXGBE_SDPQF_DSTPORT             0xFFFF0000 /* dst port field */
+#define IXGBE_SDPQF_DSTPORT_SHIFT       16         /* dst port field shift */
+#define IXGBE_SDPQF_SRCPORT             0x0000FFFF /* src port field */
+
+#define IXGBE_L34T_IMIR_SIZE_BP         0x00001000
+#define IXGBE_L34T_IMIR_RESERVE         0x00080000 /* bit 13 to 19 must be set to 1000000b. */
+#define IXGBE_L34T_IMIR_LLI             0x00100000
+#define IXGBE_L34T_IMIR_QUEUE           0x0FE00000
+#define IXGBE_L34T_IMIR_QUEUE_SHIFT     21
+#define IXGBE_5TUPLE_MAX_PRI            7
+#define IXGBE_5TUPLE_MIN_PRI            1
 
 /*
  * Information about the fdir mode.
@@ -105,7 +136,7 @@ struct ixgbe_hwstrip {
  */
 #define IXGBE_MAX_VF_MC_ENTRIES		30
 #define IXGBE_MAX_MR_RULE_ENTRIES	4 /* number of mirroring rules supported */
-#define IXGBE_MAX_UTA                   128	
+#define IXGBE_MAX_UTA                   128
 
 struct ixgbe_uta_info {
 	uint8_t  uc_filter_type;
@@ -114,7 +145,7 @@ struct ixgbe_uta_info {
 };
 
 struct ixgbe_mirror_info {
-	struct rte_eth_vmdq_mirror_conf mr_conf[ETH_VMDQ_NUM_MIRROR_RULE]; 
+	struct rte_eth_vmdq_mirror_conf mr_conf[ETH_VMDQ_NUM_MIRROR_RULE];
 	/**< store PF mirror rules configuration*/
 };
 
@@ -125,7 +156,7 @@ struct ixgbe_vf_info {
 	uint16_t default_vf_vlan_id;
 	uint16_t vlans_enabled;
 	bool clear_to_send;
-	uint16_t tx_rate;
+	uint16_t tx_rate[IXGBE_MAX_QUEUE_NUM_PER_VF];
 	uint16_t vlan_count;
 	uint8_t spoofchk_enabled;
 };
@@ -148,6 +179,16 @@ struct ixgbe_adapter {
 #ifdef RTE_NIC_BYPASS
 	struct ixgbe_bypass_info    bps;
 #endif /* RTE_NIC_BYPASS */
+};
+
+/*
+ *  Possible l4type of 5tuple filters.
+ */
+enum ixgbe_5tuple_protocol {
+	IXGBE_FILTER_PROTOCOL_TCP = 0,
+	IXGBE_FILTER_PROTOCOL_UDP,
+	IXGBE_FILTER_PROTOCOL_SCTP,
+	IXGBE_FILTER_PROTOCOL_NONE,
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
@@ -201,7 +242,7 @@ int  ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 
-uint32_t ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev, 
+uint32_t ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev,
 		uint16_t rx_queue_id);
 
 int ixgbe_dev_rx_descriptor_done(void *rx_queue, uint16_t offset);
@@ -211,6 +252,14 @@ int ixgbe_dev_rx_init(struct rte_eth_dev *dev);
 void ixgbe_dev_tx_init(struct rte_eth_dev *dev);
 
 void ixgbe_dev_rxtx_start(struct rte_eth_dev *dev);
+
+int ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+int ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 int ixgbevf_dev_rx_init(struct rte_eth_dev *dev);
 
@@ -234,6 +283,12 @@ uint16_t ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 uint16_t ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
+
+int ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_conf *rss_conf);
+
+int ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+				struct rte_eth_rss_conf *rss_conf);
 
 /*
  * Flow director function prototypes

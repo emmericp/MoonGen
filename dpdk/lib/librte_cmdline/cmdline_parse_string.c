@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -159,7 +159,7 @@ cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res)
 
 	if (res) {
 		/* we are sure that token_len is < STR_TOKEN_SIZE-1 */
-		rte_snprintf(res, STR_TOKEN_SIZE, "%s", buf);
+		snprintf(res, STR_TOKEN_SIZE, "%s", buf);
 		*((char *)res + token_len) = 0;
 	}
 
@@ -239,11 +239,11 @@ int cmdline_get_help_string(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 
 	if (s) {
 		if (get_next_token(s))
-			rte_snprintf(dstbuf, size, MULTISTRING_HELP);
+			snprintf(dstbuf, size, MULTISTRING_HELP);
 		else
-			rte_snprintf(dstbuf, size, FIXEDSTRING_HELP);
+			snprintf(dstbuf, size, FIXEDSTRING_HELP);
 	} else
-		rte_snprintf(dstbuf, size, ANYSTRING_HELP);
+		snprintf(dstbuf, size, ANYSTRING_HELP);
 
 	return 0;
 }

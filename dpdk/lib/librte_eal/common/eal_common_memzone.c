@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -70,7 +70,7 @@ memzone_lookup_thread_unsafe(const char *name)
 	 * zones and this function should be called at init only
 	 */
 	for (i = 0; i < RTE_MAX_MEMZONE && mcfg->memzone[i].addr != NULL; i++) {
-		if (!strncmp(name, mcfg->memzone[i].name, RTE_MEMZONE_NAMESIZE)) 
+		if (!strncmp(name, mcfg->memzone[i].name, RTE_MEMZONE_NAMESIZE))
 			return &mcfg->memzone[i];
 	}
 
@@ -289,7 +289,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 
 	/* fill the zone in config */
 	struct rte_memzone *mz = &mcfg->memzone[mcfg->memzone_idx++];
-	rte_snprintf(mz->name, sizeof(mz->name), "%s", name);
+	snprintf(mz->name, sizeof(mz->name), "%s", name);
 	mz->phys_addr = memseg_physaddr;
 	mz->addr = memseg_addr;
 	mz->len = requested_len;
@@ -373,7 +373,7 @@ rte_memzone_lookup(const char *name)
 	const struct rte_memzone *memzone = NULL;
 
 	mcfg = rte_eal_get_configuration()->mem_config;
-	
+
 	rte_rwlock_read_lock(&mcfg->mlock);
 
 	memzone = memzone_lookup_thread_unsafe(name);
@@ -385,7 +385,7 @@ rte_memzone_lookup(const char *name)
 
 /* Dump all reserved memory zones on console */
 void
-rte_memzone_dump(void)
+rte_memzone_dump(FILE *f)
 {
 	struct rte_mem_config *mcfg;
 	unsigned i = 0;
@@ -398,7 +398,7 @@ rte_memzone_dump(void)
 	for (i=0; i<RTE_MAX_MEMZONE; i++) {
 		if (mcfg->memzone[i].addr == NULL)
 			break;
-		printf("Zone %u: name:<%s>, phys:0x%"PRIx64", len:0x%zx"
+		fprintf(f, "Zone %u: name:<%s>, phys:0x%"PRIx64", len:0x%zx"
 		       ", virt:%p, socket_id:%"PRId32", flags:%"PRIx32"\n", i,
 		       mcfg->memzone[i].name,
 		       mcfg->memzone[i].phys_addr,
@@ -464,7 +464,7 @@ rte_eal_memzone_init(void)
 
 	/* mirror the runtime memsegs from config */
 	free_memseg = mcfg->free_memseg;
-	
+
 	/* secondary processes don't need to initialise anything */
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return 0;
@@ -504,4 +504,21 @@ rte_eal_memzone_init(void)
 	rte_rwlock_write_unlock(&mcfg->mlock);
 
 	return 0;
+}
+
+/* Walk all reserved memory zones */
+void rte_memzone_walk(void (*func)(const struct rte_memzone *, void *),
+		      void *arg)
+{
+	struct rte_mem_config *mcfg;
+	unsigned i;
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	rte_rwlock_read_lock(&mcfg->mlock);
+	for (i=0; i<RTE_MAX_MEMZONE; i++) {
+		if (mcfg->memzone[i].addr != NULL)
+			(*func)(&mcfg->memzone[i], arg);
+	}
+	rte_rwlock_read_unlock(&mcfg->mlock);
 }

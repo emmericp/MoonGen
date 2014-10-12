@@ -1,13 +1,13 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -56,8 +56,8 @@
 
 #include "rte_lpm.h"
 
-TAILQ_HEAD(rte_lpm_list, rte_lpm);
- 
+TAILQ_HEAD(rte_lpm_list, rte_tailq_entry);
+
 #define MAX_DEPTH_TBL24 24
 
 enum valid_flag {
@@ -118,24 +118,29 @@ depth_to_range(uint8_t depth)
 struct rte_lpm *
 rte_lpm_find_existing(const char *name)
 {
-	struct rte_lpm *l;
+	struct rte_lpm *l = NULL;
+	struct rte_tailq_entry *te;
 	struct rte_lpm_list *lpm_list;
 
 	/* check that we have an initialised tail queue */
-	if ((lpm_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm_list)) == NULL) {
+	if ((lpm_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM,
+			rte_lpm_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
 		return NULL;
 	}
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
-	TAILQ_FOREACH(l, lpm_list, next) {
+	TAILQ_FOREACH(te, lpm_list, next) {
+		l = (struct rte_lpm *) te->data;
 		if (strncmp(name, l->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
 	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
 
-	if (l == NULL)
+	if (te == NULL) {
 		rte_errno = ENOENT;
+		return NULL;
+	}
 
 	return l;
 }
@@ -149,14 +154,15 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 {
 	char mem_name[RTE_LPM_NAMESIZE];
 	struct rte_lpm *lpm = NULL;
+	struct rte_tailq_entry *te;
 	uint32_t mem_size;
 	struct rte_lpm_list *lpm_list;
 
 	/* check that we have an initialised tail queue */
-	if ((lpm_list = 
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm_list)) == NULL) {
+	if ((lpm_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM,
+			rte_lpm_list)) == NULL) {
 		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;	
+		return NULL;
 	}
 
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl24_entry) != 2);
@@ -168,7 +174,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 		return NULL;
 	}
 
-	rte_snprintf(mem_name, sizeof(mem_name), "LPM_%s", name);
+	snprintf(mem_name, sizeof(mem_name), "LPM_%s", name);
 
 	/* Determine the amount of memory to allocate. */
 	mem_size = sizeof(*lpm) + (sizeof(lpm->rules_tbl[0]) * max_rules);
@@ -176,28 +182,39 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
 	/* guarantee there's no existing */
-	TAILQ_FOREACH(lpm, lpm_list, next) {
+	TAILQ_FOREACH(te, lpm_list, next) {
+		lpm = (struct rte_lpm *) te->data;
 		if (strncmp(name, lpm->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
-	if (lpm != NULL)
+	if (te != NULL)
 		goto exit;
+
+	/* allocate tailq entry */
+	te = rte_zmalloc("LPM_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, LPM, "Failed to allocate tailq entry\n");
+		goto exit;
+	}
 
 	/* Allocate memory to store the LPM data structures. */
 	lpm = (struct rte_lpm *)rte_zmalloc_socket(mem_name, mem_size,
 			CACHE_LINE_SIZE, socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
+		rte_free(te);
 		goto exit;
 	}
 
 	/* Save user arguments. */
 	lpm->max_rules = max_rules;
-	rte_snprintf(lpm->name, sizeof(lpm->name), "%s", name);
+	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
 
-	TAILQ_INSERT_TAIL(lpm_list, lpm, next);
+	te->data = (void *) lpm;
 
-exit:	
+	TAILQ_INSERT_TAIL(lpm_list, te, next);
+
+exit:
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	return lpm;
@@ -209,12 +226,38 @@ exit:
 void
 rte_lpm_free(struct rte_lpm *lpm)
 {
+	struct rte_lpm_list *lpm_list;
+	struct rte_tailq_entry *te;
+
 	/* Check user arguments. */
 	if (lpm == NULL)
 		return;
 
-	RTE_EAL_TAILQ_REMOVE(RTE_TAILQ_LPM, rte_lpm_list, lpm);
+	/* check that we have an initialised tail queue */
+	if ((lpm_list =
+	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm_list)) == NULL) {
+		rte_errno = E_RTE_NO_TAILQ;
+		return;
+	}
+
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
+	/* find our tailq entry */
+	TAILQ_FOREACH(te, lpm_list, next) {
+		if (te->data == (void *) lpm)
+			break;
+	}
+	if (te == NULL) {
+		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		return;
+	}
+
+	TAILQ_REMOVE(lpm_list, te, next);
+
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+
 	rte_free(lpm);
+	rte_free(te);
 }
 
 /*
@@ -251,7 +294,7 @@ rule_add(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 			/* If rule already exists update its next_hop and return. */
 			if (lpm->rules_tbl[rule_index].ip == ip_masked) {
 				lpm->rules_tbl[rule_index].next_hop = next_hop;
-	
+
 				return rule_index;
 			}
 		}
@@ -415,7 +458,7 @@ add_depth_small(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 
 		/* If tbl24 entry is valid and extended calculate the index
 		 * into tbl8. */
-		tbl8_index = lpm->tbl24[i].tbl8_gindex * 
+		tbl8_index = lpm->tbl24[i].tbl8_gindex *
 				RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 		tbl8_group_end = tbl8_index + RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 
@@ -619,6 +662,35 @@ rte_lpm_add(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 	return 0;
 }
 
+/*
+ * Look for a rule in the high-level rules table
+ */
+int
+rte_lpm_is_rule_present(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
+uint8_t *next_hop)
+{
+	uint32_t ip_masked;
+	int32_t rule_index;
+
+	/* Check user arguments. */
+	if ((lpm == NULL) ||
+		(next_hop == NULL) ||
+		(depth < 1) || (depth > RTE_LPM_MAX_DEPTH))
+		return -EINVAL;
+
+	/* Look for the rule using rule_find. */
+	ip_masked = ip & depth_to_mask(depth);
+	rule_index = rule_find(lpm, ip_masked, depth);
+
+	if (rule_index >= 0) {
+		*next_hop = lpm->rules_tbl[rule_index].next_hop;
+		return 1;
+	}
+
+	/* If rule is not found return 0. */
+	return 0;
+}
+
 static inline int32_t
 find_previous_rule(struct rte_lpm *lpm, uint32_t ip, uint8_t depth, uint8_t *sub_rule_depth)
 {
@@ -660,7 +732,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 		 * associated with this rule.
 		 */
 		for (i = tbl24_index; i < (tbl24_index + tbl24_range); i++) {
-			
+
 			if (lpm->tbl24[i].ext_entry == 0 &&
 					lpm->tbl24[i].depth <= depth ) {
 				lpm->tbl24[i].valid = INVALID;
@@ -721,7 +793,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 				tbl8_group_index = lpm->tbl24[i].tbl8_gindex;
 				tbl8_index = tbl8_group_index *
 						RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
-				
+
 				for (j = tbl8_index; j < (tbl8_index +
 					RTE_LPM_TBL8_GROUP_NUM_ENTRIES); j++) {
 

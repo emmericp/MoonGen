@@ -1,14 +1,14 @@
 /*-
  *   BSD LICENSE
- * 
+ *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
- * 
+ *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  *     * Neither the name of Intel Corporation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
- * 
+ *
  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -40,7 +40,7 @@
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
-#include <rte_vdev.h>
+#include <rte_dev.h>
 
 #include <net/if.h>
 
@@ -50,11 +50,11 @@
 #define RTE_ETH_PCAP_SNAPLEN 4096
 #define RTE_ETH_PCAP_PROMISC 1
 #define RTE_ETH_PCAP_TIMEOUT -1
-#define ETH_PCAP_RX_PCAP_ARG  	"rx_pcap"
-#define ETH_PCAP_TX_PCAP_ARG  	"tx_pcap"
-#define ETH_PCAP_RX_IFACE_ARG 	"rx_iface"
-#define ETH_PCAP_TX_IFACE_ARG	"tx_iface"
-#define ETH_PCAP_IFACE_ARG		"iface"
+#define ETH_PCAP_RX_PCAP_ARG  "rx_pcap"
+#define ETH_PCAP_TX_PCAP_ARG  "tx_pcap"
+#define ETH_PCAP_RX_IFACE_ARG "rx_iface"
+#define ETH_PCAP_TX_IFACE_ARG "tx_iface"
+#define ETH_PCAP_IFACE_ARG    "iface"
 
 static char errbuf[PCAP_ERRBUF_SIZE];
 static struct timeval start_time;
@@ -139,7 +139,7 @@ eth_pcap_rx(void *queue,
 		packet = pcap_next(pcap_q->pcap, &header);
 		if (unlikely(packet == NULL))
 			break;
-		else 
+		else
 			mbuf = rte_pktmbuf_alloc(pcap_q->mb_pool);
 		if (unlikely(mbuf == NULL))
 			break;
@@ -154,11 +154,11 @@ eth_pcap_rx(void *queue,
 			rte_memcpy(mbuf->pkt.data, packet, header.len);
 			mbuf->pkt.data_len = (uint16_t)header.len;
 			mbuf->pkt.pkt_len = mbuf->pkt.data_len;
-			bufs[i] = mbuf;
+			bufs[num_rx] = mbuf;
 			num_rx++;
 		} else {
 			/* pcap packet will not fit in the mbuf, so drop packet */
-			RTE_LOG(ERR, PMD, 
+			RTE_LOG(ERR, PMD,
 					"PCAP packet %d bytes will not fit in mbuf (%d bytes)\n",
 					header.len, buf_size);
 			rte_pktmbuf_free(mbuf);
@@ -239,8 +239,9 @@ eth_pcap_tx(void *queue,
 		mbuf = bufs[i];
 		ret = pcap_sendpacket(tx_queue->pcap, (u_char*) mbuf->pkt.data,
 				mbuf->pkt.data_len);
-		if(likely(!ret))
-			num_tx++;
+		if (unlikely(ret != 0))
+			break;
+		num_tx++;
 		rte_pktmbuf_free(mbuf);
 	}
 
@@ -533,7 +534,7 @@ open_tx_iface(const char *key __rte_unused, const char *value, void *extra_args)
 
 
 static int
-rte_pmd_init_internals(const unsigned nb_rx_queues,
+rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 		const unsigned nb_tx_queues,
 		const unsigned numa_node,
 		struct pmd_internals **internals,
@@ -557,20 +558,20 @@ rte_pmd_init_internals(const unsigned nb_rx_queues,
 	/* now do all data allocation - for eth_dev structure, dummy pci driver
 	 * and internal (private) data
 	 */
-	data = rte_zmalloc_socket(NULL, sizeof(*data), 0, numa_node);
+	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
 		goto error;
 
-	pci_dev = rte_zmalloc_socket(NULL, sizeof(*pci_dev), 0, numa_node);
+	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
 	if (pci_dev == NULL)
 		goto error;
 
-	*internals = rte_zmalloc_socket(NULL, sizeof(**internals), 0, numa_node);
+	*internals = rte_zmalloc_socket(name, sizeof(**internals), 0, numa_node);
 	if (*internals == NULL)
 		goto error;
 
 	/* reserve an ethdev entry */
-	*eth_dev = rte_eth_dev_allocate();
+	*eth_dev = rte_eth_dev_allocate(name);
 	if (*eth_dev == NULL)
 		goto error;
 
@@ -616,7 +617,7 @@ rte_pmd_init_internals(const unsigned nb_rx_queues,
 }
 
 static int
-rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
+rte_eth_from_pcaps_n_dumpers(const char *name, pcap_t * const rx_queues[],
 		const unsigned nb_rx_queues,
 		pcap_dumper_t * const tx_queues[],
 		const unsigned nb_tx_queues,
@@ -633,7 +634,7 @@ rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 	if (tx_queues == NULL && nb_tx_queues > 0)
 		return -1;
 
-	if (rte_pmd_init_internals(nb_rx_queues, nb_tx_queues, numa_node,
+	if (rte_pmd_init_internals(name, nb_rx_queues, nb_tx_queues, numa_node,
 			&internals, &eth_dev, kvlist) < 0)
 		return -1;
 
@@ -651,7 +652,7 @@ rte_eth_from_pcaps_n_dumpers(pcap_t * const rx_queues[],
 }
 
 static int
-rte_eth_from_pcaps(pcap_t * const rx_queues[],
+rte_eth_from_pcaps(const char *name, pcap_t * const rx_queues[],
 		const unsigned nb_rx_queues,
 		pcap_t * const tx_queues[],
 		const unsigned nb_tx_queues,
@@ -668,7 +669,7 @@ rte_eth_from_pcaps(pcap_t * const rx_queues[],
 	if (tx_queues == NULL && nb_tx_queues > 0)
 		return -1;
 
-	if (rte_pmd_init_internals(nb_rx_queues, nb_tx_queues, numa_node,
+	if (rte_pmd_init_internals(name, nb_rx_queues, nb_tx_queues, numa_node,
 			&internals, &eth_dev, kvlist) < 0)
 		return -1;
 
@@ -718,7 +719,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		if (ret < 0)
 			return -1;
 
-		return rte_eth_from_pcaps(pcaps.pcaps, 1, pcaps.pcaps, 1,
+		return rte_eth_from_pcaps(name, pcaps.pcaps, 1, pcaps.pcaps, 1,
 				numa_node, kvlist);
 	}
 
@@ -759,22 +760,18 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		return -1;
 
 	if (using_dumpers)
-		return rte_eth_from_pcaps_n_dumpers(pcaps.pcaps, pcaps.num_of_rx,
+		return rte_eth_from_pcaps_n_dumpers(name, pcaps.pcaps, pcaps.num_of_rx,
 				dumpers.dumpers, dumpers.num_of_tx, numa_node, kvlist);
 
-	return rte_eth_from_pcaps(pcaps.pcaps, pcaps.num_of_rx, dumpers.pcaps,
+	return rte_eth_from_pcaps(name, pcaps.pcaps, pcaps.num_of_rx, dumpers.pcaps,
 			dumpers.num_of_tx, numa_node, kvlist);
 
 }
 
-static struct rte_vdev_driver pmd_pcap_drv = {
+static struct rte_driver pmd_pcap_drv = {
 	.name = "eth_pcap",
+	.type = PMD_VDEV,
 	.init = rte_pmd_pcap_devinit,
 };
 
-__attribute__((constructor))
-static void
-rte_pmd_pcap_init(void)
-{
-	rte_eal_vdev_driver_register(&pmd_pcap_drv);
-}
+PMD_REGISTER_DRIVER(pmd_pcap_drv);
