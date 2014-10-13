@@ -8,9 +8,6 @@ local dpdk	= require "dpdk"
 local dev	= require "device"
 local stp	= require "StackTracePlus"
 
--- disable gc
-collectgarbage("stop")
-
 -- TODO: add command line switches for this and other luajit-debugging features
 --require("jit.v").on()
 
