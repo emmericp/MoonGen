@@ -7,6 +7,9 @@ local filter	= require "filter"
 
 local ffi	= require "ffi"
 
+-- NOTE: this code was written against the old API of MoonGen and does not work anymore
+-- TODO: add support for L3 filtering, the idea is to match the PTP type field in hardware (possible with flow director on intel cards)
+
 function master(...)
 	local txPort, rxPort, rate, size = tonumberall(...)
 	if not txPort or not rxPort then
@@ -129,12 +132,12 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue, size)
 			bufs[0] = memory.alloc(mempool)
 			ts.fillPacket(bufs[0], 1234, size)
 			local data = ffi.cast("uint8_t*", bufs[0].pkt.data)
-		data[0] = 0x00
-		data[1] = 0x11
-		data[2] = 0x22
-		data[3] = 0x33
-		data[4] = 0x44
-		data[5] = 0xff
+			data[0] = 0x00
+			data[1] = 0x11
+			data[2] = 0x22
+			data[3] = 0x33
+			data[4] = 0x44
+			data[5] = 0xff
 			ts.syncClocks(txPort, rxPort)
 			while dpdkc.rte_eth_tx_burst_export(txPort, txQueue, bufs, 1) == 0 do end
 			for i = 1, 100 do
