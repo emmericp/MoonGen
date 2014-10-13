@@ -16,22 +16,8 @@ Lua script, it can be used to implement advanced test scripts. E.g. one can use
 two instances of MoonGen that establish a connection with each other. This
 setup can be used to benchmark middle-boxes like firewalls.
 
-##Dependencies
 
-* gcc
-* make
-* cmake
-* kernel headers (for the DPDK ixgbe-uio driver)
-* libluajit-2.0.3
-
-##Installation
-
-1. Install the dependencies
-2. ./build.sh
-3. ./setup-hugetlbfs.sh
-4. Run MoonGen from the build directory (install target coming soon)
-
-##Examples
+#Examples
 MoonGen comes with examples in the examples folder which can be used as a basis for custom scripts.
 
     ./MoonGen ../examples/l2-load-latency.lua 0 0
@@ -42,3 +28,16 @@ MoonGen uses LuaDoc. However, our build system does not yet auto-publish the gen
 TODO: fix this
 
 
+#Installation
+
+1. Install the dependencies (see below)
+2. ./build.sh
+3. ./setup-hugetlbfs.sh
+4. Run MoonGen from the build directory (install target coming soon)
+
+##Dependencies
+* gcc
+* make
+* cmake
+* kernel headers (for the DPDK ixgbe-uio driver)
+* libluajit-2.0.3
