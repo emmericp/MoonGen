@@ -170,7 +170,11 @@ function loadSlave(port, queue, packetLen, minIp, maxIp, ipv6, sIp, sMac, dMac)
 		p.udp_h.src		  = hton16(1116)				      -- src port
 		p.udp_h.dst		  = hton16(2222)				      -- dst port
 		p.udp_h.len  		= hton16(packetLen - 34)		-- packet length - (ethernet(14) + ip header(20))
-		p.udp_h.check		= 0					                -- optional checksum; 0 = not used
+		
+		if ipv6 then --TODO mandatory checksum for ipv6 +udp?!
+		else
+			p.udp_h.check		= 0					      -- optional checksum; 0 = not used
+		end
 --[[
 		local data = ffi.cast("uint8_t*", buf.pkt.data)
 		for i = 0, 63, 1 do
