@@ -5,12 +5,13 @@ The whole load generator is controlled by a Lua script: all packets that are sen
 Thanks to the incredibly fast LuaJIT VM and the packet processing library DPDK, it can saturate a 10 GBit Ethernet link with 64 Byte packets while using only a single CPU core.
 MoonGen can keep this rate even if each packet is modified by a Lua script. It does not simply replay the same buffer.
 
-
 MoonGen can also receive packets, e.g. to check which packets are dropped by a
 system under test. As the reception is also fully under control of the user's
 Lua script, it can be used to implement advanced test scripts. E.g. one can use
 two instances of MoonGen that establish a connection with each other. This
 setup can be used to benchmark middle-boxes like firewalls.
+
+You can read [our paper](http://arxiv.org/abs/1410.3322) for more details about MoonGen.
 
 # Hardware Features
 MoonGen utilizes advanced hardware features of commodity NICs to implement time stamping and rate control.
@@ -20,17 +21,17 @@ Intel commodity NICs like the 82599, X540, and 82580 support time stamping in ha
 The NICs implement this to support the IEEE 1588 PTP protocol, but this feature can be used to timestamp almost arbitrary UDP packets.
 The NICs achieve sub-microsecond precision and accuracy.
 
-Read more: TODO: write wiki page
+Read more: paper [1], wiki page (TODO)
 
 ## Rate Control
 Intel 10 GbE NICs (82599 and X540) support rate control in hardware.
 This can be used to generate CBR or bursty traffic with precise inter-departure times.
 
-Read more: TODO: reference paper here
+Read more: paper [1], wiki page (TODO)
 
 # Reliable Software Rate Control for Complex Traffic Patterns
 Generating precise inter-departure times in software at high packet rates is hard.
-See (TODO: our paper) and [2] for more details.
+See our paper [1] for more details.
 The hardware supports only CBR but other traffic patterns, especially a Poisson distribution, are desirable.
 
 The problem that software rate control faces is that transmitted packets go through a queue on the NIC.
@@ -99,5 +100,4 @@ We decided for DPDK as back end for the following reasons
 Note that this might change. Using DPDK also comes with disadvantages like its bloated build system and configuration.
 
 # References
-[1] TODO: our paper
-[2] Alessio Botta, Alberto Dainotti, and Antonio Pescapé. Do you trust your software- based traffic generator? IEEE Communications Magazine, 48(9):158–165, 2010. [PDF](http://wpage.unina.it/alberto/papers/commag.pdf)
+[1] Paul Emmerich, Florian Wohlfart, Daniel Raumer, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator. Submitted to PAM 2015. Preprint available: [arXiv:1410.3322](http://arxiv.org/abs/1410.3322)  
