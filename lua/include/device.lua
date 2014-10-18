@@ -64,7 +64,7 @@ function dev:getTxQueue(id)
 end
 
 function dev:getRxQueue(id)
-	local tbl = self.txQueues
+	local tbl = self.rxQueues
 	if tbl[id] then
 		return tbl[id]
 	end
