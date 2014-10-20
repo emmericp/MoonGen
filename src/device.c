@@ -3,6 +3,7 @@
 #include <rte_mempool.h>
 #include <rte_ether.h>
 #include <rte_cycles.h>
+#include <rte_mbuf.h>
 #include <ixgbe_type.h>
 
 // default descriptors per queue
@@ -43,6 +44,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	if (rc) return rc;
 	// DPDK documentation suggests that the tx queues should be set up before the rx queues
 	struct rte_eth_txconf tx_conf = {
+		// TODO: this should use different values for older GbE NICs
 		.tx_thresh = {
 			.pthresh = TX_PTHRESH,
 			.hthresh = TX_HTHRESH,
@@ -114,9 +116,8 @@ uint32_t get_pci_id(uint8_t port) {
 }
 
 uint8_t get_socket(uint8_t port) {
-	struct rte_eth_dev_info dev_info;
-	rte_eth_dev_info_get(port, &dev_info);
-	return dev_info.pci_dev->id.vendor_id << 16 | dev_info.pci_dev->id.device_id;
+	// TODO: figure out to get this information
+	return 0;
 }
 
 void sync_clocks(uint8_t port1, uint8_t port2) {
@@ -178,6 +179,17 @@ uint32_t get_clock_difference(uint8_t port1, uint8_t port2) {
 	volatile uint32_t p1timeh = read_reg32(port1, IXGBE_SYSTIMH);
 	volatile uint32_t p2timeh = read_reg32(port2, IXGBE_SYSTIMH);
 	return (((int64_t) p1timeh << 32) | p1time) - (((int64_t) p2timeh << 32) | p2time);
+}
+
+void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts) {
+	uint32_t sent = 0;
+	while (1) {
+		sent += rte_eth_tx_burst(port_id, queue_id, pkts + sent, num_pkts - sent);
+		if (sent >= num_pkts) {
+			return;
+		}
+	}
+	return;
 }
 
 
