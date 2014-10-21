@@ -61,10 +61,10 @@ ffi.cdef[[
 
 	struct __attribute__ ((__packed__)) packet {
 		struct ethernet_header  eth_h;
-		union {
-			struct ipv4_header 	ipv4_h;
+		//union {
+		struct ipv4_header 	ipv4_h;
 		//	struct ipv6_header	ipv6_h;
-		};
+		//};
 		struct udp_header 	udp_h;
 	};
 ]]
