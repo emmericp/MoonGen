@@ -6,8 +6,7 @@
 
 #include <rte_launch.h>
 
-#include <luajit-2.0/lauxlib.h>
-#include <luajit-2.0/lualib.h>
+#include "task.h"
 
 static const char* find_path(const char* file) {
 	// TODO: search file
@@ -24,21 +23,6 @@ lua_State* launch_lua(const char* file) {
 	return L;
 }
 
-struct lua_core_arg {
-	enum { ARG_TYPE_STRING, ARG_TYPE_NUMBER, ARG_TYPE_BOOLEAN, ARG_TYPE_POINTER, ARG_TYPE_NIL } arg_type;
-	union {
-		char* str;
-		double number;
-		void* ptr;
-		bool boolean;
-	} arg;
-};
-
-struct lua_core_config {
-	char* file;
-	int argc;
-	struct lua_core_arg** argv;
-};
 
 
 
