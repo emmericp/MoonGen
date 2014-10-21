@@ -61,12 +61,20 @@ function mempool:bufArray(n)
 	}, bufArray)
 end
 
-function mod.createBufArray(n)
-	return setmetatable({
-		size = n,
-		array = ffi.new("struct rte_mbuf*[?]", n),
-		fill = function() error("buf array not associated with a memory pool", 2) end
-	}, bufArray)
+do
+	local function fill()
+		error("buf array not associated with a memory pool", 2)
+	end
+	
+	--- Create a new array of memory buffers (initialized to nil).
+	-- This buf array is not associated with a memory pool.
+	function mod.createBufArray(n)
+		return setmetatable({
+			size = n,
+			array = ffi.new("struct rte_mbuf*[?]", n),
+			fill = fill
+		}, bufArray)
+	end
 end
 
 --- Allocates buffers from the memory pool and fills the array
@@ -107,27 +115,7 @@ end
 
 -- TODO: enable Lua 5.2 in luajit and add __len and __ipairs
 
--- TODO: this should be moved to a separate file
-local pkt = {}
-pkt.__index = pkt
-
---- Retrieves the time stamp information
--- @return the timestamp or nil if the packet was not time stamped
-function pkt:getTimestamp()
-	if bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0 then
-		-- TODO: support timestamps that are stored in registers instead of the rx buffer
-		local data = ffi.cast("uint32_t* ", self.pkt.data)
-		-- TODO: this is only tested with the Intel 82580 NIC at the moment
-		-- the datasheet claims that low and high are swapped, but this doesn't seem to be the case
-		-- TODO: check other NICs
-		local low = data[2]
-		local high = data[3]
-		return high * 2^32 + low
-	end
-end
-
--- must be done after the mt is fully initialized (cf. luajit docs)
 ffi.metatype("struct mempool", mempool)
-ffi.metatype("struct rte_mbuf", pkt)
+
 return mod
 
