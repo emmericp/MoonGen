@@ -113,6 +113,23 @@ function bufArray.__newindex(self, i, v)
 	self.array[i - 1] = v
 end
 
+function bufArray.__len(self)
+	return self.size
+end
+
+do
+	local function it(self, i)
+		if i >= self.size then
+			return nil
+		end
+		return i + 1, self.array[i]
+	end
+
+	function bufArray.__ipairs(self)
+		return it, self, 0
+	end
+end
+
 -- TODO: enable Lua 5.2 in luajit and add __len and __ipairs
 
 ffi.metatype("struct mempool", mempool)

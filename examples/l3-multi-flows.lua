@@ -25,6 +25,7 @@ end
 function loadSlave(port, queue, numFlows)
 	local queue = device.get(port):getTxQueue(queue)
 	local mem = memory.createMemPool(function(buf)
+		local pkt = buf:getUDPPacket()
 		local data = ffi.cast("uint8_t*", buf.pkt.data)
 		-- src/dst mac
 		for i = 0, 11 do
@@ -61,6 +62,7 @@ function loadSlave(port, queue, numFlows)
 		data[39] = 0x2A -- length (42)
 		data[40] = 0x00 -- checksum (offloaded to NIC)
 		data[41] = 0x00 -- checksum (offloaded to NIC)
+		--printf("%08X", pkt.ip.src.uint32)
 	end)
 	local BURST_SIZE = 31
 	local lastPrint = dpdk.getTime()
@@ -72,9 +74,9 @@ function loadSlave(port, queue, numFlows)
 	while dpdk.running() do
 		bufs:fill(60)
 		-- TODO: enable Lua 5.2 features in luajit and use __ipairs and/or __len metamethod on bufarrays
-		for i = 0, BURST_SIZE - 1 do
-			local data = ffi.cast("uint8_t*", bufs.array[i].pkt.data)
-			data[29] = counter
+		for i, buf in ipairs(bufs) do
+			local pkt = buf:getUDPPacket()
+			pkt.ip.src.uint32 = counter
 			counter = counter + 1
 			if counter == numFlows then
 				counter = 0
