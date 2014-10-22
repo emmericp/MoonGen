@@ -56,6 +56,7 @@ TODO: fix this
 # Installation
 
 1. Install the dependencies (see below)
+2. git submodule update --init
 2. ./build.sh
 3. ./setup-hugetlbfs.sh
 4. Run MoonGen from the build directory (install target coming soon)
@@ -65,7 +66,6 @@ TODO: fix this
 * make
 * cmake
 * kernel headers (for the DPDK ixgbe-uio driver)
-* libluajit-2.0.3
 
 # Examples
 MoonGen comes with examples in the examples folder which can be used as a basis for custom scripts.
