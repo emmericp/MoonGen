@@ -3,6 +3,11 @@ function printf(str, ...)
 	return print(str:format(...))
 end
 
+function fprintf(file, str, ...)
+	return file:write(str:format(...))
+end
+
+
 function errorf(str, ...)
 	error(str:format(...), 2)
 end

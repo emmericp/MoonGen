@@ -66,12 +66,14 @@ function loadSlave(port, queue)
 		local time = dpdk.getTime()
 		if time - lastPrint > 1 then
 			local mpps = (totalSent - lastTotal) / (time - lastPrint) / 10^6
-			printf("Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", totalSent, mpps, mpps * 64 * 8, mpps * 84 * 8)
+			fprintf(io.stdout, "Sent,%d,%.2f\n", totalSent, mpps, mpps)
+			fprintf(io.stderr, "Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate\n", totalSent, mpps, mpps * 64 * 8, mpps * 84 * 8)
 			lastTotal = totalSent
 			lastPrint = time
 		end
 	end
-	printf("Sent %d packets", totalSent)
+	fprintf(io.stdout, "TotalSent,%d\n", totalSent)
+	fprintf(io.stderr, "Sent %d packets in total\n", totalSent)
 end
 
 function counterSlave(port)
@@ -84,9 +86,11 @@ function counterSlave(port)
 		local elapsed = dpdk.getTime() - time
 		local pkts = dev:getRxStats(port)
 		total = total + pkts
-		printf("Received %d packets, current rate %.2f Mpps", total, pkts / elapsed / 10^6)
+		fprintf(io.stdout, "Received,%d,%.2f\n", total, pkts / elapsed / 10^6)
+		fprintf(io.stderr, "Received %d packets, current rate %.2f Mpps\n", total, pkts / elapsed / 10^6)
 	end
-	printf("Received %d packets", total)
+	fprintf(io.stdout,"TotalReceived,%d\n",total)
+	fprintf(io.stderr, "Received %d packets\n", total)
 end
 
 function timerSlave(txPort, rxPort, txQueue, rxQueue)
