@@ -20,7 +20,7 @@ ffi.cdef[[
 		union {
 			uint8_t 	uint8[16];
 			uint32_t	uint32[4];
-			uint64_t	uint32[2];
+			uint64_t	uint64[2];
 		};
 	};
 
