@@ -18,6 +18,6 @@ do
 done
 cd ../build
 cmake ..
-make 
+make
 )
 
