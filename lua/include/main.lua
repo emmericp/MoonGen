@@ -4,6 +4,8 @@ package.path = package.path .. ";include/?.lua;/include/?/init.lua;include/lib/?
 -- globally available utility functions
 require "utils"
 
+require "packet"
+
 local dpdk	= require "dpdk"
 local dev	= require "device"
 local stp	= require "StackTracePlus"
@@ -41,11 +43,13 @@ local function master(_, file, ...)
 end
 
 local function slave(file, func, ...)
+	--package.path = package.path .. ";../luajit/src/?.lua"
+	--require("jit.p").start("l")
 	MOONGEN_TASK_NAME = func
 	run(file)
 	xpcall(_G[func], getStackTrace, ...)
+	--require("jit.p").stop()
 end
 
 
 (... == "master" and master or slave)(select(2, ...))
-

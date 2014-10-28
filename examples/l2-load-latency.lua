@@ -6,8 +6,6 @@ local dpdkc	= require "dpdkc"
 local filter	= require "filter"
 
 local ffi	= require "ffi"
-local jit = require "jit"
-jit.off()
 
 function master(...)
 	local txPort, rxPort, rate = tonumberall(...)

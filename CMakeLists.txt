@@ -23,22 +23,25 @@ SET(DPDK_LIBS
 )
 
 SET(LUAJIT_LIBS
-	libluajit-5.1.so
+	luajit
 )
 
 SET(ALL_LIBS
+	${LUAJIT_LIBS}
 	-Wl,--start-group ${DPDK_LIBS} -Wl,--end-group
 	pthread dl rt
-	${LUAJIT_LIBS}
 )
 
 INCLUDE_DIRECTORIES(
 	 ${CMAKE_CURRENT_SOURCE_DIR}/dpdk/x86_64-native-linuxapp-gcc/include
 	 ${CMAKE_CURRENT_SOURCE_DIR}/dpdk/lib/librte_pmd_ixgbe/ixgbe
+	 ${CMAKE_CURRENT_SOURCE_DIR}/luajit/src
 )
 
 LINK_DIRECTORIES(
 	${CMAKE_CURRENT_SOURCE_DIR}/dpdk/x86_64-native-linuxapp-gcc/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/luajit/usr/local/lib/
+	${CMAKE_CURRENT_SOURCE_DIR}/luajit/src
 )
 
 ADD_EXECUTABLE(${PRJ} ${FILES})

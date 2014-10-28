@@ -64,7 +64,7 @@ function dev:getTxQueue(id)
 end
 
 function dev:getRxQueue(id)
-	local tbl = self.txQueues
+	local tbl = self.rxQueues
 	if tbl[id] then
 		return tbl[id]
 	end
@@ -225,28 +225,8 @@ function txQueue:getTxRate()
 end
 
 function txQueue:send(bufs)
-	local totalSent = 0
-	-- TODO: consider moving this loop to the C library
-	while true do
-		local sent = dpdkc.rte_eth_tx_burst_export(self.id, self.qid, bufs.array + totalSent, bufs.size - totalSent)
-		totalSent = totalSent + sent
-		if sent == 0 then
-			-- queue is full
-			-- there seems to be some problem with busy waiting on the tx_burst function in some weird scenarios (low rate, fast cpu)
-			-- NOTE: this calculation does not take the IFG/preamble into account (but neither does the hw rate control)
-			-- also, we want to sleep slightly shorter anyways as this is not supposed to be a bottleneck, just a limit to the number of tx calls
-			local rate = self.rate or self.speed or 10000
-			local size = 0
-			--for i = totalSent, bufs.size - 1 do
-			--	size = size + bufs.array[i].pkt.pkt_len
-			--end
-			--dpdk.sleepMicros(math.floor((size * 8) / rate))
-		end
-		if totalSent >= bufs.size then
-			break
-		end
-	end
-	return totalSent
+	dpdkc.send_all_packets(self.id, self.qid, bufs.array, bufs.size);
+	return bufs.size
 end
 
 --- Receive packets from a rx queue.

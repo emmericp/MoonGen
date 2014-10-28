@@ -1,11 +1,29 @@
 #ifndef TASK_H__
 #define TASK_H__
 
-#include <luajit-2.0/lauxlib.h>
-#include <luajit-2.0/lualib.h>
+#include <stdbool.h>
 
-lua_State* launch_lua(char* file);
+#include <lauxlib.h>
+#include <lualib.h>
 
-void launch_lua_core(int core, const char* file, int argc, const char** argv);
+struct lua_core_arg {
+	enum { ARG_TYPE_STRING, ARG_TYPE_NUMBER, ARG_TYPE_BOOLEAN, ARG_TYPE_POINTER, ARG_TYPE_NIL } arg_type;
+	union {
+		char* str;
+		double number;
+		void* ptr;
+		bool boolean;
+	} arg;
+};
+
+struct lua_core_config {
+	char* file;
+	int argc;
+	struct lua_core_arg** argv;
+};
+
+lua_State* launch_lua(const char* file);
+
+void launch_lua_core(int core, const char* file, int argc, struct lua_core_arg* argv[]);
 
 #endif
