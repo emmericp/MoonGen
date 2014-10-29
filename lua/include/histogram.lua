@@ -35,16 +35,15 @@ function histogram:calc()
 
 	local idx = 0
 	for _, p in ipairs(self.sortedHisto) do
-			if not self._lowerQuart and idx >= quartSamples then
-					self._lowerQuart = p.k
-			elseif not self._median and idx >= quartSamples * 2 then
-					self._median = p.k
-			elseif not self._upperQuart and idx >= quartSamples * 3 then
-					self._upperQuart = p.k
-					break
-			end
-
-			idx = idx + p.v
+		if not self._lowerQuart and idx >= quartSamples then
+			self._lowerQuart = p.k
+		elseif not self._median and idx >= quartSamples * 2 then
+			self._median = p.k
+		elseif not self._upperQuart and idx >= quartSamples * 3 then
+			self._upperQuart = p.k
+			break
+		end
+		idx = idx + p.v
 	end
 	self.dirty = false
 end
