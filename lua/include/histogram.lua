@@ -1,4 +1,4 @@
-histogram = {}
+local histogram = {}
 histogram.__index = histogram
 
 function histogram.create()
