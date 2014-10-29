@@ -70,13 +70,14 @@ function loadSlave(port, queue, numFlows)
 	local lastTotal = 0
 	local lastSent = 0
 	local bufs = mem:bufArray(BURST_SIZE)
+	local baseIP = 0x01020304 -- TODO: ip.parse("1.2.3.4")
 	local counter = 0
 	while dpdk.running() do
 		bufs:fill(60)
 		-- TODO: enable Lua 5.2 features in luajit and use __ipairs and/or __len metamethod on bufarrays
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUDPPacket()
-			pkt.ip.src.uint32 = counter
+			pkt.ip.src:set(baseIP + counter)
 			counter = counter + 1
 			if counter == numFlows then
 				counter = 0
