@@ -1,7 +1,13 @@
 local ffi = require "ffi"
 
+require "utils"
 require "headers"
 require "dpdkc"
+
+local ntoh, hton = ntoh, hton
+local ntoh16, hton16 = ntoh16, hton16
+local bswap = bswap
+local bswap16 = bwswap16
 
 local pkt = {}
 pkt.__index = pkt
@@ -21,10 +27,27 @@ function pkt:getTimestamp()
 	end
 end
 
-local udpPacket = ffi.typeof("struct udp_packet*")
+local udpPacketType = ffi.typeof("struct udp_packet*")
 
 function pkt:getUDPPacket()
-	return udpPacket(self.pkt.data)
+	return udpPacketType(self.pkt.data)
 end
 
+local ip4Addr = {}
+ip4Addr.__index = ip4Addr
+
+function ip4Addr:get()
+	return bswap(self.uint32)
+end
+
+function ip4Addr:set(ip)
+	self.uint32 = bswap(ip)
+end
+
+function ip4Addr:getString()
+	return ("%d.%d.%d.%d"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3])
+end
+
+ffi.metatype("union ipv4_address", ip4Addr)
 ffi.metatype("struct rte_mbuf", pkt)
+

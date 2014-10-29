@@ -1,4 +1,6 @@
 
+local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
+
 function printf(str, ...)
 	return print(str:format(...))
 end
@@ -30,9 +32,17 @@ function tonumberall(...)
 	return mapVarArg(tonumber, ...)
 end
 
-function hton16(n)
-	return bit.bor(bit.rshift(n, 8), bit.lshift(bit.band(n, 0xFF), 8))
+function bswap16(n)
+	return bor(rshift(n, 8), lshift(band(n, 0xFF), 8))
 end
+
+hton16 = bswap16
+ntoh16 = hton16
+
+_G.bswap = bswap -- export bit.bswap to global namespace to be consistent with bswap16
+hton = bswap
+ntoh = hton
+
 
 local ffi = require "ffi"
 
@@ -60,10 +70,10 @@ function checksum(data, len)
 	for i = 0, len / 2 - 1 do
 		cs = cs + data[i]
 		if cs >= 2^16 then
-			cs = bit.band(cs, 0xFFFF) + 1
+			cs = band(cs, 0xFFFF) + 1
 		end
 	end
-	return bit.band(bit.bnot(cs), 0xFFFF)
+	return band(bnot(cs), 0xFFFF)
 end
 
 

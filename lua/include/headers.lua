@@ -9,19 +9,15 @@ ffi.cdef[[
 		uint16_t	type;
 	};
 
-	struct __attribute__((__packed__)) ipv4_address {
-		union {
-			uint8_t		uint8[4];
-			uint32_t	uint32;
-		};
+	union ipv4_address {
+		uint8_t		uint8[4];
+		uint32_t	uint32;
 	};
 
-	struct __attribute__((__packed__)) ipv6_address {
-		union {
-			uint8_t 	uint8[16];
-			uint32_t	uint32[4];
-			uint64_t	uint64[2];
-		};
+	union ipv6_address {
+		uint8_t 	uint8[16];
+		uint32_t	uint32[4];
+		uint64_t	uint64[2];
 	};
 
 	struct __attribute__((__packed__)) ipv4_header {
@@ -33,8 +29,8 @@ ffi.cdef[[
 		uint8_t			ttl;
 		uint8_t			protocol;
 		uint16_t		cs;
-		struct ipv4_address	src;
-		struct ipv4_address	dst;
+		union ipv4_address	src;
+		union ipv4_address	dst;
 	 };
 
 	struct __attribute__((__packed__)) ipv6_header {
@@ -42,8 +38,8 @@ ffi.cdef[[
 		uint16_t  		len;
 		uint8_t   		nextHeader;
 		uint8_t   		ttl;
-		struct ipv6_address 	src;
-		struct ipv6_address	dst;
+		union ipv6_address 	src;
+		union ipv6_address	dst;
 	};
 
 	struct __attribute__((__packed__)) udp_header {                                                             
