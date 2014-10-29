@@ -26,32 +26,33 @@ function histogram:calc()
 	end
 	self.avg = self.sum / self.samples
 	table.sort(self.sortedHisto, function(e1, e2) return e1.k < e2.k end)
+	
+	local quartSamples = self.samples / 4
+
+	self._lowerQuart = nil
+	self._median = nil
+	self._upperQuart = nil
+
+	local idx = 0
+	for _, p in ipairs(self.sortedHisto) do
+			if not self._lowerQuart and idx >= quartSamples then
+					self._lowerQuart = p.k
+			elseif not self._median and idx >= quartSamples * 2 then
+					self._median = p.k
+			elseif not self._upperQuart and idx >= quartSamples * 3 then
+					self._upperQuart = p.k
+					break
+			end
+
+			idx = idx + p.v
+	end
 	self.dirty = false
-	return self.sortedHisto
 end
 
-function histogram:stat()
-		if self.dirty then self:calc() end
+function histogram:quartiles()
+	if self.dirty then self:calc() end
 
-		local quartSamples = self.samples / 4
-
-		self.lowerQuart = nil
-		self.median = nil
-		self.upperQuart = nil
-
-		local idx = 0
-		for _, p in ipairs(self.sortedHisto) do
-				if not self.lowerQuart and idx >= quartSamples then
-						self.lowerQuart = p.k
-				elseif not self.median and idx >= quartSamples * 2 then
-						self.median = p.k
-				elseif not self.upperQuart and idx >= quartSamples * 3 then
-						self.upperQuart = p.k
-						break
-				end
-
-				idx = idx + p.v
-		end
+	return self._lowerQuart, self._median, self._upperQuart
 end
 
 function histogram:samples()
