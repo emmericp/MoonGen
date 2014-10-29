@@ -4,6 +4,7 @@ local device	= require "device"
 local ts	= require "timestamping"
 local dpdkc	= require "dpdkc"
 local filter	= require "filter"
+local histogram	= require "histogram"
 
 local ffi	= require "ffi"
 
@@ -103,7 +104,7 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue)
 	local rxBufs = mem:bufArray(2)
 	txQueue:enableTimestamps()
 	rxQueue:enableTimestamps()
-	local hist = {}
+	local hist = histogram:create()
 	dpdk.sleepMillis(4000)
 	while dpdk.running() do
 		buf:fill(60)
@@ -121,28 +122,19 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue)
 				-- for i = -- TODO: loop over packets and check for 0x0400 ol_flag 
 				local delay = (rxQueue:getTimestamp() - tx) * 6.4
 				if delay > 0 and delay < 100000000 then
-					hist[delay] = (hist[delay] or 0) + 1
+					hist.update(delay)
 				end
 				rxBufs:freeAll()
 			end
 		end
 	end
-	local sortedHist = {}
-	for k, v in pairs(hist) do 
-		table.insert(sortedHist,  { k = k, v = v })
+	hist:stat()
+	for _, v in ipairs(hist.sortedHisto) do
+		fprintf("HistoSample,%f,%d\n",v.k,v.v)
 	end
-	local sum = 0
-	local samples = 0
-	table.sort(sortedHist, function(e1, e2) return e1.k < e2.k end)
-	print("Histogram:")
-	for _, v in ipairs(sortedHist) do
-		sum = sum + v.k * v.v
-		samples = samples + v.v
-		print(v.k, v.v)
-	end
-	print()
-	print("Average: " .. (sum / samples) .. " ns, " .. samples .. " samples")
-	print("----------------------------------------------")
+	fprintf(io.stderr, "HistoHead,Samples,Avg,LowerQuartile,Median,UpperQuartile\n")
+	fprintf(io.stdout, "HistoStat,%d,%f,%f,%f,%f\n", hist.samples, hist.avg, hist.lower_quart, hist.median, hist.upper_quart)
 	io.stdout:flush()
+	io.stderr:flush()
 end
 
