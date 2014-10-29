@@ -122,7 +122,7 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue)
 				-- for i = -- TODO: loop over packets and check for 0x0400 ol_flag 
 				local delay = (rxQueue:getTimestamp() - tx) * 6.4
 				if delay > 0 and delay < 100000000 then
-					hist.update(delay)
+					hist:update(delay)
 				end
 				rxBufs:freeAll()
 			end
