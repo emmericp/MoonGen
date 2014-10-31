@@ -25,6 +25,7 @@ function mod.init()
 	local cfgFileLocations = {
 		"./dpdk-conf.lua",
 		"../lua/dpdk-conf.lua",
+		"./lua/dpdk-conf.lua",
 		"/etc/moongen/dpdk-conf.lua"
 	}
 	local cfg
