@@ -22,7 +22,11 @@ function mod.init()
 	-- register drivers
 	dpdkc.register_pmd_drivers();
 	-- TODO: support arbitrary dpdk configurations by allowing configuration in the form ["cmdLine"] = "foo"
-	local cfgFileLocations = { "./dpdk-conf.lua", "./include/dpdk-conf.lua", "/etc/moongen/dpdk-conf.lua" }
+	local cfgFileLocations = {
+		"./dpdk-conf.lua",
+		"../lua/dpdk-conf.lua",
+		"/etc/moongen/dpdk-conf.lua"
+	}
 	local cfg
 	for _, f in ipairs(cfgFileLocations) do
 		if fileExists(f) then

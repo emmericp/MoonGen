@@ -25,10 +25,11 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	install_signal_handlers();
-	lua_State* L = launch_lua("./include/main.lua");
+	lua_State* L = launch_lua();
 	if (!L) {
 		return -1;
 	}
+	lua_getglobal(L, "main");
 	lua_pushstring(L, "master");
 	for (int i = 0; i < argc; i++) {
 		lua_pushstring(L, argv[i]);

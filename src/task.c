@@ -8,17 +8,14 @@
 
 #include "task.h"
 
-static const char* find_path(const char* file) {
-	// TODO: search file
-	return file;
-}
 
-lua_State* launch_lua(const char* file) {
+lua_State* launch_lua() {
 	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
-	if (luaL_loadfile(L, find_path(file))) {
-		printf("could not load file: %s\n", lua_tostring(L, -1));
-		return NULL;
+	(void) luaL_dostring(L, "package.path = package.path .. ';lua/include/?.lua;lua/include/?/init.lua;lua/include/lib/?/init.lua'");
+	(void) luaL_dostring(L, "package.path = package.path .. ';../lua/include/?.lua;../lua/include/?/init.lua;../lua/include/lib/?/init.lua'");
+	if (luaL_dostring(L, "require 'main'")) {
+		printf("Could not run main script: %s\n", lua_tostring(L, -1));
 	}
 	return L;
 }

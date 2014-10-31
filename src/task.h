@@ -22,7 +22,7 @@ struct lua_core_config {
 	struct lua_core_arg** argv;
 };
 
-lua_State* launch_lua(const char* file);
+lua_State* launch_lua();
 
 void launch_lua_core(int core, const char* file, int argc, struct lua_core_arg* argv[]);
 

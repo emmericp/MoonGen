@@ -1,9 +1,5 @@
--- setup package paths
-package.path = package.path .. ";include/?.lua;/include/?/init.lua;include/lib/?/init.lua"
-
 -- globally available utility functions
 require "utils"
-
 require "packet"
 
 local dpdk	= require "dpdk"
@@ -39,11 +35,10 @@ local function master(_, file, ...)
 	xpcall(_G["master"], getStackTrace, ...)
 	-- exit program once the master task finishes
 	-- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()
-	--os.exit(0)
 end
 
 local function slave(file, func, ...)
-	--package.path = package.path .. ";../luajit/src/?.lua"
+	package.path = package.path .. ";../luajit/src/?.lua"
 	--require("jit.p").start("l")
 	MOONGEN_TASK_NAME = func
 	run(file)
@@ -51,5 +46,7 @@ local function slave(file, func, ...)
 	--require("jit.p").stop()
 end
 
+function main(task, ...)
+	(task == "master" and master or slave)(...)
+end
 
-(... == "master" and master or slave)(select(2, ...))
