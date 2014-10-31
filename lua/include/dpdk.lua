@@ -86,18 +86,13 @@ ffi.cdef[[
 			bool boolean;
 		} arg;
 	};
-	void launch_lua_core(int core, const char* file, int argc, struct lua_core_arg* argv[]);
+	void launch_lua_core(int core, int argc, struct lua_core_arg* argv[]);
 ]]
 
-local function resolveInclude(name)
-	-- TODO: search in some install dir or something...
-	return "include/" .. name
-end
 
 --- Launch a LuaJIT VM on a core with the given arguments.
 --- TODO: does not yet support tables as arguments
 function mod.launchLuaOnCore(core, ...)
-	local file = resolveInclude("main.lua")
 	local args = { ... }
 	--- the (de-)serialization is ugly and needs a rewrite with a proper (de-)serialization library (Serpent?)
 	local argsArray = ffi.new("struct lua_core_arg*[?]", #args)
@@ -119,7 +114,7 @@ function mod.launchLuaOnCore(core, ...)
 			error(("arguments of type %s are not supported for slave cores"):format(type(v)))
 		end
 	end
-	dpdkc.launch_lua_core(core, file, #args, argsArray)
+	dpdkc.launch_lua_core(core, #args, argsArray)
 end
 
 --- launches the lua file on the first free core

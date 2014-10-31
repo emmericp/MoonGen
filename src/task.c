@@ -20,16 +20,14 @@ lua_State* launch_lua() {
 	return L;
 }
 
-
-
-
 int lua_core_main(void* arg) {
 	int rc = -1;
 	struct lua_core_config* cfg = (struct lua_core_config*) arg;
-	lua_State* L = launch_lua(cfg->file);
+	lua_State* L = launch_lua();
 	if (!L) {
 		goto error;
 	}
+	lua_getglobal(L, "main");
 	lua_pushstring(L, "slave");
 	for (int i = 0; i < cfg->argc; i++) {
 		struct lua_core_arg* arg = cfg->argv[i];
@@ -57,7 +55,6 @@ int lua_core_main(void* arg) {
 	}
 	rc = 0;
 error:
-	free(cfg->file);
 	for (int i = 0; i < cfg->argc; i++) {
 		struct lua_core_arg* arg = cfg->argv[i];
 		if (arg->arg_type == ARG_TYPE_STRING) {
@@ -69,10 +66,8 @@ error:
 	return rc;
 }
 
-void launch_lua_core(int core, const char* file, int argc, struct lua_core_arg* argv[]) {
+void launch_lua_core(int core, int argc, struct lua_core_arg* argv[]) {
 	struct lua_core_config* cfg = (struct lua_core_config*) malloc(sizeof(struct lua_core_config));
-	cfg->file = (char*) malloc(strlen(file) + 1);
-	strcpy(cfg->file, file);
 	cfg->argc = argc;
 	cfg->argv = (struct lua_core_arg**) malloc(argc * sizeof(struct lua_core_arg*));
 	for (int i = 0; i < argc; i++) {
