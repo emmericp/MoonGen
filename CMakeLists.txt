@@ -33,15 +33,15 @@ SET(ALL_LIBS
 )
 
 INCLUDE_DIRECTORIES(
-	 ${CMAKE_CURRENT_SOURCE_DIR}/dpdk/x86_64-native-linuxapp-gcc/include
-	 ${CMAKE_CURRENT_SOURCE_DIR}/dpdk/lib/librte_pmd_ixgbe/ixgbe
-	 ${CMAKE_CURRENT_SOURCE_DIR}/luajit/src
+	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/include
+	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/lib/librte_pmd_ixgbe/ixgbe
+	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
 )
 
 LINK_DIRECTORIES(
-	${CMAKE_CURRENT_SOURCE_DIR}/dpdk/x86_64-native-linuxapp-gcc/lib
-	${CMAKE_CURRENT_SOURCE_DIR}/luajit/usr/local/lib/
-	${CMAKE_CURRENT_SOURCE_DIR}/luajit/src
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/usr/local/lib/
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
 )
 
 ADD_EXECUTABLE(${PRJ} ${FILES})
