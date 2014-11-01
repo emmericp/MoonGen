@@ -17,17 +17,17 @@ end
 function histogram:calc()
 	self.sortedHisto = {}
 	self.sum = 0
-	self.samples = 0
+	self.numSamples = 0
 
 	for k, v in pairs(self.histo) do
 		table.insert(self.sortedHisto, {k = k, v = v})
-		self.samples = self.samples + v
+		self.numSamples = self.numSamples + v
 		self.sum = self.sum + k * v
 	end
-	self.avg = self.sum / self.samples
+	self.avg = self.sum / self.numSamples
 	table.sort(self.sortedHisto, function(e1, e2) return e1.k < e2.k end)
 	
-	local quartSamples = self.samples / 4
+	local quartSamples = self.numSamples / 4
 
 	self.lowerQuart = nil
 	self.median = nil
@@ -46,6 +46,12 @@ function histogram:calc()
 		idx = idx + p.v
 	end
 	self.dirty = false
+end
+
+function histogram:totals()
+	if self.dirty then self:calc() end
+
+	return self.numSamples, self.sum, self.avg
 end
 
 function histogram:quartiles()
