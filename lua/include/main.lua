@@ -14,12 +14,12 @@ local function getStackTrace(err)
 	print(stp.stacktrace(err, 2))
 end
 
-local function run(file)
+local function run(file, ...)
 	local script, err = loadfile(file)
 	if not script then
 		error(err)
 	end
-	xpcall(script, getStackTrace)
+	xpcall(script, getStackTrace, ...)
 end
 
 local function master(_, file, ...)
@@ -31,6 +31,7 @@ local function master(_, file, ...)
 		printf("   Ports %d: %s (%s)", device.id, device.mac, device.name)
 	end
 	dpdk.userScript = file -- needs to be passed to slave cores
+	arg = {...} -- for cliargs in busted
 	run(file) -- should define a global called "master"
 	xpcall(_G["master"], getStackTrace, ...)
 	-- exit program once the master task finishes
