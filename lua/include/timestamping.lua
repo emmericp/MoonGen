@@ -321,5 +321,14 @@ function mod.getClockDiff(dev1, dev2)
 	return dpdkc.get_clock_difference(dev1.id, dev2.id) * 6.4
 end
 
+function mod.readTimestampsSoftware(queue, memory)
+	-- TODO: do not allocate this in the luajit heap (limited size)
+	-- also: use huge pages
+	local numElements = 4096--memory * 1024 * 1024 / 4
+	local arr = ffi.new("uint32_t[?]", numElements)
+	dpdkc.read_timestamps_software(queue.id, queue.qid, arr, numElements)
+	return arr
+end
+
 return mod
 

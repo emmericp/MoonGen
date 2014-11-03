@@ -105,6 +105,9 @@ ffi.cdef[[
 	// lifecycle
 	uint8_t is_running();
 	void set_runtime(uint32_t ms);
+
+	// timestamping
+	void read_timestamps_software(uint8_t port_id, uint16_t queue_id, uint32_t* data, uint64_t size);
 ]]
 
 return ffi.C
