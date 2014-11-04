@@ -1,5 +1,5 @@
-#ifndef RDTSC_H
-#define RDTSC_H
+#ifndef RDTSC_H__
+#define RDTSC_H__
 
 #include <stdint.h>
 
@@ -18,7 +18,7 @@ union tsc_t {
  * @return
  *   Value of TSC register
  */
-inline uint64_t read_rdtsc() {
+inline static uint64_t read_rdtsc() {
 	union tsc_t tsc;
 	asm volatile("RDTSC\n\t" 
 	             "mov %%edx, %0\n\t" 
@@ -45,4 +45,4 @@ inline uint64_t read_rdtscp(void) {
 	return tsc.tsc_64;
 }
 
-#endif /* RDTSC_H */
+#endif

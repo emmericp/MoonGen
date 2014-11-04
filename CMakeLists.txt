@@ -14,7 +14,6 @@ SET(FILES
 	src/util.c
 	src/lifecycle.c
 	src/timestamping.c
-	src/rdtsc.h
 )
 
 SET(DPDK_LIBS

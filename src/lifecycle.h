@@ -1,7 +1,7 @@
-#ifndef LIFECYCLE_H
-#define LIFECYCLE_H
+#ifndef LIFECYCLE_H__
+#define LIFECYCLE_H__
 
 void install_signal_handlers();
 uint8_t is_running();
 
-#endif /* LIFECYCLE_H */
+#endif
