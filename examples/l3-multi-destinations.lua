@@ -6,19 +6,19 @@ local dpdkc	= require "dpdkc"
 local filter	= require "filter"
 local utils 	= require "utils"
 local headers	= require "headers"
+local packet	= require "packet"
 
 local ffi	= require "ffi"
 
 function master(...)
-	local args = {...}
 	--parse args
 	local txPort = tonumber((select(1, ...)))
-	local minIp = select(2, ...)
-	local maxIp = select(3, ...)
-	local rate = select(4, ...)
+	local minIP = select(2, ...)
+	local maxIP = select(3, ...)
+	local rate = tonumber((select(4, ...)))
 	
-	if not txPort or not minIp or not maxIp or not rate then
-		printf("usage: %s txPort minIp maxIp rate", arg[0])
+	if not txPort or not minIP or not maxIP or not rate then
+		printf("usage: txPort minIP maxIP rate")
 		return
 	end
 
@@ -26,19 +26,21 @@ function master(...)
 	local txDev = device.config(txPort, rxMempool, 2, 2)
 	txDev:wait()
 	txDev:getTxQueue(0):setRate(rate)
-	dpdk.launchLua("loadSlave", txPort, 0, minIp, maxIp)
+	dpdk.launchLua("loadSlave", txPort, 0, minIP, maxIP)
 	dpdk.waitForSlaves()
 end
 
-function loadSlave(port, queue, minIp, maxIp)
+function loadSlave(port, queue, minA, maxA)
 	--- parse and check ip addresses
 	local numIPs
 	local packetLen = 64
 	local ipv4 = true
+	local minIP
+	local maxIP
 
 	-- first check if its an ipv4 address
-	minIP = parseIPAddress(minIP)
-	maxIP = parseIPAddress(maxIP)
+	minIP = parseIPAddress(minA)
+	maxIP = parseIPAddress(maxA)
 	
 	if minIP == nil or maxIP == nil then
 		printf("Addresses are not IPv4, checking for IPv6...")
@@ -47,8 +49,8 @@ function loadSlave(port, queue, minIp, maxIp)
 
 	-- if not an ipv4 address, check if its ipv6
 	if not ipv4 then
-		minIP = parseIP6Address(minIP)
-		maxIP = parseIP6Address(maxIP)
+		minIP = parseIP6Address(minA)
+		maxIP = parseIP6Address(maxA)
 		
 		if minIP == nil or maxIP == nil then
 			printf("Addresses are not IPv6, stopping now.")
@@ -69,8 +71,8 @@ function loadSlave(port, queue, minIp, maxIp)
 			pkt = buf:getUDP6Packet()
 		end
 		
-		pkt.pkt_len = packetLen
-		pkt.data_len = packetLen
+		--pkt.pkt_len = packetLen
+		--pkt.data_len = packetLen
 		
 		--ethernet header
 		pkt.eth.dst[0] = 0x90 --tartu eth-test1
@@ -101,10 +103,7 @@ function loadSlave(port, queue, minIp, maxIp)
 			pkt.ip.ttl = 64
 			pkt.ip.protocol = 0x11
 			pkt.ip.cs = 0
-			pkt.ip.src.uint8[0] = 192
-			pkt.ip.src.uint8[1] = 168
-			pkt.ip.src.uint8[2] = 1
-			pkt.ip.src.uint8[3] = 1
+			pkt.ip.src:set(parseIPAddress("192.168.1.1"))
 			pkt.ip.dst.uint32 = 0xffffffff 
 		else --ipv6
 			pkt.ip.vtf = 96
@@ -123,7 +122,7 @@ function loadSlave(port, queue, minIp, maxIp)
 		pkt.udp.src	= hton16(1116)
 		pkt.udp.dst	= hton16(2222)
 		pkt.udp.len = hton16(packetLen - 34)
-		pkt.udp.check = 0
+		pkt.udp.cs = 0
 --[[
 		local data = ffi.cast("uint8_t*", buf.pkt.data)
 		for i = 0, 63, 1 do
@@ -169,6 +168,10 @@ function loadSlave(port, queue, minIp, maxIp)
 				--TODO UDP checksum for IPv6 is mandatory
 				pkt.udp.check = 0
 			end
+
+			--set length TODO
+			buf.pkt.pkt_len = packetLen           
+			buf.pkt.data_len = packetLen
 		end
 		totalSent = totalSent + queue:send(bufs)
 		local time = dpdk.getTime()
