@@ -76,12 +76,4 @@ function checksum(data, len)
 	return band(bnot(cs), 0xFFFF)
 end
 
-function insertInTable(...)
-	local table = {}
-	for i = 1, select('#', ...) do
-		table[i] = select(i, ...)
-	end
-	return table
-end
-
 
