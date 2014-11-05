@@ -85,17 +85,11 @@ local ip6Addr = {}
 ip6Addr.__index = ip6Addr
 
 function ip6Addr:get()
-	local tmp = self.uint32[0]
-	for i = 1, 3 do
-		tmp = bor(lshift(tmp, 32), self.uint32[i])
-	return tmp
+	--TODO
 end
 
 function ip6Addr:set(ip)
-	self.uint32[0] = bor(ip, 0xFF000000)
-	self.uint32[1] = bor(ip, 0x00FF0000)
-	self.uint32[2] = bor(ip, 0x0000FF00)
-	self.uint32[3] = bor(ip, 0x000000FF)
+	--TODO
 end
 
 function parseIP6Address(ip)
@@ -110,10 +104,7 @@ function parseIP6Address(ip)
 	end
 	bytes = tonumberall(bytes, 16)
 	
-	ip = bytes[1]
-	for i = 2, 16 do
-		ip = bor(lshift(tmp, 8), bytes[i])
-	return  ip 
+	--TODO 
 end
 
 function ip6Addr:getString()
