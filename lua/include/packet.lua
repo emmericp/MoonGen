@@ -74,6 +74,15 @@ function ip4Addr:getString()
 	return ("%d.%d.%d.%d"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3])
 end
 
+local udpPacket = {}
+udpHeader.__index = udpPacket
+
+--- Calculate and set the UDP header checksum for IPv4 packets
+function udpPacket:calculateUDPChecksum()
+	-- optional, so don't do it
+	self.udp.cs = 0
+end
+
 --- ipv6 packets
 local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
 
@@ -165,19 +174,20 @@ function ip6Addr:getString()
 end
 
 -- udp
-local udp6Header = {}
-udp6Header.__index = udp6Header
+local udp6Packet = {}
+udpHeader.__index = udp6Packet
 
 --- Calculate and set the UDP header checksum for IPv6 packets
-function udp6Header:calculateChecksum()
+function udp6Packet:calculateUDPChecksum()
 	-- TODO as it is mandatory for IPv6 UDP packets
-	self.cs = 0
+	self.udp.cs = 0
 end
 
 ffi.metatype("struct ipv4_header", ip4Header)
 ffi.metatype("union ipv4_address", ip4Addr)
 ffi.metatype("union ipv6_address", ip6Addr)
-ffi.metatype("struct udp_v6_header", udp6Header)
+ffi.metatype("struct udp_packet", udpPacket)
+ffi.metatype("struct udp_v6_packet", udp6Packet)
 ffi.metatype("struct rte_mbuf", pkt)
 
 
