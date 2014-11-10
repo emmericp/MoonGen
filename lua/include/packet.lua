@@ -9,6 +9,7 @@ local ntoh16, hton16 = ntoh16, hton16
 local bswap = bswap
 local bswap16 = bwswap16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
+local istype = ffi.istype
 
 local pkt = {}
 pkt.__index = pkt
@@ -91,9 +92,10 @@ end
 
 local ip6Addr = {}
 ip6Addr.__index = ip6Addr
+local ip6AddrType = ffi.typeof("union ipv6_address")
 
 function ip6Addr:get()
-	local addr = ffi.new("union ipv6_address")
+	local addr = ip6AddrType()
 	addr.uint32[0] = bswap(self.uint32[3])
 	addr.uint32[1] = bswap(self.uint32[2])
 	addr.uint32[2] = bswap(self.uint32[1])
@@ -108,9 +110,23 @@ function ip6Addr:set(addr)
 	self.uint32[3] = bswap(addr.uint32[0])
 end
 
+function ip6Addr.__eq(lhs, rhs)
+	return istype(ip6AddrType, lhs) and istype(ip6AddrType, rhs) and lhs.uint64[0] == rhs.uint64[0] and lhs.uint64[1] == rhs.uint64[1]
+end
+
 --- add a number to an IPv6 address
 -- max. 64bit
-function ip6Addr:__add(val)
+function ip6Addr.__add(lhs, rhs)
+	-- calc ip (self) + number (val)
+	local self, val
+	if istype(ip6AddrType, lhs) then
+		self = lhs
+		val = rhs
+	else
+		-- commutative for number + ip
+		self = rhs
+		val = lhs
+	end -- TODO: ip + ip?
 	local addr = ffi.new("union ipv6_address")
 	local low, high = self.uint64[0], self.uint64[1]
 	low = low + val

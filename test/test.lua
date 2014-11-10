@@ -6,16 +6,27 @@ describe("IPv6 class", function()
 		assert.are.same(ip.uint32[1], 0x10111213)
 		assert.are.same(ip.uint32[2], 0x89ABCDEF)
 		assert.are.same(ip.uint32[3], 0x01234567)
-		print "hello, world!"
+	end)
+	it("should support ==", function()
+		local ip = parseIP6Address("0123:4567:89AB:CDEF:1011:1213:1415:1617")
+		local ip2 = parseIP6Address("0123:4567:89AB:CDEF:1011:1213:1415:1617")
+		local ip3 = parseIP6Address("0123:4567:89AB:CDEF:1011:1213:1415:1618")
+		assert.are.same(ip, ip2)
+		assert.are.not_same(ip, ip3)
+		assert.are.not_same(ip, 0)
+		-- objects of different types should be equal, so don't implement this
+		assert.are.not_same(parseIP6Address("0000:0000:0000:0000:0000:0000:0000:0000"), "0000:0000:0000:0000:0000:0000:0000:0000")
+		assert.are.not_same(parseIP6Address("0000:0000:0000:0000:0000:0000:0000:0000"), 0)
 	end)
 	it("should do arithmetic", function()
+		-- TODO: more tests, but implement a proper parse function first
 		local ip = parseIP6Address("0000:0000:0000:0000:0000:0000:0000:0000")
 		ip = ip + 1
 		assert.are.same(ip.uint32[0], 1)
 		assert.are.same(ip.uint32[1], 0)
 		assert.are.same(ip.uint32[2], 0)
 		assert.are.same(ip.uint32[3], 0)
-		ip = ip + 0xFFFFFFFFFFFFFFFFULL
+		ip = 0xFFFFFFFFFFFFFFFFULL + ip
 		assert.are.same(ip.uint32[0], 0)
 		assert.are.same(ip.uint32[1], 0)
 		assert.are.same(ip.uint32[2], 1)
