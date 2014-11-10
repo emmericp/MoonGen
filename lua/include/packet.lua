@@ -31,6 +31,8 @@ end
 ---ip packets
 local udpPacketType = ffi.typeof("struct udp_packet*")
 
+--- Retrieves an IPv4 UDP packet
+-- @return the packet in udp_packet format
 function pkt:getUDPPacket()
 	return udpPacketType(self.pkt.data)
 end
@@ -38,6 +40,7 @@ end
 local ip4Header = {}
 ip4Header.__index = ip4Header
 
+--- Calculate and set the IPv4 header checksum
 function ip4Header:calculateChecksum()
 	self.cs = 0 --just to be sure...
 	self.cs = checksum(self, 20)
@@ -46,38 +49,26 @@ end
 local ip4Addr = {}
 ip4Addr.__index = ip4Addr
 
+--- Retrieves the IPv4 address
+-- @return address in ipv4_address format
 function ip4Addr:get()
 	return bswap(self.uint32)
 end
 
+--- Set the IPv4 address
+-- @param address in ipv4_address format
 function ip4Addr:set(ip)
 	self.uint32 = bswap(ip)
 end
 
-function parseIPAddress(ip)
-	local bytes = {}
-	bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
-	if bytes == nil then
-		return
-	end
-	for i = 1, 4 do
-		if bytes[i] == nil then
-			return 
-		end
-		bytes[i] = tonumber(bytes[i])
-		if  bytes[i] < 0 or bytes[i] > 255 then
-			return
-		end
-	end
-	
-	ip = bytes[1]
-	for i = 2, 4 do
-		ip = bor(lshift(ip, 8), bytes[i])
-	
-	end
-	return  ip 
+--- Set the IPv4 address
+-- @param address in string format
+function ip4Addr:stringToIPAddress(ip)
+	self:set(parseIPAddress(ip))
 end
 
+-- Retrieves the string representation of an IPv4 address
+-- @return address in string format
 function ip4Addr:getString()
 	return ("%d.%d.%d.%d"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3])
 end
@@ -85,6 +76,8 @@ end
 --- ipv6 packets
 local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
 
+--- Retrieves an IPv6 UDP packet
+-- @return the packet in udp_v6_packet format
 function pkt:getUDP6Packet()
 	return udp6PacketType(self.pkt.data)
 end
@@ -92,6 +85,8 @@ end
 local ip6Addr = {}
 ip6Addr.__index = ip6Addr
 
+--- Retrieves the IPv6 address
+-- @return address in ipv6_address format
 function ip6Addr:get()
 	local addr = ffi.new("union ipv6_address")
 	addr.uint32[0] = bswap(self.uint32[3])
@@ -101,6 +96,8 @@ function ip6Addr:get()
 	return addr
 end
 
+--- Set the IPv6 address
+-- @param address in ipv6_address format
 function ip6Addr:set(addr)
 	self.uint32[0] = bswap(addr.uint32[3])
 	self.uint32[1] = bswap(addr.uint32[2])
@@ -108,14 +105,24 @@ function ip6Addr:set(addr)
 	self.uint32[3] = bswap(addr.uint32[0])
 end
 
---- add a number to an IPv6 address
+--- Set the IPv6 address
+-- @param address in string format
+function ip6Addr:stringToIP6Address(ip)
+	self:set(parseIPAddress(ip))
+end
+
+--- Add a number to an IPv6 address
 -- max. 64bit
+-- @param number to add
+-- @return resulting address in ipv6_address format
 function ip6Addr:__add(val)
 	local addr = ffi.new("union ipv6_address")
 	local low, high = self.uint64[0], self.uint64[1]
 	low = low + val
+	-- handle overflow
 	if low < val and val > 0 then
 		high = high + 1
+	-- handle underflow
 	elseif low > -val and val < 0 then
 		high = high - 1
 	end
@@ -124,31 +131,16 @@ function ip6Addr:__add(val)
 	return addr
 end
 
+--- Subtract a number from an IPv6 address
+-- max. 64 bit
+-- @param number to substract
+-- @return resulting address in ipv6_address format
 function ip6Addr:__sub(val)
 	return self + -val
 end
 
-function parseIP6Address(ip)
-	-- TODO: better parsing (shortened addresses)
-	local bytes = { ip:match('(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x)') }
-	if #bytes ~= 16 then
-		error("bad IPv6 format")
-	end
-	for i, v in ipairs(bytes) do
-		bytes[i] = tonumber(bytes[i], 16)
-	end
-	local addr = ffi.new("union ipv6_address")
-	local uint32
-	for i = 0, 3 do
-		uint32 = bytes[1 + i * 4]
-		for b = 2, 4 do
-			uint32 = bor(lshift(uint32, 8), bytes[b + i * 4])
-		end
-		addr.uint32[3 - i] = uint32
-	end
-	return addr
-end
-
+-- Retrieves the string representation of an IPv6 address
+-- @return address in string format
 function ip6Addr:getString()
 	return ("%x%x:%x%x:%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3], 
 								  self.uint8[4], self.uint8[5], self.uint8[6], self.uint8[7], 
@@ -157,19 +149,19 @@ function ip6Addr:getString()
 end
 
 -- udp
+local udp6Header = {}
+udp6Header.__index = udp6Header
 
-local udpHeader = {}
-udpHeader.__index = udpHeader
-
-function udpHeader:calculateChecksum()
-	-- TODO as it is mandatory for IPv6
+--- Calculate and set the UDP header checksum for IPv6 packets
+function udp6Header:calculateChecksum()
+	-- TODO as it is mandatory for IPv6 UDP packets
 	self.cs = 0
 end
 
 ffi.metatype("struct ipv4_header", ip4Header)
 ffi.metatype("union ipv4_address", ip4Addr)
 ffi.metatype("union ipv6_address", ip6Addr)
-ffi.metatype("struct udp_header", udpHeader)
+ffi.metatype("struct udp_v6_header", udp6Header)
 ffi.metatype("struct rte_mbuf", pkt)
 
 
