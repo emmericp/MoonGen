@@ -76,4 +76,68 @@ function checksum(data, len)
 	return band(bnot(cs), 0xFFFF)
 end
 
+--- Parses a string to an IP address
+-- @return address in ipv4_address OR ipv6_address format
+function parseIPAddress(ip)
+	local address = parseIP4Address(ip)
+	if address == nil then
+		address = parseIP6Address(ip)
+	end
+	return address	
+end
+
+--- Parses a string to an IPv4 address
+-- @param address in string format
+-- @return address in ipv4_address format
+function parseIP4Address(ip)
+	local bytes = {}
+	bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
+	if bytes == nil then
+		return
+	end
+	for i = 1, 4 do
+		if bytes[i] == nil then
+			return 
+		end
+		bytes[i] = tonumber(bytes[i])
+		if  bytes[i] < 0 or bytes[i] > 255 then
+			return
+		end
+	end
+	
+	-- build a uint32
+	ip = bytes[1]
+	for i = 2, 4 do
+		ip = bor(lshift(ip, 8), bytes[i])
+	
+	end
+	return  ip 
+end
+
+--- Parses a string to an IPv6 address
+-- @param address in string format
+-- @return address in ipv6_address format
+function parseIP6Address(ip)
+	-- TODO: better parsing (shortened addresses)
+	local bytes = { ip:match('(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x)') }
+	if #bytes ~= 16 then
+		error("bad IPv6 format")
+	end
+	for i, v in ipairs(bytes) do
+		bytes[i] = tonumber(bytes[i], 16)
+	end
+	
+	-- build an ipv6_address by building four uint32s
+	local addr = ffi.new("union ipv6_address")
+	local uint32
+	for i = 0, 3 do
+		uint32 = bytes[1 + i * 4]
+		for b = 2, 4 do
+			uint32 = bor(lshift(uint32, 8), bytes[b + i * 4])
+		end
+		addr.uint32[3 - i] = uint32
+	end
+	return addr
+end
+
 
