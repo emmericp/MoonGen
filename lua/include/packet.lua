@@ -93,30 +93,60 @@ local ip6Addr = {}
 ip6Addr.__index = ip6Addr
 
 function ip6Addr:get()
-	--TODO
+	local addr = ffi.new("union ipv6_address")
+	addr.uint32[0] = bswap(self.uint32[3])
+	addr.uint32[1] = bswap(self.uint32[2])
+	addr.uint32[2] = bswap(self.uint32[1])
+	addr.uint32[3] = bswap(self.uint32[0])
+	return addr
 end
 
-function ip6Addr:set(ip)
-	--TODO 
+function ip6Addr:set(addr)
+	self.uint32[0] = bswap(addr.uint32[3])
+	self.uint32[1] = bswap(addr.uint32[2])
+	self.uint32[2] = bswap(addr.uint32[1])
+	self.uint32[3] = bswap(addr.uint32[0])
+end
+
+--- add a number to an IPv6 address
+-- max. 64bit
+function ip6Addr:__add(val)
+	local addr = ffi.new("union ipv6_address")
+	local low, high = self.uint64[0], self.uint64[1]
+	low = low + val
+	if low < val and val > 0 then
+		high = high + 1
+	elseif low > -val and val < 0 then
+		high = high - 1
+	end
+	addr.uint64[0] = low
+	addr.uint64[1] = high
+	return addr
+end
+
+function ip6Addr:__sub(val)
+	return self + -val
 end
 
 function parseIP6Address(ip)
-	local bytes = {}
 	-- TODO: better parsing (shortened addresses)
-	bytes = {string.match(ip, '(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x)')}
-
-	if bytes == nil then
-		return
+	local bytes = { ip:match('(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x)') }
+	if #bytes ~= 16 then
+		error("bad IPv6 format")
 	end
-	for i = 1, 16 do
-		if bytes[i] == nil then
-			return 
-		end
+	for i, v in ipairs(bytes) do
 		bytes[i] = tonumber(bytes[i], 16)
 	end
-	--bytes = tonumberall(bytes, 16)
-	
-	--TODO 
+	local addr = ffi.new("union ipv6_address")
+	local uint32
+	for i = 0, 3 do
+		uint32 = bytes[1 + i * 4]
+		for b = 2, 4 do
+			uint32 = bor(lshift(uint32, 8), bytes[b + i * 4])
+		end
+		addr.uint32[3 - i] = uint32
+	end
+	return addr
 end
 
 function ip6Addr:getString()
