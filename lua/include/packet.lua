@@ -75,7 +75,7 @@ function ip4Addr:getString()
 end
 
 local udpPacket = {}
-udpHeader.__index = udpPacket
+udpPacket.__index = udpPacket
 
 --- Calculate and set the UDP header checksum for IPv4 packets
 function udpPacket:calculateUDPChecksum()
@@ -175,7 +175,7 @@ end
 
 -- udp
 local udp6Packet = {}
-udpHeader.__index = udp6Packet
+udp6Packet.__index = udp6Packet
 
 --- Calculate and set the UDP header checksum for IPv6 packets
 function udp6Packet:calculateUDPChecksum()
