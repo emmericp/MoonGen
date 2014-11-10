@@ -10,7 +10,8 @@ fi
 [[ ! -e ../build/MoonGen ]] && echo "ERROR: MoonGen binary not found. Compile MoonGen first." && exit 1
 function exec() {
 	shift 2
-	../build/MoonGen $@ test.lua
+	# TODO: pass command line args and use a .busted file to separate tests
+	../build/MoonGen $@ --pattern=^test .
 }
 source $(which busted)
 )
