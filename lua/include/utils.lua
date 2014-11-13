@@ -76,7 +76,7 @@ function checksum(data, len)
 	return band(bnot(cs), 0xFFFF)
 end
 
---- Parses a string to an IP address
+--- Parse a string to an IP address
 -- @return address in ipv4_address OR ipv6_address format
 function parseIPAddress(ip)
 	local address = parseIP4Address(ip)
@@ -86,7 +86,7 @@ function parseIPAddress(ip)
 	return address	
 end
 
---- Parses a string to an IPv4 address
+--- Parse a string to an IPv4 address
 -- @param address in string format
 -- @return address in ipv4_address format
 function parseIP4Address(ip)
@@ -114,29 +114,23 @@ function parseIP4Address(ip)
 	return  ip 
 end
 
---- Parses a string to an IPv6 address
+ffi.cdef[[
+int inet_pton(int af, const char *src, void *dst);
+]]
+
+--- Parse a string to an IPv6 address
 -- @param address in string format
 -- @return address in ipv6_address format
 function parseIP6Address(ip)
-	-- TODO: better parsing (shortened addresses)
-	local bytes = { ip:match('(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x):(%x%x)(%x%x)') }
-	if #bytes ~= 16 then
-		error("bad IPv6 format")
-	end
-	for i, v in ipairs(bytes) do
-		bytes[i] = tonumber(bytes[i], 16)
-	end
-	
-	-- build an ipv6_address by building four uint32s
+	local LINUX_AF_INET6 = 10 --preprocessor constant of Linux
+	local tmp_addr = ffi.new("union ipv6_address")
+	ffi.C.inet_pton(LINUX_AF_INET6, ip, tmp_addr)
 	local addr = ffi.new("union ipv6_address")
-	local uint32
-	for i = 0, 3 do
-		uint32 = bytes[1 + i * 4]
-		for b = 2, 4 do
-			uint32 = bor(lshift(uint32, 8), bytes[b + i * 4])
-		end
-		addr.uint32[3 - i] = uint32
-	end
+	addr.uint32[0] = bswap(tmp_addr.uint32[3])
+	addr.uint32[1] = bswap(tmp_addr.uint32[2])
+	addr.uint32[2] = bswap(tmp_addr.uint32[1])
+	addr.uint32[3] = bswap(tmp_addr.uint32[0])
+
 	return addr
 end
 
