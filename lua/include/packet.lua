@@ -14,7 +14,7 @@ local istype = ffi.istype
 local pkt = {}
 pkt.__index = pkt
 
---- Retrieves the time stamp information
+--- Retrieve the time stamp information
 -- @return the timestamp or nil if the packet was not time stamped
 function pkt:getTimestamp()
 	if bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0 then
@@ -32,7 +32,7 @@ end
 ---ip packets
 local udpPacketType = ffi.typeof("struct udp_packet*")
 
---- Retrieves an IPv4 UDP packet
+--- Retrieve an IPv4 UDP packet
 -- @return the packet in udp_packet format
 function pkt:getUDPPacket()
 	return udpPacketType(self.pkt.data)
@@ -50,7 +50,7 @@ end
 local ip4Addr = {}
 ip4Addr.__index = ip4Addr
 
---- Retrieves the IPv4 address
+--- Retrieve the IPv4 address
 -- @return address in ipv4_address format
 function ip4Addr:get()
 	return bswap(self.uint32)
@@ -68,7 +68,7 @@ function ip4Addr:stringToIPAddress(ip)
 	self:set(parseIPAddress(ip))
 end
 
--- Retrieves the string representation of an IPv4 address
+-- Retrieve the string representation of an IPv4 address
 -- @return address in string format
 function ip4Addr:getString()
 	return ("%d.%d.%d.%d"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3])
@@ -86,7 +86,7 @@ end
 --- ipv6 packets
 local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
 
---- Retrieves an IPv6 UDP packet
+--- Retrieve an IPv6 UDP packet
 -- @return the packet in udp_v6_packet format
 function pkt:getUDP6Packet()
 	return udp6PacketType(self.pkt.data)
@@ -96,7 +96,7 @@ local ip6Addr = {}
 ip6Addr.__index = ip6Addr
 local ip6AddrType = ffi.typeof("union ipv6_address")
 
---- Retrieves the IPv6 address
+--- Retrieve the IPv6 address
 -- @return address in ipv6_address format
 function ip6Addr:get()
 	local addr = ip6AddrType()
@@ -164,7 +164,7 @@ function ip6Addr:__sub(val)
 	return self + -val
 end
 
--- Retrieves the string representation of an IPv6 address
+-- Retrieve the string representation of an IPv6 address
 -- @return address in string format
 function ip6Addr:getString()
 	return ("%x%x:%x%x:%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3], 
