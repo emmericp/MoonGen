@@ -29,6 +29,59 @@ function pkt:getTimestamp()
 	end
 end
 
+local macAddr = {}
+macAddr.__index = macAddr
+local macAddrType = ffi.typeof("union mac_address")
+
+--- Retrieve the MAC address
+-- @return address in mac_address format
+function macAddr:get()
+	local addr = macAddrType()
+	addr.uint8[0] = bswap(self.uint8[5])
+	addr.uint8[1] = bswap(self.uint8[4])
+	addr.uint8[2] = bswap(self.uint8[3])
+	addr.uint8[3] = bswap(self.uint8[2])
+	addr.uint8[4] = bswap(self.uint8[1])
+	addr.uint8[5] = bswap(self.uint8[0])
+	return addr
+end
+
+--- Set the MAC address
+-- @param addr address in mac_address format
+function macAddr:set(addr)
+	self.uint8[0] = bswap(addr.uint8[5])
+	self.uint8[1] = bswap(addr.uint8[4])
+	self.uint8[2] = bswap(addr.uint8[3])
+	self.uint8[3] = bswap(addr.uint8[2])
+	self.uint8[4] = bswap(addr.uint8[1])
+	self.uint8[5] = bswap(addr.uint8[0])
+end
+
+--- Set the MAC address
+-- @param mac address in string format
+function macAddr:setString(mac)
+	self:set(parseMACAddress(mac))
+end
+
+--- Test equality of two MAC addresses
+-- @param lhs address in mac_address format
+-- @param rhs address in mac_address format
+-- @return is equal
+function macAddr.__eq(lhs, rhs)
+	local isMAC = istype(macAddrType, lhs) and istype(macAddrType, rhs) 
+	for i = 0, 5 do
+		isMAC = isMAC and lhs.uint8[i] == rhs.uint8[i] 
+	end
+	return isMAC
+end
+
+-- Retrieve the string representation of an MAC address
+-- @return address in string format
+function macAddr:getString()
+	return ("%x-%x-%x-%x-%x-%x"):format(self.uint8[0], self.uint8[1], self.uint8[2], 
+									self.uint8[3], self.uint8[4], self.uint8[5])
+end
+
 ---ip packets
 local udpPacketType = ffi.typeof("struct udp_packet*")
 
@@ -57,13 +110,13 @@ function ip4Addr:get()
 end
 
 --- Set the IPv4 address
--- @param address in ipv4_address format
+-- @param ip address in ipv4_address format
 function ip4Addr:set(ip)
 	self.uint32 = bswap(ip)
 end
 
 --- Set the IPv4 address
--- @param address in string format
+-- @param ip address in string format
 function ip4Addr:stringToIPAddress(ip)
 	self:set(parseIPAddress(ip))
 end
@@ -108,7 +161,7 @@ function ip6Addr:get()
 end
 
 --- Set the IPv6 address
--- @param address in ipv6_address format
+-- @param addr address in ipv6_address format
 function ip6Addr:set(addr)
 	self.uint32[0] = bswap(addr.uint32[3])
 	self.uint32[1] = bswap(addr.uint32[2])
@@ -117,18 +170,23 @@ function ip6Addr:set(addr)
 end
 
 --- Set the IPv6 address
--- @param address in string format
+-- @param ip address in string format
 function ip6Addr:setString(ip)
 	self:set(parseIP6Address(ip))
 end
 
+--- Test equality of two IPv6 addresses
+-- @param lhs address in ipv6_address format
+-- @param rhs address in ipv6_address format
+-- @return is equal
 function ip6Addr.__eq(lhs, rhs)
 	return istype(ip6AddrType, lhs) and istype(ip6AddrType, rhs) and lhs.uint64[0] == rhs.uint64[0] and lhs.uint64[1] == rhs.uint64[1]
 end
 
 --- Add a number to an IPv6 address
--- max. 64bit
--- @param number to add
+-- max. 64bit, commutative
+-- @param lhs address in ipv6_address format
+-- @param rhs number to add
 -- @return resulting address in ipv6_address format
 function ip6Addr.__add(lhs, rhs)
 	-- calc ip (self) + number (val)
@@ -158,7 +216,7 @@ end
 
 --- Subtract a number from an IPv6 address
 -- max. 64 bit
--- @param number to substract
+-- @param val number to substract
 -- @return resulting address in ipv6_address format
 function ip6Addr:__sub(val)
 	return self + -val

@@ -76,8 +76,37 @@ function checksum(data, len)
 	return band(bnot(cs), 0xFFFF)
 end
 
+--- Parse a string to a MAC address
+-- @param mac address in string format
+-- @return address in mac_address format or nil if invalid address
+function parseMACAddress(mac)
+	local bytes = {}
+	bytes = {string.match(mac, '(%d+)[-:](%d+)[-:](%d+)[-:](%d+)[-:](%d+)[-:](%d+)')}
+	if bytes == nil then
+		return
+	end
+	for i = 1, 6 do
+		if bytes[i] == nil then
+			return 
+		end
+		bytes[i] = tonumber(bytes[i], 16)
+		if  bytes[i] < 0 or bytes[i] > 0xFF then
+			return
+		end
+	end
+	
+	addr = ffi.new("union mac_address")
+	addr.uint8[0] = bswap(bytes[6])
+	addr.uint8[1] = bswap(bytes[5])
+	addr.uint8[2] = bswap(bytes[4])
+	addr.uint8[3] = bswap(bytes[3])
+	addr.uint8[4] = bswap(bytes[2])
+	addr.uint8[5] = bswap(bytes[1])
+	return  addr 
+end
+
 --- Parse a string to an IP address
--- @return address in ipv4_address OR ipv6_address format
+-- @return ip address in ipv4_address or ipv6_address format or nil if invalid address
 function parseIPAddress(ip)
 	local address = parseIP4Address(ip)
 	if address == nil then
@@ -87,8 +116,8 @@ function parseIPAddress(ip)
 end
 
 --- Parse a string to an IPv4 address
--- @param address in string format
--- @return address in ipv4_address format
+-- @param ip address in string format
+-- @return address in ipv4_address format or nil if invalid address
 function parseIP4Address(ip)
 	local bytes = {}
 	bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
@@ -119,8 +148,8 @@ int inet_pton(int af, const char *src, void *dst);
 ]]
 
 --- Parse a string to an IPv6 address
--- @param address in string format
--- @return address in ipv6_address format
+-- @param ip address in string format
+-- @return address in ipv6_address format or nil if invalid address
 function parseIP6Address(ip)
 	local LINUX_AF_INET6 = 10 --preprocessor constant of Linux
 	local tmp_addr = ffi.new("union ipv6_address")
