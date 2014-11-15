@@ -3,7 +3,6 @@ local mod = {}
 local ffi = require "ffi"
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
-local dev = require "device"
 
 
 function mod.createMemPool(n, func)
@@ -130,7 +129,6 @@ do
 	end
 end
 
--- TODO: enable Lua 5.2 in luajit and add __len and __ipairs
 
 ffi.metatype("struct mempool", mempool)
 

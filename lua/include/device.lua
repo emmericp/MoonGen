@@ -1,8 +1,9 @@
 local mod = {}
 
-local ffi	= require "ffi"
-local dpdkc	= require "dpdkc"
-local dpdk	= require "dpdk"
+local ffi		= require "ffi"
+local dpdkc		= require "dpdkc"
+local dpdk		= require "dpdk"
+local memory	= require "memory"
 
 mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_82599	= 0x808610FB
@@ -228,6 +229,25 @@ function txQueue:send(bufs)
 	dpdkc.send_all_packets(self.id, self.qid, bufs.array, bufs.size);
 	return bufs.size
 end
+
+do
+	local mempool
+	function txQueue:sendWithDelay(bufs, delays, useBadPacketSizes)
+		mempool = mempool or memory.createMemPool()
+		if useBadPacketSizes then
+			error("NYI")
+		else
+			-- TODO: think of a better way to pass this to C
+			local delayArray = ffi.new("uint32_t[?]", #bufs)
+			for i, v in ipairs(delays) do
+				delayArray[i - 1] = v
+			end
+			dpdkc.send_all_packets_with_delay_invalid_mac(self.id, self.qid, bufs.array, bufs.size, delayArray, mempool)
+		end
+		return bufs.size
+	end
+end
+
 
 --- Receive packets from a rx queue.
 -- Returns as soon as at least one packet is available.

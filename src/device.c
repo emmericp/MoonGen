@@ -5,6 +5,7 @@
 #include <rte_cycles.h>
 #include <rte_mbuf.h>
 #include <ixgbe_type.h>
+#include <rte_mbuf.h>
 
 // default descriptors per queue
 #define DEFAULT_RX_DESCS 512
@@ -192,7 +193,17 @@ void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts
 	return;
 }
 
-
+void send_all_packets_with_delay_invalid_mac(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts, uint32_t* delays, struct rte_mempool* pool) {
+	struct rte_mbuf* delay_pkt;
+	for (uint16_t i = 0; i < num_pkts; i++) {
+		delay_pkt = rte_pktmbuf_alloc(pool);
+		delay_pkt->pkt.data_len = delays[i];
+		delay_pkt->pkt.pkt_len = delays[i];
+		while (!rte_eth_tx_burst(port_id, queue_id, &delay_pkt, 1));
+		while (!rte_eth_tx_burst(port_id, queue_id, pkts + i, 1));
+	}
+	return;
+}
 
 // registers all libraries
 // this should be done on startup via a __attribute__((__constructor__)) function
