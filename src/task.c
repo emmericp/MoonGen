@@ -8,12 +8,21 @@
 
 #include "task.h"
 
+#define MG_LUA_PATH "[[\
+lua/include/?.lua;\
+lua/include/?/init.lua;\
+lua/include/lib/?.lua;\
+lua/include/lib/?/init.lua;\
+../lua/include/?.lua;\
+../lua/include/?/init.lua;\
+../lua/include/lib/?.lua;\
+../lua/include/lib/?/init.lua;\
+]]"
 
 lua_State* launch_lua() {
 	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
-	(void) luaL_dostring(L, "package.path = package.path .. ';lua/include/?.lua;lua/include/?/init.lua;lua/include/lib/?/init.lua'");
-	(void) luaL_dostring(L, "package.path = package.path .. ';../lua/include/?.lua;../lua/include/?/init.lua;../lua/include/lib/?/init.lua'");
+	(void) luaL_dostring(L, "package.path = package.path .. ';' .. " MG_LUA_PATH);
 	if (luaL_dostring(L, "require 'main'")) {
 		printf("Could not run main script: %s\n", lua_tostring(L, -1));
 	}

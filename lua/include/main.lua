@@ -6,7 +6,6 @@ local dpdk	= require "dpdk"
 local dev	= require "device"
 local stp	= require "StackTracePlus"
 
-package.path = package.path .. ";../deps/luajit/src/?.lua"
 -- TODO: add command line switches for this and other luajit-debugging features
 --require("jit.v").on()
 
