@@ -95,13 +95,13 @@ function parseMACAddress(mac)
 		end
 	end
 	
-	addr = ffi.new("union mac_address")
-	addr.uint8[0] = bswap(bytes[6])
-	addr.uint8[1] = bswap(bytes[5])
-	addr.uint8[2] = bswap(bytes[4])
-	addr.uint8[3] = bswap(bytes[3])
-	addr.uint8[4] = bswap(bytes[2])
-	addr.uint8[5] = bswap(bytes[1])
+	addr = ffi.new("struct mac_address")
+	addr.uint8[0] = bytes[6]
+	addr.uint8[1] = bytes[5]
+	addr.uint8[2] = bytes[4]
+	addr.uint8[3] = bytes[3]
+	addr.uint8[4] = bytes[2]
+	addr.uint8[5] = bytes[1]
 	return  addr 
 end
 

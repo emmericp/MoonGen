@@ -31,30 +31,30 @@ end
 
 local macAddr = {}
 macAddr.__index = macAddr
-local macAddrType = ffi.typeof("union mac_address")
+local macAddrType = ffi.typeof("struct mac_address")
 
 --- Retrieve the MAC address
 -- @return address in mac_address format
 function macAddr:get()
 	local addr = macAddrType()
-	addr.uint8[0] = bswap(self.uint8[5])
-	addr.uint8[1] = bswap(self.uint8[4])
-	addr.uint8[2] = bswap(self.uint8[3])
-	addr.uint8[3] = bswap(self.uint8[2])
-	addr.uint8[4] = bswap(self.uint8[1])
-	addr.uint8[5] = bswap(self.uint8[0])
+	addr.uint8[0] = self.uint8[5]
+	addr.uint8[1] = self.uint8[4]
+	addr.uint8[2] = self.uint8[3]
+	addr.uint8[3] = self.uint8[2]
+	addr.uint8[4] = self.uint8[1]
+	addr.uint8[5] = self.uint8[0]
 	return addr
 end
 
 --- Set the MAC address
 -- @param addr address in mac_address format
 function macAddr:set(addr)
-	self.uint8[0] = bswap(addr.uint8[5])
-	self.uint8[1] = bswap(addr.uint8[4])
-	self.uint8[2] = bswap(addr.uint8[3])
-	self.uint8[3] = bswap(addr.uint8[2])
-	self.uint8[4] = bswap(addr.uint8[1])
-	self.uint8[5] = bswap(addr.uint8[0])
+	self.uint8[0] = addr.uint8[5]
+	self.uint8[1] = addr.uint8[4]
+	self.uint8[2] = addr.uint8[3]
+	self.uint8[3] = addr.uint8[2]
+	self.uint8[4] = addr.uint8[1]
+	self.uint8[5] = addr.uint8[0]
 end
 
 --- Set the MAC address
@@ -78,7 +78,7 @@ end
 -- Retrieve the string representation of an MAC address
 -- @return address in string format
 function macAddr:getString()
-	return ("%x-%x-%x-%x-%x-%x"):format(self.uint8[0], self.uint8[1], self.uint8[2], 
+	return ("%x:%x:%x:%x:%x:%x"):format(self.uint8[0], self.uint8[1], self.uint8[2], 
 									self.uint8[3], self.uint8[4], self.uint8[5])
 end
 
@@ -117,7 +117,7 @@ end
 
 --- Set the IPv4 address
 -- @param ip address in string format
-function ip4Addr:stringToIPAddress(ip)
+function ip4Addr:setString(ip)
 	self:set(parseIPAddress(ip))
 end
 
@@ -241,6 +241,7 @@ function udp6Packet:calculateUDPChecksum()
 	self.udp.cs = 0
 end
 
+ffi.metatype("struct mac_address", macAddr)
 ffi.metatype("struct ipv4_header", ip4Header)
 ffi.metatype("union ipv4_address", ip4Addr)
 ffi.metatype("union ipv6_address", ip6Addr)

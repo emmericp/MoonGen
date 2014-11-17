@@ -3,13 +3,13 @@ local ffi = require "ffi"
 -- structs
 ffi.cdef[[
 	// TODO: vlan support (which can be offloaded to the NIC to simplify scripts)
-	union __attribute__ ((__packed__)) mac_address {
+	struct __attribute__ ((__packed__)) mac_address {
 		uint8_t		uint8[6];
 	};
 	
 	struct __attribute__((__packed__)) ethernet_header {
-		union mac_address	dst;
-		union mac_address	src;
+		struct mac_address	dst;
+		struct mac_address	src;
 		uint16_t	type;
 	};
 
