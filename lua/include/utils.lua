@@ -80,8 +80,7 @@ end
 -- @param mac address in string format
 -- @return address in mac_address format or nil if invalid address
 function parseMACAddress(mac)
-	local bytes = {}
-	bytes = {string.match(mac, '(%d+)[-:](%d+)[-:](%d+)[-:](%d+)[-:](%d+)[-:](%d+)')}
+	local bytes = {string.match(mac, '(%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)')}
 	if bytes == nil then
 		return
 	end
@@ -97,7 +96,7 @@ function parseMACAddress(mac)
 	
 	addr = ffi.new("struct mac_address")
 	for i = 0, 5 do
-		addr.uint8[i] = bytes[i]
+		addr.uint8[i] = bytes[i + 1]
 	end
 	return  addr 
 end
@@ -116,8 +115,7 @@ end
 -- @param ip address in string format
 -- @return address in ipv4_address format or nil if invalid address
 function parseIP4Address(ip)
-	local bytes = {}
-	bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
+	local bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
 	if bytes == nil then
 		return
 	end
