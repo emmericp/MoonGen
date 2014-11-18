@@ -96,12 +96,9 @@ function parseMACAddress(mac)
 	end
 	
 	addr = ffi.new("struct mac_address")
-	addr.uint8[0] = bytes[6]
-	addr.uint8[1] = bytes[5]
-	addr.uint8[2] = bytes[4]
-	addr.uint8[3] = bytes[3]
-	addr.uint8[4] = bytes[2]
-	addr.uint8[5] = bytes[1]
+	for i = 0, 5 do
+		addr.uint8[i] = bytes[i]
+	end
 	return  addr 
 end
 

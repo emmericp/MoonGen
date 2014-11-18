@@ -37,24 +37,18 @@ local macAddrType = ffi.typeof("struct mac_address")
 -- @return address in mac_address format
 function macAddr:get()
 	local addr = macAddrType()
-	addr.uint8[0] = self.uint8[5]
-	addr.uint8[1] = self.uint8[4]
-	addr.uint8[2] = self.uint8[3]
-	addr.uint8[3] = self.uint8[2]
-	addr.uint8[4] = self.uint8[1]
-	addr.uint8[5] = self.uint8[0]
+	for i = 0, 5 do
+		addr.uint8[i] = self.uint8[i]
+	end
 	return addr
 end
 
 --- Set the MAC address
 -- @param addr address in mac_address format
 function macAddr:set(addr)
-	self.uint8[0] = addr.uint8[5]
-	self.uint8[1] = addr.uint8[4]
-	self.uint8[2] = addr.uint8[3]
-	self.uint8[3] = addr.uint8[2]
-	self.uint8[4] = addr.uint8[1]
-	self.uint8[5] = addr.uint8[0]
+	for i = 0, 5 do
+		self.uint8[i] = addr.uint8[i]
+	end
 end
 
 --- Set the MAC address
