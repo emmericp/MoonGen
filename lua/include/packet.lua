@@ -72,8 +72,10 @@ end
 -- Retrieve the string representation of an MAC address
 -- @return address in string format
 function macAddr:getString()
-	return ("%x:%x:%x:%x:%x:%x"):format(self.uint8[0], self.uint8[1], self.uint8[2], 
-									self.uint8[3], self.uint8[4], self.uint8[5])
+	return ("%02x:%02x:%02x:%02x:%02x:%02x"):format(
+			self.uint8[0], self.uint8[1], self.uint8[2], 
+			self.uint8[3], self.uint8[4], self.uint8[5]
+			)
 end
 
 ---ip packets
@@ -96,15 +98,16 @@ end
 
 local ip4Addr = {}
 ip4Addr.__index = ip4Addr
+local ip4AddrType = ffi.typeof("union ipv4_address")
 
 --- Retrieve the IPv4 address
--- @return address in ipv4_address format
+-- @return address in uint32 format
 function ip4Addr:get()
 	return bswap(self.uint32)
 end
 
 --- Set the IPv4 address
--- @param ip address in ipv4_address format
+-- @param ip address in uint32 format
 function ip4Addr:set(ip)
 	self.uint32 = bswap(ip)
 end
@@ -123,6 +126,42 @@ end
 
 local udpPacket = {}
 udpPacket.__index = udpPacket
+
+--- Test equality of two IPv4 addresses
+-- @param lhs address in ipv4_address format
+-- @param rhs address in ipv4_address format
+-- @return is equal
+function ip4Addr.__eq(lhs, rhs)
+	return istype(ip4AddrType, lhs) and istype(ip4AddrType, rhs) and lhs.uint32 == rhs.uint32
+end 
+
+--- Add a number to an IPv4 address
+-- max. 32 bit, commutative
+-- @param lhs address in ipv4_address format
+-- @param rhs number to add
+-- @return resulting address in uint32 format
+function ip4Addr.__add(lhs, rhs)
+	-- calc ip (self) + number (val)
+	local self, val
+	if istype(ip4AddrType, lhs) then
+		self = lhs
+		val = rhs
+	else
+		-- commutative for number + ip
+		self = rhs
+		val = lhs
+	end -- TODO: ip + ip?
+
+	return self.uint32 + val
+end
+
+--- Subtract a number from an IPv4 address
+-- max. 32 bit
+-- @param val number to substract
+-- @return resulting address in uint32 format
+function ip4Addr:__sub(val)
+	return self + -val
+end
 
 --- Calculate and set the UDP header checksum for IPv4 packets
 function udpPacket:calculateUDPChecksum()
@@ -216,13 +255,22 @@ function ip6Addr:__sub(val)
 	return self + -val
 end
 
--- Retrieve the string representation of an IPv6 address
+-- Retrieve the string representation of an IPv6 address.
+-- Assumes ipv6_address is in network byteorder
+-- @param doByteSwap change byteorder
 -- @return address in string format
-function ip6Addr:getString()
-	return ("%x%x:%x%x:%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3], 
-								  self.uint8[4], self.uint8[5], self.uint8[6], self.uint8[7], 
-								  self.uint8[8], self.uint8[9], self.uint8[10], self.uint8[11], 
-								  self.uint8[12], self.uint8[13], self.uint8[14], self.uint8[15])
+function ip6Addr:getString(doByteSwap)
+	doByteSwap = doByteSwap or false
+	if doByteSwap then
+		self = self:get()
+	end
+
+	return ("%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x"):format(
+			self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3], 
+			self.uint8[4], self.uint8[5], self.uint8[6], self.uint8[7], 
+			self.uint8[8], self.uint8[9], self.uint8[10], self.uint8[11], 
+			self.uint8[12], self.uint8[13], self.uint8[14], self.uint8[15]
+			)
 end
 
 -- udp
