@@ -113,7 +113,7 @@ end
 
 --- Parse a string to an IPv4 address
 -- @param ip address in string format
--- @return address in ipv4_address format or nil if invalid address
+-- @return address in uint32 format or nil if invalid address
 function parseIP4Address(ip)
 	local bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
 	if bytes == nil then
@@ -128,14 +128,13 @@ function parseIP4Address(ip)
 			return
 		end
 	end
-	
+
 	-- build a uint32
 	ip = bytes[1]
 	for i = 2, 4 do
 		ip = bor(lshift(ip, 8), bytes[i])
-	
 	end
-	return  ip 
+	return ip
 end
 
 ffi.cdef[[

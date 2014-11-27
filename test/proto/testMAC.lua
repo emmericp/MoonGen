@@ -1,5 +1,6 @@
 describe("MAC class", function()
 	local pkt = require "packet"
+	local ffi = require "ffi"
 	it("should parse", function()
 		local mac = parseMACAddress("00:11:22:33:44:55")
 		assert.are.same(mac.uint8[0], 0x00)
@@ -8,6 +9,12 @@ describe("MAC class", function()
 		assert.are.same(mac.uint8[3], 0x33)
 		assert.are.same(mac.uint8[4], 0x44)
 		assert.are.same(mac.uint8[5], 0x55)
+	end)
+	it("should return in correct byteorder", function()
+		local macString = "01:22:33:44:55:66"
+		local mac = ffi.new("struct mac_address")
+		mac:setString(macString)
+		assert.are.same(macString, mac:getString())
 	end)
 	it("should support ==", function()
 		local mac = parseMACAddress("00:11:22:33:44:55")
