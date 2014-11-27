@@ -77,8 +77,8 @@ function loadSlave(port, queue, numFlows)
 		-- TODO: enable Lua 5.2 features in luajit and use __ipairs and/or __len metamethod on bufarrays
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUDPPacket()
-			buf:offloadUdpChecksum()
 			pkt.ip.src:set(baseIP + counter)
+			buf:offloadUdpChecksum()
 			counter = counter + 1
 			if counter == numFlows then
 				counter = 0

@@ -93,6 +93,9 @@ ffi.cdef[[
 	uint16_t rte_eth_tx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** tx_pkts, uint16_t nb_pkts);
 	void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
 	void send_all_packets_with_delay_invalid_mac(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts, uint32_t* delays, struct mempool* pool);
+	
+	// checksum offloading
+	void calc_ipv4_pseudo_header_checksum(void* data);
 
 	// timers
 	void rte_delay_ms_export(uint32_t ms);
