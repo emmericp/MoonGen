@@ -6,6 +6,8 @@ local dpdkc = require "dpdkc"
 -- DPDK constants
 -- TODO: import more constants here
 mod.PKT_RX_IEEE1588_TMST	= 0x0400
+mod.PKT_TX_IPV4_CSUM		= 0x1000
+mod.PKT_TX_UDP_CKSUM		= 0x6000
 
 local function fileExists(f)
 	local file = io.open(f, "r")

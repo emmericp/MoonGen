@@ -17,11 +17,8 @@ ffi.cdef[[
 		uint8_t in_port;
 		uint32_t pkt_len;
 		//union {
-		struct {
-			uint16_t l3_len:9;
-			uint16_t l2_len:7;
-			uint16_t vlan_tci;
-		} offsets;
+		uint16_t header_lengths;
+		uint16_t vlan_tci;
 		//uint32_t value;
 		//} offsets;
 		union {

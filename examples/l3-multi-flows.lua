@@ -36,8 +36,8 @@ function loadSlave(port, queue, numFlows)
 		data[13] = 0x00
 		data[14] = 0x45 -- Version, IHL
 		data[15] = 0x00 -- DSCP/ECN
-		data[16] = 0x00 -- length (62)
-		data[17] = 0x3E
+		data[16] = 0x00 -- length (46)
+		data[17] = 0x2E
 		data[18] = 0x00 --id
 		data[19] = 0x00
 		data[20] = 0x00 -- flags/fragment offset
@@ -54,12 +54,12 @@ function loadSlave(port, queue, numFlows)
 		data[31] = 0x00
 		data[32] = 0x00
 		data[33] = 0x01
-		data[34] = bit.rshift(port, 8)
-		data[35] = bit.band(port, 0xFF) -- src port
-		data[36] = bit.rshift(port, 8)
-		data[37] = bit.band(port, 0xFF) -- dst port
+		data[34] = 0x00 --bit.rshift(port, 8)
+		data[35] = 0x01 --bit.band(port, 0xFF) -- src port
+		data[36] = 0x00 --bit.rshift(port, 8)
+		data[37] = 0x01 --bit.band(port, 0xFF) -- dst port
 		data[38] = 0x00
-		data[39] = 0x2A -- length (42)
+		data[39] = 0x1A -- length (26)
 		data[40] = 0x00 -- checksum (offloaded to NIC)
 		data[41] = 0x00 -- checksum (offloaded to NIC)
 		--printf("%08X", pkt.ip.src.uint32)
@@ -77,6 +77,7 @@ function loadSlave(port, queue, numFlows)
 		-- TODO: enable Lua 5.2 features in luajit and use __ipairs and/or __len metamethod on bufarrays
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUDPPacket()
+			buf:offloadUdpChecksum()
 			pkt.ip.src:set(baseIP + counter)
 			counter = counter + 1
 			if counter == numFlows then

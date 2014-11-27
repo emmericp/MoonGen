@@ -2,7 +2,8 @@ local ffi = require "ffi"
 
 require "utils"
 require "headers"
-require "dpdkc"
+local dpdkc = require "dpdkc"
+local dpdk = require "dpdk"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -28,6 +29,17 @@ function pkt:getTimestamp()
 		return high * 2^32 + low
 	end
 end
+
+--- Instruct the NIC to calculate the IP and UDP checksum for this packet.
+function pkt:offloadUdpChecksum(l2_len, l3_len)
+	l2_len = l2_len or 14
+	l3_len = l3_len or 20
+	-- NOTE: this method cannot be moved to the udpPacket class because it doesn't (and can't) know the pktbuf it belongs to
+	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
+	self.pkt.header_lengths = l2_len * 512 + l3_len
+end
+
+
 
 local macAddr = {}
 macAddr.__index = macAddr
