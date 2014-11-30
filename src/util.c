@@ -33,12 +33,6 @@ get_16b_sum(uint16_t *ptr16, uint32_t nr)
 			sum -= UINT16_MAX;
 	}
 
-	/* If length is in odd bytes */
-	if (nr)
-		sum += *((uint8_t*)ptr16);
-
-	sum = ((sum & 0xffff0000) >> 16) + (sum & 0xffff);
-	sum &= 0x0ffff;
 	return (uint16_t)sum;
 }
 
