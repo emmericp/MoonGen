@@ -1,7 +1,9 @@
 #include <stdint.h>
+#include <rte_config.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_byteorder.h>
+#include <rte_mbuf.h>
 
 // copied from rte_cycles.h (defined as static inline there)
 uint64_t rte_rdtsc() {
@@ -72,9 +74,15 @@ get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
 	return get_16b_sum(psd_hdr.u16_arr, sizeof(psd_hdr));
 }
 
-// TODO: cope with flexible offsets and different protocols
+// TODO: cope with flexible offsets
 void calc_ipv4_pseudo_header_checksum(void* data) {
 	uint16_t csum = get_ipv4_psd_sum((struct ipv4_hdr*) ((uint8_t*)data + 14));
 	((uint16_t*) data)[20] = csum;
+}
+
+void calc_ipv4_pseudo_header_checksums(struct rte_mbuf** data, int n) {
+	for (int i = 0; i < n; i++) {
+		calc_ipv4_pseudo_header_checksum(data[i]->pkt.data);
+	}
 }
 

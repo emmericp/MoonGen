@@ -78,12 +78,12 @@ function loadSlave(port, queue, numFlows)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUDPPacket()
 			pkt.ip.src:set(baseIP + counter)
-			buf:offloadUdpChecksum()
 			counter = counter + 1
 			if counter == numFlows then
 				counter = 0
 			end
 		end
+		bufs:offloadUdpChecksums()
 		totalSent = totalSent + queue:send(bufs)
 		local time = dpdk.getTime()
 		if time - lastPrint > 1 then

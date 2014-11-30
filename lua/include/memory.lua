@@ -76,6 +76,16 @@ do
 	end
 end
 
+function bufArray:offloadUdpChecksums(l2Len, l3Len)
+	l2Len = l2Len or 14
+	l3Len = l3Len or 20
+	for i = 0, self.size - 1 do
+		self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
+		self.array[i].pkt.header_lengths = l2Len * 512 + l3Len
+	end
+	dpdkc.calc_ipv4_pseudo_header_checksums(self.array, self.size)
+end
+
 --- Allocates buffers from the memory pool and fills the array
 function bufArray:fill(size)
 	for i = 0, self.size - 1 do

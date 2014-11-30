@@ -38,7 +38,6 @@ function pkt:offloadUdpChecksum(l2_len, l3_len)
 	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
 	self.pkt.header_lengths = l2_len * 512 + l3_len
 	-- calculate pseudo header checksum because the NIC doesn't do this...
-	-- TODO: port this to lua?
 	dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data)
 end
 
