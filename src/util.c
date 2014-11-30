@@ -42,6 +42,7 @@ get_16b_sum(uint16_t *ptr16, uint32_t nr)
 	return (uint16_t)sum;
 }
 
+
 // copied from dpdk test-pmd
 static inline uint16_t
 get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
@@ -62,8 +63,18 @@ get_ipv4_psd_sum (struct ipv4_hdr * ip_hdr)
 	psd_hdr.dst_addr = ip_hdr->dst_addr;
 	psd_hdr.zero     = 0;
 	psd_hdr.proto    = ip_hdr->next_proto_id;
-	psd_hdr.len      = rte_cpu_to_be_16((uint16_t)(rte_be_to_cpu_16(ip_hdr->total_length)
-				- sizeof(struct ipv4_hdr)));
+	uint16_t len = ip_hdr->total_length;
+	// TODO: depends on CPU endianess
+	// and yes, this optimization is actually worth it:
+	//	* 400% increase in micro-benchmarks
+	//	* 1.2% in l3-multi-flows.lua 
+	if (len & 0xFF) { // lower (network byte order) byte used --> len >= 256
+		// just use swap
+		psd_hdr.len = rte_bswap16((uint16_t)(rte_bswap16(len) - sizeof(struct ipv4_hdr)));
+	} else {
+		// can use shift instead, yeah.
+		psd_hdr.len = ((len >> 8) - sizeof(struct ipv4_hdr)) << 8;
+	}
 	return get_16b_sum(psd_hdr.u16_arr, sizeof(psd_hdr));
 }
 
