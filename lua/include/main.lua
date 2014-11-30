@@ -40,6 +40,7 @@ end
 
 local function slave(file, func, ...)
 	--require("jit.p").start("l")
+	--require("jit.dump").on()
 	MOONGEN_TASK_NAME = func
 	run(file)
 	xpcall(_G[func], getStackTrace, ...)

@@ -64,25 +64,27 @@ function loadSlave(port, queue, numFlows)
 		data[41] = 0x00 -- checksum (offloaded to NIC)
 		--printf("%08X", pkt.ip.src.uint32)
 	end)
-	local BURST_SIZE = 31
 	local lastPrint = dpdk.getTime()
 	local totalSent = 0
 	local lastTotal = 0
 	local lastSent = 0
-	local bufs = mem:bufArray(BURST_SIZE)
+	local bufs = mem:bufArray(128)
 	local baseIP = 0x01020304 -- TODO: ip.parse("1.2.3.4")
 	local counter = 0
 	while dpdk.running() do
 		bufs:fill(60)
-		-- TODO: enable Lua 5.2 features in luajit and use __ipairs and/or __len metamethod on bufarrays
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUDPPacket()
 			pkt.ip.src:set(baseIP + counter)
-			counter = counter + 1
-			if counter == numFlows then
-				counter = 0
+			if numFlows <= 32 then
+				-- this is significantly faster for small numbers
+				-- TODO: this optimization shouldn't be necessary...
+				counter = (counter + 1) % numFlows
+			else
+				counter = counter == numFlows and 0 or counter + 1
 			end
 		end
+		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
 		bufs:offloadUdpChecksums()
 		totalSent = totalSent + queue:send(bufs)
 		local time = dpdk.getTime()
