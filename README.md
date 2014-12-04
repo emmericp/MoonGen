@@ -100,4 +100,4 @@ We decided for DPDK as back end for the following reasons
 Note that this might change. Using DPDK also comes with disadvantages like its bloated build system and configuration.
 
 # References
-[1] Paul Emmerich, Florian Wohlfart, Daniel Raumer, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator. Submitted to PAM 2015. Preprint available: [arXiv:1410.3322](http://arxiv.org/abs/1410.3322)  
+[1] Paul Emmerich, Florian Wohlfart, Daniel Raumer, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator. Preprint available: [arXiv:1410.3322](http://arxiv.org/abs/1410.3322)  
