@@ -169,6 +169,12 @@ function ip4Addr.__add(lhs, rhs)
 	return self.uint32 + val
 end
 
+--- Add a number to an IPv4 address in-place, max 32 bit
+-- @param val number to add
+function ip4Addr:add(val)
+	self.uint32 = self.uint32 + val
+end
+
 --- Subtract a number from an IPv4 address
 -- max. 32 bit
 -- @param val number to substract
@@ -246,7 +252,7 @@ function ip6Addr.__add(lhs, rhs)
 		self = rhs
 		val = lhs
 	end -- TODO: ip + ip?
-	local addr = ffi.new("union ipv6_address")
+	local addr = ip6AddrType()
 	local low, high = self.uint64[0], self.uint64[1]
 	low = low + val
 	-- handle overflow
@@ -259,6 +265,23 @@ function ip6Addr.__add(lhs, rhs)
 	addr.uint64[0] = low
 	addr.uint64[1] = high
 	return addr
+end
+
+--- Add a number to an IPv6 address in-place, max 64 bit
+-- @param val number to add
+function ip6Addr:add(val)
+	-- calc ip (self) + number (val)
+	local low, high = bswap(self.uint64[1]), bswap(self.uint64[0])
+	low = low + val
+	-- handle overflow
+	if low < val and val > 0 then
+		high = high + 1
+	-- handle underflow
+	elseif low > -val and val < 0 then
+		high = high - 1
+	end
+	self.uint64[1] = bswap(low)
+	self.uint64[0] = bswap(high)
 end
 
 --- Subtract a number from an IPv6 address
