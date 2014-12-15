@@ -31,17 +31,24 @@ function pkt:getTimestamp()
 end
 
 --- Instruct the NIC to calculate the IP and UDP checksum for this packet.
-function pkt:offloadUdpChecksum(l2_len, l3_len)
+function pkt:offloadUdpChecksum(ipv4, l2_len, l3_len)
 	-- NOTE: this method cannot be moved to the udpPacket class because it doesn't (and can't) know the pktbuf it belongs to
+	ipv4 = ipv4 == nil or ipv4
 	l2_len = l2_len or 14
-	l3_len = l3_len or 20
-	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
-	self.pkt.header_lengths = l2_len * 512 + l3_len
-	-- calculate pseudo header checksum because the NIC doesn't do this...
-	dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data)
+	if ipv4 then
+		l3_len = l3_len or 20
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
+		self.pkt.header_lengths = l2_len * 512 + l3_len
+		-- calculate pseudo header checksum because the NIC doesn't do this...
+		dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data)
+	else 
+		l3_len = l3_len or 40
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_UDP_CKSUM)
+		self.pkt.header_lengths = l2_len * 512 + l3_len
+		-- calculate pseudo header checksum because the NIC doesn't do this...
+		dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data)
+	end
 end
-
-
 
 local macAddr = {}
 macAddr.__index = macAddr
