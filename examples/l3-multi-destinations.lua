@@ -14,11 +14,11 @@ function master(...)
 	--parse args
 	local txPort = tonumber((select(1, ...)))
 	local minIP = select(2, ...)
-	local maxIP = select(3, ...)
-	local rate = tonumber((select(4, ...)))
+	local numIPs = tonumber((select(3, ...)))
+	local rate = tonumber(select(4, ...))
 	
-	if not txPort or not minIP or not maxIP or not rate then
-		printf("usage: txPort minIP maxIP rate")
+	if not txPort or not minIP or not numIPs or not rate then
+		printf("usage: txPort minIP numIPs rate")
 		return
 	end
 
@@ -26,40 +26,35 @@ function master(...)
 	local txDev = device.config(txPort, rxMempool, 2, 2)
 	txDev:wait()
 	txDev:getTxQueue(0):setRate(rate)
-	dpdk.launchLua("loadSlave", txPort, 0, minIP, maxIP)
+	dpdk.launchLua("loadSlave", txPort, 0, minIP, numIPs)
 	dpdk.waitForSlaves()
 end
 
-function loadSlave(port, queue, minA, maxA)
+function loadSlave(port, queue, minA, numIPs)
 	--- parse and check ip addresses
-	local numIPs
-	local packetLen = 64
+	-- min UDP packet size for IPv6 is 66 bytes
+	-- 4 bytes subtracted as the CRC gets appended by the NIC
+	local packetLen = 66 - 4 
 	local ipv4 = true
 	local minIP
-	local maxIP
 
 	-- first check if its an ipv4 address
-	minIP = parseIPAddress(minA)
-	maxIP = parseIPAddress(maxA)
-	
-	if minIP == nil or maxIP == nil then
-		printf("Addresses are not IPv4, checking for IPv6...")
+	minIP = parseIP4Address(minA)
+
+	if minIP == nil then
+		printf("Address is not IPv4, checking for IPv6...")
 		ipv4 = false
 	end
 
 	-- if not an ipv4 address, check if its ipv6
 	if not ipv4 then
 		minIP = parseIP6Address(minA)
-		maxIP = parseIP6Address(maxA)
 		
-		if minIP == nil or maxIP == nil then
-			printf("Addresses are not IPv6, stopping now.")
+		if minIP == nil then
+			printf("Address is not IPv6, stopping now.")
 			return
 		end
 	end
-	
-	-- calculate how many addresses
-	numIPs = (maxIP - minIP) + 1
 
 	--continue normally
 	local queue = device.get(port):getTxQueue(queue)
@@ -70,23 +65,10 @@ function loadSlave(port, queue, minA, maxA)
 		else 
 			pkt = buf:getUDP6Packet()
 		end
-		
-		--pkt.pkt_len = packetLen
-		--pkt.data_len = packetLen
-		
+
 		--ethernet header
-		pkt.eth.dst[0] = 0x90 --tartu eth-test1
-		pkt.eth.dst[1] = 0xe2
-		pkt.eth.dst[2] = 0xba
-		pkt.eth.dst[3] = 0x35
-		pkt.eth.dst[4] = 0xb5
-		pkt.eth.dst[5] = 0x81
-		pkt.eth.src[0] = 0x90 --klaipeda eth-test1
-		pkt.eth.src[1] = 0xe2
-		pkt.eth.src[2] = 0xba
-		pkt.eth.src[3] = 0x2c
-		pkt.eth.src[4] = 0xcb
-		pkt.eth.src[5] = 0x02
+		pkt.eth.dst:setString("90:e2:ba:35:b5:81")
+		pkt.eth.src:setString("90:e2:ba:2c:cb:02")
 		if ipv4 then
 			pkt.eth.type = hton16(0x0800)
 		else
@@ -103,76 +85,59 @@ function loadSlave(port, queue, minA, maxA)
 			pkt.ip.ttl = 64
 			pkt.ip.protocol = 0x11
 			pkt.ip.cs = 0
-			pkt.ip.src:set(parseIPAddress("192.168.1.1"))
+			pkt.ip.src:setString("192.168.1.1")
 			pkt.ip.dst.uint32 = 0xffffffff 
 		else --ipv6
 			pkt.ip.vtf = 96
 			pkt.ip.len = hton16(packetLen - 54)
-			pkt.ip.nexthdr = 0x11
+			pkt.ip.nextHeader = 0x11
 			pkt.ip.ttl = 64
-			pkt.ip.src.uint64[0] = 0
-			pkt.ip.src.uint8[0] = 0xfd
-			pkt.ip.src.uint8[1] = 0x06
-			pkt.ip.src.uint64[1] = 1
-			pkt.ip.dst.uint64[0] = 0
-			pkt.ip.dst.uint64[1] = 0
+			pkt.ip.src:setString("fd06::1")
+			pkt.ip.dst:setString("::")
 		end
 		
 		--udp header
 		pkt.udp.src	= hton16(1116)
 		pkt.udp.dst	= hton16(2222)
-		pkt.udp.len = hton16(packetLen - 34)
+		if ipv4 then
+			pkt.udp.len = hton16(packetLen - 34)
+		else
+			pkt.udp.len = hton16(packetLen - 54)
+		end
 		pkt.udp.cs = 0
---[[
-		local data = ffi.cast("uint8_t*", buf.pkt.data)
-		for i = 0, 63, 1 do
-			printf("Byte %2d: %2x", i, data[i])
-		end	
-		exit(0) --]]	
 	end)
 
-	local BURST_SIZE = 1
 	local lastPrint = dpdk.getTime()
 	local totalSent = 0
 	local lastTotal = 0
 	local lastSent = 0
-	local bufs = mem:bufArray(BURST_SIZE)
+	local bufs = mem:bufArray(128)
 	local counter = 0
-	local cs = 0
-	local sum = 0
-	local carry = 0
-	local hitMaxIp = false
 
 	print("Start sending...")
 	while dpdk.running() do
-		bufs:fill(60)
-		for i, buf in ipairs(bufs) do
+		-- fill packets and set their size 
+		bufs:fill(packetLen)  
+		for i, buf in ipairs(bufs) do 			
 			local pkt
-			local ip_bytes
-			
 			if ipv4 then
 				pkt = buf:getUDPPacket()
 			else
-				pkt = buf:getUDPV6Packet()
+				pkt = buf:getUDP6Packet()
 			end
 			
-			pkt.ip.dst:set(minIP + counter)
-			counter = (counter + 1) % numIPs
-		
-			--calculate checksum
-			if ipv4 then
-				--pkt.ip.cs = 0 --reset as packets can be reused
-				--pkt.ip.cs = checksum(pkt.ip, 20)
-				pkt.ip:calculateChecksum()
-			else
-				--TODO UDP checksum for IPv6 is mandatory
-				pkt.udp.check = 0
+			--increment IP
+			pkt.ip.dst:set(minIP)
+			pkt.ip.dst:add(counter)
+			if numIPs <= 32 then
+				counter = (counter + 1) % numIPs
+			else 
+				counter = counter == numIPs and 0 or counter + 1
 			end
-
-			--set length TODO
-			buf.pkt.pkt_len = packetLen           
-			buf.pkt.data_len = packetLen
-		end
+		end 
+		--offload checksums to NIC
+		bufs:offloadUdpChecksums(ipv4)
+		
 		totalSent = totalSent + queue:send(bufs)
 		local time = dpdk.getTime()
 		if time - lastPrint > 0.1 then 	--counter frequency
