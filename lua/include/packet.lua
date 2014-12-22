@@ -92,6 +92,42 @@ function macAddr:getString()
 			)
 end
 
+
+--- Layer 2 header
+local etherHeader = {}
+etherHeader.__index = etherHeader
+
+function etherHeader:setDst(addr)
+	for i = 0, 5 do
+		self.dst.uint8[i] = addr.uint8[i]
+	end
+end
+
+function etherHeader:setSrc(addr)
+	for i = 0, 5 do
+		self.src.uint8[i] = addr.uint8[i]
+	end
+end
+
+function etherHeader:setDstString(str)
+	-- TODO
+end
+
+function etherHeader:setSrcString(str)
+	-- TODO
+end
+
+
+--- Layer 2 packet
+local etherPacketType = ffi.typeof("struct ethernet_packet*")
+local etherPacket = {}
+etherPacket.__index = etherPacket
+
+function pkt:getEthernetPacket()
+	return etherPacketType(self.pkt.data)
+end
+
+
 ---ip packets
 local udpPacketType = ffi.typeof("struct udp_packet*")
 
@@ -304,5 +340,6 @@ ffi.metatype("union ipv6_address", ip6Addr)
 ffi.metatype("struct udp_packet", udpPacket)
 ffi.metatype("struct udp_v6_packet", udp6Packet)
 ffi.metatype("struct rte_mbuf", pkt)
-
+ffi.metatype("struct ethernet_packet", etherPacket)
+ffi.metatype("struct ethernet_header", etherHeader)
 

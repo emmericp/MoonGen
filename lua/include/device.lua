@@ -3,7 +3,7 @@ local mod = {}
 local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
-local memory	= require "memory"
+local memory		= require "memory"
 
 mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_82599	= 0x808610FB
@@ -91,7 +91,7 @@ end
 function dev:wait()
 	local link = self:getLinkStatus()
 	self.speed = link.speed
-	printf("Port %d (%s) is %s: %s%s MBit/s", self.id, self:getMac(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
+	printf("Port %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
 end
 
 function dev:getLinkStatus()
@@ -100,10 +100,15 @@ function dev:getLinkStatus()
 	return { status = link.link_status == 1, duplexAutoneg = link.link_duplex == 0, duplex = link.link_duplex == 2, speed = link.link_speed }
 end
 
-function dev:getMac()
+function dev:getMacString()
 	local buf = ffi.new("char[20]")
 	dpdkc.get_mac_addr(self.id, buf)
 	return ffi.string(buf)
+end
+
+function dev:getMac()
+	-- TODO: optimize
+	return parseMACAddress(self:getMacString())
 end
 
 function dev:getPciId()
@@ -134,7 +139,7 @@ function mod.getDevices()
 	local result = {}
 	for i = 0, dpdkc.rte_eth_dev_count() - 1 do
 		local dev = mod.get(i)
-		result[#result + 1] = { id = i, mac = dev:getMac(i), name = dev:getName(i) }
+		result[#result + 1] = { id = i, mac = dev:getMacString(i), name = dev:getName(i) }
 	end
 	return result
 end

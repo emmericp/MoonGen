@@ -10,7 +10,7 @@ ffi.cdef[[
 	struct __attribute__((__packed__)) ethernet_header {
 		struct mac_address	dst;
 		struct mac_address	src;
-		uint16_t	type;
+		uint16_t		type;
 	};
 
 	union ipv4_address {
@@ -57,6 +57,11 @@ ffi.cdef[[
 		struct ethernet_header  eth;
 		struct ipv4_header 	ip;
 		struct udp_header 	udp;
+		uint8_t			payload[];
+	};
+
+	struct __attribute__((__packed__)) ethernet_packet {
+		struct ethernet_header  eth;
 		uint8_t			payload[];
 	};
 
