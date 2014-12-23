@@ -22,12 +22,12 @@ local cores
 --- Inits DPDK. Called by MoonGen on startup.
 function mod.init()
 	-- register drivers
-	dpdkc.register_pmd_drivers();
+	dpdkc.register_pmd_drivers()
 	-- TODO: support arbitrary dpdk configurations by allowing configuration in the form ["cmdLine"] = "foo"
 	local cfgFileLocations = {
 		"./dpdk-conf.lua",
-		"../lua/dpdk-conf.lua",
 		"./lua/dpdk-conf.lua",
+		"../lua/dpdk-conf.lua",
 		"/etc/moongen/dpdk-conf.lua"
 	}
 	local cfg
@@ -37,46 +37,61 @@ function mod.init()
 			setfenv(cfgScript, setmetatable({ DPDKConfig = function(arg) cfg = arg end }, { __index = _G }))
 			local ok, err = pcall(cfgScript)
 			if not ok then
-				error("could not load DPDK config: " .. err)
+				print("could not load DPDK config: " .. err)
+				return false
 			end
 			if not cfg then
-				error("config file " .. f .. " did not call DPDKConfig")
+				print("config file does not contain DPDKConfig statement")
+				return false
 			end
 			cfg.name = f
 			break
 		end
 	end
 	if not cfg then
-		error("DPDK config not found")
+		print("no DPDK config found, using defaults")
+		cfg = {}
 	end
 	local coreMask
+	if not cfg.cores then
+		-- default: use all the cores
+		local cpus = io.open("/proc/cpuinfo", "r")
+		cfg.cores = {}
+		for cpu in cpus:read("*a"):gmatch("processor	: (%d+)") do
+			cfg.cores[#cfg.cores + 1] = tonumber(cpu)
+		end
+		cpus:close()
+	end
 	if type(cfg.cores) == "number" then
 		coreMask = cfg.cores
 		cores = {}
-		-- TODO: support more than 32 cores but bit operations on 64 bit types are currently not supported in luajit so
-		-- this could be supported by using the native iterator functions rte_get_next_lcore and friends instead of manually managing the list of cores
+		-- TODO: support more than 32 cores but bit operations on 64 bit types are currently not supported in luajit
 		for i = 0, 31 do
 			if bit.band(coreMask, bit.lshift(1, i)) ~= 0 then
 				cores[#cores + 1] = i
 			end
 		end
+		if cfg.cores >= 2^32 then
+			print("Warning: more than 32 cores are currently not supported in bitmask format, sorry")
+			print("Use a table as a work-around")
+			return
+		end
 	elseif type(cfg.cores) == "table" then
 		cores = cfg.cores
 		coreMask = 0
 		for i, v in ipairs(cores) do
-			coreMask = bit.bor(coreMask, bit.lshift(1, v))
+			coreMask = coreMask + 2^v
 		end
-	else
-		error("Config file " .. cfgFile .. " does not define required variable cores")
 	end
 	local argv = { "MoonGen" }
-	if not cfg.useHugeTlbFs then
+	if cfg.noHugeTlbFs then
 		argv[#argv + 1] = "--no-huge"
 	end
 	argv[#argv + 1] = ("-c0x%X"):format(coreMask)
-	argv[#argv + 1] = "-n" .. (cfg.memoryChannels or 2)
+	argv[#argv + 1] = "-n" .. (cfg.memoryChannels or 4) -- todo: auto-detect
 	local argc = #argv
 	dpdkc.rte_eal_init(argc, ffi.new("const char*[?]", argc, argv))
+	return true
 end
 
 ffi.cdef[[
@@ -127,10 +142,10 @@ function mod.launchLua(...)
 		local core = cores[i]
 		if dpdkc.rte_eal_get_lcore_state(core) == dpdkc.WAIT then -- core is in WAIT state
 			mod.launchLuaOnCore(core, mod.userScript, ...)
-			return true
+			return
 		end
 	end
-	return false
+	error("not enough cores to start this lua task")
 end
 
 ffi.cdef [[

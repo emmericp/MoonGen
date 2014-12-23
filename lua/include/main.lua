@@ -24,7 +24,10 @@ end
 
 local function master(_, file, ...)
 	MOONGEN_TASK_NAME = "master"
-	dpdk.init()
+	if not dpdk.init() then
+		print("Could not initialize DPDK")
+		return
+	end
 	local devices = dev.getDevices()
 	printf("Found %d usable ports:", #devices)
 	for _, device in ipairs(devices) do
