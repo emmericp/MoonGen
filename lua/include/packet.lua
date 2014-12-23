@@ -31,17 +31,24 @@ function pkt:getTimestamp()
 end
 
 --- Instruct the NIC to calculate the IP and UDP checksum for this packet.
-function pkt:offloadUdpChecksum(l2_len, l3_len)
+function pkt:offloadUdpChecksum(ipv4, l2_len, l3_len)
 	-- NOTE: this method cannot be moved to the udpPacket class because it doesn't (and can't) know the pktbuf it belongs to
+	ipv4 = ipv4 == nil or ipv4
 	l2_len = l2_len or 14
-	l3_len = l3_len or 20
-	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
-	self.pkt.header_lengths = l2_len * 512 + l3_len
-	-- calculate pseudo header checksum because the NIC doesn't do this...
-	dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data)
+	if ipv4 then
+		l3_len = l3_len or 20
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
+		self.pkt.header_lengths = l2_len * 512 + l3_len
+		-- calculate pseudo header checksum because the NIC doesn't do this...
+		dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data)
+	else 
+		l3_len = l3_len or 40
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_UDP_CKSUM)
+		self.pkt.header_lengths = l2_len * 512 + l3_len
+		-- calculate pseudo header checksum because the NIC doesn't do this...
+		dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data)
+	end
 end
-
-
 
 local macAddr = {}
 macAddr.__index = macAddr
@@ -205,6 +212,12 @@ function ip4Addr.__add(lhs, rhs)
 	return self.uint32 + val
 end
 
+--- Add a number to an IPv4 address in-place, max 32 bit
+-- @param val number to add
+function ip4Addr:add(val)
+	self.uint32 = self.uint32 + val
+end
+
 --- Subtract a number from an IPv4 address
 -- max. 32 bit
 -- @param val number to substract
@@ -282,7 +295,7 @@ function ip6Addr.__add(lhs, rhs)
 		self = rhs
 		val = lhs
 	end -- TODO: ip + ip?
-	local addr = ffi.new("union ipv6_address")
+	local addr = ip6AddrType()
 	local low, high = self.uint64[0], self.uint64[1]
 	low = low + val
 	-- handle overflow
@@ -295,6 +308,23 @@ function ip6Addr.__add(lhs, rhs)
 	addr.uint64[0] = low
 	addr.uint64[1] = high
 	return addr
+end
+
+--- Add a number to an IPv6 address in-place, max 64 bit
+-- @param val number to add
+function ip6Addr:add(val)
+	-- calc ip (self) + number (val)
+	local low, high = bswap(self.uint64[1]), bswap(self.uint64[0])
+	low = low + val
+	-- handle overflow
+	if low < val and val > 0 then
+		high = high + 1
+	-- handle underflow
+	elseif low > -val and val < 0 then
+		high = high - 1
+	end
+	self.uint64[1] = bswap(low)
+	self.uint64[0] = bswap(high)
 end
 
 --- Subtract a number from an IPv6 address
