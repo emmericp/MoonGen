@@ -124,6 +124,11 @@ function etherHeader:setSrcString(str)
 	-- TODO
 end
 
+function etherHeader:fill()
+	self:setSrcString("90:e2:ba:2c:cb:02")
+	self:setDstString("90:e2:ba:35:b5:81")
+	self:setType()
+end
 
 --- Layer 2 packet
 local etherPacketType = ffi.typeof("struct ethernet_packet*")
@@ -147,10 +152,102 @@ end
 local ip4Header = {}
 ip4Header.__index = ip4Header
 
+-- TODO adjust default values
+
+-- @param int ip header version, should always be '4' 
+--		  4 bit integer
+function ip4Header:setVersion(int)
+	int = int or 4
+	int = band(lshift(int, 4), 0xf0) -- fill to 8 bits
+	
+	old = self.verihl
+	old = band(old, 0x0f) -- remove old value
+	
+	self.verihl = bor(old, int)
+end
+
+-- @param int length of the ip header (in multiple of 32 bits)
+--		  4 bit integer
+function ip4Header:setHeaderLength(int)
+	int = int or 5
+	int = band(int, 0x0f)	
+	
+	old = self.verihl
+	old = band(old, 0xf0)
+	
+	self.verihl = bor(old, int)
+end
+
+function ip4Header:setTOS(int)
+	int = int or 0 
+	self.tos = int
+end
+
+function ip4Header:setLength(int)
+	int = int or 48	-- with eth + UDP -> minimum 64
+	self.len = hton16(int)
+end
+
+function ip4Header:setID(int)
+	int = int or 0 
+	self.id = hton16(int)
+end
+
+function ip4Header:setFragment(int)
+	int = int or 0 
+	self.frag = hton16(int)
+end
+
+function ip4Header:setTTL(int)
+	int = int or 64 
+	self.ttl = int
+end
+
+function ip4Header:setProtocol(int)
+	int = int or 0x11 	-- UDP
+	self.protocol = int
+end
+
+function ip4Header:setChecksum(int)
+	int = int or 0
+	self.cs = int
+end
+
 --- Calculate and set the IPv4 header checksum
+-- If possible use checksum offloading (see pkt:offloadUdpChecksum) instead
 function ip4Header:calculateChecksum()
-	self.cs = 0 --just to be sure...
-	self.cs = checksum(self, 20)
+	self:setChecksum() -- just to be sure (packet may be reused); must be 0 
+	self:setChecksum(checksum(self, 20))
+end
+
+function ip4Header:setDst(int)
+	self.dst:set(int)
+end
+
+function ip4Header:setSrc(int)
+	self.src:set(int)
+end
+
+function ip4Header:setDstString(str)
+	self:setDst(parseIP4Address(str))
+end
+
+function ip4Header:setSrcString(str)
+	self:setSrc(parseIP4Address(str))
+end
+
+function ip4Header:fill()
+	self:setVersion()
+	self:setHeaderLength()
+	self:setTOS()
+	self:setLength()
+	self:setID()
+	self:setFragment()
+	self:setTTL()
+	self:setProtocol()
+	self:setChecksum()
+	self:setSrcString("192.168.1.1")
+	self:setDstString("192.168.1.2")
 end
 
 local ip4Addr = {}
@@ -180,9 +277,6 @@ end
 function ip4Addr:getString()
 	return ("%d.%d.%d.%d"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3])
 end
-
-local udpPacket = {}
-udpPacket.__index = udpPacket
 
 --- Test equality of two IPv4 addresses
 -- @param lhs address in ipv4_address format
@@ -226,12 +320,6 @@ function ip4Addr:__sub(val)
 	return self + -val
 end
 
---- Calculate and set the UDP header checksum for IPv4 packets
-function udpPacket:calculateUDPChecksum()
-	-- optional, so don't do it
-	self.udp.cs = 0
-end
-
 --- ipv6 packets
 local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
 
@@ -239,6 +327,89 @@ local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
 -- @return the packet in udp_v6_packet format
 function pkt:getUDP6Packet()
 	return udp6PacketType(self.pkt.data)
+end
+
+local ip6Header = {}
+ip6Header.__index = ip6Header
+
+-- TODO adjust default values
+
+-- @param int ip header version, should always be '6' 
+--		  4 bit integer
+function ip6Header:setVersion(int)
+	int = int or 6
+	int = band(lshift(int, 28), 0xf0000000) -- fill to 32 bits
+	
+	old = bswap(self.vtf)
+	old = band(old, 0x0fffffff)	-- remove old value
+	
+	self.vtf = bswap(bor(old, int))
+end
+
+-- @param int ip set traffic class of the ip header
+--		  8 bit integer
+function ip6Header:setTrafficClass(int)
+	int = int or 0
+	int = band(lshift(int, 20), 0x0ff00000)
+	
+	old = bswap(self.vtf)
+	old = band(old, 0xf00fffff)
+	
+	self.vtf = bswap(bor(old, int))
+end
+
+-- @param int ip set flow label of the ip header
+--		  20 bit integer
+function ip6Header:setFlowLabel(int)
+	int = int or 0
+	int = band(int, 0x000fffff)
+	
+	old = bswap(self.vtf)
+	old = band(old, 0xfff00000)
+	
+	self.vtf = bswap(bor(old, int))
+end
+
+function ip6Header:setLength(int)
+	int = int or 8	-- with eth + UDP -> minimum 64
+	self.len = hton16(int)
+end
+
+function ip6Header:setNextHeader(int)
+	int = int or 0x11	-- UDP
+	self.nextHeader = int
+end
+
+function ip6Header:setTTL(int)
+	int = int or 64
+	self.ttl = int
+end
+
+function ip6Header:setDst(addr)
+	self.dst:set(addr)
+end
+
+function ip6Header:setSrc(addr)
+	self.src:set(addr)
+end
+
+function ip6Header:setDstString(str)
+	self:setDst(parseIP6Address(str))
+end
+
+function ip6Header:setSrcString(str)
+	self:setSrc(parseIP6Address(str))
+end
+
+function ip6Header:fill()
+	self:setVersion()
+	self:setTrafficClass()
+	self:setFlowLabel()
+	self:setLength()
+	self:setNextHeader()
+	self:setTTL()
+	self:setSrcString("fe80::1")
+	self:setDstString("fe80::2")
 end
 
 local ip6Addr = {}
@@ -354,8 +525,57 @@ function ip6Addr:getString(doByteSwap)
 end
 
 -- udp
+local udpHeader = {}
+udpHeader.__index =udpHeader
+
+function udpHeader:setSrcPort(int)
+
+end
+
+function udpHeader:setDstPort(int)
+	    
+end
+
+function udpHeader:setLength(int)
+	    
+end
+
+function udpHeader:setChecksum(int)
+	    
+end
+
+function udpHeader:fill(int)
+	self:setSrcPort()
+	self:setDstPort()
+	self:setLength()
+	self:setChecksum()
+end
+
+-- udp packets
+
+local udpPacket = {}
+udpPacket.__index = udpPacket
+
+function udpPacket_fill()
+	self.eth:fill()
+	self.ip:fill()
+	self.udp:fill()
+end
+
+--- Calculate and set the UDP header checksum for IPv4 packets
+function udpPacket:calculateUDPChecksum()
+    -- optional, so don't do it
+	self.udp.cs = 0
+end
+
 local udp6Packet = {}
 udp6Packet.__index = udp6Packet
+
+function udp6Packet:fill()
+	self.eth:fill()
+	self.ip:fill()
+	self.udp:fill()
+end
 
 --- Calculate and set the UDP header checksum for IPv6 packets
 function udp6Packet:calculateUDPChecksum()
@@ -364,12 +584,18 @@ function udp6Packet:calculateUDPChecksum()
 end
 
 ffi.metatype("struct mac_address", macAddr)
-ffi.metatype("struct ipv4_header", ip4Header)
-ffi.metatype("union ipv4_address", ip4Addr)
-ffi.metatype("union ipv6_address", ip6Addr)
-ffi.metatype("struct udp_packet", udpPacket)
-ffi.metatype("struct udp_v6_packet", udp6Packet)
-ffi.metatype("struct rte_mbuf", pkt)
 ffi.metatype("struct ethernet_packet", etherPacket)
 ffi.metatype("struct ethernet_header", etherHeader)
+
+ffi.metatype("struct ipv4_header", ip4Header)
+ffi.metatype("struct ipv6_header", ip6Header)
+ffi.metatype("union ipv4_address", ip4Addr)
+ffi.metatype("union ipv6_address", ip6Addr)
+
+--ffi.metatype("struct udp_header", udpHeader)
+
+ffi.metatype("struct udp_packet", udpPacket)
+ffi.metatype("struct udp_v6_packet", udp6Packet)
+
+ffi.metatype("struct rte_mbuf", pkt)
 
