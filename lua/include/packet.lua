@@ -124,6 +124,11 @@ function etherHeader:setSrcString(str)
 	-- TODO
 end
 
+function etherHeader:fill()
+	self:setSrcString("90:e2:ba:2c:cb:02")
+	self:setDstString("90:e2:ba:35:b5:81")
+	self:setType()
+end
 
 --- Layer 2 packet
 local etherPacketType = ffi.typeof("struct ethernet_packet*")
@@ -203,11 +208,16 @@ function ip4Header:setProtocol(int)
 	self.protocol = int
 end
 
+function ip4Header:setChecksum(int)
+	int = int or 0
+	self.cs = int
+end
+
 --- Calculate and set the IPv4 header checksum
 -- If possible use checksum offloading (see pkt:offloadUdpChecksum) instead
 function ip4Header:calculateChecksum()
-	self.cs = 0 		-- just to be sure (packet may be reused) 
-	self.cs = checksum(self, 20)
+	self:setChecksum() -- just to be sure (packet may be reused); must be 0 
+	self:setChecksum(checksum(self, 20))
 end
 
 function ip4Header:setDst(int)
@@ -224,6 +234,20 @@ end
 
 function ip4Header:setSrcString(str)
 	self:setSrc(parseIP4Address(str))
+end
+
+function ip4Header:fill()
+	self:setVersion()
+	self:setHeaderLength()
+	self:setTOS()
+	self:setLength()
+	self:setID()
+	self:setFragment()
+	self:setTTL()
+	self:setProtocol()
+	self:setChecksum()
+	self:setSrcString("192.168.1.1")
+	self:setDstString("192.168.1.2")
 end
 
 local ip4Addr = {}
@@ -253,9 +277,6 @@ end
 function ip4Addr:getString()
 	return ("%d.%d.%d.%d"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3])
 end
-
-local udpPacket = {}
-udpPacket.__index = udpPacket
 
 --- Test equality of two IPv4 addresses
 -- @param lhs address in ipv4_address format
@@ -297,12 +318,6 @@ end
 -- @return resulting address in uint32 format
 function ip4Addr:__sub(val)
 	return self + -val
-end
-
---- Calculate and set the UDP header checksum for IPv4 packets
-function udpPacket:calculateUDPChecksum()
-	-- optional, so don't do it
-	self.udp.cs = 0
 end
 
 --- ipv6 packets
@@ -384,6 +399,17 @@ end
 
 function ip6Header:setSrcString(str)
 	self:setSrc(parseIP6Address(str))
+end
+
+function ip6Header:fill()
+	self:setVersion()
+	self:setTrafficClass()
+	self:setFlowLabel()
+	self:setLength()
+	self:setNextHeader()
+	self:setTTL()
+	self:setSrcString("fe80::1")
+	self:setDstString("fe80::2")
 end
 
 local ip6Addr = {}
@@ -499,8 +525,32 @@ function ip6Addr:getString(doByteSwap)
 end
 
 -- udp
+
+-- udp packets
+
+local udpPacket = {}
+udpPacket.__index = udpPacket
+
+function udpPacket_fill()
+	self.eth:fill()
+	self.ip:fill()
+	--self.udp:fill()
+end
+
+--- Calculate and set the UDP header checksum for IPv4 packets
+function udpPacket:calculateUDPChecksum()
+    -- optional, so don't do it
+	self.udp.cs = 0
+end
+
 local udp6Packet = {}
 udp6Packet.__index = udp6Packet
+
+function udp6Packet:fill()
+	self.eth:fill()
+	self.ip:fill()
+	--self.udp:fill()
+end
 
 --- Calculate and set the UDP header checksum for IPv6 packets
 function udp6Packet:calculateUDPChecksum()
@@ -509,13 +559,18 @@ function udp6Packet:calculateUDPChecksum()
 end
 
 ffi.metatype("struct mac_address", macAddr)
+ffi.metatype("struct ethernet_packet", etherPacket)
+ffi.metatype("struct ethernet_header", etherHeader)
+
 ffi.metatype("struct ipv4_header", ip4Header)
 ffi.metatype("struct ipv6_header", ip6Header)
 ffi.metatype("union ipv4_address", ip4Addr)
 ffi.metatype("union ipv6_address", ip6Addr)
+
+--ffi.metatype("struct udp_header", udpHeader)
+
 ffi.metatype("struct udp_packet", udpPacket)
 ffi.metatype("struct udp_v6_packet", udp6Packet)
+
 ffi.metatype("struct rte_mbuf", pkt)
-ffi.metatype("struct ethernet_packet", etherPacket)
-ffi.metatype("struct ethernet_header", etherHeader)
 
