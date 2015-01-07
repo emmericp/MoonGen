@@ -104,24 +104,33 @@ end
 local etherHeader = {}
 etherHeader.__index = etherHeader
 
+--- Set the destination MAC address
+-- @param addr address in mac_address format
 function etherHeader:setDst(addr)
-	for i = 0, 5 do
-		self.dst.uint8[i] = addr.uint8[i]
-	end
+	self.dst:set(addr)
 end
 
+--- Set the source MAC address
+-- @param addr address in mac_address format
 function etherHeader:setSrc(addr)
-	for i = 0, 5 do
-		self.src.uint8[i] = addr.uint8[i]
-	end
+	self.src:set(addr)
 end
 
+--- Set the destination MAC address
+-- @param str address in string format
 function etherHeader:setDstString(str)
-	-- TODO
+	self:setDst(parseMACAddress(str))
 end
 
+--- Set the source MAC address
+-- @param str address in string format
 function etherHeader:setSrcString(str)
-	-- TODO
+	self:setSrc(parseMACAddress(str))
+end
+
+function etherHeader:setType(int)
+	int = int or 0x0800 -- ipv4
+	self.type = hton16(int)
 end
 
 
@@ -130,6 +139,8 @@ local etherPacketType = ffi.typeof("struct ethernet_packet*")
 local etherPacket = {}
 etherPacket.__index = etherPacket
 
+--- Retrieve an ethernet packet
+-- @return the packet in ethernet_packet format
 function pkt:getEthernetPacket()
 	return etherPacketType(self.pkt.data)
 end
