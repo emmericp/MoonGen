@@ -147,10 +147,83 @@ end
 local ip4Header = {}
 ip4Header.__index = ip4Header
 
+-- TODO adjust default values
+
+-- @param int ip header version, should always be '4' 
+--		  4 bit integer
+function ip4Header:setVersion(int)
+	int = int or 4
+	int = band(lshift(int, 4), 0xf0) -- fill to 8 bits
+	
+	old = self.verihl
+	old = band(old, 0x0f) -- remove old value
+	
+	self.verihl = bor(old, int)
+end
+
+-- @param int length of the ip header (in multiple of 32 bits)
+--		  4 bit integer
+function ip4Header:setHeaderLength(int)
+	int = int or 5
+	int = band(int, 0x0f)	
+	
+	old = self.verihl
+	old = band(old, 0xf0)
+	
+	self.verihl = bor(old, int)
+end
+
+function ip4Header:setTOS(int)
+	int = int or 0 
+	self.tos = int
+end
+
+function ip4Header:setLength(int)
+	int = int or 48	-- with eth + UDP -> minimum 64
+	self.len = hton16(int)
+end
+
+function ip4Header:setID(int)
+	int = int or 0 
+	self.id = hton16(int)
+end
+
+function ip4Header:setFragment(int)
+	int = int or 0 
+	self.frag = hton16(int)
+end
+
+function ip4Header:setTTL(int)
+	int = int or 64 
+	self.ttl = int
+end
+
+function ip4Header:setProtocol(int)
+	int = int or 0x11 	-- UDP
+	self.protocol = int
+end
+
 --- Calculate and set the IPv4 header checksum
+-- If possible use checksum offloading (see pkt:offloadUdpChecksum) instead
 function ip4Header:calculateChecksum()
-	self.cs = 0 --just to be sure...
+	self.cs = 0 		-- just to be sure (packet may be reused) 
 	self.cs = checksum(self, 20)
+end
+
+function ip4Header:setDst(int)
+	self.dst:set(int)
+end
+
+function ip4Header:setSrc(int)
+	self.src:set(int)
+end
+
+function ip4Header:setDstString(str)
+	self:setDst(parseIP4Address(str))
+end
+
+function ip4Header:setSrcString(str)
+	self:setSrc(parseIP4Address(str))
 end
 
 local ip4Addr = {}
@@ -239,6 +312,78 @@ local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
 -- @return the packet in udp_v6_packet format
 function pkt:getUDP6Packet()
 	return udp6PacketType(self.pkt.data)
+end
+
+local ip6Header = {}
+ip6Header.__index = ip6Header
+
+-- TODO adjust default values
+
+-- @param int ip header version, should always be '6' 
+--		  4 bit integer
+function ip6Header:setVersion(int)
+	int = int or 6
+	int = band(lshift(int, 28), 0xf0000000) -- fill to 32 bits
+	
+	old = bswap(self.vtf)
+	old = band(old, 0x0fffffff)	-- remove old value
+	
+	self.vtf = bswap(bor(old, int))
+end
+
+-- @param int ip set traffic class of the ip header
+--		  8 bit integer
+function ip6Header:setTrafficClass(int)
+	int = int or 0
+	int = band(lshift(int, 20), 0x0ff00000)
+	
+	old = bswap(self.vtf)
+	old = band(old, 0xf00fffff)
+	
+	self.vtf = bswap(bor(old, int))
+end
+
+-- @param int ip set flow label of the ip header
+--		  20 bit integer
+function ip6Header:setFlowLabel(int)
+	int = int or 0
+	int = band(int, 0x000fffff)
+	
+	old = bswap(self.vtf)
+	old = band(old, 0xfff00000)
+	
+	self.vtf = bswap(bor(old, int))
+end
+
+function ip6Header:setLength(int)
+	int = int or 8	-- with eth + UDP -> minimum 64
+	self.len = hton16(int)
+end
+
+function ip6Header:setNextHeader(int)
+	int = int or 0x11	-- UDP
+	self.nextHeader = int
+end
+
+function ip6Header:setTTL(int)
+	int = int or 64
+	self.ttl = int
+end
+
+function ip6Header:setDst(addr)
+	self.dst:set(addr)
+end
+
+function ip6Header:setSrc(addr)
+	self.src:set(addr)
+end
+
+function ip6Header:setDstString(str)
+	self:setDst(parseIP6Address(str))
+end
+
+function ip6Header:setSrcString(str)
+	self:setSrc(parseIP6Address(str))
 end
 
 local ip6Addr = {}
@@ -365,6 +510,7 @@ end
 
 ffi.metatype("struct mac_address", macAddr)
 ffi.metatype("struct ipv4_header", ip4Header)
+ffi.metatype("struct ipv6_header", ip6Header)
 ffi.metatype("union ipv4_address", ip4Addr)
 ffi.metatype("union ipv6_address", ip6Addr)
 ffi.metatype("struct udp_packet", udpPacket)
