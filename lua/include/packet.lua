@@ -525,6 +525,31 @@ function ip6Addr:getString(doByteSwap)
 end
 
 -- udp
+local udpHeader = {}
+udpHeader.__index =udpHeader
+
+function udpHeader:setSrcPort(int)
+
+end
+
+function udpHeader:setDstPort(int)
+	    
+end
+
+function udpHeader:setLength(int)
+	    
+end
+
+function udpHeader:setChecksum(int)
+	    
+end
+
+function udpHeader:fill(int)
+	self:setSrcPort()
+	self:setDstPort()
+	self:setLength()
+	self:setChecksum()
+end
 
 -- udp packets
 
@@ -534,7 +559,7 @@ udpPacket.__index = udpPacket
 function udpPacket_fill()
 	self.eth:fill()
 	self.ip:fill()
-	--self.udp:fill()
+	self.udp:fill()
 end
 
 --- Calculate and set the UDP header checksum for IPv4 packets
@@ -549,7 +574,7 @@ udp6Packet.__index = udp6Packet
 function udp6Packet:fill()
 	self.eth:fill()
 	self.ip:fill()
-	--self.udp:fill()
+	self.udp:fill()
 end
 
 --- Calculate and set the UDP header checksum for IPv6 packets
