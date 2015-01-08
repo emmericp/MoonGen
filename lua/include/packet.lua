@@ -265,8 +265,6 @@ function ip4Addr:getString()
 	return ("%d.%d.%d.%d"):format(self.uint8[0], self.uint8[1], self.uint8[2], self.uint8[3])
 end
 
-local udpPacket = {}
-udpPacket.__index = udpPacket
 
 --- Test equality of two IPv4 addresses
 -- @param lhs address in ipv4_address format
@@ -308,12 +306,6 @@ end
 -- @return resulting address in uint32 format
 function ip4Addr:__sub(val)
 	return self + -val
-end
-
---- Calculate and set the UDP header checksum for IPv4 packets
-function udpPacket:calculateUDPChecksum()
-	-- optional, so don't do it
-	self.udp.cs = 0
 end
 
 --- ipv6 packets
@@ -510,23 +502,62 @@ function ip6Addr:getString(doByteSwap)
 end
 
 -- udp
+local udpHeader = {}
+udpHeader.__index = udpHeader
+
+function udpHeader:setSrcPort(int)
+	int = int or 1116
+	self.src = hton16(int)
+end
+
+function udpHeader:setDstPort(int)
+	int = int or 2222
+	self.dst = hton16(int)
+end
+
+function udpHeader:setLength(int)
+	int = int or 28
+	self.len = hton16(int)
+end
+
+function udpHeader:setChecksum(int)
+	int = int or 0
+	self.cs = hton16(int)
+end
+
+
+-- udp packets
+local udpPacket = {}
+udpPacket.__index = udpPacket
+
+--- Calculate and set the UDP header checksum for IPv4 packets
+function udpPacket:calculateUDPChecksum()
+	-- optional, so don't do it
+	self.udp:setChecksum()
+end
+
 local udp6Packet = {}
 udp6Packet.__index = udp6Packet
 
 --- Calculate and set the UDP header checksum for IPv6 packets
 function udp6Packet:calculateUDPChecksum()
 	-- TODO as it is mandatory for IPv6 UDP packets
-	self.udp.cs = 0
+	self.udp:setChecksum()
 end
 
 ffi.metatype("struct mac_address", macAddr)
+ffi.metatype("struct ethernet_packet", etherPacket)
+ffi.metatype("struct ethernet_header", etherHeader)
+
 ffi.metatype("struct ipv4_header", ip4Header)
 ffi.metatype("struct ipv6_header", ip6Header)
 ffi.metatype("union ipv4_address", ip4Addr)
 ffi.metatype("union ipv6_address", ip6Addr)
+
+ffi.metatype("struct udp_header", udpHeader)
+
 ffi.metatype("struct udp_packet", udpPacket)
 ffi.metatype("struct udp_v6_packet", udp6Packet)
+
 ffi.metatype("struct rte_mbuf", pkt)
-ffi.metatype("struct ethernet_packet", etherPacket)
-ffi.metatype("struct ethernet_header", etherHeader)
 
