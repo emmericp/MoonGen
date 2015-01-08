@@ -1,8 +1,8 @@
 local mod = {}
 
-local ffi	= require "ffi"
-local dpdkc	= require "dpdkc"
-local dpdk	= require "dpdk"
+local ffi		= require "ffi"
+local dpdkc		= require "dpdkc"
+local dpdk		= require "dpdk"
 local device	= require "device"
 
 local dev = device.__devicePrototype
@@ -81,12 +81,12 @@ end
 
 function mod.fillPacket(buf, port, size)
 	size = size or 80
-	-- min 76 bytes
-	if size < 80 then
-		error("time stamped UDP packets must be at least 80 bytes long")
+	-- min 76 bytes as the NIC refuses to timestamp 'truncated' PTP packets
+	if size < 76 then
+		error("time stamped UDP packets must be at least 76 bytes long")
 	end
-	buf.pkt.pkt_len = size - 4
-	buf.pkt.data_len = size - 4
+	buf.pkt.pkt_len = size
+	buf.pkt.data_len = size
 	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
 	local data = ffi.cast("uint8_t*", buf.pkt.data)
 	data[0] = 0x00 -- dst mac
@@ -105,15 +105,15 @@ function mod.fillPacket(buf, port, size)
 	data[13] = 0x00
 	data[14] = 0x45 -- Version, IHL
 	data[15] = 0x00 -- DSCP/ECN
-	data[16] = 0x00 -- length (62)
-	data[17] = 0x3E
+	data[16] = bit.rshift(size - 14, 8) -- length
+	data[17] = bit.band(size - 14, 0xFF)
 	data[18] = 0x00 --id
 	data[19] = 0x00
 	data[20] = 0x00 -- flags/fragment offset
 	data[21] = 0x00 -- fragment offset
 	data[22] = 0x80 -- ttl
 	data[23] = 0x11 -- protocol (UDP)
-	data[24] = 0x00 -- checksum (offloaded to NIC)
+	data[24] = 0x00 
 	data[25] = 0x00
 	data[26] = 0x01 -- src ip (1.2.3.4)
 	data[27] = 0x02
@@ -127,23 +127,12 @@ function mod.fillPacket(buf, port, size)
 	data[35] = bit.band(port, 0xFF) -- src port
 	data[36] = bit.rshift(port, 8)
 	data[37] = bit.band(port, 0xFF) -- dst port
-	data[38] = 0x00
-	data[39] = 0x2A -- length (42)
+	data[38] = bit.rshift(size - 34, 8)
+	data[39] = bit.band(size - 34, 0xFF)
 	data[40] = 0x00 -- checksum (offloaded to NIC)
 	data[41] = 0x00 -- checksum (offloaded to NIC)
 	data[42] = 0x00 -- message id
 	data[43] = 0x02 -- ptp version
-	-- 44-47: unimportant fields
-	for i = 48, 48 + 7 do
-		data[i] = 0x00 -- sequence number (8 byte)
-	end
-	--  56, 57: unimportant fields
-	data[58] = 0x54 -- 'T' -- timestamp indicator
-	data[59] = 0x53 -- 'S'
-	-- TODO: checksum offloading NYI
-	local cs = checksum(data + 14, 20)
-	data[24] = bit.band(cs, 0xFF)
-	data[25] = bit.rshift(cs, 8)
 end
 
 -- TODO these functions should also use the upper 32 bit...

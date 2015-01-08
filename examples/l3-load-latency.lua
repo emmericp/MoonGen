@@ -7,12 +7,13 @@ local filter	= require "filter"
 local ffi		= require "ffi"
 
 function master(...)
-	local txPort, rxPort, rate, size = tonumberall(...)
+	local txPort, rxPort, rate, flows, size = tonumberall(...)
 	if not txPort or not rxPort then
-		errorf("usage: txPort rxPort [rate [size]]")
+		errorf("usage: txPort rxPort [rate [flows [size]]]")
 	end
+	flows = flows or 4
 	rate = rate or 2000
-	size = size or 124
+	size = (size or 128) - 4
 	local rxMempool = memory.createMemPool()
 	if txPort == rxPort then
 		txDev = device.config(txPort, rxMempool, 1, 2)
@@ -24,8 +25,8 @@ function master(...)
 		device.waitForDevs(txDev, rxDev)
 	end
 	txDev:getTxQueue(1):setRate(rate)
-	dpdk.launchLua("timerSlave", txPort, rxPort, 0, 1, size)
-	dpdk.launchLua("loadSlave", txPort, 1, size, 1)
+	dpdk.launchLua("timerSlave", txPort, rxPort, 0, 1, size, flows)
+	dpdk.launchLua("loadSlave", txPort, 1, size, flows)
 	dpdk.launchLua("counterSlave", rxPort, size)
 	dpdk.waitForSlaves()
 end
@@ -33,7 +34,7 @@ end
 function loadSlave(port, queue, size, numFlows)
 	local queue = device.get(port):getTxQueue(queue)
 	local mempool = memory.createMemPool(function(buf)
-		ts.fillPacket(buf, 319) 
+		ts.fillPacket(buf, 1234, size) 
 		local data = ffi.cast("uint8_t*", buf.pkt.data)
 		data[43] = 0x00 -- PTP version, set to 0 to disable timestamping for load packets
 	end)
@@ -85,7 +86,7 @@ function counterSlave(port)
 	printf("Received %d packets", total)
 end
 
-function timerSlave(txPort, rxPort, txQueue, rxQueue, size)
+function timerSlave(txPort, rxPort, txQueue, rxQueue, size, numFlows)
 	local txDev = device.get(txPort)
 	local rxDev = device.get(rxPort)
 	local txQueue = txDev:getTxQueue(txQueue)
@@ -94,14 +95,20 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue, size)
 	local bufs = mem:bufArray(1)
 	local rxBufs = mem:bufArray(128)
 	txQueue:enableTimestamps()
-	rxQueue:enableTimestamps(319)
+	rxQueue:enableTimestamps(1234)
 	rxDev:filterTimestamps(rxQueue)
 	local hist = {}
 	-- wait one second, otherwise we might start timestamping before the load is applied
 	dpdk.sleepMillis(1000)
+	local counter = 0
+	local baseIP = 0x01020304
 	while dpdk.running() do
-		bufs:fill(size - 4)
-		ts.fillPacket(bufs[1], 319, size)
+		bufs:fill(size + 4)
+		local pkt = bufs[1]:getUDPPacket()
+		ts.fillPacket(bufs[1], 1234, size + 4)
+		pkt.ip.src:set(baseIP + counter)
+		counter = (counter + 1) % numFlows
+		bufs:offloadUdpChecksums()
 		-- sync clocks and send
 		ts.syncClocks(txDev, rxDev)
 		txQueue:send(bufs)
