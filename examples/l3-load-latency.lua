@@ -24,8 +24,8 @@ function master(...)
 		device.waitForDevs(txDev, rxDev)
 	end
 	txDev:getTxQueue(1):setRate(rate)
-	dpdk.launchLua("timerSlave", txPort, rxPort, 0, 0, size)
-	dpdk.launchLua("loadSlave", txPort, 1, size, 4)
+	dpdk.launchLua("timerSlave", txPort, rxPort, 0, 1, size)
+	dpdk.launchLua("loadSlave", txPort, 1, size, 1)
 	dpdk.launchLua("counterSlave", rxPort, size)
 	dpdk.waitForSlaves()
 end
@@ -73,8 +73,6 @@ end
 
 function counterSlave(port)
 	local dev = device.get(port)
-	--dev:l2Filter(0x1234, filter.DROP)
-	--TODO: implement fdir flex byte filters
 	local total = 0
 	while dpdk.running() do
 		local time = dpdk.getTime()
@@ -97,6 +95,7 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue, size)
 	local rxBufs = mem:bufArray(128)
 	txQueue:enableTimestamps()
 	rxQueue:enableTimestamps(319)
+	rxDev:filterTimestamps(rxQueue)
 	local hist = {}
 	-- wait one second, otherwise we might start timestamping before the load is applied
 	dpdk.sleepMillis(1000)

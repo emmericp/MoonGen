@@ -27,7 +27,14 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
 		return -1;
 	}
-	// TODO: enable FDIR perfect filter to forward specific streams to cores
+	// TODO: enable other FDIR filter types
+	struct rte_fdir_conf fdir_conf = {
+		.mode = RTE_FDIR_MODE_PERFECT,
+		.pballoc = RTE_FDIR_PBALLOC_64K,
+		.status = RTE_FDIR_REPORT_STATUS_ALWAYS,
+		.flexbytes_offset = 21, // TODO support other values
+		.drop_queue = 63, // TODO: support for other NICs
+	};
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.split_hdr_size = 0,
@@ -40,6 +47,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,
 		},
+		.fdir_conf = fdir_conf,
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
 	if (rc) return rc;
@@ -64,7 +72,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		}
 	}
 	struct rte_eth_rxconf rx_conf = {
-		.rx_drop_en = 0,
+		.rx_drop_en = 1, // TODO: make this configurable per queue
 		.rx_thresh = {
 			.pthresh = RX_PTHRESH,
 			.hthresh = RX_HTHRESH,
