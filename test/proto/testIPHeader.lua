@@ -38,7 +38,11 @@ describe("IP header class", function()
 		raw.protocol = 0x34
 		set:setProtocol(0x34)
 		assert.are.same(raw.protocol, set.protocol)
-		
+
+		raw.cs = hton16(10)
+		set:setChecksum(10)
+		assert.are.same(raw.cs, set.cs)
+
 		raw.src:setString("192.168.1.1")
 		set:setSrcString("192.168.1.1")
 		assert.are.same(raw.src.uint32, set.src.uint32)

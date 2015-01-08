@@ -214,11 +214,16 @@ function ip4Header:setProtocol(int)
 	self.protocol = int
 end
 
+function ip4Header:setChecksum(int)
+	int = int or 0
+	self.cs = hton16(int)
+end
+
 --- Calculate and set the IPv4 header checksum
 -- If possible use checksum offloading (see pkt:offloadUdpChecksum) instead
 function ip4Header:calculateChecksum()
-	self.cs = 0 		-- just to be sure (packet may be reused) 
-	self.cs = checksum(self, 20)
+	self:setChecksum() -- just to be sure (packet may be reused); must be 0 
+    self:setChecksum(checksum(self, 20))
 end
 
 function ip4Header:setDst(int)
