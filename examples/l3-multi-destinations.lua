@@ -33,8 +33,7 @@ end
 function loadSlave(port, queue, minA, numIPs)
 	--- parse and check ip addresses
 	-- min UDP packet size for IPv6 is 66 bytes
-	-- 4 bytes subtracted as the CRC gets appended by the NIC
-	local packetLen = 66 - 4 
+	local packetLen = 66
 	local ipv4 = true
 	local minIP
 
@@ -66,6 +65,12 @@ function loadSlave(port, queue, minA, numIPs)
 			pkt = buf:getUDP6Packet()
 		end
 
+		pkt:fill{ ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
+				  ipSrc="192.168.1.1", 
+				  ip6Src="fd06::1", 
+				  pktLength=packetLen }
+
+--[[
 		--ethernet header
 		pkt.eth.dst:setString("90:e2:ba:35:b5:81")
 		pkt.eth.src:setString("90:e2:ba:2c:cb:02")
@@ -105,6 +110,7 @@ function loadSlave(port, queue, minA, numIPs)
 			pkt.udp.len = hton16(packetLen - 54)
 		end
 		pkt.udp.cs = 0
+		--]]
 	end)
 
 	local lastPrint = dpdk.getTime()

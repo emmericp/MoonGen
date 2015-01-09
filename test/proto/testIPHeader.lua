@@ -4,7 +4,7 @@ describe("IP header class", function()
 	it("should set IPv4", function()
 		local raw = ffi.new("struct ipv4_header")
 		local set = ffi.new("struct ipv4_header")
-		
+
 		raw.verihl = 0x45
 		set:setVersion()
 		set:setHeaderLength()

@@ -133,6 +133,11 @@ function etherHeader:setType(int)
 	self.type = hton16(int)
 end
 
+function etherHeader:fill(args)
+	self:setSrcString(args.ethSrc or "01:02:03:04:05:06")
+	self:setDstString(args.ethDst or "07:08:09:0a:0b:0c")
+	self:setType(args.ethType)
+end
 
 --- Layer 2 packet
 local etherPacketType = ffi.typeof("struct ethernet_packet*")
@@ -240,6 +245,20 @@ end
 
 function ip4Header:setSrcString(str)
 	self:setSrc(parseIP4Address(str))
+end
+
+function ip4Header:fill(args)
+	self:setVersion(args.ipVersion)
+	self:setHeaderLength(args.ipHeaderLength)
+	self:setTOS(args.ipTOS)
+	self:setLength(args.ipLength)
+	self:setID(args.ipID)
+	self:setFragment(args.ipFragment)
+	self:setTTL(args.ipTTL)
+	self:setProtocol(args.ipProtocol)
+	self:setChecksum(args.ipChecksum)
+	self:setSrcString(args.ipSrc or "192.168.1.1")
+	self:setDstString(args.ipDst or "192.168.1.2")
 end
 
 local ip4Addr = {}
@@ -364,7 +383,7 @@ function ip6Header:setFlowLabel(int)
 end
 
 function ip6Header:setLength(int)
-	int = int or 8	-- with eth + UDP -> minimum 64
+	int = int or 8	-- with eth + UDP -> minimum 66
 	self.len = hton16(int)
 end
 
@@ -392,6 +411,17 @@ end
 
 function ip6Header:setSrcString(str)
 	self:setSrc(parseIP6Address(str))
+end
+
+function ip6Header:fill(args)
+	self:setVersion(args.ip6Version)
+	self:setTrafficClass(args.ip6TrafficClass)
+	self:setFlowLabel(args.ip6FlowLabel)
+	self:setLength(args.ip6Length)
+	self:setNextHeader(args.ip6NextHeader)
+	self:setTTL(args.ip6TTL)
+	self:setSrcString(args.ip6Src or "fe80::1")
+	self:setDstString(args.ip6Dst or "fe80::2")
 end
 
 local ip6Addr = {}
@@ -511,17 +541,17 @@ local udpHeader = {}
 udpHeader.__index = udpHeader
 
 function udpHeader:setSrcPort(int)
-	int = int or 1116
+	int = int or 1024
 	self.src = hton16(int)
 end
 
 function udpHeader:setDstPort(int)
-	int = int or 2222
+	int = int or 1025
 	self.dst = hton16(int)
 end
 
 function udpHeader:setLength(int)
-	int = int or 28
+	int = int or 28 -- with ethernet + IPv4 header -> 64B
 	self.len = hton16(int)
 end
 
@@ -530,10 +560,31 @@ function udpHeader:setChecksum(int)
 	self.cs = hton16(int)
 end
 
+function udpHeader:fill(args)
+	self:setSrcPort(args.udpSrc)
+	self:setDstPort(args.udpDst)
+	self:setLength(args.udpLength)
+	self:setChecksum(args.udpChecksum)
+end
 
 -- udp packets
 local udpPacket = {}
 udpPacket.__index = udpPacket
+
+function udpPacket:fill(args)
+	-- calculate length values for all headers
+	if args.pktLength then
+		args.pktLength = args.pktLength - 4 -- CRC checksum gets appended by NIC
+		args.ipLength = args.pktLength - 14 -- ethernet
+
+		ipHeaderBytes = (args.ipHeaderLength or 5) * 4 -- ip_h can have variable size
+		args.udpLength = args.pktLength - (14 + ipHeaderBytes) -- ethernet + ip
+	end
+
+	self.eth:fill(args)
+	self.ip:fill(args)
+	self.udp:fill(args)
+end
 
 --- Calculate and set the UDP header checksum for IPv4 packets
 function udpPacket:calculateUDPChecksum()
@@ -543,6 +594,23 @@ end
 
 local udp6Packet = {}
 udp6Packet.__index = udp6Packet
+
+function udp6Packet:fill(args)
+	-- calculate length values for all headers
+	if args.pktLength then
+		args.pktLength = args.pktLength - 4 -- CRC checksum gets appended by NIC
+		args.ip6Length = args.pktLength - (14 + 40) -- ethernet + ip
+		args.udpLength = args.pktLength - (14 + 40) -- ethernet + ip
+	end
+
+	-- change some default values for ipv6
+	args.ethType = args.ethType or 0x86dd
+	args.udpLength = args.udpLength or 8
+
+	self.eth:fill(args)
+	self.ip:fill(args)
+	self.udp:fill(args)
+end
 
 --- Calculate and set the UDP header checksum for IPv6 packets
 function udp6Packet:calculateUDPChecksum()
