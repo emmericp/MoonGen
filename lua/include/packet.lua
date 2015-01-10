@@ -219,14 +219,29 @@ function ip4Header:setID(int)
 	self.id = hton16(int)
 end
 
--- TODO setFlags: 3 bit
--- Fragment is only 13 bit
+--- Set the flags.
+-- Bits: [ reserved (must be 0) | don't fragment | more fragments ]
+-- @param int Flags of the ip header as 3 bit integer
+function ip4Header:setFlags(int)
+	int = int or 0
+	int = band(lshift(int, 13), 0xe000) -- fill to 16 bits
+	
+	old = hton16(self.frag)
+	old = band(old, 0x1fff) -- remove old value
+	
+	self.frag = hton16(bor(old, int))
+end
 
 --- Set the fragment.
--- @param int Fragment of the ip header as 16 bit integer.
+-- @param int Fragment of the ip header as 13 bit integer.
 function ip4Header:setFragment(int)
 	int = int or 0 
-	self.frag = hton16(int)
+	int = band(int, 0x1fff)
+
+	old = hton16(self.frag)
+	old = band(old, 0xe000)
+	
+	self.frag = hton16(bor(old, int))
 end
 
 --- Set the time-to-live (TTL).
@@ -245,8 +260,8 @@ end
 
 --- Set the checksum.
 -- @param int Checksum of the ip header as 16 bit integer.
--- @see ip4Header:calculateChecksum()
--- @see pkt:offloadUdpChecksum(ipv4, l2_len, l3_len)
+-- @see ip4Header:calculateChecksum
+-- @see pkt:offloadUdpChecksum
 function ip4Header:setChecksum(int)
 	int = int or 0
 	self.cs = hton16(int)
@@ -254,7 +269,7 @@ end
 
 --- Calculate and set the checksum.
 -- If possible use checksum offloading instead.
--- @see pkt:offloadUdpChecksum(ipv4, l2_len, l3_len)
+-- @see pkt:offloadUdpChecksum
 function ip4Header:calculateChecksum()
 	self:setChecksum() -- just to be sure (packet may be reused); must be 0 
     self:setChecksum(hton16(checksum(self, 20)))
@@ -287,7 +302,7 @@ end
 --- Set all members of the ip header.
 -- Per default, all members are set to default values specified in the respective set function.
 -- Optional named arguments can be used to set a member to a user-provided value.
--- @param args Table of named arguments. Available arguments: ipVersion, ipHeaderLength, ipTOS, ipLength, ipID, ipFragment, ipTTL, ipProtocol, ipChecksum, ipSrc, ipDst
+-- @param args Table of named arguments. Available arguments: ipVersion, ipHeaderLength, ipTOS, ipLength, ipID, ipFlags, ipFragment, ipTTL, ipProtocol, ipChecksum, ipSrc, ipDst
 -- @usage fill() -- only default values
 -- @usage fill{ ipSrc="1.1.1.1", ipTTL=100 } -- all members are set to default values with the exception of ipSrc and ipTTL
 function ip4Header:fill(args)
@@ -296,6 +311,7 @@ function ip4Header:fill(args)
 	self:setTOS(args.ipTOS)
 	self:setLength(args.ipLength)
 	self:setID(args.ipID)
+	self:setFlags(args.ipFlags)
 	self:setFragment(args.ipFragment)
 	self:setTTL(args.ipTTL)
 	self:setProtocol(args.ipProtocol)
@@ -656,9 +672,9 @@ udpPacket.__index = udpPacket
 -- @usage fill() -- only default values
 -- @usage fill{ ethSrc="12:23:34:45:56:67", ipTTL=100, udpDst=2500 } -- all members are set to default values with the exception of ethSrc, ipTTL and udpDst
 -- @usage fill{ pktLength=64 } -- only default values, all length members are set to the respective values (ipLength, udpLength)
--- @see etherHeader:fill()
--- @see ip4Header:fill()
--- @see udpHeader:fill()
+-- @see etherHeader:fill
+-- @see ip4Header:fill
+-- @see udpHeader:fill
 function udpPacket:fill(args)
 	-- calculate length values for all headers
 	if args.pktLength then
@@ -677,7 +693,7 @@ end
 --- Calculate and set the UDP header checksum for IPv4 packets.
 -- Not implemented as it is optional.
 -- If possible use checksum offloading instead.
--- @see pkt:offloadUdpChecksum()
+-- @see pkt:offloadUdpChecksum
 function udpPacket:calculateUDPChecksum()
 	-- optional, so don't do it
 	self.udp:setChecksum()
@@ -694,9 +710,9 @@ udp6Packet.__index = udp6Packet
 -- @usage fill() -- only default values
 -- @usage fill{ ethSrc="12:23:34:45:56:67", ip6TTL=100, udpDst=2500 } -- all members are set to default values with the exception of ethSrc, ip6TTL and udpDst
 -- @usage fill{ pktLength=64 } -- only default values, all length members are set to the respective values (ip6Length, udpLength)
--- @see etherHeader:fill()
--- @see ip6Header:fill()
--- @see udpHeader:fill()
+-- @see etherHeader:fill
+-- @see ip6Header:fill
+-- @see udpHeader:fill
 function udp6Packet:fill(args)
 	-- calculate length values for all headers
 	if args.pktLength then
@@ -717,7 +733,7 @@ end
 --- Calculate and set the UDP header checksum for IPv6 packets.
 -- Not implemented (todo).
 -- If possible use checksum offloading instead.
--- @see pkt:offloadUdpChecksum()
+-- @see pkt:offloadUdpChecksum
 function udp6Packet:calculateUDPChecksum()
 	-- TODO as it is mandatory for IPv6 UDP packets
 	self.udp:setChecksum()

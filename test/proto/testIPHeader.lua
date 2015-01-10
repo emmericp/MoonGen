@@ -27,8 +27,9 @@ describe("IP header class", function()
 		set:setID(2000)
 		assert.are.same(raw.id, set.id)
 		
-		raw.frag = hton16(1000)
-		set:setFragment(1000)
+		raw.frag = hton16(0x6001) -- b'011|0 0000 0000 0001'
+		set:setFlags(0x3) -- b'011'
+		set:setFragment(0x1) -- b'0 0000 0000 0001'
 		assert.are.same(raw.frag, set.frag)
 		
 		raw.ttl	= 64
@@ -68,13 +69,11 @@ describe("IP header class", function()
 		set:setFlowLabel()
 		assert.are.same(raw.vtf, set.vtf)
 		
-		--TODO
-		--[[
-		raw.vtf = ??
+		raw.vtf = bswap(0x20a00014) -- b'0010 | 0000 1010 | 0000 0000 0000 0001 0100'
 		set:setVersion(2)
 		set:setTrafficClass(10)
 		set:setFlowLabel(20)
-		assert.are.same(raw.vtf, set.vtf) --]]
+		assert.are.same(raw.vtf, set.vtf)
 		
 		raw.len = hton16(8)
 		set:setLength()
