@@ -33,7 +33,8 @@ end
 function loadSlave(port, queue, minA, numIPs)
 	--- parse and check ip addresses
 	-- min UDP packet size for IPv6 is 66 bytes
-	local packetLen = 66
+	-- 4 bytes subtracted as the CRC gets appended by the NIC
+	local packetLen = 66 - 4
 	local ipv4 = true
 	local minIP
 
@@ -67,50 +68,8 @@ function loadSlave(port, queue, minA, numIPs)
 
 		pkt:fill{ ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
 				  ipSrc="192.168.1.1", 
-				  ip6Src="fd06::1", 
+				  ip6Src="fd06::1",
 				  pktLength=packetLen }
-
---[[
-		--ethernet header
-		pkt.eth.dst:setString("90:e2:ba:35:b5:81")
-		pkt.eth.src:setString("90:e2:ba:2c:cb:02")
-		if ipv4 then
-			pkt.eth.type = hton16(0x0800)
-		else
-			pkt.eth.type = hton16(0x86dd)
-		end
-		
-		--ip header
-		if ipv4 then
-			pkt.ip.verihl = 0x45
-			pkt.ip.tos = 0
-			pkt.ip.len = hton16(packetLen - 14)
-			pkt.ip.id = hton16(2012)
-			pkt.ip.frag = 0
-			pkt.ip.ttl = 64
-			pkt.ip.protocol = 0x11
-			pkt.ip.cs = 0
-			pkt.ip.src:setString("192.168.1.1")
-			pkt.ip.dst.uint32 = 0xffffffff 
-		else --ipv6
-			pkt.ip.vtf = 96
-			pkt.ip.len = hton16(packetLen - 54)
-			pkt.ip.nextHeader = 0x11
-			pkt.ip.ttl = 64
-			pkt.ip.src:setString("fd06::1")
-			pkt.ip.dst:setString("::")
-		end
-		
-		--udp header
-		pkt.udp.src	= hton16(1116)
-		pkt.udp.dst	= hton16(2222)
-		if ipv4 then
-			pkt.udp.len = hton16(packetLen - 34)
-		else
-			pkt.udp.len = hton16(packetLen - 54)
-		end
-		pkt.udp.cs = 0
-		--]]
 	end)
 
 	local lastPrint = dpdk.getTime()
@@ -119,11 +78,12 @@ function loadSlave(port, queue, minA, numIPs)
 	local lastSent = 0
 	local bufs = mem:bufArray(128)
 	local counter = 0
+	local c = 0
 
 	print("Start sending...")
 	while dpdk.running() do
 		-- fill packets and set their size 
-		bufs:fill(packetLen)  
+		bufs:fill(packetLen)
 		for i, buf in ipairs(bufs) do 			
 			local pkt
 			if ipv4 then
@@ -139,6 +99,12 @@ function loadSlave(port, queue, minA, numIPs)
 				counter = (counter + 1) % numIPs
 			else 
 				counter = counter == numIPs and 0 or counter + 1
+			end
+
+			-- dump first 3 packets
+			if c < 3 then
+				buf:dump()
+				c = c + 1
 			end
 		end 
 		--offload checksums to NIC
