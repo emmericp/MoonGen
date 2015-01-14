@@ -211,3 +211,13 @@ function dumpHex(data, bytes)
 	write("\n\n")
 end
 
+--- Merge two tables.
+-- @param table1 First table.
+-- @param table2 Second table.
+function mergeTables(table1, table2)
+	for k, v in pairs(table2) do
+		table1[k] = v 
+	end
+	return table1
+end
+
