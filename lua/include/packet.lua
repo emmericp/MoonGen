@@ -75,7 +75,6 @@ function pkt:dump()
 			-- UDPv4
 			p = self:getUDPPacket()
 		end
-		p:dump(self.pkt.pkt_len)
 	elseif p.eth:getType() == eth.TYPE_IP6 then
 		-- IPv6
 		p = self:getIP6Packet()
@@ -702,14 +701,14 @@ function ip4Addr.__add(lhs, rhs)
 		val = lhs
 	end -- TODO: ip + ip?
 
-	return self.uint32 + val
+	return self:get() + val
 end
 
 --- Add a number to an IPv4 address in-place.
 -- Max. 32 bit.
 -- @param val Number to add (32 bit integer).
 function ip4Addr:add(val)
-	self.uint32 = self.uint32 + val
+	self:set(self:get() + val)
 end
 
 --- Subtract a number from an IPv4 address.
