@@ -19,7 +19,6 @@
 #define TX_HTHRESH 0
 #define TX_WTHRESH 0
 
-#define MAX_ETH_DEVICES 64
 static uint8_t* registers[RTE_MAX_ETHPORTS];
 
 int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, struct rte_mempool* mempool) {
