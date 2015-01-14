@@ -1,5 +1,7 @@
 
 local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
+local write = io.write
+local format = string.format
 
 function printf(str, ...)
 	return print(str:format(...))
@@ -157,4 +159,65 @@ function parseIP6Address(ip)
 	return addr
 end
 
+--- Retrieve the system time with microseconds accuracy.
+-- TODO use some C function to get microseconds.
+-- @return System time in hh:mm:ss.uuuuuu format.
+function getTimeMicros()
+	local t = time()
+	local h, m, s, u
+	s = math.floor(t)	-- round to seconds
+	u = t - s		-- micro seconds
+	m = math.floor(s / 60)	-- total minutes
+	s = s - m * 60		-- remaining seconds
+	h = math.floor(m / 60)	-- total hours
+	m = m - h * 60		-- remaining minutes
+	h = h % 24		-- hour of the day
+	s = s + u		-- seconds + micro seconds
+	return format("%02d:%02d:%02.6f ", h, m, s)
+end
+
+--- Print a string with a restricted length per line.
+-- TODO don't linebreak words in the middle
+-- @param str The string to be printed.
+-- @param len Length of each line
+function printLength(str, len)
+	local beg = 0
+	for i = len, str:len(), len do
+		printf(str:sub(beg, i))
+		beg = i + 1
+	end
+	printf(str:sub(beg, str:len()))
+end
+
+--- Print a hex dump of cdata.
+-- @param data The cdata to be dumped.
+-- @param bytes Number of bytes to dump.
+function dumpHex(data, bytes)
+	local data = ffi.cast("uint8_t*", data)
+	for i = 0, bytes - 1 do
+		if i % 16 == 0 then -- new line
+			write(format("  0x%04x:   ", i))
+		end
+
+		write(format("%02x", data[i]))
+		
+		if i % 2  == 1 then -- group 2 bytes
+			write(" ")
+		end
+		if i % 16 == 15 then -- end of 16 byte line
+			write("\n")
+		end
+	end
+	write("\n\n")
+end
+
+--- Merge two tables.
+-- @param table1 First table.
+-- @param table2 Second table.
+function mergeTables(table1, table2)
+	for k, v in pairs(table2) do
+		table1[k] = v 
+	end
+	return table1
+end
 
