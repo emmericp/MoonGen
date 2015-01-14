@@ -58,7 +58,14 @@ function pkt:offloadUdpChecksum(ipv4, l2_len, l3_len)
 	end
 end
 
+--- Print a hex dump of the complete packet.
+-- Dumps the first self.pkt_len bytes of self.data.
+-- As this struct has no information about the actual type of the packet, it gets recreated by analyzing the protocol fields (etherType, protocol, ...).
+-- The packet is then dumped using the dump method of the best fitting packet (starting with an ethernet packet and going up the layers).
 -- TODO if packet was received print reception time instead
+-- @see etherPacket:dump
+-- @see ip4Packet:dump
+-- @see udpPacket:dump
 function pkt:dump()
 	local p = self:getEthernetPacket()
 	if p.eth:getType() == eth.TYPE_IP then
@@ -76,11 +83,8 @@ function pkt:dump()
 			-- UDPv6
 			p = self:getUDP6Packet()
 		end
-		p:dump(self.pkt.pkt_len)
-	else
-		printf(getTimeMicros() .. " no header information")	
-		dumpHex(self.pkt.data, self.pkt.pkt_len)
 	end
+	p:dump(self.pkt.pkt_len)
 end
 
 local macAddr = {}
@@ -143,10 +147,22 @@ function etherHeader:setDst(addr)
 	self.dst:set(addr)
 end
 
+--- Retrieve the destination MAC address.
+-- @return Address in 'struct mac_address' format.
+function etherHeader:getDst(addr)
+	return self.dst:get()
+end
+
 --- Set the source MAC address.
 -- @param addr Address in 'struct mac_address' format.
 function etherHeader:setSrc(addr)
 	self.src:set(addr)
+end
+
+--- Retrieve the source MAC address.
+-- @return Address in 'struct mac_address' format.
+function etherHeader:getSrc(addr)
+	return self.src:get()
 end
 
 --- Set the destination MAC address.
@@ -155,6 +171,8 @@ function etherHeader:setDstString(str)
 	self.dst:setString(str)
 end
 
+--- Retrieve the destination MAC address.
+-- @return Address in string format.
 function etherHeader:getDstString()
 	return self.dst:getString()
 end
@@ -165,6 +183,8 @@ function etherHeader:setSrcString(str)
 	self.src:setString(str)
 end
 
+--- Retrieve the source MAC address.
+-- @return Address in string format.
 function etherHeader:getSrcString()
 	return self.src:getString()
 end
@@ -176,10 +196,14 @@ function etherHeader:setType(int)
 	self.type = hton16(int)
 end
 
+--- Retrieve the EtherType.
+-- @return EtherType as 16 bit integer.
 function etherHeader:getType()
 	return hton16(self.type)
 end
 
+--- Retrieve the ether type.
+-- @return EtherType as string.
 function etherHeader:getTypeString()
 	local type = self:getType()
 	local cleartext = ""
@@ -196,6 +220,7 @@ function etherHeader:getTypeString()
 
 	return format("0x%04x %s", type, cleartext)
 end
+
 --- Set all members of the ethernet header.
 -- Per default, all members are set to default values specified in the respective set function.
 -- Optional named arguments can be used to set a member to a user-provided value.
@@ -203,11 +228,34 @@ end
 -- @usage fill() -- only default values
 -- @usage fill{ ethSrc="12:23:34:45:56:67", ethType=0x137 } -- default value for ethDst; ethSrc and ethType user-specified
 function etherHeader:fill(args)
-	self:setSrcString(args.ethSrc or "01:02:03:04:05:06")
-	self:setDstString(args.ethDst or "07:08:09:0a:0b:0c")
+	args = args or {}
+
+	args.ethSrc = args.ethSrc or "01:02:03:04:05:06"
+	args.ethDst = args.ethDst or "07:08:09:0a:0b:0c"
+	
+	-- if for some reason the address is in 'struct mac_address' format, cope with it
+	if type(args.ethSrc) == "string" then
+		self:setSrcString(args.ethSrc)
+	else
+		self:setSrc(args.ethSrc)
+	end
+	if type(args.ethDst) == "string" then
+		self:setDstString(args.ethDst)
+	else
+		self:setDst(args.ethDst)
+	end
 	self:setType(args.ethType)
 end
 
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see etherHeader:fill
+function etherHeader:get()
+	return { ethSrc=self:getSrcString(), ethDst=self:getDstString(), ethType=self:getType() }
+end
+
+--- Retrieve the values of all members.
+-- @return Values in string format.
 function etherHeader:getString()
 	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " type " .. self:getTypeString() .. " "
 end
@@ -217,6 +265,28 @@ local etherPacketType = ffi.typeof("struct ethernet_packet*")
 local etherPacket = {}
 etherPacket.__index = etherPacket
 
+--- Set all members of the ethernet header.
+-- Per default, all members are set to default values specified in the respective set function.
+-- Optional named arguments can be used to set a member to a user-provided value.
+-- @param args Table of named arguments. For a list of available arguments see "See also"
+-- @usage fill() -- only default values
+-- @usage fill{ ethSrc="12:23:34:45:56:67" } -- all members are set to default values with the exception of ethSrc
+-- @see etherHeader:fill
+function etherPacket:fill(args)
+	args = args or {}
+
+	self.eth:fill(args)
+end
+
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see etherHeader:get
+function etherPacket:get()
+	return self.eth:get()
+end
+
+--- Print information about the headers and a hex dump of the complete packet.
+-- @param bytes Number of bytes to dump.
 function etherPacket:dump(bytes)
 	str = getTimeMicros() .. self.eth:getString()
 	printLength(str, 60)
@@ -255,10 +325,14 @@ function ip4Header:setVersion(int)
 	self.verihl = bor(old, int)
 end
 
+--- Retrieve the version.
+-- @return Version as 4 bit integer.
 function ip4Header:getVersion()
 	return band(rshift(self.verihl, 4), 0x0f)
 end
 
+--- Retrieve the version.
+-- @return Version as string.
 function ip4Header:getVersionString()
 	return self:getVersion()
 end
@@ -275,10 +349,14 @@ function ip4Header:setHeaderLength(int)
 	self.verihl = bor(old, int)
 end
 
+--- Retrieve the header length.
+-- @return Header length as 4 bit integer.
 function ip4Header:getHeaderLength()
 	return band(self.verihl, 0x0f)
 end
 
+--- Retrieve the header length.
+-- @return Header length as string.
 function ip4Header:getHeaderLengthString()
 	return self:getHeaderLength()
 end
@@ -290,10 +368,14 @@ function ip4Header:setTOS(int)
 	self.tos = int
 end
 
+--- Retrieve the type of service.
+-- @return TOS as 8 bit integer.
 function ip4Header:getTOS()
 	return self.tos
 end
 
+--- Retrieve the type of service.
+-- @return TOS as string.
 function ip4Header:getTOSString()
 	return self:getTOS()
 end
@@ -305,10 +387,14 @@ function ip4Header:setLength(int)
 	self.len = hton16(int)
 end
 
+--- Retrieve the length.
+-- @return Length as 16 bit integer.
 function ip4Header:getLength()
 	return hton16(self.len)
 end
 
+--- Retrieve the length.
+-- @return Length as string.
 function ip4Header:getLengthString()
 	return self:getLength()
 end
@@ -320,10 +406,14 @@ function ip4Header:setID(int)
 	self.id = hton16(int)
 end
 
+--- Retrieve the identification.
+-- @return ID as 16 bit integer.
 function ip4Header:getID()
 	return hton16(self.id)
 end
 
+--- Retrieve the identification.
+-- @return ID as string.
 function ip4Header:getIDString()
 	return self:getID()
 end
@@ -341,10 +431,14 @@ function ip4Header:setFlags(int)
 	self.frag = hton16(bor(old, int))
 end
 
+--- Retrieve the flags. 
+-- @return Flags as 3 bit integer.
 function ip4Header:getFlags()
 	return band(rshift(hton16(self.frag), 13), 0x000e)
 end
 
+--- Retrieve the flags. 
+-- @return Flags as string.
 function ip4Header:getFlagsString()
 	flags = self:getFlags()
 	--TODO show flags in a more clever manner: 1|1|1 or reserved|DF|MF
@@ -363,10 +457,14 @@ function ip4Header:setFragment(int)
 	self.frag = hton16(bor(old, int))
 end
 
+--- Retrieve the fragment. 
+-- @return Fragment as 13 bit integer.
 function ip4Header:getFragment()
 	return band(hton16(self.frag), 0x1fff)
 end
 
+--- Retrieve the fragemt. 
+-- @return Fragment as string.
 function ip4Header:getFragmentString()
 	return self:getFragment()
 end
@@ -378,10 +476,14 @@ function ip4Header:setTTL(int)
 	self.ttl = int
 end
 
+--- Retrieve the time-to-live. 
+-- @return TTL as 8 bit integer.
 function ip4Header:getTTL()
 	return self.ttl
 end
 
+--- Retrieve the time-to-live. 
+-- @return TTL as string.
 function ip4Header:getTTLString()
 	return self:getTTL()
 end
@@ -393,10 +495,14 @@ function ip4Header:setProtocol(int)
 	self.protocol = int
 end
 
+--- Retrieve the next layer protocol. 
+-- @return Next layer protocol as 8 bit integer.
 function ip4Header:getProtocol()
 	return self.protocol
 end
 
+--- Retrieve the next layer protocol. 
+-- @return Next layer protocol as string.
 function ip4Header:getProtocolString()
 	local proto = self:getProtocol()
 	local cleartext = ""
@@ -421,10 +527,14 @@ function ip4Header:setChecksum(int)
 	self.cs = hton16(int)
 end
 
+--- Retrieve the checksum. 
+-- @return Checksum as 16 bit integer.
 function ip4Header:getChecksum()
 	return hton16(self.cs)
 end
 
+--- Retrieve the checksum. 
+-- @return Checksum as string.
 function ip4Header:getChecksumString()
 	return format("0x%04x", self:getChecksum())
 end
@@ -443,6 +553,8 @@ function ip4Header:setDst(int)
 	self.dst:set(int)
 end
 
+--- Retrieve the destination IP address. 
+-- @return Address in 'union ipv4_address' format.
 function ip4Header:getDst()
 	return self.dst:get()
 end
@@ -453,6 +565,8 @@ function ip4Header:setSrc(int)
 	self.src:set(int)
 end
 
+--- Retrieve the source IP address. 
+-- @return Address in 'union ipv4_address' format.
 function ip4Header:getSrc()
 	return self.src:get()
 end
@@ -463,6 +577,8 @@ function ip4Header:setDstString(str)
 	self.dst:setString(str)
 end
 
+--- Retrieve the destination IP address. 
+-- @return Address in string format.
 function ip4Header:getDstString()
 	return self.dst:getString()
 end
@@ -473,6 +589,8 @@ function ip4Header:setSrcString(str)
 	self.src:setString(str)
 end
 
+--- Retrieve the source IP address. 
+-- @return Address in string format.
 function ip4Header:getSrcString()
 	return self.src:getString()
 end
@@ -484,6 +602,8 @@ end
 -- @usage fill() -- only default values
 -- @usage fill{ ipSrc="1.1.1.1", ipTTL=100 } -- all members are set to default values with the exception of ipSrc and ipTTL
 function ip4Header:fill(args)
+	args = args or {}
+
 	self:setVersion(args.ipVersion)
 	self:setHeaderLength(args.ipHeaderLength)
 	self:setTOS(args.ipTOS)
@@ -494,10 +614,33 @@ function ip4Header:fill(args)
 	self:setTTL(args.ipTTL)
 	self:setProtocol(args.ipProtocol)
 	self:setChecksum(args.ipChecksum)
-	self:setSrcString(args.ipSrc or "192.168.1.1")
-	self:setDstString(args.ipDst or "192.168.1.2")
+
+	args.ipSrc = args.ipSrc or "192.168.1.1"
+	args.ipDst = args.ipDst or "192.168.1.2"
+	
+	-- if for some reason the address is in 'union ipv4_address' format, cope with it
+	if type(args.ipSrc) == "string" then
+		self:setSrcString(args.ipSrc)
+	else
+		self:setSrc(args.ipSrc)
+	end
+	if type(args.ipDst) == "string" then
+		self:setDstString(args.ipDst)
+	else
+		self:setDst(args.ipDst)
+	end
 end
 
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see ip4Header:fill
+function ip4Header:get()
+	return { ipSrc=self:getSrcString(), ipDst=self:getDstString(), ipVersion=self:getVersion(), ipHeaderLength=self:getHeaderLength(), ipTOS=self:getTOS(), ipLength=self:getLength(), 
+			 ipID=self:getID(), ipFlags=self:getFlags(), ipFragment=self:getFragment(), ipTTL=self:getTTL(), ipProtocol=self:getProtocol(), ipChecksum=self:getChecksum() }
+end
+
+--- Retrieve the values of all members.
+-- @return Values in string format.
 function ip4Header:getString()
 	return "IP4 " .. self:getSrcString() .. " > " .. self:getDstString() .. " ver " .. self:getVersionString() 
 		   .. " ihl " .. self:getHeaderLengthString() .. " tos " .. self:getTOSString() .. " len " .. self:getLengthString()
@@ -601,10 +744,14 @@ function ip6Header:setVersion(int)
 	self.vtf = bswap(bor(old, int))
 end
 
+--- Retrieve the version.
+-- @return Version as 4 bit integer.
 function ip6Header:getVersion()
 	return band(rshift(bswap(self.vtf), 28), 0x0000000f)
 end
 
+--- Retrieve the version.
+-- @return Version as string.
 function ip6Header:getVersionString()
 	return self:getVersion()
 end
@@ -621,10 +768,14 @@ function ip6Header:setTrafficClass(int)
 	self.vtf = bswap(bor(old, int))
 end
 
+--- Retrieve the traffic class.
+-- @return Traffic class as 8 bit integer.
 function ip6Header:getTrafficClass()
 	return band(rshift(bswap(self.vtf), 20), 0x000000ff)
 end
 
+--- Retrieve the traffic class.
+-- @return Traffic class as string.
 function ip6Header:getTrafficClassString()
 	return self:getTrafficClass()
 end
@@ -641,10 +792,14 @@ function ip6Header:setFlowLabel(int)
 	self.vtf = bswap(bor(old, int))
 end
 
+--- Retrieve the flow label.
+-- @return Flow label as 20 bit integer.
 function ip6Header:getFlowLabel()
 	return band(bswap(self.vtf), 0x000fffff)
 end
 
+--- Retrieve the flow label.
+-- @return Flow label as string.
 function ip6Header:getFlowLabelString()
 	return self:getFlowLabel()
 end
@@ -656,10 +811,14 @@ function ip6Header:setLength(int)
 	self.len = hton16(int)
 end
 
+--- Retrieve the length.
+-- @return Length as 16 bit integer.
 function ip6Header:getLength()
 	return hton16(self.len)
 end
 
+--- Retrieve the length.
+-- @return Length as string.
 function ip6Header:getLengthString()
 	return self:getLength()
 end
@@ -671,10 +830,14 @@ function ip6Header:setNextHeader(int)
 	self.nextHeader = int
 end
 
+--- Retrieve the next header.
+-- @return Next header as 8 bit integer.
 function ip6Header:getNextHeader()
 	return self.nextHeader
 end
 
+--- Retrieve the next header.
+-- @return Next header as string.
 function ip6Header:getNextHeaderString()
 	local proto = self:getNextHeader()
 	local cleartext = ""
@@ -697,10 +860,14 @@ function ip6Header:setTTL(int)
 	self.ttl = int
 end
 
+--- Retrieve the time-to-live.
+-- @return TTL as 8 bit integer.
 function ip6Header:getTTL()
 	return self.ttl
 end
 
+--- Retrieve the time-to-live.
+-- @return TTL as string.
 function ip6Header:getTTLString()
 	return self:getTTL()
 end
@@ -711,6 +878,8 @@ function ip6Header:setDst(addr)
 	self.dst:set(addr)
 end
 
+--- Retrieve the IP6 destination address.
+-- @return Address in 'union ipv6_address' format.
 function ip6Header:getDst()
 	return self.dst:get()
 end
@@ -721,6 +890,8 @@ function ip6Header:setSrc(addr)
 	self.src:set(addr)
 end
 
+--- Retrieve the IP6 source address.
+-- @return Address in 'union ipv6_address' format.
 function ip6Header:getSrc()
 	return self.src:get()
 end
@@ -731,6 +902,8 @@ function ip6Header:setDstString(str)
 	self:setDst(parseIP6Address(str))
 end
 
+--- Retrieve the IP6 destination address.
+-- @return Address in string format.
 function ip6Header:getDstString()
 	return self.dst:getString()
 end
@@ -741,6 +914,8 @@ function ip6Header:setSrcString(str)
 	self:setSrc(parseIP6Address(str))
 end
 
+--- Retrieve the IP6 source address.
+-- @return Address in source format.
 function ip6Header:getSrcString()
 	return self.src:getString()
 end
@@ -752,16 +927,41 @@ end
 -- @usage fill() -- only default values
 -- @usage fill{ ip6Src="f880::ab", ip6TTL=101 } -- all members are set to default values with the exception of ip6Src and ip6TTL
 function ip6Header:fill(args)
+	args = args or {}
+
 	self:setVersion(args.ip6Version)
 	self:setTrafficClass(args.ip6TrafficClass)
 	self:setFlowLabel(args.ip6FlowLabel)
 	self:setLength(args.ip6Length)
 	self:setNextHeader(args.ip6NextHeader)
 	self:setTTL(args.ip6TTL)
-	self:setSrcString(args.ip6Src or "fe80::1")
-	self:setDstString(args.ip6Dst or "fe80::2")
+	
+	args.ip6Src = args.ip6Src or "fe80::1"
+	args.ip6Dst = args.ip6Dst or "fe80::2"	
+	
+	-- if for some reason the address is in 'union ipv6_address' format, cope with it
+	if type(args.ip6Src) == "string" then
+		self:setSrcString(args.ip6Src)
+	else
+		self:setSrc(args.ip6Src)
+	end
+	if type(args.ip6Dst) == "string" then
+		self:setDstString(args.ip6Dst)
+	else
+		self:setDst(args.ip6Dst)
+	end
 end
 
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see ip6Header:fill
+function ip6Header:get()
+	return { ip6Src=self:getSrcString(), ip6Dst=self:getDstString(), ip6Version=self:getVersion(), ip6TrafficClass=self:getTrafficClass(), 
+			 ip6FlowLabel=self:getFlowLabel(), ip6Length=self:getLength(), ip6NextHeader=self:getNextHeader(), ip6TTL=self:getTTL() }
+end
+
+--- Retrieve the values of all members.
+-- @return Values in string format.
 function ip6Header:getString()
 	return "IP6 " .. self:getSrcString() .. " > " .. self:getDstString() .. " ver " .. self:getVersionString() 
 		   .. " tc " .. self:getTrafficClassString() .. " fl " .. self:getFlowLabelString() .. " len " .. self:getLengthString() 
@@ -886,6 +1086,38 @@ local ip4Packet = {}
 local ip4PacketType = ffi.typeof("struct ip_packet*")
 ip4Packet.__index = ip4Packet
 
+--- Set all members of all headers.
+-- Per default, all members are set to default values specified in the respective set function.
+-- Optional named arguments can be used to set a member to a user-provided value.
+-- The argument 'pktLength' can be used to automatically calculate and set the length member of the ip header.
+-- @param args Table of named arguments. For a list of available arguments see "See also"
+-- @usage fill() -- only default values
+-- @usage fill{ ethSrc="12:23:34:45:56:67", ipTTL=100 } -- all members are set to default values with the exception of ethSrc and ipTTL
+-- @usage fill{ pktLength=64 } -- only default values, ipLength is set to the respective value
+-- @see etherHeader:fill
+-- @see ip4Header:fill
+function ip4Packet:fill(args)
+	args = args or {}
+	
+	-- calculate length value for ip headers
+	if args.pktLength then
+		args.ipLength = args.pktLength - 14 -- ethernet
+	end
+
+	self.eth:fill(args)
+	self.ip:fill(args)
+end
+
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see etherHeader:get
+-- @see ip4Header:get
+function ip4Packet:get()
+	return mergeTables(self.eth:get(), self.ip:get())
+end
+
+--- Print information about the headers and a hex dump of the complete packet.
+-- @param bytes Number of bytes to dump.
 function ip4Packet:dump(bytes)
 	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString()
 	printLength(str, 60)
@@ -902,6 +1134,41 @@ local ip6Packet = {}
 local ip6PacketType = ffi.typeof("struct ip_v6_packet*")
 ip6Packet.__index = ip6Packet
 
+--- Set all members of all headers.
+-- Per default, all members are set to default values specified in the respective set function.
+-- Optional named arguments can be used to set a member to a user-provided value.
+-- The argument 'pktLength' can be used to automatically calculate and set the length member of the ip6 header.
+-- @param args Table of named arguments. For a list of available arguments see "See also"
+-- @usage fill() -- only default values
+-- @usage fill{ ethSrc="12:23:34:45:56:67", ip6TTL=100 } -- all members are set to default values with the exception of ethSrc and ip6TTL
+-- @usage fill{ pktLength=64 } -- only default values, ip6Length is set to the respective value
+-- @see etherHeader:fill
+-- @see ip6Header:fill
+function ip6Packet:fill(args)
+	args = args or {}
+	
+	-- calculate length value for ip headers
+	if args.pktLength then
+		args.ip6Length = args.pktLength - (14 + 40) -- ethernet + ip
+	end
+	
+	-- change default value for ipv6
+	args.ethType = args.ethType or eth.TYPE_IP6
+
+	self.eth:fill(args)
+	self.ip:fill(args)
+end
+
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see etherHeader:get
+-- @see ip6Header:get
+function ip6Packet:get()
+	return mergeTables(self.eth:get(), self.ip:get())
+end
+
+--- Print information about the headers and a hex dump of the complete packet.
+-- @param bytes Number of bytes to dump.
 function ip6Packet:dump(bytes)
 	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString()
 	printLength(str, 60)
@@ -925,10 +1192,14 @@ function udpHeader:setSrcPort(int)
 	self.src = hton16(int)
 end
 
+--- Retrieve the UDP source port.
+-- @return Port as 16 bit integer.
 function udpHeader:getSrcPort()
 	return hton16(self.src)
 end
 
+--- Retrieve the UDP source port.
+-- @return Port as string.
 function udpHeader:getSrcPortString()
 	return self:getSrcPort()
 end
@@ -940,10 +1211,14 @@ function udpHeader:setDstPort(int)
 	self.dst = hton16(int)
 end
 
+--- Retrieve the UDP destination port.
+-- @return Port as 16 bit integer.
 function udpHeader:getDstPort()
 	return hton16(self.dst)
 end
 
+--- Retrieve the UDP destination port.
+-- @return Port as string.
 function udpHeader:getDstPortString()
 	return self:getDstPort()
 end
@@ -955,10 +1230,14 @@ function udpHeader:setLength(int)
 	self.len = hton16(int)
 end
 
+--- Retrieve the length.
+-- @return Length as 16 bit integer.
 function udpHeader:getLength()
 	return hton16(self.len)
 end
 
+--- Retrieve the length.
+-- @return Length as string.
 function udpHeader:getLengthString()
 	return self:getLength()
 end
@@ -970,10 +1249,14 @@ function udpHeader:setChecksum(int)
 	self.cs = hton16(int)
 end
 
+--- Retrieve the checksum.
+-- @return Checksum as 16 bit integer.
 function udpHeader:getChecksum()
 	return hton16(self.cs)
 end
 
+--- Retrieve the checksum.
+-- @return Checksum as string.
 function udpHeader:getChecksumString()
 	return format("0x%04x", self:getChecksum())  
 end
@@ -985,12 +1268,23 @@ end
 -- @usage fill() -- only default values
 -- @usage fill{ udpSrc=44566, ip6Length=101 } -- all members are set to default values with the exception of udpSrc and udpLength
 function udpHeader:fill(args)
+	args = args or {}
+
 	self:setSrcPort(args.udpSrc)
 	self:setDstPort(args.udpDst)
 	self:setLength(args.udpLength)
 	self:setChecksum(args.udpChecksum)
 end
 
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see udpHeader:fill
+function udpHeader:get()
+	return { udpSrc=self:getSrcPort(), udpDst=self:getDstPort(), udpLength=self:getLength(), udpChecksum=self:getChecksum() }
+end
+
+--- Retrieve the values of all members.
+-- @return Values in string format.
 function udpHeader:getString()
 	return "UDP " .. self:getSrcPortString() .. " > " .. self:getDstPortString() .. " len " .. self:getLengthString()
 		   .. " cksum " .. self:getChecksumString() .. " "
@@ -1012,6 +1306,8 @@ udpPacket.__index = udpPacket
 -- @see ip4Header:fill
 -- @see udpHeader:fill
 function udpPacket:fill(args)
+	args = args or {}
+	
 	-- calculate length values for all headers
 	if args.pktLength then
 		args.ipLength = args.pktLength - 14 -- ethernet
@@ -1025,6 +1321,15 @@ function udpPacket:fill(args)
 	self.udp:fill(args)
 end
 
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see etherHeader:get
+-- @see ip4Header:get
+-- @see udpHeader:get
+function udpPacket:get()
+	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.udp:get())
+end
+
 --- Calculate and set the UDP header checksum for IPv4 packets.
 -- Not implemented as it is optional.
 -- If possible use checksum offloading instead.
@@ -1034,6 +1339,8 @@ function udpPacket:calculateUDPChecksum()
 	self.udp:setChecksum()
 end
 
+--- Print information about the headers and a hex dump of the complete packet.
+-- @param bytes Number of bytes to dump.
 function udpPacket:dump(bytes)
 	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.udp:getString()
 	printLength(str, 60)
@@ -1055,6 +1362,8 @@ udp6Packet.__index = udp6Packet
 -- @see ip6Header:fill
 -- @see udpHeader:fill
 function udp6Packet:fill(args)
+	args = args or {}
+
 	-- calculate length values for all headers
 	if args.pktLength then
 		args.ip6Length = args.pktLength - (14 + 40) -- ethernet + ip
@@ -1070,6 +1379,15 @@ function udp6Packet:fill(args)
 	self.udp:fill(args)
 end
 
+--- Retrieve the values of all members.
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see etherHeader:get
+-- @see ip4Header:get
+-- @see udpHeader:get
+function udp6Packet:get()
+	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.udp:get())
+end
+
 --- Calculate and set the UDP header checksum for IPv6 packets.
 -- Not implemented (todo).
 -- If possible use checksum offloading instead.
@@ -1079,6 +1397,8 @@ function udp6Packet:calculateUDPChecksum()
 	self.udp:setChecksum()
 end
 
+--- Print information about the headers and a hex dump of the complete packet.
+-- @param bytes Number of bytes to dump.
 function udp6Packet:dump(bytes)
 	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.udp:getString()
 	printLength(str, 60)
