@@ -71,7 +71,7 @@ ffi.cdef[[
 		union payload_t	body;
 	};
 
-	struct __attribute__((__packed__)) udp_header {                                                             
+	struct __attribute__((__packed__)) udp_header {
 		uint16_t	src;
 		uint16_t	dst;
 		uint16_t	len;
@@ -123,6 +123,23 @@ ffi.cdef[[
 		struct icmp_header		icmp;
 	};
 
+	struct __attribute__((__packed__)) ptp_header {
+		uint8_t 	messageType;
+		uint8_t		versionPTP;
+		uint16_t	len;
+		uint8_t		domain;
+		uint8_t		reserved;
+		uint16_t	flags;
+		uint64_t	correction;
+		uint32_t	reserved2;
+		uint8_t		oui[3];
+		uint8_t		uuid[5];
+		uint16_t	ptpNodePort;
+		uint16_t	sequenceId;
+		uint8_t		control;
+		uint8_t		logMessageInterval;
+	};
+
 	struct __attribute__((__packed__)) udp_packet {
 		struct ethernet_header 	eth;
 		struct ipv4_header 	ip;
@@ -155,6 +172,11 @@ ffi.cdef[[
 		struct ipv6_header		ip;
 		struct tcp_header		tcp;
 		union payload_t			payload;
+	};
+
+	struct __attribute__((__packed__)) ptp_packet{
+		struct ethernet_header eth;
+		struct ptp_header ptp;
 	};
 ]]
 
