@@ -13,7 +13,8 @@ end
 -- @param n optional (default = 2047), size of the mempool
 -- @param func optional, init func, called for each argument
 -- @param socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
-function mod.createMemPool(n, func, socket)
+-- @param bufSize optional the size of each buffer, can only be used if all other args are passed as well
+function mod.createMemPool(n, func, socket, bufSize)
 	if type(n) == "function" then -- (func[, socket])
 		socket = func
 		func = n
@@ -24,11 +25,11 @@ function mod.createMemPool(n, func, socket)
 	end
 	n = n or 2047
 	socket = socket or -1
-	local mem = dpdkc.init_mem(n, socket)
+	local mem = dpdkc.init_mem(n, socket, bufSize and bufSize or 0)
 	if func then
 		local bufs = {}
 		for i = 1, n do
-			local buf = mem:alloc(1518)
+			local buf = mem:alloc(1522)
 			func(buf)
 			bufs[#bufs + 1] = buf
 		end

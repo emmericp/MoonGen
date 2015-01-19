@@ -8,6 +8,7 @@ local dpdkc = require "dpdkc"
 mod.PKT_RX_IEEE1588_TMST	= 0x0400
 mod.PKT_TX_IPV4_CSUM		= 0x1000
 mod.PKT_TX_UDP_CKSUM		= 0x6000
+mod.PKT_TX_NO_CRC_CSUM		= 0x0001
 
 local function fileExists(f)
 	local file = io.open(f, "r")

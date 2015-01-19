@@ -19,10 +19,24 @@
 #define TX_HTHRESH 0
 #define TX_WTHRESH 0
 
-static uint8_t* registers[RTE_MAX_ETHPORTS];
+#define DEFAULT_MTU 8000
+
+static volatile uint8_t* registers[RTE_MAX_ETHPORTS];
+
+uint32_t read_reg32(uint8_t port, uint32_t reg) {
+	return *(volatile uint32_t*)(registers[port] + reg);
+}
+
+void write_reg32(uint8_t port, uint32_t reg, uint32_t val) {
+	*(volatile uint32_t*)(registers[port] + reg) = val;
+}
+
+static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
+	return (volatile uint32_t*)(registers[port] + reg);
+}
 
 int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, struct rte_mempool* mempool) {
-	if (port > RTE_MAX_ETHPORTS) {
+	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
 		return -1;
 	}
@@ -92,20 +106,13 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
 	registers[port] = (uint8_t*) dev_info.pci_dev->mem_resource[0].addr;
+	// allow sending large and small frames
+	rte_eth_dev_set_mtu(port, DEFAULT_MTU);
+	uint32_t hlReg0 = read_reg32(port, 0x4240);
+	hlReg0 &= ~(1 << 10); // TXPADEN
+	hlReg0 |= (1 << 2); // JUMBOEN
+	write_reg32(port, 0x4240, hlReg0);
 	return rc; 
-}
-
-uint32_t read_reg32(uint8_t port, uint32_t reg) {
-	return *(volatile uint32_t*)(registers[port] + reg);
-}
-
-void write_reg32(uint8_t port, uint32_t reg, uint32_t val) {
-	//printf("write_reg32(%u, %u, %u)\n", port, reg, val);
-	*(volatile uint32_t*)(registers[port] + reg) = val;
-}
-
-static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
-	return (volatile uint32_t*)(registers[port] + reg);
 }
 
 uint64_t get_mac_addr(int port, char* buf) {
@@ -200,14 +207,138 @@ void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts
 	return;
 }
 
-void send_all_packets_with_delay_invalid_mac(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts, uint32_t* delays, struct rte_mempool* pool) {
-	struct rte_mbuf* delay_pkt;
+// TODO: figure out which NICs can actually transmit short frames, currently test:
+// NIC      Min Frame Length (including CRC, preamble, SFD, and IFG, i.e. a regular Ethernet frame would be 84 bytes)
+// X540		76
+// 82599	76
+// TODO: does not yet work with jumboframe-enabled DuTs, use a different delay mechanism for this use case
+static struct rte_mbuf* get_delay_pkt_invalid_size(struct rte_mempool* pool, uint32_t* rem_delay) {
+	uint32_t delay = *rem_delay;
+	// TODO: this is actually wrong for most NICs, fix this
+	if (delay < 25) {	
+		// smaller than the smallest packet we can send
+		// (which is preamble + SFD + CRC + IFG + 1 byte)
+		// the CRC cannot be avoided since the CRC offload cannot be disabled on a per-packet basis
+		// TODO: keep a counter of the error so that the average rate is correct
+		*rem_delay = 25; // will be set to 0 at the end of the function
+		delay = 25;
+	}
+	// calculate the optimimum packet size
+	if (delay < 84) {
+		// simplest case: requested gap smaller than the minimum allowed size
+		// nothing to do
+	} else if (delay > 1542) { // includes vlan tag to play it safe
+		// remaining delay larger than the maximum frame size
+		if (delay >= 1543 * 2) {
+			// we could use even larger frames but this would be annoying (chained buffers or larger mbufs required)
+			delay = 1543;
+			// remaining size after this packet is still > 1514
+		} else {
+			// remaining size can be sent in a single packet
+		}
+	} else {
+		// valid packet size, use lots of small packets
+		if (delay - 83 < 25) {
+			// next packet would be too small, i.e. remaining delay is between 64 and 89 bytes
+			// this means we can just send two packets with remaining_delay/2 size
+			delay = delay / 2;
+		} else {
+			delay = 83;
+		}
+	}
+	*rem_delay -= delay;
+	// TODO: consider allocating these packets at the beginning for performance reasons
+	struct rte_mbuf* pkt = rte_pktmbuf_alloc(pool);
+	// account for CRC offloading
+	pkt->pkt.data_len = delay - 24;
+	pkt->pkt.pkt_len = delay - 24;
+	//printf("%d\n", delay - 24);
+	return pkt;
+}
+
+void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool) {
+	const int BUF_SIZE = 128;
+	struct rte_mbuf* pkts[BUF_SIZE];
+	int send_buf_idx = 0;
 	for (uint16_t i = 0; i < num_pkts; i++) {
-		delay_pkt = rte_pktmbuf_alloc(pool);
-		delay_pkt->pkt.data_len = delays[i];
-		delay_pkt->pkt.pkt_len = delays[i];
-		while (!rte_eth_tx_burst(port_id, queue_id, &delay_pkt, 1));
-		while (!rte_eth_tx_burst(port_id, queue_id, pkts + i, 1));
+		struct rte_mbuf* pkt = load_pkts[i];
+		// desired inter-frame spacing is encoded in the hash field (not used on TX packets)
+		// it would also be possible to use the buffer's headroom but this is ugly from Lua
+		// TODO: this can be changed to the new userdata or udata64 fields in DPDK 1.8
+		uint32_t delay = pkt->pkt.hash.rss;
+		// step 1: generate delay-packets
+		while (delay > 0) {
+			pkts[send_buf_idx++] = get_delay_pkt_invalid_size(pool, &delay);
+			if (send_buf_idx >= BUF_SIZE) {
+				send_all_packets(port_id, queue_id, pkts, send_buf_idx);
+				send_buf_idx = 0;
+			}
+		}
+		// step 2: send the packet
+		pkts[send_buf_idx++] = pkt;
+		if (send_buf_idx >= BUF_SIZE || i + 1 == num_pkts) { // don't forget to send the last batch
+			send_all_packets(port_id, queue_id, pkts, send_buf_idx);
+			send_buf_idx = 0;
+		}
+	}
+	return;
+}
+
+
+static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay) {
+	uint32_t delay = *rem_delay;
+	if (delay < 76) {	
+		// TODO: figure out min sizes for different NICs, this is tested for X540 and 82599
+		// smaller than the smallest packet we can send
+		// TODO: keep a counter of the error so that the average rate is correct
+		*rem_delay = 76; // will be set to 0 at the end of the function
+		delay = 76;
+	}
+	// calculate the optimimum packet size
+	if (delay < 1538) {
+		delay = delay;
+	} else if (delay > 2000) {
+		// 2000 is an arbitrary chosen value as it doesn't really matter
+		// we just need to avoid doing something stupid for packet sizes that are just over 1538 bytes
+		delay = 1538;
+	} else {
+		// delay between 1538 and 2000
+		delay = delay / 2;
+	}
+	*rem_delay -= delay;
+	struct rte_mbuf* pkt = rte_pktmbuf_alloc(pool);
+	// account for preamble, sfd, and ifg (CRC is disabled)
+	pkt->pkt.data_len = delay - 20;
+	pkt->pkt.pkt_len = delay - 20;
+	pkt->ol_flags |= PKT_TX_NO_CRC_CSUM;
+	return pkt;
+}
+
+// NOTE: this function only works on ixgbe-based NICs as it relies on a driver modification to disable CRC for packets with hash != 0
+void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool) {
+	const int BUF_SIZE = 128;
+	struct rte_mbuf* pkts[BUF_SIZE];
+	int send_buf_idx = 0;
+	for (uint16_t i = 0; i < num_pkts; i++) {
+		struct rte_mbuf* pkt = load_pkts[i];
+		// desired inter-frame spacing is encoded in the hash field (not used on TX packets)
+		// it would also be possible to use the buffer's headroom but this is ugly from Lua
+		// TODO: this can be changed to the new userdata or udata64 fields in DPDK 1.8
+		uint32_t delay = pkt->pkt.hash.rss;
+		// step 1: generate delay-packets
+		while (delay > 0) {
+			pkts[send_buf_idx++] = get_delay_pkt_bad_crc(pool, &delay);
+			if (send_buf_idx >= BUF_SIZE) {
+				send_all_packets(port_id, queue_id, pkts, send_buf_idx);
+				send_buf_idx = 0;
+			}
+		}
+		// step 2: send the packet
+		pkts[send_buf_idx++] = pkt;
+		if (send_buf_idx >= BUF_SIZE || i + 1 == num_pkts) { // don't forget to send the last batch
+			send_all_packets(port_id, queue_id, pkts, send_buf_idx);
+			send_buf_idx = 0;
+		}
 	}
 	return;
 }

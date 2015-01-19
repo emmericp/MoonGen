@@ -35,6 +35,12 @@ function pkt:getTimestamp()
 	end
 end
 
+--- Set the time to wait before the packet is sent for software rate-controlled send methods.
+-- @param delay the time to wait before this packet (in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE)
+function pkt:setDelay(delay)
+	self.pkt.hash.rss = delay
+end
+
 --- Instruct the NIC to calculate the IP and UDP checksum for this packet.
 -- @param ipv4 Boolean to decide whether the packet uses IPv4 (set to nil/true) or IPv6 (set to anything else).
 -- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).

@@ -237,17 +237,15 @@ end
 
 do
 	local mempool
-	function txQueue:sendWithDelay(bufs, delays, useBadPacketSizes)
-		mempool = mempool or memory.createMemPool()
-		if useBadPacketSizes then
-			error("NYI")
+	function txQueue:sendWithDelay(bufs, method)
+		mempool = mempool or memory.createMemPool(2047, nil, nil, 4095)
+		method = method or "crc"
+		if method == "crc" then
+			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, bufs.size, mempool)
+		elseif method == "size" then
+			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, bufs.size, mempool)
 		else
-			-- TODO: think of a better way to pass this to C
-			local delayArray = ffi.new("uint32_t[?]", #bufs)
-			for i, v in ipairs(delays) do
-				delayArray[i - 1] = v
-			end
-			dpdkc.send_all_packets_with_delay_invalid_mac(self.id, self.qid, bufs.array, bufs.size, delayArray, mempool)
+			errorf("unknown delay method %s", method)
 		end
 		return bufs.size
 	end
