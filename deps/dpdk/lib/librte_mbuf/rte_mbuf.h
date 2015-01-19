@@ -100,6 +100,7 @@ struct rte_ctrlmbuf {
 #define PKT_TX_VLAN_PKT      0x0800 /**< TX packet is a 802.1q VLAN packet. */
 #define PKT_TX_IP_CKSUM      0x1000 /**< IP cksum of TX pkt. computed by NIC. */
 #define PKT_TX_IPV4_CSUM     0x1000 /**< Alias of PKT_TX_IP_CKSUM. */
+#define PKT_TX_NO_CRC_CSUM   0x0001 /**< Disable CRC calculation. Note: overlaps with RX_VLAN_PKT. */
 #define PKT_TX_IPV4          PKT_RX_IPV4_HDR /**< IPv4 with no IP checksum offload. */
 #define PKT_TX_IPV6          PKT_RX_IPV6_HDR /**< IPv6 packet */
 /*

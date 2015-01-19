@@ -699,8 +699,10 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * are only set in the last Data Descriptor:
 		 *   - IXGBE_TXD_CMD_RS
 		 */
-		cmd_type_len = IXGBE_ADVTXD_DTYP_DATA |
-			IXGBE_ADVTXD_DCMD_IFCS | IXGBE_ADVTXD_DCMD_DEXT;
+		// MODIFICIATION: add disable CRC offloading flag
+		cmd_type_len = IXGBE_ADVTXD_DTYP_DATA | IXGBE_ADVTXD_DCMD_DEXT;
+		if (!(ol_flags & PKT_TX_NO_CRC_CSUM))
+			cmd_type_len |= IXGBE_ADVTXD_DCMD_IFCS;
 		olinfo_status = (pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
 #ifdef RTE_LIBRTE_IEEE1588
 		if (ol_flags & PKT_TX_IEEE1588_TMST)
