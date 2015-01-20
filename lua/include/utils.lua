@@ -1,7 +1,7 @@
-
 local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
 local write = io.write
 local format = string.format
+local random, log, floor = math.random, math.log, math.floor
 
 function printf(str, ...)
 	return print(str:format(...))
@@ -33,6 +33,14 @@ end
 function tonumberall(...)
 	return mapVarArg(tonumber, ...)
 end
+
+--- Get the time to wait (in byte-times) for the next packet based on a poisson process.
+-- @param average the average wait time between two packets
+-- @returns the number of byte-times to wait to achieve the given average wait-time
+function poissonDelay(average)
+	return floor(-log(1 - random()) / (1 / average) + 0.5)
+ end
+
 
 function bswap16(n)
 	return bor(rshift(n, 8), lshift(band(n, 0xFF), 8))

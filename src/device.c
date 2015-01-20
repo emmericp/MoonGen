@@ -215,7 +215,7 @@ void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts
 static struct rte_mbuf* get_delay_pkt_invalid_size(struct rte_mempool* pool, uint32_t* rem_delay) {
 	uint32_t delay = *rem_delay;
 	// TODO: this is actually wrong for most NICs, fix this
-	if (delay < 25) {	
+	if (delay < 25) {
 		// smaller than the smallest packet we can send
 		// (which is preamble + SFD + CRC + IFG + 1 byte)
 		// the CRC cannot be avoided since the CRC offload cannot be disabled on a per-packet basis
@@ -284,13 +284,24 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 	return;
 }
 
-
+// FIXME: not thread safe!
 static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay) {
+ 	// FIXME: these should be thread-local
+	static uint32_t target = 0;
+	static uint32_t current = 0;
 	uint32_t delay = *rem_delay;
-	if (delay < 76) {	
+	target += delay;
+	if (target < current) {
+		// don't add a delay
+		*rem_delay = 0;
+		return NULL;
+	}
+	// add delay
+	target -= current;
+	current = 0;
+	if (delay < 76) {
 		// TODO: figure out min sizes for different NICs, this is tested for X540 and 82599
 		// smaller than the smallest packet we can send
-		// TODO: keep a counter of the error so that the average rate is correct
 		*rem_delay = 76; // will be set to 0 at the end of the function
 		delay = 76;
 	}
@@ -311,6 +322,7 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 	pkt->pkt.data_len = delay - 20;
 	pkt->pkt.pkt_len = delay - 20;
 	pkt->ol_flags |= PKT_TX_NO_CRC_CSUM;
+	current += delay;
 	return pkt;
 }
 
@@ -327,7 +339,8 @@ void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, str
 		uint32_t delay = pkt->pkt.hash.rss;
 		// step 1: generate delay-packets
 		while (delay > 0) {
-			pkts[send_buf_idx++] = get_delay_pkt_bad_crc(pool, &delay);
+			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay);
+			if (pkt) pkts[send_buf_idx++] = pkt;
 			if (send_buf_idx >= BUF_SIZE) {
 				send_all_packets(port_id, queue_id, pkts, send_buf_idx);
 				send_buf_idx = 0;
