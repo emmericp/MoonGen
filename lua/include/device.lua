@@ -3,7 +3,7 @@ local mod = {}
 local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
-local memory		= require "memory"
+local memory	= require "memory"
 
 mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_82599	= 0x808610FB
@@ -29,6 +29,9 @@ local rxQueue = {}
 rxQueue.__index = rxQueue
 
 function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
+	if not mempool or type(mempool) == "number" then
+		return self.config(port, memory.createMemPool(), mempool, rxQueues, txQueues, rxDescs)
+	end
 	if rxQueues == 0 or txQueues == 0 then
 		-- dpdk does not like devices without rx/tx queues :(
 		errorf("cannot initialize device without %s queues", rxQueues == 0 and txQueues == 0 and "rx and tx" or rxQueues == 0 and "rx" or "tx")
