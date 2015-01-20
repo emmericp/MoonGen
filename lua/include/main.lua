@@ -46,7 +46,25 @@ local function slave(file, func, ...)
 	--require("jit.dump").on()
 	MOONGEN_TASK_NAME = func
 	run(file)
-	xpcall(_G[func], getStackTrace, ...)
+	-- decode args
+	local args = { ... }
+	-- TODO: ugly work-around until someone implements proper serialization
+	for i, v in ipairs(args) do
+		if type(v) == "table" then
+			local obj = {}
+			for v in v[1]:gmatch("([^,]+)") do
+				obj[#obj + 1] = v
+			end
+			if obj[1] == "device" then
+				args[i] = dev.get(tonumber(obj[2]))
+			elseif obj[1] == "rxQueue" then
+				args[i] = dev.get(tonumber(obj[2])):getRxQueue(tonumber(obj[3]))
+			elseif obj[1] == "txQueue" then
+				args[i] = dev.get(tonumber(obj[2])):getTxQueue(tonumber(obj[3]))
+			end
+		end
+	end
+	xpcall(_G[func], getStackTrace, unpack(args))
 	--require("jit.p").stop()
 end
 

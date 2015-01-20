@@ -21,12 +21,27 @@ end
 
 local dev = {}
 dev.__index = dev
+dev.__type = "device"
+
+function dev:__tostring()
+	return ("[Device: id=%d]"):format(self.id)
+end
 
 local txQueue = {}
 txQueue.__index = txQueue
+txQueue.__type = "txQueue"
+
+function txQueue:__tostring()
+	return ("[TxQueue: id=%d, qid=%d]"):format(self.id, self.qid)
+end
 
 local rxQueue = {}
 rxQueue.__index = rxQueue
+rxQueue.__type = "rxQueue"
+
+function rxQueue:__tostring()
+	return ("[RxQueue: id=%d, qid=%d]"):format(self.id, self.qid)
+end
 
 function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
 	if not mempool or type(mempool) == "number" then
@@ -75,6 +90,7 @@ function dev:getRxQueue(id)
 	tbl[id] = setmetatable({ id = self.id, qid = id, dev = self }, rxQueue)
 	return tbl[id]
 end
+
 
 --- Waits until all given devices are initialized by calling wait() on them.
 function mod.waitForDevs(...)
@@ -268,6 +284,7 @@ function rxQueue:recv(bufArray)
 end
 
 function rxQueue:recvAll(bufArray)
+	error("NYI")
 end
 
 --- Receive packets from a rx queue with a timeout.

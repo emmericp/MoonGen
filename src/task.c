@@ -56,6 +56,11 @@ int lua_core_main(void* arg) {
 			case ARG_TYPE_NIL:
 				lua_pushnil(L);
 				break;
+			case ARG_TYPE_OBJECT:
+				lua_newtable(L);
+				lua_pushnumber(L, 1);
+				lua_pushstring(L, arg->arg.str);
+				lua_settable(L, -3);
 		}
 	}
 	if (lua_pcall(L, cfg->argc + 1, 0, 0)) {
@@ -66,7 +71,7 @@ int lua_core_main(void* arg) {
 error:
 	for (int i = 0; i < cfg->argc; i++) {
 		struct lua_core_arg* arg = cfg->argv[i];
-		if (arg->arg_type == ARG_TYPE_STRING) {
+		if (arg->arg_type == ARG_TYPE_STRING || arg->arg_type == ARG_TYPE_OBJECT) {
 			free(arg->arg.str);
 		}
 		free(arg);
@@ -84,6 +89,7 @@ void launch_lua_core(int core, int argc, struct lua_core_arg* argv[]) {
 		arg->arg_type = argv[i]->arg_type;
 		switch (arg->arg_type) {
 			case ARG_TYPE_STRING:
+			case ARG_TYPE_OBJECT:
 				arg->arg.str = malloc(strlen(argv[i]->arg.str) + 1);
 				strcpy(arg->arg.str, argv[i]->arg.str);
 				break;

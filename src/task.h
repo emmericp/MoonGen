@@ -7,7 +7,7 @@
 #include <lualib.h>
 
 struct lua_core_arg {
-	enum { ARG_TYPE_STRING, ARG_TYPE_NUMBER, ARG_TYPE_BOOLEAN, ARG_TYPE_POINTER, ARG_TYPE_NIL } arg_type;
+	enum { ARG_TYPE_STRING, ARG_TYPE_NUMBER, ARG_TYPE_BOOLEAN, ARG_TYPE_POINTER, ARG_TYPE_NIL, ARG_TYPE_OBJECT } arg_type;
 	union {
 		char* str;
 		double number;

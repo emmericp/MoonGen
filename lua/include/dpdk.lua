@@ -1,7 +1,7 @@
 --- high-level dpdk wrapper
 local mod = {}
-local ffi = require "ffi"
-local dpdkc = require "dpdkc"
+local ffi		= require "ffi"
+local dpdkc		= require "dpdkc"
 
 -- DPDK constants
 -- TODO: import more constants here
@@ -97,7 +97,7 @@ end
 
 ffi.cdef[[
 	struct lua_core_arg {
-		enum { ARG_TYPE_STRING, ARG_TYPE_NUMBER, ARG_TYPE_BOOLEAN, ARG_TYPE_POINTER, ARG_TYPE_NIL } arg_type;
+		enum { ARG_TYPE_STRING, ARG_TYPE_NUMBER, ARG_TYPE_BOOLEAN, ARG_TYPE_POINTER, ARG_TYPE_NIL, ARG_TYPE_OBJECT } arg_type;
 		union {
 			const char* str;
 			double number;
@@ -110,7 +110,7 @@ ffi.cdef[[
 
 
 --- Launch a LuaJIT VM on a core with the given arguments.
---- TODO: does not yet support tables as arguments
+--- TODO: use proper serialization and only pass strings
 function mod.launchLuaOnCore(core, ...)
 	local args = { ... }
 	--- the (de-)serialization is ugly and needs a rewrite with a proper (de-)serialization library (Serpent?)
@@ -129,8 +129,21 @@ function mod.launchLuaOnCore(core, ...)
 		elseif type(v) == "cdata" or type(v) == "userdata" then
 			argsArray[i - 1].arg_type = ffi.C.ARG_TYPE_POINTER
 			argsArray[i - 1].arg.ptr = v
-		else 
-			error(("arguments of type %s are not supported for slave cores"):format(type(v)))
+		else
+			local objectOk = false
+			if type(v) == "table" and getmetatable(v) then
+				local t = getmetatable(v).__type
+				if t == "device" or t == "rxQueue" or t == "txQueue" then
+					-- TODO: this is obviously just a temporary work-around
+					argsArray[i - 1].arg_type = ffi.C.ARG_TYPE_OBJECT
+					argsArray[i - 1].arg.str = ffi.new("const char*", t .. "," ..
+						(t == "device" and v.id or (v.id .. "," .. v.qid)))
+					objectOk = true
+				end
+			end
+			if not objectOk then
+				error(("arguments of type %s are not supported for slave cores"):format(type(v)))
+			end
 		end
 	end
 	dpdkc.launch_lua_core(core, #args, argsArray)
