@@ -30,7 +30,7 @@ rxQueue.__index = rxQueue
 
 function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
 	if not mempool or type(mempool) == "number" then
-		return self.config(port, memory.createMemPool(), mempool, rxQueues, txQueues, rxDescs)
+		return mod.config(port, memory.createMemPool(), mempool, rxQueues, txQueues, rxDescs)
 	end
 	if rxQueues == 0 or txQueues == 0 then
 		-- dpdk does not like devices without rx/tx queues :(

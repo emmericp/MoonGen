@@ -19,7 +19,7 @@ function mapVarArg(f, ...)
 	return unpack(l)
 end
 
-function map(f, t)
+function map(t, f)
 	for i, v in ipairs(t) do
 		t[i] = f(v)
 	end
