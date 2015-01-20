@@ -5,10 +5,6 @@ local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 
 
-function mod.createMemPool(n, func)
-	return mod.createMemPoolOnSocket(n, -1)
-end
-
 --- Create a new memory pool.
 -- @param n optional (default = 2047), size of the mempool
 -- @param func optional, init func, called for each argument
