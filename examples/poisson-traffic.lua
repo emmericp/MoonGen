@@ -1,10 +1,6 @@
 local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
-local ts		= require "timestamping"
-local dpdkc		= require "dpdkc"
-local filter	= require "filter"
-
 
 function master(...)
 	local txPort, rxPort, rate = tonumberall(...)
@@ -12,23 +8,14 @@ function master(...)
 		errorf("usage: txPort rxPort [rate (Mpps)]")
 	end
 	rate = rate or 2
-	local txDev, rxDev
-	if txPort == rxPort then
-		txDev = device.config(txPort, memory.createMemPool(), 1, 1)
-		rxDev = txDev
-		txDev:wait()
-	else
-		txDev = device.config(txPort, memory.createMemPool(), 1, 1)
-		rxDev = device.config(rxPort, memory.createMemPool(), 1, 1)
-		device.waitForDevs(txDev, rxDev)
-	end
-	dpdk.launchLua("loadSlave", txPort, 0, rate, 60)
+	local txDev = device.config(txPort)
+	local rxDev = device.config(rxPort)
+	device.waitFor(txDev, rxDev)
+	dpdk.launchLua("loadSlave", txDev, txDev:getTxQueue(0), rate, 60)
 	dpdk.waitForSlaves()
 end
 
-function loadSlave(port, queue, rate, size)
-	local dev = device.get(port)
-	local queue = dev:getTxQueue(queue)
+function loadSlave(dev, queue, rate, size)
 	local mem = memory.createMemPool(function(buf)
 		buf:getUDPPacket():fill{
 			pktLength = size

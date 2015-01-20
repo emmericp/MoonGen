@@ -43,7 +43,12 @@ function rxQueue:__tostring()
 	return ("[RxQueue: id=%d, qid=%d]"):format(self.id, self.qid)
 end
 
+local devices = {}
 function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
+	if devices[port] and devices[port].initialized then
+		printf("[WARNING] Device %d already configured, skipping initilization", port)
+		return mod.get(port)
+	end
 	if not mempool or type(mempool) == "number" then
 		return mod.config(port, memory.createMemPool(), mempool, rxQueues, txQueues, rxDescs)
 	end
@@ -60,10 +65,11 @@ function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
 	if rc ~= 0 then
 		errorf("could not configure device %d: error %d", port, rc)
 	end
-	return mod.get(port)
+	local dev = mod.get(port)
+	dev.initialized = true
+	return dev
 end
 
-local devices = {}
 function mod.get(id)
 	if devices[id] then
 		return devices[id]
@@ -103,6 +109,10 @@ function mod.waitForDevs(...)
 			port:wait()
 		end
 	end
+end
+
+function mod.waitFor(...)
+	return mod.waitForDevs(...)
 end
 
 --- Wait until the device is fully initialized and up to 9 seconds to establish a link.
