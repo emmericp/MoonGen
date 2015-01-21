@@ -72,10 +72,9 @@ function tcpHeader:getAckNumberString()
 	return self:getAckNumber()
 end
 
--- TODO exclude reserved
--- 4 bit
+-- 4 bit, header size in 32 bit words (min. 5 (no options), max. 15)
 function tcpHeader:setDataOffset(int)
-	int = int or 0 -- TODO ? what is this anyway
+	int = int or 5 
 	int = band(lshift(int, 4), 0xf0) -- fill to 8 bits
 	
 	old = self.offset
@@ -126,6 +125,7 @@ function tcpHeader:getReservedString()
 	return format("0x%02x", self:getReserved())
 end
 
+-- TODO RFC 3168 specifies new CWR and ECE flags (reserved reduced to 4 bit)
 -- 6bit
 function tcpHeader:setFlags(int)
 	int = int or 0
@@ -268,7 +268,7 @@ function tcpHeader:getFINString()
 end
 
 function tcpHeader:setWindow(int)
-	int = int or 0 -- TODO what is common default
+	int = int or 0
 	self.window = hton16(int)
 end
 
@@ -294,7 +294,7 @@ function tcpHeader:getChecksumString()
 end
 
 function tcpHeader:setUrgentPointer(int)
-	int = int or 0 -- TODO ?
+	int = int or 0
 	self.urg = hton16(int)
 end
 
@@ -306,6 +306,7 @@ function tcpHeader:getUrgentPointerString()
 	return self:getUrgentPointer()
 end
 
+-- TODO how do we want to handle options (problem is tcp header variable length array of uint8[] followed by payload variable length array (uint8[]))
 --[[function tcpHeader:setOptions(int)
 	int = int or
 	self. = int
@@ -320,44 +321,72 @@ function tcpHeader:fill(args)
 	self:setDataOffset(args.tcpDataOffset)
 	self:setReserved(args.tcpReserved)
 	self:setFlags(args.tcpFlags)
-	if args.tcpURG then
+	if not args.tcpURG == 0 then
 		self:setURG()
 	end
-	if args.tcpACK then
+	if not args.tcpACK == 0 then
 		self:setACK()
 	end
-	if args.tcpPSH then
+	if not args.tcpPSH == 0 then
 		self:setPSH()
 	end
-	if args.tcpRST then
+	if not args.tcpRST == 0 then
 		self:setRST()
 	end
-	if args.tcpSYN then
+	if not args.tcpSYN == 0 then
 		self:setSYN()
 	end
-	if args.tcpFIN then
+	if not args.tcpFIN == 0 then
 		self:setFIN()
 	end
 	self:setWindow(args.tcpWindow)
 	self:setChecksum(args.tcpChecksum)
-	self:setUrgentPointer(args.UrgentPointer)
+	self:setUrgentPointer(args.tcpUrgentPointer)
 end
 
 --- Retrieve the values of all members.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see tcpHeader:fill
 function tcpHeader:get()
-	return {}
+	return { tcpSrc			= self:getSrcPort(),
+		 tcpDst			= self:getDstPort(),
+		 tcpSeqNumber		= self:getSeqNumber(),
+		 tcpAckNumber		= self:getAckNumber(),
+		 tcpDataOffset		= self:getDataOffset(),
+		 tcpReserved		= self:getReserved(),
+		 tcpFlags		= self:getFlags(),
+		 tcpURG			= self:getURG(),
+		 tcpACK			= self:getACK(),
+		 tcpPSH			= self:getPSH(),
+		 tcpRST			= self:getRST(),
+		 tcpSYN			= self:getSYN(),
+		 tcpFIN			= self:getFIN(),
+		 tcpWindow		= self:getWindow(),
+		 tcpChecksum		= self:getChecksum(),
+		 tcpUrgentPointer	= self:getUrgentPointer()
+			}
 end
 
 --- Retrieve the values of all members.
 -- @return Values in string format.
 function tcpHeader:getString()
-	return "TCP " .. self:getSrcPortString() .. " > " .. self:getDstPortString() .. " seq# " .. self:getSeqNumberString()
-			.. " ack# " .. self:getAckNumberString() .. " offset " .. self:getDataOffsetString() .. " reserved " .. self:getReservedString()
-			.. " flags " .. self:getFlagsString() .. " [" .. self:getURGString() .. "|" .. self:getACKString() 
-			.. "|" .. self:getPSHString() .. "|" .. self:getRSTString() .. "|" .. self:getSYNString() .. "|" .. self:getFINString()
-			.."] win " .. self:getWindowString() .. " cksum " .. self:getChecksumString() .. " urg " .. self:getUrgentPointerString() .. " "
+	return "TCP " 		.. self:getSrcPortString() 
+		.. " > " 	.. self:getDstPortString() 
+		.. " seq# " 	.. self:getSeqNumberString()
+		.. " ack# " 	.. self:getAckNumberString() 
+		.. " offset " 	.. self:getDataOffsetString() 
+		.. " reserved " .. self:getReservedString()
+		.. " flags " 	.. self:getFlagsString() 
+		.. " [" 	.. self:getURGString() 
+		.. "|" 		.. self:getACKString() 
+		.. "|" 		.. self:getPSHString() 
+		.. "|" 		.. self:getRSTString() 
+		.. "|" 		.. self:getSYNString() 
+		.. "|" 		.. self:getFINString()
+		.."] win " 	.. self:getWindowString() 
+		.. " cksum " 	.. self:getChecksumString() 
+		.. " urg " 	.. self:getUrgentPointerString() 
+		.. " "
 end
 
 local tcp4Packet = {}
@@ -368,7 +397,6 @@ function tcp4Packet:fill(args)
 	args = args or {}
 
 	args.ipProtocol = ip.PROTO_TCP
-
 	self.eth:fill(args)
 	self.ip:fill(args)
 	self.tcp:fill(args)
