@@ -7,6 +7,7 @@ local dpdk = require "dpdk"
 local ip = require "ip"
 local ip6 = require "ip6"
 local eth = require "ethernet"
+local tcp = require "tcp"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -85,6 +86,7 @@ end
 -- As this struct has no information about the actual type of the packet, it gets recreated by analyzing the protocol fields (etherType, protocol, ...).
 -- The packet is then dumped using the dump method of the best fitting packet (starting with an ethernet packet and going up the layers).
 -- TODO if packet was received print reception time instead
+-- TODO add tcp
 -- @see etherPacket:dump
 -- @see ip4Packet:dump
 -- @see udpPacket:dump
@@ -96,6 +98,9 @@ function pkt:dump()
 		if p.ip:getProtocol() == ip.PROTO_UDP then
 			-- UDPv4
 			p = self:getUdpPacket()
+		elseif p:ipProtocol() == ip.PROTO_TCP then
+			-- TCPv4
+			p = self:getTcpPacket()
 		end
 	elseif p.eth:getType() == eth.TYPE_IP6 then
 		-- IPv6
@@ -103,6 +108,9 @@ function pkt:dump()
 		if p.ip:getNextHeader() == ip6.PROTO_UDP then
 			-- UDPv6
 			p = self:getUdp6Packet()
+		elseif p:ipNextHeader() == ip6.PROTO_TCP then
+			-- TCPv6
+			p = self:getTcp6Packet()
 		end
 	end
 	p:dump(self.pkt.pkt_len)
@@ -1424,6 +1432,24 @@ function udp6Packet:dump(bytes)
 	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.udp:getString()
 	printLength(str, 60)
 	dumpHex(self, bytes)
+end
+
+function pkt:offloadTCPChecksum(ipv4, l2_len, l3_len)
+	--TODO can we offload?
+end
+
+local tcp4PacketType = ffi.typeof("struct tcp_packet*")
+--- Retrieve an TCPv4 packet.
+-- @return Packet in 'struct tcp_packet' format
+function pkt:getTCPPacket()
+	return tcp4PacketType(self.pkt.data)
+end
+
+local tcp6PacketType = ffi.typeof("struct tcp_v6_packet*")
+--- Retrieve an TCPv6 packet.
+-- @return Packet in 'struct tcp_v6_packet' format
+function pkt:getTCP6Packet()
+	return tcp6PacketType(self.pkt.data)
 end
 
 ffi.metatype("struct mac_address", macAddr)
