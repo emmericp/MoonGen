@@ -64,12 +64,18 @@ ffi.cdef[[
 		struct ipv6_header 	ip;
 		uint8_t 		payload[];
 	};
+	
+	union payload_t {
+		uint8_t	uint8[0];
+		uint32_t uint32[0];
+		uint64_t uint64[0];
+	};
 
 	struct __attribute__((__packed__)) udp_packet {
 		struct ethernet_header 	eth;
 		struct ipv4_header 	ip;
 		struct udp_header 	udp;
-		uint8_t			payload[];
+		union payload_t payload;
 	};
 
 	struct __attribute__((__packed__)) ethernet_packet {
