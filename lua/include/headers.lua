@@ -3,6 +3,12 @@ local ffi = require "ffi"
 -- structs
 ffi.cdef[[
 	// TODO: vlan support (which can be offloaded to the NIC to simplify scripts)
+	union payload_t {
+		uint8_t	uint8[0];
+		uint32_t uint32[0];
+		uint64_t uint64[0];
+	};
+	
 	struct __attribute__ ((__packed__)) mac_address {
 		uint8_t		uint8[6];
 	};
@@ -69,21 +75,15 @@ ffi.cdef[[
 	struct __attribute__((__packed__)) ip_packet {
 		struct ethernet_header 	eth;
 		struct ipv4_header	ip;
-		uint8_t 		payload[];
+		union payload_t payload;
 	};
 
 	struct __attribute__((__packed__)) ip_v6_packet {
 		struct ethernet_header 	eth;
 		struct ipv6_header 	ip;
-		uint8_t 		payload[];
+		union payload_t payload;
 	};
 	
-	union payload_t {
-		uint8_t	uint8[0];
-		uint32_t uint32[0];
-		uint64_t uint64[0];
-	};
-
 	struct __attribute__((__packed__)) udp_packet {
 		struct ethernet_header 	eth;
 		struct ipv4_header 	ip;
@@ -95,26 +95,26 @@ ffi.cdef[[
 		struct ethernet_header 	eth;
 		struct ipv4_header 	ip;
 		struct tcp_header 	tcp;
-		uint8_t			payload[];
+		union payload_t payload;
 	};
 
 	struct __attribute__((__packed__)) ethernet_packet {
 		struct ethernet_header 	eth;
-		uint8_t			payload[];
+		union payload_t payload;
 	};
 
 	struct __attribute__((__packed__)) udp_v6_packet {
 		struct ethernet_header	eth;
 		struct ipv6_header 	ip;
 		struct udp_header 	udp;
-		uint8_t			payload[];
+		union payload_t payload;
 	};
 	
 	struct __attribute__((__packed__)) tcp_v6_packet {
 		struct ethernet_header	eth;
 		struct ipv6_header 	ip;
 		struct tcp_header 	tcp;
-		uint8_t			payload[];
+		union payload_t payload;
 	};
 ]]
 

@@ -55,13 +55,13 @@ function pkt:offloadUdpChecksum(ipv4, l2_len, l3_len)
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
 		self.pkt.header_lengths = l2_len * 512 + l3_len
 		-- calculate pseudo header checksum because the NIC doesn't do this...
-		dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data)
+		dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data, 20)
 	else 
 		l3_len = l3_len or 40
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_UDP_CKSUM)
 		self.pkt.header_lengths = l2_len * 512 + l3_len
 		-- calculate pseudo header checksum because the NIC doesn't do this...
-		dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data)
+		dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data, 30)
 	end
 end
 
@@ -81,15 +81,38 @@ function pkt:offloadIPChecksum(ipv4, l2_len, l3_len)
 	end
 end
 
+--- Instruct the NIC to calculate the IP and TCP checksum for this packet.
+-- @param ipv4 Boolean to decide whether the packet uses IPv4 (set to nil/true) or IPv6 (set to anything else).
+-- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).
+-- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4, 40 bytes for IPv6).
+function pkt:offloadTcpChecksum(ipv4, l2_len, l3_len)
+	-- NOTE: this method cannot be moved to the udpPacket class because it doesn't (and can't) know the pktbuf it belongs to
+	ipv4 = ipv4 == nil or ipv4
+	l2_len = l2_len or 14
+	if ipv4 then
+		l3_len = l3_len or 20
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_TCP_CKSUM)
+		self.pkt.header_lengths = l2_len * 512 + l3_len
+		-- calculate pseudo header checksum because the NIC doesn't do this...
+		dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data, 25)
+	else 
+		l3_len = l3_len or 40
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_TCP_CKSUM)
+		self.pkt.header_lengths = l2_len * 512 + l3_len
+		-- calculate pseudo header checksum because the NIC doesn't do this...
+		dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data, 35)
+	end
+end
+		
 --- Print a hex dump of the complete packet.
 -- Dumps the first self.pkt_len bytes of self.data.
 -- As this struct has no information about the actual type of the packet, it gets recreated by analyzing the protocol fields (etherType, protocol, ...).
 -- The packet is then dumped using the dump method of the best fitting packet (starting with an ethernet packet and going up the layers).
 -- TODO if packet was received print reception time instead
--- TODO add tcp
 -- @see etherPacket:dump
 -- @see ip4Packet:dump
 -- @see udpPacket:dump
+-- @see tcp.tcp4Packet:dump
 function pkt:dump()
 	local p = self:getEthernetPacket()
 	if p.eth:getType() == eth.TYPE_IP then
@@ -98,7 +121,7 @@ function pkt:dump()
 		if p.ip:getProtocol() == ip.PROTO_UDP then
 			-- UDPv4
 			p = self:getUdpPacket()
-		elseif p:ipProtocol() == ip.PROTO_TCP then
+		elseif p.ip:getProtocol() == ip.PROTO_TCP then
 			-- TCPv4
 			p = self:getTcpPacket()
 		end
@@ -108,7 +131,7 @@ function pkt:dump()
 		if p.ip:getNextHeader() == ip6.PROTO_UDP then
 			-- UDPv6
 			p = self:getUdp6Packet()
-		elseif p:ipNextHeader() == ip6.PROTO_TCP then
+		elseif p.ip:getNextHeader() == ip6.PROTO_TCP then
 			-- TCPv6
 			p = self:getTcp6Packet()
 		end
@@ -1434,22 +1457,30 @@ function udp6Packet:dump(bytes)
 	dumpHex(self, bytes)
 end
 
-function pkt:offloadTCPChecksum(ipv4, l2_len, l3_len)
-	--TODO can we offload?
-end
-
 local tcp4PacketType = ffi.typeof("struct tcp_packet*")
 --- Retrieve an TCPv4 packet.
 -- @return Packet in 'struct tcp_packet' format
-function pkt:getTCPPacket()
+function pkt:getTcp4Packet()
 	return tcp4PacketType(self.pkt.data)
 end
 
 local tcp6PacketType = ffi.typeof("struct tcp_v6_packet*")
 --- Retrieve an TCPv6 packet.
 -- @return Packet in 'struct tcp_v6_packet' format
-function pkt:getTCP6Packet()
+function pkt:getTcp6Packet()
 	return tcp6PacketType(self.pkt.data)
+end
+
+--- Retrieve either an TCPv4 or TCPv6 packet.
+-- @return ipv4 If true or nil returns TCPv4, TCPv6 otherwise
+-- @return Packet in 'struct tcp_packet' or 'struct tcp_v6_packet' format
+function pkt:getTcpPacket(ipv4)
+	ipv4 = ipv4 == nil or ipv4
+	if ipv4 then
+		return self:getTcp4Packet()
+	else
+		return self:getTcp6Packet()
+	end
 end
 
 ffi.metatype("struct mac_address", macAddr)
@@ -1469,4 +1500,3 @@ ffi.metatype("struct udp_packet", udpPacket)
 ffi.metatype("struct udp_v6_packet", udp6Packet)
 
 ffi.metatype("struct rte_mbuf", pkt)
-

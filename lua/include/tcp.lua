@@ -321,22 +321,22 @@ function tcpHeader:fill(args)
 	self:setDataOffset(args.tcpDataOffset)
 	self:setReserved(args.tcpReserved)
 	self:setFlags(args.tcpFlags)
-	if not args.tcpURG == 0 then
+	if args.tcpURG == 1 then
 		self:setURG()
 	end
-	if not args.tcpACK == 0 then
+	if args.tcpACK == 1 then
 		self:setACK()
 	end
-	if not args.tcpPSH == 0 then
+	if args.tcpPSH == 1 then
 		self:setPSH()
 	end
-	if not args.tcpRST == 0 then
+	if args.tcpRST == 1 then
 		self:setRST()
 	end
-	if not args.tcpSYN == 0 then
+	if args.tcpSYN == 1 then
 		self:setSYN()
 	end
-	if not args.tcpFIN == 0 then
+	if args.tcpFIN == 1 then
 		self:setFIN()
 	end
 	self:setWindow(args.tcpWindow)
@@ -364,7 +364,7 @@ function tcpHeader:get()
 		 tcpWindow		= self:getWindow(),
 		 tcpChecksum		= self:getChecksum(),
 		 tcpUrgentPointer	= self:getUrgentPointer()
-			}
+		}
 end
 
 --- Retrieve the values of all members.
@@ -412,7 +412,7 @@ function tcp4Packet:dump(bytes)
 	dumpHex(self, bytes)
 end
 
-function tcp4Packet:calculateTCPChecksum()
+function tcp4Packet:calculateTcpChecksum()
 	-- TODO
 	self.tcp:setChecksum()
 end
@@ -442,7 +442,7 @@ function tcp6Packet:dump(bytes)
 	dumpHex(self, bytes)
 end
 
-function tcp6Packet:calculateTCPChecksum()
+function tcp6Packet:calculateTcpChecksum()
 	-- TODO
 	self.tcp:setChecksum()
 end

@@ -112,13 +112,14 @@ function parseMacAddress(mac)
 end
 
 --- Parse a string to an IP address
--- @return ip address in ipv4_address or ipv6_address format or nil if invalid address
+-- @return address ip address in ipv4_address or ipv6_address format or nil if invalid address
+-- @return boolean true if IPv4 address, false otherwise
 function parseIPAddress(ip)
 	local address = parseIP4Address(ip)
 	if address == nil then
-		address = parseIP6Address(ip)
+		return parseIP6Address(ip), false
 	end
-	return address	
+	return address, true
 end
 
 --- Parse a string to an IPv4 address

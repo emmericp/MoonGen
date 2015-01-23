@@ -175,10 +175,10 @@ ffi.cdef[[
 
 	
 	// checksum offloading
-	void calc_ipv4_pseudo_header_checksum(void* data);
-	void calc_ipv4_pseudo_header_checksums(struct rte_mbuf** pkts, uint16_t num_pkts);
-	void calc_ipv6_pseudo_header_checksum(void* data);
-	void calc_ipv6_pseudo_header_checksums(struct rte_mbuf** pkts, uint16_t num_pkts);
+	void calc_ipv4_pseudo_header_checksum(void* data, int offset);
+	void calc_ipv4_pseudo_header_checksums(struct rte_mbuf** pkts, uint16_t num_pkts, int offset);
+	void calc_ipv6_pseudo_header_checksum(void* data, int offset);
+	void calc_ipv6_pseudo_header_checksums(struct rte_mbuf** pkts, uint16_t num_pkts, int offset);
 
 	// timers
 	void rte_delay_ms_export(uint32_t ms);

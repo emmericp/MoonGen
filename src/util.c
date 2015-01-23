@@ -48,14 +48,15 @@ static inline uint16_t get_ipv4_psd_sum (struct ipv4_hdr* ip_hdr) {
 }
 
 // TODO: cope with flexible offsets
-void calc_ipv4_pseudo_header_checksum(void* data) {
+// offset: udp - 20; tcp - 25
+void calc_ipv4_pseudo_header_checksum(void* data, int offset) {
 	uint16_t csum = get_ipv4_psd_sum((struct ipv4_hdr*) ((uint8_t*)data + 14));
-	((uint16_t*) data)[20] = csum;
+	((uint16_t*) data)[offset] = csum;
 }
 
-void calc_ipv4_pseudo_header_checksums(struct rte_mbuf** data, int n) {
+void calc_ipv4_pseudo_header_checksums(struct rte_mbuf** data, int n, int offset) {
 	for (int i = 0; i < n; i++) {
-		calc_ipv4_pseudo_header_checksum(data[i]->pkt.data);
+		calc_ipv4_pseudo_header_checksum(data[i]->pkt.data, offset);
 	}
 }
 
@@ -103,14 +104,15 @@ static inline uint16_t get_ipv6_psd_sum (struct ipv6_hdr * ip_hdr)
 }
 
 // TODO: cope with flexible offsets and different protocols
-void calc_ipv6_pseudo_header_checksum(void* data) {
+// offset: udp - 30; tcp - 35
+void calc_ipv6_pseudo_header_checksum(void* data, int offset) {
 	uint16_t csum = get_ipv6_psd_sum((struct ipv6_hdr*) ((uint8_t*)data + 14));
-	((uint16_t*) data)[30] = csum;
+	((uint16_t*) data)[offset] = csum;
 }
 
-void calc_ipv6_pseudo_header_checksums(struct rte_mbuf** data, int n) {
+void calc_ipv6_pseudo_header_checksums(struct rte_mbuf** data, int n, int offset) {
 	for (int i = 0; i < n; i++) {
-		calc_ipv6_pseudo_header_checksum(data[i]->pkt.data);
+		calc_ipv6_pseudo_header_checksum(data[i]->pkt.data, offset);
 	}
 }
 
