@@ -66,20 +66,18 @@ end
 
 --- Instruct the NIC to calculate the IP checksum for this packet.
 -- @param ipv4 Boolean to decide whether the packet uses IPv4 (set to nil/true) or IPv6 (set to anything else).
+-- 			   In case it is an IPv6 packet, do nothing (the header has no checksum).
 -- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).
--- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4, 40 bytes for IPv6).
+-- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4).
 function pkt:offloadIPChecksum(ipv4, l2_len, l3_len)
 	-- NOTE: this method cannot be moved to the udpPacket class because it doesn't (and can't) know the pktbuf it belongs to
 	ipv4 = ipv4 == nil or ipv4
-	l2_len = l2_len or 14
 	if ipv4 then
+		l2_len = l2_len or 14
 		l3_len = l3_len or 20
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM)
-	else 
-		l3_len = l3_len or 40
-		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV6_CSUM)
+		self.pkt.header_lengths = l2_len * 512 + l3_len
 	end
-	self.pkt.header_lengths = l2_len * 512 + l3_len
 end
 
 --- Print a hex dump of the complete packet.
