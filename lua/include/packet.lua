@@ -66,20 +66,18 @@ end
 
 --- Instruct the NIC to calculate the IP checksum for this packet.
 -- @param ipv4 Boolean to decide whether the packet uses IPv4 (set to nil/true) or IPv6 (set to anything else).
+-- 			   In case it is an IPv6 packet, do nothing (the header has no checksum).
 -- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).
--- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4, 40 bytes for IPv6).
+-- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4).
 function pkt:offloadIPChecksum(ipv4, l2_len, l3_len)
 	-- NOTE: this method cannot be moved to the udpPacket class because it doesn't (and can't) know the pktbuf it belongs to
 	ipv4 = ipv4 == nil or ipv4
-	l2_len = l2_len or 14
 	if ipv4 then
+		l2_len = l2_len or 14
 		l3_len = l3_len or 20
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM)
-	else 
-		l3_len = l3_len or 40
-		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV6_CSUM)
+		self.pkt.header_lengths = l2_len * 512 + l3_len
 	end
-	self.pkt.header_lengths = l2_len * 512 + l3_len
 end
 
 --- Print a hex dump of the complete packet.
@@ -97,14 +95,14 @@ function pkt:dump()
 		p = self:getIPPacket()
 		if p.ip:getProtocol() == ip.PROTO_UDP then
 			-- UDPv4
-			p = self:getUDPPacket()
+			p = self:getUdpPacket()
 		end
 	elseif p.eth:getType() == eth.TYPE_IP6 then
 		-- IPv6
 		p = self:getIP6Packet()
 		if p.ip:getNextHeader() == ip6.PROTO_UDP then
 			-- UDPv6
-			p = self:getUDP6Packet()
+			p = self:getUdp6Packet()
 		end
 	end
 	p:dump(self.pkt.pkt_len)
@@ -135,7 +133,7 @@ end
 --- Set the MAC address.
 -- @param mac Address in string format.
 function macAddr:setString(mac)
-	self:set(parseMACAddress(mac))
+	self:set(parseMacAddress(mac))
 end
 
 --- Test equality of two MAC addresses.
@@ -328,7 +326,7 @@ local udpPacketType = ffi.typeof("struct udp_packet*")
 
 --- Retrieve an IPv4 UDP packet.
 -- @return Packet in 'struct udp_packet' format.
-function pkt:getUDPPacket()
+function pkt:getUdpPacket()
 	return udpPacketType(self.pkt.data)
 end
 
@@ -748,7 +746,7 @@ local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
 
 --- Retrieve an IPv6 UDP packet.
 -- @return Packet in 'struct udp_v6_packet' format.
-function pkt:getUDP6Packet()
+function pkt:getUdp6Packet()
 	return udp6PacketType(self.pkt.data)
 end
 
@@ -1357,7 +1355,7 @@ end
 -- Not implemented as it is optional.
 -- If possible use checksum offloading instead.
 -- @see pkt:offloadUdpChecksum
-function udpPacket:calculateUDPChecksum()
+function udpPacket:calculateUdpChecksum()
 	-- optional, so don't do it
 	self.udp:setChecksum()
 end
@@ -1415,7 +1413,7 @@ end
 -- Not implemented (todo).
 -- If possible use checksum offloading instead.
 -- @see pkt:offloadUdpChecksum
-function udp6Packet:calculateUDPChecksum()
+function udp6Packet:calculateUdpChecksum()
 	-- TODO as it is mandatory for IPv6 UDP packets
 	self.udp:setChecksum()
 end

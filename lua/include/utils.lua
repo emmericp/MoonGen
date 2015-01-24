@@ -89,7 +89,7 @@ end
 --- Parse a string to a MAC address
 -- @param mac address in string format
 -- @return address in mac_address format or nil if invalid address
-function parseMACAddress(mac)
+function parseMacAddress(mac)
 	local bytes = {string.match(mac, '(%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)')}
 	if bytes == nil then
 		return
