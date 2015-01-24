@@ -61,9 +61,9 @@ function loadSlave(port, queue, minA, numIPs)
 	local mem = memory.createMemPool(function(buf)
 		local pkt
 		if ipv4 then
-			pkt = buf:getUDPPacket()
+			pkt = buf:getUdpPacket()
 		else 
-			pkt = buf:getUDP6Packet()
+			pkt = buf:getUdp6Packet()
 		end
 
 		pkt:fill{ ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
@@ -87,9 +87,9 @@ function loadSlave(port, queue, minA, numIPs)
 		for i, buf in ipairs(bufs) do 			
 			local pkt
 			if ipv4 then
-				pkt = buf:getUDPPacket()
+				pkt = buf:getUdpPacket()
 			else
-				pkt = buf:getUDP6Packet()
+				pkt = buf:getUdp6Packet()
 			end
 			
 			--increment IP
