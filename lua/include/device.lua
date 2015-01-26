@@ -180,6 +180,14 @@ function dev:getRxStats()
 	return dpdkc.read_reg32(self.id, TPR)
 end
 
+
+-- TODO: figure out how to actually acquire statistics in a meaningful way for dropped packets :/
+function dev:getRxStatsAll()
+	local stats = ffi.new("struct rte_eth_stats")
+	dpdkc.rte_eth_stats_get(self.id, stats)
+	return stats
+end
+
 local RTTDQSEL = 0x00004904
 
 --- See txQueue:setTxRate() for details.

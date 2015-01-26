@@ -85,6 +85,47 @@ ffi.cdef[[
 		uint16_t src_port_mask;
 		uint16_t dst_port_mask;
 	};
+
+
+	// statistics
+	struct rte_eth_stats {
+		uint64_t ipackets;  /**< Total number of successfully received packets. */
+		uint64_t opackets;  /**< Total number of successfully transmitted packets.*/
+		uint64_t ibytes;    /**< Total number of successfully received bytes. */
+		uint64_t obytes;    /**< Total number of successfully transmitted bytes. */
+		uint64_t imissed;   /**< Total of RX missed packets (e.g full FIFO). */
+		uint64_t ibadcrc;   /**< Total of RX packets with CRC error. */
+		uint64_t ibadlen;   /**< Total of RX packets with bad length. */
+		uint64_t ierrors;   /**< Total number of erroneous received packets. */
+		uint64_t oerrors;   /**< Total number of failed transmitted packets. */
+		uint64_t imcasts;   /**< Total number of multicast received packets. */
+		uint64_t rx_nombuf; /**< Total number of RX mbuf allocation failures. */
+		uint64_t fdirmatch; /**< Total number of RX packets matching a filter. */
+		uint64_t fdirmiss;  /**< Total number of RX packets not matching any filter. */
+		uint64_t tx_pause_xon;  /**< Total nb. of XON pause frame sent. */
+		uint64_t rx_pause_xon;  /**< Total nb. of XON pause frame received. */
+		uint64_t tx_pause_xoff; /**< Total nb. of XOFF pause frame sent. */
+		uint64_t rx_pause_xoff; /**< Total nb. of XOFF pause frame received. */
+		// TODO: 16 is a dpdk compile-time constant which kind of sucks. probably needs a rewrite or something.
+		uint64_t q_ipackets[16];
+		/**< Total number of queue RX packets. */
+		uint64_t q_opackets[16];
+		/**< Total number of queue TX packets. */
+		uint64_t q_ibytes[16];
+		/**< Total number of successfully received queue bytes. */
+		uint64_t q_obytes[16];
+		/**< Total number of successfully transmitted queue bytes. */
+		uint64_t q_errors[16];
+		/**< Total number of queue packets received that are dropped. */
+		uint64_t ilbpackets;
+		/**< Total number of good packets received from loopback,VF Only */
+		uint64_t olbpackets;
+		/**< Total number of good packets transmitted to loopback,VF Only */
+		uint64_t ilbbytes;
+		/**< Total number of good bytes received from loopback,VF Only */
+		uint64_t olbbytes;
+		/**< Total number of good bytes transmitted to loopback,VF Only */
+	};
 ]]
 
 -- dpdk functions and wrappers
@@ -151,6 +192,9 @@ ffi.cdef[[
 
 	// timestamping
 	void read_timestamps_software(uint8_t port_id, uint16_t queue_id, uint32_t* data, uint64_t size);
+
+	// statistics
+	void rte_eth_stats_get(uint8_t port, struct rte_eth_stats* stats);
 ]]
 
 return ffi.C
