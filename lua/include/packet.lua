@@ -90,14 +90,18 @@ end
 -- @see udpPacket:dump
 function pkt:dump()
 	local p = self:getEthernetPacket()
-	if p.eth:getType() == eth.TYPE_IP then
+	local type = p.eth:getType()
+	if type == eth.TYPE_ARP then
+		-- ARP
+		p = self:getARPPacket()
+	elseif type == eth.TYPE_IP then
 		-- ipv4
 		p = self:getIPPacket()
 		if p.ip:getProtocol() == ip.PROTO_UDP then
 			-- UDPv4
 			p = self:getUdpPacket()
 		end
-	elseif p.eth:getType() == eth.TYPE_IP6 then
+	elseif type == eth.TYPE_IP6 then
 		-- IPv6
 		p = self:getIP6Packet()
 		if p.ip:getNextHeader() == ip6.PROTO_UDP then
@@ -1424,6 +1428,14 @@ function udp6Packet:dump(bytes)
 	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.udp:getString()
 	printLength(str, 60)
 	dumpHex(self, bytes)
+end
+
+local arpPacketType = ffi.typeof("struct arp_packet*")
+
+--- Retrieve an ARP packet.
+-- @return Packet in 'struct arp_packet' format
+function pkt:getARPPacket()
+	return arpPacketType(self.pkt.data)
 end
 
 ffi.metatype("struct mac_address", macAddr)
