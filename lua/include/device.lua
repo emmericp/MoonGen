@@ -137,7 +137,7 @@ end
 
 function dev:getMac()
 	-- TODO: optimize
-	return parseMACAddress(self:getMacString())
+	return parseMacAddress(self:getMacString())
 end
 
 function dev:getPciId()

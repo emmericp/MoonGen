@@ -93,7 +93,7 @@ function pkt:dump()
 	local type = p.eth:getType()
 	if type == eth.TYPE_ARP then
 		-- ARP
-		p = self:getARPPacket()
+		p = self:getArpPacket()
 	elseif type == eth.TYPE_IP then
 		-- ipv4
 		p = self:getIPPacket()
@@ -1434,7 +1434,7 @@ local arpPacketType = ffi.typeof("struct arp_packet*")
 
 --- Retrieve an ARP packet.
 -- @return Packet in 'struct arp_packet' format
-function pkt:getARPPacket()
+function pkt:getArpPacket()
 	return arpPacketType(self.pkt.data)
 end
 

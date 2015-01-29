@@ -189,6 +189,8 @@ end
 -- @param str The string to be printed.
 -- @param len Length of each line
 function printLength(str, len)
+	len = len or 10000
+
 	local beg = 0
 	for i = len, str:len(), len do
 		printf(str:sub(beg, i))
