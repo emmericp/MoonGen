@@ -236,10 +236,10 @@ function arpHeader:get()
 			 arpHardwareAddressLength	= self:getHardwareAddressLength(),
 			 arpProtoAddressLength		= self:getProtoAddressLength(),
 			 arpOperation				= self:getOperation(),
-			 arpHardwareSrc				= self:setHardwareSrc(),
-			 arpHardwareDst				= self:setHardwareDst(),
-			 arpProtoSrc				= self:setProtoSrc(),
-			 arpProtoDst				= self:setProtoDst() 
+			 arpHardwareSrc				= self:getHardwareSrc(),
+			 arpHardwareDst				= self:getHardwareDst(),
+			 arpProtoSrc				= self:getProtoSrc(),
+			 arpProtoDst				= self:getProtoDst() 
 		 }
 end
 

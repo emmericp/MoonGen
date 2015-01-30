@@ -44,7 +44,7 @@ function master(...)
 	reqDev:getTxQueue(0):setRate(rate)
 	resDev:getTxQueue(0):setRate(rate)
 	
-	-- resDev:l2Filter(hton16(eth.TYPE_ARP), filter.DROP) -- TODO no idea how any of this works
+	-- resDev:l2Filter(hton16(eth.TYPE_ARP), filter.DROP) 
 
 	--reqPort
 	dpdk.launchLua("arpRequesterSlave", reqPort, 0, 0)
@@ -175,6 +175,7 @@ function arpResponderSlave(port, rxQueue, txQueue)
 					end
 				end
 			end
+			rxBufs:freeAll()
 		end
 	end
 end
