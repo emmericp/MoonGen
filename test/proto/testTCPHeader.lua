@@ -48,12 +48,12 @@ describe("TCP packet class", function()
 		local tcpWindow			= 23
 		local tcpChecksum		= 0x9876
 		local tcpUrgentPointer	= 91
-		local tcpURG			= 1
-		local tcpACK			= 0
-		local tcpPSH			= 0
-		local tcpRST			= 0
-		local tcpSYN			= 1
-		local tcpFIN			= 0
+		local tcpUrg			= 1
+		local tcpAck			= 0
+		local tcpPsh			= 0
+		local tcpRst			= 0
+		local tcpSyn			= 1
+		local tcpFin			= 0
 
 		local args = pkt:get()
 		args.tcpSrc = tcpSrc 
@@ -66,12 +66,12 @@ describe("TCP packet class", function()
 		args.tcpWindow = tcpWindow 
 		args.tcpChecksum = tcpChecksum 
 		args.tcpUrgentPointer = tcpUrgentPointer
-		args.tcpURG = tcpURG
-		args.tcpACK	= tcpACK
-		args.tcpPSH = tcpPSH
-		args.tcpRST = tcpRST
-		args.tcpSYN = tcpSYN
-		args.tcpFIN = tcpFIN
+		args.tcpUrg = tcpUrg
+		args.tcpAck	= tcpAck
+		args.tcpPsh = tcpPsh
+		args.tcpRst = tcpRst
+		args.tcpSyn = tcpSyn
+		args.tcpFin = tcpFin
 
 		pkt:fill(args)
 		assert.are.same(tcpSrc, pkt.tcp:getSrcPort())
@@ -84,12 +84,12 @@ describe("TCP packet class", function()
 		assert.are.same(tcpWindow, pkt.tcp:getWindow())	
 		assert.are.same(tcpChecksum, pkt.tcp:getChecksum())	
 		assert.are.same(tcpUrgentPointer, pkt.tcp:getUrgentPointer())	
-		assert.are.same(tcpURG, pkt.tcp:getURG())	
-		assert.are.same(tcpACK, pkt.tcp:getACK())	
-		assert.are.same(tcpPSH, pkt.tcp:getPSH())	
-		assert.are.same(tcpRST, pkt.tcp:getRST())	
-		assert.are.same(tcpSYN, pkt.tcp:getSYN())	
-		assert.are.same(tcpFIN, pkt.tcp:getFIN())	
+		assert.are.same(tcpUrg, pkt.tcp:getUrg())	
+		assert.are.same(tcpAck, pkt.tcp:getAck())	
+		assert.are.same(tcpPsh, pkt.tcp:getPsh())	
+		assert.are.same(tcpRst, pkt.tcp:getRst())	
+		assert.are.same(tcpSyn, pkt.tcp:getSyn())	
+		assert.are.same(tcpFin, pkt.tcp:getFin())	
 
 		local args2 = pkt:get()
 		assert.are.same(args, args2)

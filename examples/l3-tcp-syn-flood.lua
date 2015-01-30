@@ -11,7 +11,6 @@ local packet	= require "packet"
 local ffi	= require "ffi"
 
 function master(...)
-	--parse args
 	local txPort = tonumber((select(1, ...)))
 	local minIP = select(2, ...)
 	local numIPs = tonumber((select(3, ...)))
@@ -50,7 +49,7 @@ function loadSlave(port, queue, minA, numIPs)
 			ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
 			ipDst="192.168.1.1", 
 			ip6Dst="fd06::1",
-			tcpSYN=1,
+			tcpSyn=1,
 			tcpSeqNumber=1,
 			tcpWindow=10,
 			pktLength=packetLen }

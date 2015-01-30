@@ -2,20 +2,21 @@ local ffi = require "ffi"
 
 require "utils"
 require "headers"
-local dpdkc = require "dpdkc"
-local dpdk = require "dpdk"
-local eth = require "ethernet"
-local ip = require "ip"
-local ip6 = require "ip6"
+
+local eth = require "proto.ethernet"
+local ip = require "proto.ip"
+local ip6 = require "proto.ip6"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
-local bswap = bswap
-local bswap16 = bswap16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
-local write = io.write
 local format = string.format
+
+
+------------------------------------------------------------------------------
+--- TCP header
+------------------------------------------------------------------------------
 
 local tcpHeader = {}
 tcpHeader.__index = tcpHeader
@@ -146,121 +147,120 @@ function tcpHeader:getFlagsString()
 	return format("0x%02x", self:getFlags())
 end
 
-function tcpHeader:setURG()
+function tcpHeader:setUrg()
 	self.flags = bor(self.flags, 0x20)
 end
 
-function tcpHeader:unsetURG()
+function tcpHeader:unsetUrg()
 	self.flags = band(self.flags, 0xdf)
 end
 
--- TODO do we need rshift? (without set = 32, with set = 1; basically do we want [0,1] or is [0, not 0] enough)
-function tcpHeader:getURG()
+function tcpHeader:getUrg()
 	return rshift(band(self.flags, 0x20), 5)
 end
 
-function tcpHeader:getURGString()
-	if self:getURG() == 1 then
+function tcpHeader:getUrgString()
+	if self:getUrg() == 1 then
 		return "URG"
 	else
 		return "X"
 	end
 end
 
-function tcpHeader:setACK()
+function tcpHeader:setAck()
 	self.flags = bor(self.flags, 0x10)
 end
 
-function tcpHeader:unsetACK()
+function tcpHeader:unsetAck()
 	self.flags = band(self.flags, 0xef)
 end
 
-function tcpHeader:getACK()
+function tcpHeader:getAck()
 	return rshift(band(self.flags, 0x10), 4)
 end
 
-function tcpHeader:getACKString()
-	if self:getACK() == 1 then
+function tcpHeader:getAckString()
+	if self:getAck() == 1 then
 		return "ACK"
 	else
 		return "X"
 	end
 end
 
-function tcpHeader:setPSH()
+function tcpHeader:setPsh()
 	self.flags = bor(self.flags, 0x08)
 end
 
-function tcpHeader:unsetPSH()
+function tcpHeader:unsetPsh()
 	self.flags = band(self.flags, 0xf7)
 end
 
-function tcpHeader:getPSH()
+function tcpHeader:getPsh()
 	return rshift(band(self.flags, 0x08), 3)
 end
 
-function tcpHeader:getPSHString()
-	if self:getPSH() == 1 then
+function tcpHeader:getPshString()
+	if self:getPsh() == 1 then
 		return "PSH"
 	else
 		return "X"
 	end
 end
 
-function tcpHeader:setRST()
+function tcpHeader:setRst()
 	self.flags = bor(self.flags, 0x04)
 end
 
-function tcpHeader:unsetRST()
+function tcpHeader:unsetRst()
 	self.flags = band(self.flags, 0xfb)
 end
 
-function tcpHeader:getRST()
+function tcpHeader:getRst()
 	return rshift(band(self.flags, 0x04), 2)
 end
 
-function tcpHeader:getRSTString()
-	if self:getRST() == 1 then
+function tcpHeader:getRstString()
+	if self:getRst() == 1 then
 		return "RST"
 	else
 		return "X"
 	end
 end
 
-function tcpHeader:setSYN()
+function tcpHeader:setSyn()
 	self.flags = bor(self.flags, 0x02)
 end
 
-function tcpHeader:unsetSYN()
+function tcpHeader:unsetSyn()
 	self.flags = band(self.flags, 0xfd)
 end
 
-function tcpHeader:getSYN()
+function tcpHeader:getSyn()
 	return rshift(band(self.flags, 0x02), 1)
 end
 
-function tcpHeader:getSYNString()
-	if self:getSYN() == 1 then
+function tcpHeader:getSynString()
+	if self:getSyn() == 1 then
 		return "SYN"
 	else
 		return "X"
 	end
 end
 
-function tcpHeader:setFIN()
+function tcpHeader:setFin()
 	self.flags = bor(self.flags, 0x01)
 end
 
-function tcpHeader:unsetFIN()
+function tcpHeader:unsetFin()
 	self.flags = band(self.flags, 0xfe)
 end
 
-function tcpHeader:getFIN()
+function tcpHeader:getFin()
 	return band(self.flags, 0x01)
 end
 
-function tcpHeader:getFINString()
-	if self:getFIN() == 1 then
+function tcpHeader:getFinString()
+	if self:getFin() == 1 then
 		return "FIN"
 	else
 		return "X"
@@ -316,28 +316,28 @@ function tcpHeader:fill(args)
 	args = args or {}
 	self:setSrcPort(args.tcpSrc)
 	self:setDstPort(args.tcpDst)
-	self:setSeqNumber(args.tcpSeqNumber) --TODO better wording?
+	self:setSeqNumber(args.tcpSeqNumber)
 	self:setAckNumber(args.tcpAckNumber)
 	self:setDataOffset(args.tcpDataOffset)
 	self:setReserved(args.tcpReserved)
 	self:setFlags(args.tcpFlags)
-	if args.tcpURG == 1 then
-		self:setURG()
+	if args.tcpUrg and args.tcpUrg ~= 0 then
+		self:setUrg()
 	end
-	if args.tcpACK == 1 then
-		self:setACK()
+	if args.tcpAck and args.tcpAck ~= 0 then
+		self:setAck()
 	end
-	if args.tcpPSH == 1 then
-		self:setPSH()
+	if args.tcpPsh and args.tcpPsh ~= 0 then
+		self:setPsh()
 	end
-	if args.tcpRST == 1 then
-		self:setRST()
+	if args.tcpRst and args.tcpRst ~= 0 then
+		self:setRst()
 	end
-	if args.tcpSYN == 1 then
-		self:setSYN()
+	if args.tcpSyn and args.tcpSyn ~= 0 then
+		self:setSyn()
 	end
-	if args.tcpFIN == 1 then
-		self:setFIN()
+	if args.tcpFin and args.tcpFin ~= 0 then
+		self:setFin()
 	end
 	self:setWindow(args.tcpWindow)
 	self:setChecksum(args.tcpChecksum)
@@ -355,12 +355,12 @@ function tcpHeader:get()
 		 tcpDataOffset		= self:getDataOffset(),
 		 tcpReserved		= self:getReserved(),
 		 tcpFlags		= self:getFlags(),
-		 tcpURG			= self:getURG(),
-		 tcpACK			= self:getACK(),
-		 tcpPSH			= self:getPSH(),
-		 tcpRST			= self:getRST(),
-		 tcpSYN			= self:getSYN(),
-		 tcpFIN			= self:getFIN(),
+		 tcpUrg			= self:getUrg(),
+		 tcpAck			= self:getAck(),
+		 tcpPsh			= self:getPsh(),
+		 tcpRst			= self:getRst(),
+		 tcpSyn			= self:getSyn(),
+		 tcpFin			= self:getFin(),
 		 tcpWindow		= self:getWindow(),
 		 tcpChecksum		= self:getChecksum(),
 		 tcpUrgentPointer	= self:getUrgentPointer()
@@ -377,17 +377,22 @@ function tcpHeader:getString()
 		.. " offset " 	.. self:getDataOffsetString() 
 		.. " reserved " .. self:getReservedString()
 		.. " flags " 	.. self:getFlagsString() 
-		.. " [" 	.. self:getURGString() 
-		.. "|" 		.. self:getACKString() 
-		.. "|" 		.. self:getPSHString() 
-		.. "|" 		.. self:getRSTString() 
-		.. "|" 		.. self:getSYNString() 
-		.. "|" 		.. self:getFINString()
+		.. " [" 	.. self:getUrgString() 
+		.. "|" 		.. self:getAckString() 
+		.. "|" 		.. self:getPshString() 
+		.. "|" 		.. self:getRstString() 
+		.. "|" 		.. self:getSynString() 
+		.. "|" 		.. self:getFinString()
 		.."] win " 	.. self:getWindowString() 
 		.. " cksum " 	.. self:getChecksumString() 
 		.. " urg " 	.. self:getUrgentPointerString() 
 		.. " "
 end
+
+
+--------------------------------------------------------------------------------
+--- TCPv4 packets
+--------------------------------------------------------------------------------
 
 local tcp4Packet = {}
 local tcp4PacketType = ffi.typeof("struct tcp_packet*")
@@ -396,7 +401,8 @@ tcp4Packet.__index = tcp4Packet
 function tcp4Packet:fill(args)
 	args = args or {}
 
-	args.ipProtocol = ip.PROTO_TCP
+	args.ipProtocol = args.ipProtocol or ip.PROTO_TCP
+	
 	self.eth:fill(args)
 	self.ip:fill(args)
 	self.tcp:fill(args)
@@ -417,6 +423,11 @@ function tcp4Packet:calculateTcpChecksum()
 	self.tcp:setChecksum()
 end
 
+
+----------------------------------------------------------------------------------
+--- TCPv6 packets
+----------------------------------------------------------------------------------
+
 local tcp6Packet = {}
 local tcp6PacketType = ffi.typeof("struct tcp_v6_packet*")
 tcp6Packet.__index = tcp6Packet
@@ -424,8 +435,8 @@ tcp6Packet.__index = tcp6Packet
 function tcp6Packet:fill(args)
 	args = args or {}
 
-	args.ethType = eth.TYPE_IP6
-	args.ip6NextHeader = ip6.PROTO_TCP
+	args.ethType = args.ethType or eth.TYPE_IP6
+	args.ip6NextHeader = args.ip6NextHeader or ip6.PROTO_TCP
 
 	self.eth:fill(args)
 	self.ip:fill(args)
@@ -446,6 +457,11 @@ function tcp6Packet:calculateTcpChecksum()
 	-- TODO
 	self.tcp:setChecksum()
 end
+
+
+------------------------------------------------------------------------------------
+--- Metatypes
+------------------------------------------------------------------------------------
 
 ffi.metatype("struct tcp_header", tcpHeader)
 ffi.metatype("struct tcp_packet", tcp4Packet)
