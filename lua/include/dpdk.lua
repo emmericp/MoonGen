@@ -3,10 +3,11 @@ local mod = {}
 local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 
--- DPDK constants
+-- DPDK constants (lib/librte_mbuf/rte_mbuf.h)
 -- TODO: import more constants here
 mod.PKT_RX_IEEE1588_TMST	= 0x0400
 mod.PKT_TX_IPV4_CSUM		= 0x1000
+mod.PKT_TX_TCP_CKSUM     	= 0x2000 -- < TCP cksum of TX pkt. computed by NIC.
 mod.PKT_TX_UDP_CKSUM		= 0x6000
 mod.PKT_TX_NO_CRC_CSUM		= 0x0001
 
