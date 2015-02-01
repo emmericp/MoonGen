@@ -17,8 +17,9 @@ local format = string.format
 
 local ip = {}
 
-ip.PROTO_TCP = 0x06
-ip.PROTO_UDP = 0x11
+ip.PROTO_ICMP	= 0x01
+ip.PROTO_TCP	= 0x06
+ip.PROTO_UDP	= 0x11
 
 
 ----------------------------------------------------------------------------------
@@ -300,7 +301,9 @@ function ip4Header:getProtocolString()
 	local proto = self:getProtocol()
 	local cleartext = ""
 	
-	if proto == ip.PROTO_UDP then
+	if proto == ip.PROTO_ICMP then
+		cleartext = "(ICMP)"
+	elseif proto == ip.PROTO_UDP then
 		cleartext = "(UDP)"
 	elseif proto == ip.PROTO_TCP then
 		cleartext = "(TCP)"

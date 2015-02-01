@@ -52,6 +52,13 @@ ffi.cdef[[
 		union ipv6_address	dst;
 	};
 
+	struct __attribute__((__packed__)) icmp_header {
+		uint8_t			type;
+		uint8_t			code;
+		uint16_t		cs;
+		union payload_t	body;
+	};
+
 	struct __attribute__((__packed__)) udp_header {                                                             
 		uint16_t	src;
 		uint16_t	dst;
@@ -83,7 +90,19 @@ ffi.cdef[[
 		struct ipv6_header 	ip;
 		union payload_t payload;
 	};
+
+	struct __attribute__((__packed__)) icmp_packet {
+		struct ethernet_header	eth;
+		struct ipv4_header		ip;
+		struct icmp_header		icmp;
+	};
 	
+	struct __attribute__((__packed__)) icmp_v6_packet {
+		struct ethernet_header	eth;
+		struct ipv6_header		ip;
+		struct icmp_header		icmp;
+	};
+
 	struct __attribute__((__packed__)) udp_packet {
 		struct ethernet_header 	eth;
 		struct ipv4_header 	ip;
