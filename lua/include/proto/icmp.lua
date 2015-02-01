@@ -172,7 +172,7 @@ end
 -- @see ip4Header:get
 -- @see icmpHeader:get
 function icmpPacket:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.icmp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.icmp:get())
 end
 
 --- Calculate and set the ICMP header checksum for IPv4 packets.
@@ -185,10 +185,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function icmpPacket:dump(bytes)
-	print(getTimeMicros() .. self.eth:getString())
-	print(self.ip:getString())
-	print(self.icmp:getString())
-	dumpHex(self, bytes) -- TODO build a generic util function ...
+	dumpPacket(self, bytes, self.eth, self.ip, self.icmp)
 end
 
 
@@ -233,7 +230,7 @@ end
 -- @see ip4Header:get
 -- @see icmpHeader:get
 function icmp6Packet:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.icmp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.icmp:get())
 end
 
 --- Calculate and set the ICMP header checksum for IPv6 packets.
@@ -246,10 +243,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function icmp6Packet:dump(bytes)
-	print(getTimeMicros() .. self.eth:getString())
-	print(self.ip:getString())
-	print(self.icmp:getString())
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.icmp)
 end
 
 
