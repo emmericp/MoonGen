@@ -20,9 +20,9 @@ local format = string.format
 
 local ip6 = {}
 
-ip6.PROTO_TCP = 0x06
-ip6.PROTO_UDP = 0x11
-
+ip6.PROTO_TCP 	= 0x06
+ip6.PROTO_UDP 	= 0x11
+ip6.PROTO_ICMP	= 0x3a -- 58
 
 -------------------------------------------------------------------------------------
 --- IPv6 addresses
@@ -258,8 +258,10 @@ end
 function ip6Header:getNextHeaderString()
 	local proto = self:getNextHeader()
 	local cleartext = ""
-	
-	if proto == ip6.PROTO_UDP then
+
+	if proto == ip6.PROTO_ICMP then
+		cleartext = "(ICMP)"
+	elseif proto == ip6.PROTO_UDP then
 		cleartext = "(UDP)"
 	elseif proto == ip6.PROTO_TCP then
 		cleartext = "(TCP)"

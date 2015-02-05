@@ -8,6 +8,7 @@ local dpdk = require "dpdk"
 local eth = require "proto.ethernet"
 local ip = require "proto.ip"
 local ip6 = require "proto.ip6"
+local icmp = require "proto.icmp"
 local udp = require "proto.udp"
 local tcp = require "proto.tcp"
 
@@ -57,20 +58,30 @@ function pkt:dump()
 	if p.eth:getType() == eth.TYPE_IP then
 		-- ipv4
 		p = self:getIPPacket()
-		if p.ip:getProtocol() == ip.PROTO_UDP then
+		local proto = p.ip:getProtocol()
+
+		if proto == ip.PROTO_ICMP then
+			-- ICMPv4
+			p = self:getIcmpPacket()
+		elseif proto == ip.PROTO_UDP then
 			-- UDPv4
 			p = self:getUdpPacket()
-		elseif p.ip:getProtocol() == ip.PROTO_TCP then
+		elseif proto == ip.PROTO_TCP then
 			-- TCPv4
 			p = self:getTcpPacket()
 		end
 	elseif p.eth:getType() == eth.TYPE_IP6 then
 		-- IPv6
 		p = self:getIP6Packet()
-		if p.ip:getNextHeader() == ip6.PROTO_UDP then
+		local proto = p.ip:getNextHeader()
+		
+		if proto == ip6.PROTO_ICMP then
+			-- ICMPv6
+			p = self:getIcmp6Packet()
+		elseif proto == ip6.PROTO_UDP then
 			-- UDPv6
 			p = self:getUdp6Packet()
-		elseif p.ip:getNextHeader() == ip6.PROTO_TCP then
+		elseif proto == ip6.PROTO_TCP then
 			-- TCPv6
 			p = self:getTcp6Packet()
 		end
@@ -180,6 +191,32 @@ function pkt:getIPPacket(ipv4)
 		return self:getIP4Packet()
 	else
 		return self:getIP6Packet()
+	end
+end
+
+local icmp4PacketType = ffi.typeof("struct icmp_packet*")
+--- Retrieve an ICMPv4 packet.
+-- @return Packet in 'struct icmp_packet' format
+function pkt:getIcmp4Packet()
+	return icmp4PacketType(self.pkt.data)
+end
+
+local icmp6PacketType = ffi.typeof("struct icmp_v6_packet*")
+--- Retrieve an ICMPv6 packet.
+-- @return Packet in 'struct icmp_v6_packet' format
+function pkt:getIcmp6Packet()
+	return icmp6PacketType(self.pkt.data)
+end
+
+--- Retrieve either an ICMPv4 or ICMPv6 packet.
+-- @return ipv4 If true or nil returns ICMPv4, ICMPv6 otherwise
+-- @return Packet in 'struct icmp_packet' or 'struct icmp_v6_packet' format
+function pkt:getIcmpPacket(ipv4)
+	ipv4 = ipv4 == nil or ipv4
+	if ipv4 then
+		return self:getIcmp4Packet()
+	else
+		return self:getIcmp6Packet()
 	end
 end
 

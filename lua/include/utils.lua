@@ -220,13 +220,25 @@ function dumpHex(data, bytes)
 	write("\n\n")
 end
 
---- Merge two tables.
--- @param table1 First table.
--- @param table2 Second table.
-function mergeTables(table1, table2)
-	for k, v in pairs(table2) do
-		table1[k] = v 
+function dumpPacket(data, bytes, ...)
+	for i = 1, select("#", ...) do
+		local str = select(i, ...):getString()
+		print(i == 1 and getTimeMicros() .. str or str)
 	end
-	return table1
+	dumpHex(data, bytes)
+end
+
+--- Merge tables.
+-- @param arg Arbitrary amount of tables to get merged.
+function mergeTables(...)
+	local table = select(1, ...)
+	if select("#", ...) > 1 then
+		for i = 2, select("#", ...) do
+			for k,v in pairs(select(i, ...)) do
+				table[k] = v
+			end
+		end
+	end
+	return table
 end
 
