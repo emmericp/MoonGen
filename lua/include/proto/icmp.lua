@@ -13,6 +13,39 @@ local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, 
 local istype = ffi.istype
 local format = string.format
 
+-- TODO 
+-- ICMPv6 and ICMPv4 use different values for the same types/codes which causes some compliactions when handling this with only one header:
+-- - get() always returns values twice with the respective named arguments for both icmpv4/6
+-- - getString() does not work for ICMPv6 correctly without some ugly workarounds (basically adding 'ipv4' flags to getString()'s of type/code and header)
+-- 	 currently getString() simply does not recognise ICMPv6
+-- - Furthermore, dumpPacket would need a change to pass this flag when calling getString()
+-- Once this is really needed, better move ICMPv6 to a seperate file (which would result in copying/duplicating 95% of this code)
+-- For now those cosmetic issues should not matter.
+
+---------------------------------------------------------------------------
+--- ICMPv4 constants
+---------------------------------------------------------------------------
+
+local icmp = {}
+
+-- type-code pairs
+icmp.ECHO_REPLY					= { type = 0, code = 0 }
+icmp.ECHO_REQUEST 				= { type = 8, code = 0 }
+
+icmp.DST_UNR_PORT_UNR		 	= { type = 3, code = 3 }
+
+icmp.TIME_EXCEEDED_TTL_EXPIRED	= { type = 11, code = 0 }
+
+
+---------------------------------------------------------------------------
+--- ICMPv6 constants
+---------------------------------------------------------------------------
+
+local icmp6 = {}
+
+icmp6.ECHO_REQUEST				= { type = 128, code = 0 }
+icmp6.ECHO_REPLY				= { type = 129, code = 0 }
+
 
 ---------------------------------------------------------------------------
 --- ICMP header
@@ -24,7 +57,7 @@ icmpHeader.__index = icmpHeader
 --- Set the type.
 -- @param int Type of the icmp header as 8 bit integer.
 function icmpHeader:setType(int)
-	int = int or 0 -- TODO
+	int = int or icmp.ECHO_REQUEST.type
 	self.type = int
 end
 
@@ -35,15 +68,29 @@ function icmpHeader:getType()
 end
 
 --- Retrieve the type.
+-- does not work for ICMPv6 (ICMPv6 uses different values)
 -- @return Type as string.
 function icmpHeader:getTypeString()
-	return self:getType() -- TODO
+	local type = self:getType()
+	local cleartext = "unknown"
+
+	if type == icmp.ECHO_REPLY.type then
+		cleartext = "echo reply"
+	elseif type == icmp.ECHO_REQUEST.type then
+		cleartext = "echo request"
+	elseif type == icmp.DST_UNR_PORT_UNR.type then
+		cleartext = "dst. unr."
+	elseif type == icmp.TIME_EXCEEDED_TTL_EXPIRED.type then
+		cleartext = "time exceeded"
+	end
+
+	return format("%s (%s)", type, cleartext)
 end
 
 --- Set the code.
 -- @param int Code of the icmp header as 8 bit integer.
 function icmpHeader:setCode(int)
-	int = int or 0 -- TODO
+	int = int or icmp.ECHO_REQUEST.code
 	self.code = int
 end
 
@@ -54,9 +101,31 @@ function icmpHeader:getCode()
 end
 
 --- Retrieve the code.
+-- does not work for ICMPv6
 -- @return Code as string.
 function icmpHeader:getCodeString()
-	return self:getCode() -- TODO
+	local type = self:getType()
+	local code = self:getCode()
+	local cleartext = "unknown"
+
+	if type == icmp.ECHO_REPLY.type then
+		cleartext = code == icmp.ECHO_REPLY.code and "correct" or "wrong"
+	
+	elseif type == icmp.ECHO_REQUEST.type then
+		cleartext = code == icmp.ECHO_REQUEST.code and "correct" or "wrong"
+	
+	elseif type == icmp.DST_UNR_PORT_UNR.type then
+		if code == icmp.DST_UNR_PORT_UNR.code then
+			cleartext = "port unr."
+		end
+	
+	elseif type == icmp.TIME_EXCEEDED_TTL_EXPIRED.type then
+		if code == icmp.TIME_EXCEEDED_TTL_EXPIRED.code then
+			cleartext = "ttl expired"
+		end
+	end
+
+	return format("%s (%s)", code, cleartext)
 end
 
 
@@ -65,6 +134,11 @@ end
 function icmpHeader:setChecksum(int)
 	int = int or 0
 	self.cs = hton16(int)
+end
+
+--- Calculate the checksum
+function icmpHeader:calculateChecksum()
+	self:setChecksum(hton16(checksum(self, ffi.sizeof(self))))
 end
 
 --- Retrieve the checksum.
@@ -83,7 +157,7 @@ end
 -- @param int Message body of the icmp header as TODO.
 function icmpHeader:setMessageBody(body)
 	body = body or 0
-	--self.body = body
+	--self.body.uint8_t = body
 end
 
 --- Retrieve the message body.
@@ -93,9 +167,9 @@ function icmpHeader:getMessageBody()
 end
 
 --- Retrieve the message body.
--- @return Message body as string.
+-- @return Message body as string TODO.
 function icmpHeader:getMessageBodyString()
-	return "<some data>"-- format("0x%x", self:getMessageBody()) -- TODO return as hexdump
+	return "<some data>"
 end
 
 --- Set all members of the icmp header.
@@ -107,23 +181,30 @@ end
 function icmpHeader:fill(args)
 	args = args or {}
 
-	self:setType(args.icmpType)
-	self:setCode(args.icmpCode)
-	self:setChecksum(args.icmpChecksum)
-	self:setMessageBody(args.icmpMessageBody)
+	self:setType(args.icmpType or args.icmp6Type)
+	self:setCode(args.icmpCode or args.icmp6Code)
+	self:setChecksum(args.icmpChecksum or args.icmp6Checksum)
+	self:setMessageBody(args.icmpMessageBody or args.icmp6MessageBody)
 end
 
 --- Retrieve the values of all members.
+-- Returns for both ICMP and ICMP6, the user normally knows which one he needs.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see icmpHeader:fill
 function icmpHeader:get()
-	return { icmpType=self:getType(), 
-			 icmpCode=self:getCode(), 
-			 icmpChecksum=self:getChecksum(), 
-			 icmpMessageBody=self:getMessageBody() }
+	return { icmpType 			= self:getType(), 
+			 icmpCode 			= self:getCode(), 
+			 icmpChecksum 		= self:getChecksum(), 
+			 icmpMessageBody 	= self:getMessageBody(),
+			 -- now the same for icmp6
+			 icmp6Type 			= self:getType(), 
+			 icmp6Code 			= self:getCode(), 
+			 icmp6Checksum 		= self:getChecksum(), 
+			 icmp6MessageBody 	= self:getMessageBody() }
 end
 
 --- Retrieve the values of all members.
+-- Does not work correctly for ICMPv6 packets
 -- @return Values in string format.
 function icmpHeader:getString()
 	return "ICMP type "			.. self:getTypeString() 
@@ -159,7 +240,14 @@ function icmpPacket:fill(args)
 		args.ipLength = args.pktLength - 14 -- ethernet
 	end
 
+	-- change some default values
 	args.ipProtocol = ipProtocol or ip.PROTO_ICMP
+
+	-- delete icmpv6 values to circumvent possible conflicts
+	args.icmp6Type = nil
+	args.icmp6Code = nil
+	args.icmp6Checksum = nil
+	args.icmp6MessageBody = nil
 
 	self.eth:fill(args)
 	self.ip:fill(args)
@@ -176,10 +264,9 @@ function icmpPacket:get()
 end
 
 --- Calculate and set the ICMP header checksum for IPv4 packets.
--- TODO i didn't find any dpdk bitmask for ICMP, calculate manually is a must?
 -- @see pkt:offloadIcmpChecksum
 function icmpPacket:calculateIcmpChecksum()
-	self.icmp:setChecksum()
+	self.icmp:calculateChecksum()
 end
 
 --- Print information about the headers and a hex dump of the complete packet.
@@ -219,6 +306,12 @@ function icmp6Packet:fill(args)
 	args.ethType = args.ethType or eth.TYPE_IP6
 	args.ip6NextHeader = args.ip6NextHeader or ip6.PROTO_ICMP
 
+	-- delete icmpv4 values for no conflicts
+	args.icmpType = nil
+	args.icmpCode = nil
+	args.icmpChecksum = nil
+	args.icmpMessageBody = nil
+	
 	self.eth:fill(args)
 	self.ip:fill(args)
 	self.icmp:fill(args)
@@ -234,10 +327,9 @@ function icmp6Packet:get()
 end
 
 --- Calculate and set the ICMP header checksum for IPv6 packets.
--- TODO
 -- @see pkt:offloadIcmpChecksum
 function icmp6Packet:calculateIcmpChecksum()
-	self.icmp:setChecksum()
+	self.icmp:calculateChecksum()
 end
 
 --- Print information about the headers and a hex dump of the complete packet.
@@ -254,3 +346,5 @@ end
 ffi.metatype("struct icmp_header", icmpHeader)
 ffi.metatype("struct icmp_packet", icmpPacket)
 ffi.metatype("struct icmp_v6_packet", icmp6Packet)
+
+return icmp, icmp6
