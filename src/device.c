@@ -131,8 +131,13 @@ uint32_t get_pci_id(uint8_t port) {
 }
 
 uint8_t get_socket(uint8_t port) {
-	// TODO: figure out to get this information
-	return 0;
+	struct rte_eth_dev_info dev_info;
+	rte_eth_dev_info_get(port, &dev_info);
+	int node = dev_info.pci_dev->numa_node;
+	if (node == -1) {
+		node = 0;
+	}
+	return (uint8_t) node;
 }
 
 void sync_clocks(uint8_t port1, uint8_t port2) {
