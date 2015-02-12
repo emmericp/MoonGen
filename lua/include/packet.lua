@@ -55,7 +55,11 @@ end
 -- @see tcp.tcp4Packet:dump
 function pkt:dump()
 	local p = self:getEthernetPacket()
-	if p.eth:getType() == eth.TYPE_IP then
+	local type = p.eth:getType()
+	if type == eth.TYPE_ARP then
+		-- ARP
+		p = self:getArpPacket()
+	elseif type == eth.TYPE_IP then
 		-- ipv4
 		p = self:getIPPacket()
 		local proto = p.ip:getProtocol()
@@ -70,7 +74,7 @@ function pkt:dump()
 			-- TCPv4
 			p = self:getTcpPacket()
 		end
-	elseif p.eth:getType() == eth.TYPE_IP6 then
+	elseif type == eth.TYPE_IP6 then
 		-- IPv6
 		p = self:getIP6Packet()
 		local proto = p.ip:getNextHeader()
@@ -273,8 +277,17 @@ function pkt:getTcpPacket(ipv4)
 end
 
 
+local arpPacketType = ffi.typeof("struct arp_packet*")
+
+--- Retrieve an ARP packet.
+-- @return Packet in 'struct arp_packet' format
+function pkt:getArpPacket()
+	return arpPacketType(self.pkt.data)
+end
+
 ---------------------------------------------------------------------------
---- Metatypes
+---- Metatypes
 ---------------------------------------------------------------------------
 
 ffi.metatype("struct rte_mbuf", pkt)
+

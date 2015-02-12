@@ -216,7 +216,7 @@ end
 
 --- request all tasks to exit
 function mod.stop()
-	dpdkc.stop()
+	dpdkc.set_runtime(0)
 end
 
 --- Delay by t milliseconds. Note that this does not sleep the actual thread;

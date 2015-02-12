@@ -8,7 +8,7 @@ ffi.cdef[[
 		uint32_t uint32[0];
 		uint64_t uint64[0];
 	};
-	
+
 	struct __attribute__ ((__packed__)) mac_address {
 		uint8_t		uint8[6];
 	};
@@ -28,6 +28,18 @@ ffi.cdef[[
 		uint8_t 	uint8[16];
 		uint32_t	uint32[4];
 		uint64_t	uint64[2];
+	};
+
+	struct __attribute__((__packed__)) arp_header {
+		uint16_t	hrd;
+		uint16_t	pro;
+		uint8_t		hln;
+		uint8_t		pln;
+		uint16_t	op;
+		struct mac_address	sha;
+		union ipv4_address	spa;
+		struct mac_address	tha;
+		union ipv4_address	tpa;
 	};
 
 	struct __attribute__((__packed__)) ipv4_header {
@@ -71,12 +83,18 @@ ffi.cdef[[
 		uint16_t	dst;
 		uint32_t	seq;
 		uint32_t	ack;
-		uint8_t 	offset;
-		uint8_t 	flags;
+		uint8_t		offset;
+		uint8_t		flags;
 		uint16_t	window;
 		uint16_t	cs;
 		uint16_t	urg;
 		uint32_t	options[];
+	};
+
+	struct __attribute__((__packed__)) arp_packet {
+		struct ethernet_header 	eth;
+		struct arp_header		arp;
+		union payload_t			payload;
 	};
 
 	struct __attribute__((__packed__)) ip_packet {
@@ -84,6 +102,8 @@ ffi.cdef[[
 		struct ipv4_header	ip;
 		union payload_t payload;
 	};
+
+ 
 
 	struct __attribute__((__packed__)) ip_v6_packet {
 		struct ethernet_header 	eth;
@@ -111,11 +131,12 @@ ffi.cdef[[
 	};
 
 	struct __attribute__((__packed__)) tcp_packet {
-		struct ethernet_header 	eth;
-		struct ipv4_header 	ip;
-		struct tcp_header 	tcp;
-		union payload_t payload;
+		struct ethernet_header	eth;
+		struct ipv4_header		ip;
+		struct tcp_header		tcp;
+		union payload_t			payload;
 	};
+
 
 	struct __attribute__((__packed__)) ethernet_packet {
 		struct ethernet_header 	eth;
@@ -131,9 +152,9 @@ ffi.cdef[[
 	
 	struct __attribute__((__packed__)) tcp_v6_packet {
 		struct ethernet_header	eth;
-		struct ipv6_header 	ip;
-		struct tcp_header 	tcp;
-		union payload_t payload;
+		struct ipv6_header		ip;
+		struct tcp_header		tcp;
+		union payload_t			payload;
 	};
 ]]
 
