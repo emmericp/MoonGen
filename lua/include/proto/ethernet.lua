@@ -233,9 +233,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function etherPacket:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth)
 end
 
 

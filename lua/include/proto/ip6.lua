@@ -431,9 +431,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function ip6Packet:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip)
 end
 
 

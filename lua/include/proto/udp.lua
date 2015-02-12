@@ -165,7 +165,7 @@ end
 -- @see ip4Header:get
 -- @see udpHeader:get
 function udpPacket:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.udp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.udp:get())
 end
 
 --- Calculate and set the UDP header checksum for IPv4 packets.
@@ -180,9 +180,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function udpPacket:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.udp:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.udp)
 end
 
 
@@ -228,7 +226,7 @@ end
 -- @see ip4Header:get
 -- @see udpHeader:get
 function udp6Packet:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.udp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.udp:get())
 end
 
 --- Calculate and set the UDP header checksum for IPv6 packets.
@@ -243,9 +241,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function udp6Packet:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.udp:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.udp)
 end
 
 

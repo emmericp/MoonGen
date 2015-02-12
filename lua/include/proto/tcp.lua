@@ -409,13 +409,11 @@ function tcp4Packet:fill(args)
 end
 
 function tcp4Packet:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.tcp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.tcp:get())
 end
 
 function tcp4Packet:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.tcp:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.tcp)
 end
 
 function tcp4Packet:calculateTcpChecksum()
@@ -444,13 +442,11 @@ function tcp6Packet:fill(args)
 end
 
 function tcp6Packet:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.tcp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.tcp:get())
 end
 
 function tcp6Packet:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.tcp:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.tcp)
 end
 
 function tcp6Packet:calculateTcpChecksum()
