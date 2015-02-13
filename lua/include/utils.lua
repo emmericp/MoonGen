@@ -158,7 +158,11 @@ int inet_pton(int af, const char *src, void *dst);
 function parseIP6Address(ip)
 	local LINUX_AF_INET6 = 10 --preprocessor constant of Linux
 	local tmp_addr = ffi.new("union ipv6_address")
-	ffi.C.inet_pton(LINUX_AF_INET6, ip, tmp_addr)
+	local res = ffi.C.inet_pton(LINUX_AF_INET6, ip, tmp_addr)
+	if res == 0 then
+		return nil
+	end
+
 	local addr = ffi.new("union ipv6_address")
 	addr.uint32[0] = bswap(tmp_addr.uint32[3])
 	addr.uint32[1] = bswap(tmp_addr.uint32[2])
