@@ -6,6 +6,7 @@ local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 
 local eth = require "proto.ethernet"
+local arp = require "proto.arp"
 local ip = require "proto.ip"
 local ip6 = require "proto.ip6"
 local icmp = require "proto.icmp"
@@ -170,6 +171,13 @@ local etherPacketType = ffi.typeof("struct ethernet_packet*")
 -- @return Packet in 'struct ethernet_packet' format
 function pkt:getEthernetPacket()
 	return etherPacketType(self.pkt.data)
+end
+
+local arpPacketType = ffi.typeof("struct arp_packet*")
+--- Retrieve an ARP packet.
+-- @return Packet in 'struct arp_packet' format
+function pkt:getArpPacket()
+	return arpPacketType(self.pkt.data)
 end
 
 local ip4PacketType = ffi.typeof("struct ip_packet*")
@@ -356,14 +364,6 @@ end
 
 function pkt:getPtpPacket()
 	return ptpPacketType(self.pkt.data)
-end
-
-local arpPacketType = ffi.typeof("struct arp_packet*")
-
---- Retrieve an ARP packet.
--- @return Packet in 'struct arp_packet' format
-function pkt:getArpPacket()
-	return arpPacketType(self.pkt.data)
 end
 
 ---------------------------------------------------------------------------
