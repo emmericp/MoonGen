@@ -276,6 +276,87 @@ function pkt:getTcpPacket(ipv4)
 	end
 end
 
+-- ptp L2
+local ptpHeader = {}
+ptpHeader.__index = ptpHeader
+
+function ptpHeader:setMessageType(mt)
+	mt = mt or 0 -- sync
+	self.messageType = mt
+end
+
+function ptpHeader:setVersion(v)
+	v = v or 0x02 -- version 2
+	self.versionPTP = v
+end
+
+function ptpHeader:setLen(l)
+	l = l or 34 + 10 + 0 -- header, body, suffix
+	self.len = hton16(l)
+end
+
+function ptpHeader:setDomain(d)
+	d = d or 0 -- default domain
+	self.domain = d
+end
+
+function ptpHeader:setFlags(f)
+	f = f or 0 -- no flags
+	self.flags = f
+end
+
+function ptpHeader:setCorrection(c)
+	c = c or 0 -- correction offset 0
+	-- FIXME: byteswap to network byte order
+	self.correction = c
+end
+
+function ptpHeader:setNodePort(p)
+	p = p or 1
+	self.ptpNodePort = hton16(p)
+end
+
+function ptpHeader:setSequenceId(s)
+	s = s or 0
+	self.sequenceId = hton16(s)
+end
+
+function ptpHeader:setControl(c)
+	c = c or 0 -- sync
+	self.control = c
+end
+
+function ptpHeader:setLogMessageInterval(l)
+	l = l or 0x7F -- default value
+	self.logMessageInterval = l
+end
+
+function ptpHeader:fill(args)
+	self:setMessageType(args.messageType)
+	self:setVersion(args.versionPTP)
+	self:setLen(args.len)
+	self:setDomain(args.domain)
+	self:setFlags(args.flags)
+	self:setCorrection(args.correction)
+	self:setNodePort(args.ptpNodePort)
+	self:setSequenceId(args.sequenceId)
+	self:setControl(args.control)
+	self:setLogMessageInterval(args.logMessageInterval)
+end
+
+local ptpPacket = {}
+ptpPacket.__index = ptpPacket
+
+local ptpPacketType = ffi.typeof("struct ptp_packet*")
+
+function ptpPacket:fill(args)
+	self.eth:fill(args)
+	self.ptp:fill(args)
+end
+
+function pkt:getPtpPacket()
+	return ptpPacketType(self.pkt.data)
+end
 
 local arpPacketType = ffi.typeof("struct arp_packet*")
 
@@ -291,3 +372,5 @@ end
 
 ffi.metatype("struct rte_mbuf", pkt)
 
+ffi.metatype("struct ptp_packet", ptpPacket)
+ffi.metatype("struct ptp_header", ptpHeader)
