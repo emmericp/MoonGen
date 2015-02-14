@@ -53,7 +53,6 @@ _G.bswap = bswap -- export bit.bswap to global namespace to be consistent with b
 hton = bswap
 ntoh = hton
 
-
 local ffi = require "ffi"
 
 ffi.cdef [[

@@ -4,6 +4,8 @@ local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
 local device	= require "device"
+local eth		= require "proto.ethernet"
+require "proto.ptp"
 
 local dev = device.__devicePrototype
 local rxQueue = device.__rxQueuePrototype
@@ -61,18 +63,14 @@ local PKT_TX_IEEE1588_TMST	= 0x8000
 local PKT_TX_IP_CKSUM		= 0x1000
 local PKT_TX_UDP_CKSUM		= 0x6000
 
--- other constants
-local ETHER_TYPE_1588		= 0x88F7
 
 function mod.fillL2Packet(buf, seq)
 	seq = seq or (((3 * 255) + 2) * 255 + 1) * 255
 	buf.pkt.pkt_len = 60
 	buf.pkt.data_len = 60
-	local pkt = buf:getPtpPacket()
-	pkt:fill({
-		ethType = ETHER_TYPE_1588,
-		sequenceId = seq
-	})
+	local pkt = buf:getPtpPacket():fill{
+		ptpSequenceID = seq
+	}
 	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
 end
 
@@ -211,7 +209,7 @@ end
 local function enableRxTimestampsIxgbe(port, queue, udpPort, id)
 	startTimerIxgbe(port, id)
 	-- l2 rx filter
-	dpdkc.write_reg32(port, ETQF_0, bit.bor(ETQF_FILTER_ENABLE, ETQF_IEEE_1588_TIME_STAMP, ETHER_TYPE_1588))
+	dpdkc.write_reg32(port, ETQF_0, bit.bor(ETQF_FILTER_ENABLE, ETQF_IEEE_1588_TIME_STAMP, eth.TYPE_PTP))
 	dpdkc.write_reg32(port, ETQS_0, bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue, ETQS_RX_QUEUE_OFFS)))
 	-- L3 filter
 	-- TODO
