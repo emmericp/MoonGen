@@ -59,7 +59,7 @@ ffi.cdef[[
 		uint8_t		domain;
 		uint8_t		reserved;
 		uint16_t	flags;
-		uint64_t	correction;
+		uint32_t	correction[2];
 		uint32_t	reserved2;
 		uint8_t		oui[3];
 		uint8_t		uuid[5];

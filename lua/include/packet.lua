@@ -60,6 +60,9 @@ function pkt:dump()
 	if type == eth.TYPE_ARP then
 		-- ARP
 		p = self:getArpPacket()
+	elseif type == eth.TYPE_PTP then
+		-- PTP
+		p = self:getPtpPacket()
 	elseif type == eth.TYPE_IP then
 		-- ipv4
 		p = self:getIPPacket()

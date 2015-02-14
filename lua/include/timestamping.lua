@@ -68,7 +68,7 @@ function mod.fillL2Packet(buf, seq)
 	seq = seq or (((3 * 255) + 2) * 255 + 1) * 255
 	buf.pkt.pkt_len = 60
 	buf.pkt.data_len = 60
-	local pkt = buf:getPtpPacket():fill{
+	buf:getPtpPacket():fill{
 		ptpSequenceID = seq
 	}
 	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
@@ -78,8 +78,7 @@ function mod.readSeq(buf)
 	if buf.pkt.pkt_len < 4 then
 	  return nil
 	end
-	local pkt = buf:getPtpPacket()
-	return ntoh16(pkt.ptp.sequenceId)
+	return buf:getPtpPacket():getSequenceID()
 end
 
 function mod.fillPacket(buf, port, size)
