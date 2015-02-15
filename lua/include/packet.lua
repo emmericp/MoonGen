@@ -7,6 +7,7 @@ local dpdk = require "dpdk"
 
 local eth = require "proto.ethernet"
 local arp = require "proto.arp"
+local ptp = require "proto.ptp"
 local ip = require "proto.ip"
 local ip6 = require "proto.ip6"
 local icmp = require "proto.icmp"

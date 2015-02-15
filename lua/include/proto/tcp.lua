@@ -386,7 +386,6 @@ function tcpHeader:getString()
 		.."] win " 	.. self:getWindowString() 
 		.. " cksum " 	.. self:getChecksumString() 
 		.. " urg " 	.. self:getUrgentPointerString() 
-		.. " "
 end
 
 
@@ -401,6 +400,12 @@ tcp4Packet.__index = tcp4Packet
 function tcp4Packet:fill(args)
 	args = args or {}
 
+	-- calculate length value for ip headers
+	if args.pktLength then
+		args.ipLength = args.ipLength or args.pktLength - 14 -- ethernet
+	end
+	
+	-- rewrite default values
 	args.ipProtocol = args.ipProtocol or ip.PROTO_TCP
 	
 	self.eth:fill(args)
@@ -433,6 +438,12 @@ tcp6Packet.__index = tcp6Packet
 function tcp6Packet:fill(args)
 	args = args or {}
 
+	-- calculate length value for ip headers
+	if args.pktLength then
+		args.ip6Length = args.ip6Length or args.pktLength - (14 + 40) -- ethernet + ip
+	end
+	
+	-- rewrite default values
 	args.ethType = args.ethType or eth.TYPE_IP6
 	args.ip6NextHeader = args.ip6NextHeader or ip6.PROTO_TCP
 

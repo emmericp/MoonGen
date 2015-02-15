@@ -78,7 +78,7 @@ function mod.readSeq(buf)
 	if buf.pkt.pkt_len < 4 then
 	  return nil
 	end
-	return buf:getPtpPacket():getSequenceID()
+	return buf:getPtpPacket().ptp:getSequenceID()
 end
 
 function mod.fillPacket(buf, port, size)

@@ -121,7 +121,7 @@ end
 -- @return Values in string format.
 function udpHeader:getString()
 	return "UDP " .. self:getSrcPortString() .. " > " .. self:getDstPortString() .. " len " .. self:getLengthString()
-		   .. " cksum " .. self:getChecksumString() .. " "
+		   .. " cksum " .. self:getChecksumString()
 end
 
 
@@ -148,10 +148,10 @@ function udpPacket:fill(args)
 	
 	-- calculate length values for all headers
 	if args.pktLength then
-		args.ipLength = args.pktLength - 14 -- ethernet
+		args.ipLength = args.ipLength or args.pktLength - 14 -- ethernet
 
 		ipHeaderBytes = (args.ipHeaderLength or 5) * 4 -- ip_h can have variable size
-		args.udpLength = args.pktLength - (14 + ipHeaderBytes) -- ethernet + ip
+		args.udpLength = args.udpLength or args.pktLength - (14 + ipHeaderBytes) -- ethernet + ip
 	end
 
 	self.eth:fill(args)
@@ -207,8 +207,8 @@ function udp6Packet:fill(args)
 
 	-- calculate length values for all headers
 	if args.pktLength then
-		args.ip6Length = args.pktLength - (14 + 40) -- ethernet + ip
-		args.udpLength = args.pktLength - (14 + 40) -- ethernet + ip
+		args.ip6Length = args.ip6Length or args.pktLength - (14 + 40) -- ethernet + ip
+		args.udpLength = args.udpLength or args.pktLength - (14 + 40) -- ethernet + ip
 	end
 
 	-- change some default values for ipv6

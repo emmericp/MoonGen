@@ -200,7 +200,7 @@ end
 --- Retrieve the values of all members.
 -- @return Values in string format.
 function etherHeader:getString()
-	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " type " .. self:getTypeString() .. " "
+	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " type " .. self:getTypeString()
 end
 
 

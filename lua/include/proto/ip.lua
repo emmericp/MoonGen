@@ -441,7 +441,7 @@ function ip4Header:getString()
 	return "IP4 " .. self:getSrcString() .. " > " .. self:getDstString() .. " ver " .. self:getVersionString() 
 		   .. " ihl " .. self:getHeaderLengthString() .. " tos " .. self:getTOSString() .. " len " .. self:getLengthString()
 		   .. " id " .. self:getIDString() .. " flags " .. self:getFlagsString() .. " frag " .. self:getFragmentString() 
-		   .. " ttl " .. self:getTTLString() .. " proto " .. self:getProtocolString() .. " cksum " .. self:getChecksumString() .. " "
+		   .. " ttl " .. self:getTTLString() .. " proto " .. self:getProtocolString() .. " cksum " .. self:getChecksumString()
 end
 
 
@@ -467,7 +467,7 @@ function ip4Packet:fill(args)
 	
 	-- calculate length value for ip headers
 	if args.pktLength then
-		args.ipLength = args.pktLength - 14 -- ethernet
+		args.ipLength = args.ipLength or args.pktLength - 14 -- ethernet
 	end
 
 	self.eth:fill(args)

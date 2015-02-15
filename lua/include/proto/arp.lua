@@ -258,19 +258,18 @@ function arpHeader:getString()
 				  .. " (" 			.. self:getHardwareDstString() 
 				  .. ") tell " 		.. self:getProtoSrcString() 
 				  .. " (" 			.. self:getHardwareSrcString() 
-				  .. ") "
+				  .. ")"
 	elseif op == arp.OP_REPLY then
 		str = str .. " " 			.. self:getProtoSrcString() 
 				  .. " is-at " 		.. self:getHardwareSrcString() 
 				  .. " (for " 		.. self:getProtoDstString() 
 				  .. " @ " 			.. self:getHardwareDstString() 
-				  .. ") "
+				  .. ")"
 	else
 		str = str .. " " 			.. self:getHardwareSrcString() 
 				  .. " > " 			.. self:getHardwareDstString() 
 				  .. " " 			.. self:getProtoSrcString() 
-				  .. " > " 			.. self:getProtoDstString() 
-				  .. " "
+				  .. " > " 			.. self:getProtoDstString()
 	end
 
 	return str

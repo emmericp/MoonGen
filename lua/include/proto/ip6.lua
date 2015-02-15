@@ -384,7 +384,7 @@ end
 function ip6Header:getString()
 	return "IP6 " .. self:getSrcString() .. " > " .. self:getDstString() .. " ver " .. self:getVersionString() 
 		   .. " tc " .. self:getTrafficClassString() .. " fl " .. self:getFlowLabelString() .. " len " .. self:getLengthString() 
-		   .. " next " .. self:getNextHeaderString() .. " ttl " .. self:getTTLString() .. " "
+		   .. " next " .. self:getNextHeaderString() .. " ttl " .. self:getTTLString()
 end
 
 
@@ -410,7 +410,7 @@ function ip6Packet:fill(args)
 	
 	-- calculate length value for ip headers
 	if args.pktLength then
-		args.ip6Length = args.pktLength - (14 + 40) -- ethernet + ip
+		args.ip6Length = args.ip6Length or args.pktLength - (14 + 40) -- ethernet + ip
 	end
 	
 	-- change default value for ipv6

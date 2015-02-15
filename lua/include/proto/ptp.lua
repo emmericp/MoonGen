@@ -34,7 +34,6 @@ ptp.CONTROL_DELAY_RESP = 3
 ---------------------------------------------------------------------------
 ---- PTP header
 ---------------------------------------------------------------------------
--- TODO get/getString
 
 --funcitons for packet
 local ptpHeader = {}
@@ -331,7 +330,6 @@ end
 -----------------------------------------------------------------------------
 ---- PTP packet
 -----------------------------------------------------------------------------
--- TODO get/dump (in packet.lua extend dump())
 
 local ptpPacket = {}
 ptpPacket.__index = ptpPacket
@@ -341,6 +339,7 @@ function ptpPacket:fill(args)
 	
 	-- calculate length value for ptp header
 	if args.pktLength then
+		args.ptpLength = args.ptpLength or args.pktLength - 14 -- ethernet, assuming rest of packet is ptp header and body (no other payload)
 	end
 	
 	-- change default value for ptp
