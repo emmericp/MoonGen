@@ -386,7 +386,6 @@ function tcpHeader:getString()
 		.."] win " 	.. self:getWindowString() 
 		.. " cksum " 	.. self:getChecksumString() 
 		.. " urg " 	.. self:getUrgentPointerString() 
-		.. " "
 end
 
 
@@ -401,6 +400,12 @@ tcp4Packet.__index = tcp4Packet
 function tcp4Packet:fill(args)
 	args = args or {}
 
+	-- calculate length value for ip headers
+	if args.pktLength then
+		args.ipLength = args.ipLength or args.pktLength - 14 -- ethernet
+	end
+	
+	-- rewrite default values
 	args.ipProtocol = args.ipProtocol or ip.PROTO_TCP
 	
 	self.eth:fill(args)
@@ -409,13 +414,11 @@ function tcp4Packet:fill(args)
 end
 
 function tcp4Packet:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.tcp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.tcp:get())
 end
 
 function tcp4Packet:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.tcp:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.tcp)
 end
 
 function tcp4Packet:calculateTcpChecksum()
@@ -435,6 +438,12 @@ tcp6Packet.__index = tcp6Packet
 function tcp6Packet:fill(args)
 	args = args or {}
 
+	-- calculate length value for ip headers
+	if args.pktLength then
+		args.ip6Length = args.ip6Length or args.pktLength - (14 + 40) -- ethernet + ip
+	end
+	
+	-- rewrite default values
 	args.ethType = args.ethType or eth.TYPE_IP6
 	args.ip6NextHeader = args.ip6NextHeader or ip6.PROTO_TCP
 
@@ -444,13 +453,11 @@ function tcp6Packet:fill(args)
 end
 
 function tcp6Packet:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.tcp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.tcp:get())
 end
 
 function tcp6Packet:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.tcp:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.tcp)
 end
 
 function tcp6Packet:calculateTcpChecksum()

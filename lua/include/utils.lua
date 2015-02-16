@@ -53,7 +53,6 @@ _G.bswap = bswap -- export bit.bswap to global namespace to be consistent with b
 hton = bswap
 ntoh = hton
 
-
 local ffi = require "ffi"
 
 ffi.cdef [[
@@ -158,7 +157,11 @@ int inet_pton(int af, const char *src, void *dst);
 function parseIP6Address(ip)
 	local LINUX_AF_INET6 = 10 --preprocessor constant of Linux
 	local tmp_addr = ffi.new("union ipv6_address")
-	ffi.C.inet_pton(LINUX_AF_INET6, ip, tmp_addr)
+	local res = ffi.C.inet_pton(LINUX_AF_INET6, ip, tmp_addr)
+	if res == 0 then
+		return nil
+	end
+
 	local addr = ffi.new("union ipv6_address")
 	addr.uint32[0] = bswap(tmp_addr.uint32[3])
 	addr.uint32[1] = bswap(tmp_addr.uint32[2])
@@ -182,22 +185,7 @@ function getTimeMicros()
 	m = m - h * 60		-- remaining minutes
 	h = h % 24		-- hour of the day
 	s = s + u		-- seconds + micro seconds
-	return format("%02d:%02d:%02.6f ", h, m, s)
-end
-
---- Print a string with a restricted length per line.
--- TODO don't linebreak words in the middle
--- @param str The string to be printed.
--- @param len Length of each line
-function printLength(str, len)
-	len = len or 10000
-
-	local beg = 0
-	for i = len, str:len(), len do
-		printf(str:sub(beg, i))
-		beg = i + 1
-	end
-	printf(str:sub(beg, str:len()))
+	return format("%02d:%02d:%02.6f", h, m, s)
 end
 
 --- Print a hex dump of cdata.
@@ -222,19 +210,29 @@ function dumpHex(data, bytes)
 	write("\n\n")
 end
 
+--- Print a hex dump of a packet.
+-- @param data The cdata to be dumped.
+-- @param bytes Number of bytes to dump.
+-- @param args Arbitrary amount of protocol headers to be displayed in cleartext. The header must provide :getString().
 function dumpPacket(data, bytes, ...)
+	write(getTimeMicros())
+
+	-- headers in cleartext
 	for i = 1, select("#", ...) do
 		local str = select(i, ...):getString()
-		print(i == 1 and getTimeMicros() .. str or str)
+		if i == 1 then write(" " .. str .. "\n") else print(str) end
 	end
+
+	-- hex dump
 	dumpHex(data, bytes)
 end
 
 --- Merge tables.
--- @param arg Arbitrary amount of tables to get merged.
+-- @param args Arbitrary amount of tables to get merged.
 function mergeTables(...)
-	local table = select(1, ...)
-	if select("#", ...) > 1 then
+	local table = {}
+	if select("#", ...) > 0 then
+		table = select(1, ...)
 		for i = 2, select("#", ...) do
 			for k,v in pairs(select(i, ...)) do
 				table[k] = v

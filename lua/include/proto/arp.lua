@@ -258,19 +258,18 @@ function arpHeader:getString()
 				  .. " (" 			.. self:getHardwareDstString() 
 				  .. ") tell " 		.. self:getProtoSrcString() 
 				  .. " (" 			.. self:getHardwareSrcString() 
-				  .. ") "
+				  .. ")"
 	elseif op == arp.OP_REPLY then
 		str = str .. " " 			.. self:getProtoSrcString() 
 				  .. " is-at " 		.. self:getHardwareSrcString() 
 				  .. " (for " 		.. self:getProtoDstString() 
 				  .. " @ " 			.. self:getHardwareDstString() 
-				  .. ") "
+				  .. ")"
 	else
 		str = str .. " " 			.. self:getHardwareSrcString() 
 				  .. " > " 			.. self:getHardwareDstString() 
 				  .. " " 			.. self:getProtoSrcString() 
-				  .. " > " 			.. self:getProtoDstString() 
-				  .. " "
+				  .. " > " 			.. self:getProtoDstString()
 	end
 
 	return str
@@ -312,9 +311,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function arpPacket:dump(bytes)
-	print(getTimeMicros() .. self.eth:getString())
-	print(self.arp:getString())
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.arp)
 end
 
 

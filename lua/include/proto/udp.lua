@@ -121,7 +121,7 @@ end
 -- @return Values in string format.
 function udpHeader:getString()
 	return "UDP " .. self:getSrcPortString() .. " > " .. self:getDstPortString() .. " len " .. self:getLengthString()
-		   .. " cksum " .. self:getChecksumString() .. " "
+		   .. " cksum " .. self:getChecksumString()
 end
 
 
@@ -148,10 +148,10 @@ function udpPacket:fill(args)
 	
 	-- calculate length values for all headers
 	if args.pktLength then
-		args.ipLength = args.pktLength - 14 -- ethernet
+		args.ipLength = args.ipLength or args.pktLength - 14 -- ethernet
 
 		ipHeaderBytes = (args.ipHeaderLength or 5) * 4 -- ip_h can have variable size
-		args.udpLength = args.pktLength - (14 + ipHeaderBytes) -- ethernet + ip
+		args.udpLength = args.udpLength or args.pktLength - (14 + ipHeaderBytes) -- ethernet + ip
 	end
 
 	self.eth:fill(args)
@@ -165,7 +165,7 @@ end
 -- @see ip4Header:get
 -- @see udpHeader:get
 function udpPacket:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.udp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.udp:get())
 end
 
 --- Calculate and set the UDP header checksum for IPv4 packets.
@@ -180,9 +180,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function udpPacket:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.udp:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.udp)
 end
 
 
@@ -209,8 +207,8 @@ function udp6Packet:fill(args)
 
 	-- calculate length values for all headers
 	if args.pktLength then
-		args.ip6Length = args.pktLength - (14 + 40) -- ethernet + ip
-		args.udpLength = args.pktLength - (14 + 40) -- ethernet + ip
+		args.ip6Length = args.ip6Length or args.pktLength - (14 + 40) -- ethernet + ip
+		args.udpLength = args.udpLength or args.pktLength - (14 + 40) -- ethernet + ip
 	end
 
 	-- change some default values for ipv6
@@ -228,7 +226,7 @@ end
 -- @see ip4Header:get
 -- @see udpHeader:get
 function udp6Packet:get()
-	return mergeTables(mergeTables(self.eth:get(), self.ip:get()), self.udp:get())
+	return mergeTables(self.eth:get(), self.ip:get(), self.udp:get())
 end
 
 --- Calculate and set the UDP header checksum for IPv6 packets.
@@ -243,9 +241,7 @@ end
 --- Print information about the headers and a hex dump of the complete packet.
 -- @param bytes Number of bytes to dump.
 function udp6Packet:dump(bytes)
-	str = getTimeMicros() .. self.eth:getString() .. self.ip:getString() .. self.udp:getString()
-	printLength(str, 60)
-	dumpHex(self, bytes)
+	dumpPacket(self, bytes, self.eth, self.ip, self.udp)
 end
 
 

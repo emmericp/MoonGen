@@ -22,54 +22,34 @@ function master(...)
 		return
 	end
 
-	local rxMempool = memory.createMemPool()
-	local txDev = device.config(txPort, rxMempool, 2, 2)
-	txDev:wait()
-	txDev:getTxQueue(0):setRate(rate)
-	dpdk.launchLua("loadSlave", txPort, 0, minIP, numIPs)
+	local txDev = device.config(txPort)
+	device.waitFor(txDev)
+
+	dpdk.launchLua("loadSlave", txDev, txDev:getTxQueue(0), rate, minIP, numIPs)
 	dpdk.waitForSlaves()
 end
 
-function loadSlave(port, queue, minA, numIPs)
+function loadSlave(dev, queue, rate, minA, numIPs)
 	--- parse and check ip addresses
 	-- min UDP packet size for IPv6 is 66 bytes
 	-- 4 bytes subtracted as the CRC gets appended by the NIC
 	local packetLen = 66 - 4
-	local ipv4 = true
-	local minIP
 
-	-- first check if its an ipv4 address
-	minIP = parseIP4Address(minA)
-
-	if minIP == nil then
-		printf("Address is not IPv4, checking for IPv6...")
-		ipv4 = false
+	local minIP, ipv4 = parseIPAddress(minA)
+	if minIP then
+		printf("INFO: Detected an %s address.", ipv4 and "IPv4" or "IPv6")
+	else
+		errorf("Invalid minIP: %s", minA)
 	end
 
-	-- if not an ipv4 address, check if its ipv6
-	if not ipv4 then
-		minIP = parseIP6Address(minA)
-		
-		if minIP == nil then
-			printf("Address is not IPv6, stopping now.")
-			return
-		end
-	end
-
-	--continue normally
-	local queue = device.get(port):getTxQueue(queue)
+	-- set rate and prefill buffers
+	queue:setRate(rate)
 	local mem = memory.createMemPool(function(buf)
-		local pkt
-		if ipv4 then
-			pkt = buf:getUdpPacket()
-		else 
-			pkt = buf:getUdp6Packet()
-		end
-
-		pkt:fill{ ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
-				  ipSrc="192.168.1.1", 
-				  ip6Src="fd06::1",
-				  pktLength=packetLen }
+		local pkt = buf:getUdpPacket(ipv4):fill{ 
+			ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
+			ipSrc="192.168.1.1", 
+			ip6Src="fd06::1",
+			pktLength=packetLen }
 	end)
 
 	local lastPrint = dpdk.getTime()
@@ -85,12 +65,7 @@ function loadSlave(port, queue, minA, numIPs)
 		-- fill packets and set their size 
 		bufs:fill(packetLen)
 		for i, buf in ipairs(bufs) do 			
-			local pkt
-			if ipv4 then
-				pkt = buf:getUdpPacket()
-			else
-				pkt = buf:getUdp6Packet()
-			end
+			local pkt = buf:getUdpPacket(ipv4)
 			
 			--increment IP
 			pkt.ip.dst:set(minIP)
@@ -101,8 +76,8 @@ function loadSlave(port, queue, minA, numIPs)
 				counter = counter == numIPs and 0 or counter + 1
 			end
 
-			-- dump first 3 packets
-			if c < 3 then
+			-- dump first packet
+			if c < 1 then
 				buf:dump()
 				c = c + 1
 			end

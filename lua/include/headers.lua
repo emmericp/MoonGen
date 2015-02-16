@@ -3,20 +3,19 @@ local ffi = require "ffi"
 -- structs
 ffi.cdef[[
 	// TODO: vlan support (which can be offloaded to the NIC to simplify scripts)
+	
 	union payload_t {
 		uint8_t	uint8[0];
 		uint32_t uint32[0];
 		uint64_t uint64[0];
 	};
 
+	//  -----------------------------------------------------
+	//	---- Address structs
+	//  -----------------------------------------------------
+
 	struct __attribute__ ((__packed__)) mac_address {
 		uint8_t		uint8[6];
-	};
-	
-	struct __attribute__((__packed__)) ethernet_header {
-		struct mac_address	dst;
-		struct mac_address	src;
-		uint16_t		type;
 	};
 
 	union ipv4_address {
@@ -29,6 +28,17 @@ ffi.cdef[[
 		uint32_t	uint32[4];
 		uint64_t	uint64[2];
 	};
+	
+
+	// -----------------------------------------------------
+	// ---- Header structs
+	// -----------------------------------------------------
+
+	struct __attribute__((__packed__)) ethernet_header {
+		struct mac_address	dst;
+		struct mac_address	src;
+		uint16_t		type;
+	};
 
 	struct __attribute__((__packed__)) arp_header {
 		uint16_t	hrd;
@@ -40,6 +50,23 @@ ffi.cdef[[
 		union ipv4_address	spa;
 		struct mac_address	tha;
 		union ipv4_address	tpa;
+	};
+	
+	struct __attribute__((__packed__)) ptp_header {
+		uint8_t 	messageType;
+		uint8_t		versionPTP;
+		uint16_t	len;
+		uint8_t		domain;
+		uint8_t		reserved;
+		uint16_t	flags;
+		uint32_t	correction[2];
+		uint32_t	reserved2;
+		uint8_t		oui[3];
+		uint8_t		uuid[5];
+		uint16_t	ptpNodePort;
+		uint16_t	sequenceId;
+		uint8_t		control;
+		uint8_t		logMessageInterval;
 	};
 
 	struct __attribute__((__packed__)) ipv4_header {
@@ -90,11 +117,27 @@ ffi.cdef[[
 		uint16_t	urg;
 		uint32_t	options[];
 	};
+	
+	
+	// -----------------------------------------------------
+	// ---- Packet structs
+	// -----------------------------------------------------
+	
+	struct __attribute__((__packed__)) ethernet_packet {
+		struct ethernet_header 	eth;
+		union payload_t payload;
+	};
 
 	struct __attribute__((__packed__)) arp_packet {
 		struct ethernet_header 	eth;
 		struct arp_header		arp;
 		union payload_t			payload;
+	};
+	
+	struct __attribute__((__packed__)) ptp_packet {
+		struct ethernet_header eth;
+		struct ptp_header ptp;
+		union payload_t payload;
 	};
 
 	struct __attribute__((__packed__)) ip_packet {
@@ -102,8 +145,6 @@ ffi.cdef[[
 		struct ipv4_header	ip;
 		union payload_t payload;
 	};
-
- 
 
 	struct __attribute__((__packed__)) ip_v6_packet {
 		struct ethernet_header 	eth;
@@ -123,26 +164,16 @@ ffi.cdef[[
 		struct icmp_header		icmp;
 	};
 
-	struct __attribute__((__packed__)) ptp_header {
-		uint8_t 	messageType;
-		uint8_t		versionPTP;
-		uint16_t	len;
-		uint8_t		domain;
-		uint8_t		reserved;
-		uint16_t	flags;
-		uint64_t	correction;
-		uint32_t	reserved2;
-		uint8_t		oui[3];
-		uint8_t		uuid[5];
-		uint16_t	ptpNodePort;
-		uint16_t	sequenceId;
-		uint8_t		control;
-		uint8_t		logMessageInterval;
-	};
-
 	struct __attribute__((__packed__)) udp_packet {
 		struct ethernet_header 	eth;
 		struct ipv4_header 	ip;
+		struct udp_header 	udp;
+		union payload_t payload;
+	};
+	
+	struct __attribute__((__packed__)) udp_v6_packet {
+		struct ethernet_header	eth;
+		struct ipv6_header 	ip;
 		struct udp_header 	udp;
 		union payload_t payload;
 	};
@@ -153,30 +184,12 @@ ffi.cdef[[
 		struct tcp_header		tcp;
 		union payload_t			payload;
 	};
-
-
-	struct __attribute__((__packed__)) ethernet_packet {
-		struct ethernet_header 	eth;
-		union payload_t payload;
-	};
-
-	struct __attribute__((__packed__)) udp_v6_packet {
-		struct ethernet_header	eth;
-		struct ipv6_header 	ip;
-		struct udp_header 	udp;
-		union payload_t payload;
-	};
 	
 	struct __attribute__((__packed__)) tcp_v6_packet {
 		struct ethernet_header	eth;
 		struct ipv6_header		ip;
 		struct tcp_header		tcp;
 		union payload_t			payload;
-	};
-
-	struct __attribute__((__packed__)) ptp_packet{
-		struct ethernet_header eth;
-		struct ptp_header ptp;
 	};
 ]]
 

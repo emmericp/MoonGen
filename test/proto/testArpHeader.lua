@@ -1,6 +1,6 @@
 describe("ARP packet class", function()
 	local ffi = require "ffi"
-	local pkt = require "arp"
+	local pkt = require "proto.arp"
 	it("should set ARP", function()
 		local raw = ffi.new("struct arp_header")
 		local set = ffi.new("struct arp_header")
