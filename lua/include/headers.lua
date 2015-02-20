@@ -6,6 +6,7 @@ ffi.cdef[[
 	
 	union payload_t {
 		uint8_t	uint8[0];
+		uint16_t uint16[0];
 		uint32_t uint32[0];
 		uint64_t uint64[0];
 	};
