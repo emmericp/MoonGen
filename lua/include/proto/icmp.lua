@@ -137,8 +137,10 @@ function icmpHeader:setChecksum(int)
 end
 
 --- Calculate the checksum
-function icmpHeader:calculateChecksum()
-	self:setChecksum(hton16(checksum(self, ffi.sizeof(self))))
+function icmpHeader:calculateChecksum(len)
+	len = len or sizeof(self)
+	self:setChecksum(0)
+	self:setChecksum(hton16(checksum(self, len)))
 end
 
 --- Retrieve the checksum.
