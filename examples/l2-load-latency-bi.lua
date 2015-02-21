@@ -27,7 +27,7 @@ function master(...)
 	
 	devA = device.config(portA, memory.createMemPool(), 2, txQueueCount + 1)	-- txQueueCount + timerQueue(0)
 	devB = device.config(portB, memory.createMemPool(), 2, txQueueCount + 1)
-	device.waitForDevs(devA, devB)		
+	device.waitForLinks()		
 	
 	--Set rate relative to txQueueCount
 	for i = 1, txQueueCount do

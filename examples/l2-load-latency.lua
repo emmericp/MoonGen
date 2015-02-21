@@ -23,7 +23,7 @@ function master(...)
 	else
 		txDev = device.config(txPort, rxMempool, 1, rcWorkaround and 4 or 2)
 		rxDev = device.config(rxPort, rxMempool, 2, 1)
-		device.waitForDevs(txDev, rxDev)
+		device.waitForLinks()
 	end
 	if rcWorkaround then
 		txDev:getTxQueue(0):setRate(rate / 3)

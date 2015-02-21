@@ -15,7 +15,7 @@ function master(...)
 	local dev2 = dev.config(port2, mempool)
 	local q1 = dev1:getRxQueue(0)
 	local q2 = dev2:getRxQueue(0)
-	dev.waitForDevs(dev1, dev2)
+	dev.waitForLinks()
 	
 	-- this starts the clock
 	q1:enableTimestamps()

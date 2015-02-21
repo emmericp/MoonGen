@@ -21,7 +21,7 @@ function master(...)
 	else
 		txDev = device.config(txPort, rxMempool)
 		rxDev = device.config(rxPort, rxMempool)
-		device.waitForDevs(txDev, rxDev)
+		device.waitForLinks()
 	end
 	dpdk.launchLua("timerSlave", txPort, rxPort, 0, 0)
 	dpdk.waitForSlaves()

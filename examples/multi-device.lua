@@ -7,7 +7,7 @@ function master(...)
 	map(devs, function(port)
 		return device.config(port)
 	end)
-	device.waitForDevs(unpack(devs))
+	device.waitForLinks()
 	for i, v in ipairs(devs) do
 		dpdk.launchLua("loadSlave", v.id)
 	end

@@ -38,7 +38,7 @@ function master(...)
 	local reqDev, resDev
 	reqDev = device.config(reqPort, memory.createMemPool(), 2, 2)
 	resDev = device.config(resPort, memory.createMemPool(), 2, 2)
-	device.waitForDevs(reqDev, resDev)		
+	device.waitForLinks()		
 	
 	-- resDev:l2Filter(hton16(eth.TYPE_ARP), filter.DROP) 
 

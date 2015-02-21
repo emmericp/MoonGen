@@ -23,7 +23,7 @@ function master(...)
 	end
 
 	local txDev = device.config(txPort)
-	device.waitFor(txDev)
+	device.waitForLinks()
 
 	dpdk.launchLua("loadSlave", txDev, txDev:getTxQueue(0), rate, minIP, numIPs)
 	dpdk.waitForSlaves()

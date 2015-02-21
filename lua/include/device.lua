@@ -99,11 +99,22 @@ end
 
 
 --- Waits until all given devices are initialized by calling wait() on them.
-function mod.waitForDevs(...)
+function mod.waitForLinks(...)
+	local ports
+	if select("#", ...) == 0 then
+		ports = {}
+		for port, dev in pairs(devices) do
+			if dev.initialized then
+				ports[#ports + 1] = port
+			end
+		end
+	else
+		ports = { ... }
+	end
 	print("Waiting for ports to come up...")
 	local portsSeen = {} -- do not wait twice if a port occurs more than once (e.g. if rx == tx)
-	for i = 1, select("#", ...) do
-		local port = select(i, ...)
+	for i, port in ipairs(ports) do
+		local port = mod.get(port)
 		if not portsSeen[port] then
 			portsSeen[port] = true
 			port:wait()
@@ -111,9 +122,6 @@ function mod.waitForDevs(...)
 	end
 end
 
-function mod.waitFor(...)
-	return mod.waitForDevs(...)
-end
 
 --- Wait until the device is fully initialized and up to 9 seconds to establish a link.
 -- This function then reports the current link state on stdout
