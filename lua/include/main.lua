@@ -22,6 +22,23 @@ local function run(file, ...)
 	xpcall(script, getStackTrace, ...)
 end
 
+local function parseCommandLineArgs(...)
+	local args = { ... }
+	for i, v in ipairs(args) do
+		-- is it just a simple number?
+		if tonumber(v) then
+			v = tonumber(v)
+		end
+		-- ip?
+		local ip = parseIPAddress(v)
+		if ip then
+			v = ip
+		end
+		args[i] = v
+	end
+	return args
+end
+
 local function master(_, file, ...)
 	MOONGEN_TASK_NAME = "master"
 	if not dpdk.init() then
@@ -34,9 +51,10 @@ local function master(_, file, ...)
 		printf("   Ports %d: %s (%s)", device.id, device.mac, device.name)
 	end
 	dpdk.userScript = file -- needs to be passed to slave cores
-	arg = {...} -- for cliargs in busted
+	local args = parseCommandLineArgs(...)
+	arg = args -- for cliargs in busted
 	run(file) -- should define a global called "master"
-	xpcall(_G["master"], getStackTrace, ...)
+	xpcall(_G["master"], getStackTrace, unpack(args))
 	-- exit program once the master task finishes
 	-- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()
 end
