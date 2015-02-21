@@ -114,6 +114,7 @@ end
 -- @return address ip address in ipv4_address or ipv6_address format or nil if invalid address
 -- @return boolean true if IPv4 address, false otherwise
 function parseIPAddress(ip)
+	ip = tostring(ip)
 	local address = parseIP4Address(ip)
 	if address == nil then
 		return parseIP6Address(ip), false
@@ -125,6 +126,7 @@ end
 -- @param ip address in string format
 -- @return address in uint32 format or nil if invalid address
 function parseIP4Address(ip)
+	ip = tostring(ip)
 	local bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
 	if bytes == nil then
 		return
@@ -155,6 +157,7 @@ int inet_pton(int af, const char *src, void *dst);
 -- @param ip address in string format
 -- @return address in ipv6_address format or nil if invalid address
 function parseIP6Address(ip)
+	ip = tostring(ip)
 	local LINUX_AF_INET6 = 10 --preprocessor constant of Linux
 	local tmp_addr = ffi.new("union ipv6_address")
 	local res = ffi.C.inet_pton(LINUX_AF_INET6, ip, tmp_addr)
