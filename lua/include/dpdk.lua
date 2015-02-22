@@ -232,5 +232,10 @@ function mod.sleepMicros(t)
 	dpdkc.rte_delay_us_export(t)
 end
 
+--- Get the core and socket id for the current thread
+function mod.getCore()
+	return dpdkc.get_current_core(), dpdkc.get_current_socket()
+end
+
 return mod
 

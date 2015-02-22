@@ -136,6 +136,8 @@ ffi.cdef[[
 	// cpu core management
 	int rte_eal_get_lcore_state(int core);
 	enum rte_lcore_state_t rte_eal_get_lcore_state(unsigned int slave_id);
+	uint32_t get_current_core();
+	uint32_t get_current_socket();
 
 	// memory
 	struct mempool* init_mem(uint32_t nb_mbuf, int32_t sock, uint32_t mbuf_size);

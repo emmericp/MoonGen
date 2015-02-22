@@ -5,6 +5,7 @@
 #include <rte_byteorder.h>
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
+#include <rte_lcore.h>
 
 // copied from rte_cycles.h (defined as static inline there)
 uint64_t rte_rdtsc() {
@@ -114,5 +115,15 @@ void calc_ipv6_pseudo_header_checksums(struct rte_mbuf** data, int n, int offset
 	for (int i = 0; i < n; i++) {
 		calc_ipv6_pseudo_header_checksum(data[i]->pkt.data, offset);
 	}
+}
+
+
+// rte_lcore/socket_id are static in rte_lcore.h
+uint32_t get_current_core() {
+	return rte_lcore_id();
+}
+
+uint32_t get_current_socket() {
+	return rte_socket_id();
 }
 
