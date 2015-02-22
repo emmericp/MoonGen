@@ -50,6 +50,7 @@ local bufArray = {}
 
 --- Create a new array of memory buffers (initialized to nil).
 function mempool:bufArray(n)
+	n = n or 63
 	return setmetatable({
 		size = n,
 		array = ffi.new("struct rte_mbuf*[?]", n),
@@ -65,6 +66,7 @@ do
 	--- Create a new array of memory buffers (initialized to nil).
 	-- This buf array is not associated with a memory pool.
 	function mod.createBufArray(n)
+		n = n or 63
 		return setmetatable({
 			size = n,
 			array = ffi.new("struct rte_mbuf*[?]", n),
