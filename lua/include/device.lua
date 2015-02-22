@@ -50,7 +50,7 @@ function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
 		return mod.get(port)
 	end
 	if not mempool or type(mempool) == "number" then
-		return mod.config(port, memory.createMemPool(), mempool, rxQueues, txQueues, rxDescs)
+		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, rxDescs)
 	end
 	if rxQueues == 0 or txQueues == 0 then
 		-- dpdk does not like devices without rx/tx queues :(
@@ -75,6 +75,18 @@ function mod.get(id)
 		return devices[id]
 	end
 	devices[id] = setmetatable({ id = id, rxQueues = {}, txQueues = {} }, dev)
+	if MOONGEN_TASK_NAME ~= "master" then
+		-- check the NUMA association if we are running in a worker thread
+		-- (it's okay to do the initial config from the wrong socket, but sending packets from it is a bad idea)
+		local devSocket = devices[id]:getSocket()
+		local core, threadSocket = dpdk.getCore()
+		if devSocket ~= threadSocket then
+			printf("[WARNING] You are trying to use %s (attached to the CPU socket %d) from a thread on core %d on socket %d!",
+				devices[id], devSocket, core, threadSocket)
+			printf("[WARNING] This can significantly impact the performance or even not work at all")
+			printf("[WARNING] You can change the used CPU cores in dpdk-conf.lua or by using dpdk.launchLuaOnCore(core, ...)")
+		end
+	end
 	return devices[id]
 end
 
