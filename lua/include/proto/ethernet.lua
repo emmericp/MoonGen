@@ -176,16 +176,20 @@ function etherHeader:fill(args)
 	args.ethSrc = args.ethSrc or "01:02:03:04:05:06"
 	args.ethDst = args.ethDst or "07:08:09:0a:0b:0c"
 	
-	-- if for some reason the address is in 'struct mac_address' format, cope with it
+	-- addresses can be either a string, a mac_address ctype or a device/queue object
 	if type(args.ethSrc) == "string" then
 		self:setSrcString(args.ethSrc)
-	else
+	elseif istype(macAddrType, args.ethSrc) then
 		self:setSrc(args.ethSrc)
+	elseif type(args.ethSrc) == "table" and args.ethSrc.qid then
+		self:setSrcString((args.ethSrc.dev or args.ethSrc):getMacString())
 	end
 	if type(args.ethDst) == "string" then
 		self:setDstString(args.ethDst)
-	else
+	elseif istype(macAddrType, args.ethDst) then
 		self:setDst(args.ethDst)
+	elseif type(args.ethDst) == "table" and args.ethDst.id then
+		self:setDstString((args.ethDst.dev or args.ethDst):getMacString())
 	end
 	self:setType(args.ethType)
 end
