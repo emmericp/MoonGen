@@ -66,6 +66,10 @@ do
 	--- Create a new array of memory buffers (initialized to nil).
 	-- This buf array is not associated with a memory pool.
 	function mod.createBufArray(n)
+		-- allow self-calls
+		if self == mod then
+			n = self
+		end
 		n = n or 63
 		return setmetatable({
 			size = n,
@@ -73,6 +77,8 @@ do
 			fill = fill
 		}, bufArray)
 	end
+
+	mod.bufArray = mod.createBufArray
 end
 
 function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
