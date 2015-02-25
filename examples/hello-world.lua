@@ -27,15 +27,17 @@ function master(txPort, rxPort, rate, bgRate)
 	dpdk.launchLua("loadSlave", txDev:getTxQueue(0), 42)
 	-- high priority traffic (different UDP port)
 	dpdk.launchLua("loadSlave", txDev:getTxQueue(1), 43)
-	-- measure latency from a second queue
-	dpdk.launchLua("timerSlave", txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, rate / bgRate)
 	-- count the incoming packets
 	dpdk.launchLua("counterSlave", rxDev:getRxQueue(0), 42, 43)
+	-- measure latency from a second queue
+	dpdk.launchLua("timerSlave", txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, rate / bgRate)
 	-- wait until all tasks are finished
 	dpdk.waitForSlaves()
 end
 
 function loadSlave(queue, port, rate)
+	dpdk.sleepMillis(100) -- wait a few milliseconds to ensure that the rx thread is running
+	-- TODO: implement barriers
 	local mem = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
 			pktLength = PKT_SIZE, -- this sets all length headers fields in all used protocols
@@ -63,17 +65,19 @@ function loadSlave(queue, port, rate)
 			-- modify some fields here
 			local pkt = buf:getUdpPacket()
 			-- select a randomized source IP address
+			-- you can also use a wrapping counter instead of random
 			pkt.ip.src:set(baseIP + math.random() * 255)
-			-- you can modify other fields here
+			-- you can modify other fields here (e.g. different source ports or destination addresses)
 		end
 		-- send packets
 		totalSent = totalSent + queue:send(bufs)
 		-- print statistics
+		-- TODO: this should be in a utility function
 		local time = dpdk.getTime()
 		if time - lastPrint > 1 then
 			--local rx = dev:getRxStats(port)
 			local mpps = (totalSent - lastTotal) / (time - lastPrint) / 10^6
-			printf("%s Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", queue, totalSent, mpps, mpps * 64 * 8, mpps * 84 * 8)
+			printf("%s Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", queue, totalSent, mpps, mpps * (PKT_SIZE + 4) * 8, mpps * (PKT_SIZE + 24) * 8)
 			lastTotal = totalSent
 			lastPrint = time
 		end
@@ -81,8 +85,36 @@ function loadSlave(queue, port, rate)
 	printf("Sent %d packets", totalSent)
 end
 
-function counterSlave(...)
-	-- TODO add rx counter
+function counterSlave(queue)
+	-- the simplest way to count packets is by receiving them all
+	-- an alternative would be using flow director to filter packets by port and use the queue statistics
+	-- however, the current implementation is limited to filtering timestamp packets
+	-- (changing this wouldn't be too complicated, have a look at filter.lua if you want to implement this)
+	local bufs = memory.bufArray()
+	local stats = {}
+	local lastPrint = 0
+	local lastStats = {}
+	while dpdk.running() do
+		local rx = queue:recv(bufs)
+		for i = 1, rx do
+			local buf = bufs[i]
+			local pkt = buf:getUdpPacket()
+			local port = pkt.udp.dst
+			stats[port] = (stats[port] or 0) + 1
+		end
+		bufs:freeAll()
+		local time = dpdk.getTime()
+		if time - lastPrint > 1 then
+			for k, v in pairs(stats) do
+				local last = lastStats[k] or 0
+				local mpps = (v - last) / (time - lastPrint) / 10^6
+				printf("%s Port %d: Received %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", queue, k, v, mpps, mpps * (PKT_SIZE + 4) * 8, mpps * (PKT_SIZE + 24) * 8)
+				lastStats[k] = v
+			end
+			lastPrint = time
+		end
+	end
+	-- TODO: check the queue's overflow counter to detect lost packets
 end
 
 function timerSlave(...)
