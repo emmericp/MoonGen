@@ -6,6 +6,12 @@ local dpdkc		= require "dpdkc"
 local filter	= require "filter"
 local ffi		= require "ffi"
 
+-- set addresses here
+local srcmac = "00:42:00:00:00:01"
+local dstmac = "00:42:00:00:00:02"
+local dstip = 0x0A000001
+local srcip = 0x0A000002
+
 function master(...)
 	local txPort, rxPort, rate, flows, size = tonumberall(...)
 	if not txPort or not rxPort then
@@ -13,7 +19,7 @@ function master(...)
 	end
 	flows = flows or 4
 	rate = rate or 2000
-	size = (size or 128) - 4
+	size = (size or 128) - 4 -- 4 bytes for CRC will be added by NIC
 	local rxMempool = memory.createMemPool()
 	if txPort == rxPort then
 		txDev = device.config(txPort, rxMempool, 2, 2)
@@ -34,7 +40,7 @@ end
 function loadSlave(port, queue, size, numFlows)
 	local queue = device.get(port):getTxQueue(queue)
 	local mempool = memory.createMemPool(function(buf)
-		ts.fillPacket(buf, 1234, size) 
+		ts.fillPacket(buf, 1234, size)
 		local data = ffi.cast("uint8_t*", buf.pkt.data)
 		data[43] = 0x00 -- PTP version, set to 0 to disable timestamping for load packets
 	end)
@@ -43,13 +49,16 @@ function loadSlave(port, queue, size, numFlows)
 	local lastTotal = 0
 	local lastSent = 0
 	local bufs = mempool:bufArray(128)
-	local baseIP = 0x01020304 -- TODO: ip.parse("1.2.3.4")
+	local baseIP = srcip
 	local counter = 0
 	while dpdk.running() do
 		bufs:fill(size)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
+			pkt.eth.src:setString(srcmac)
+			pkt.eth.dst:setString(dstmac)
 			pkt.ip.src:set(baseIP + counter)
+			pkt.ip.dst:set(dstip)
 			if numFlows <= 32 then
 				-- this is significantly faster for small numbers
 				-- TODO: this optimization shouldn't be necessary...
@@ -101,12 +110,15 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue, size, numFlows)
 	-- wait one second, otherwise we might start timestamping before the load is applied
 	dpdk.sleepMillis(1000)
 	local counter = 0
-	local baseIP = 0x01020304
+	local baseIP = dstip
 	while dpdk.running() do
 		bufs:fill(size + 4)
 		local pkt = bufs[1]:getUdpPacket()
-		ts.fillPacket(bufs[1], 1234, size + 4)
+		ts.fillPacket(bufs[1], 1234, size)
+		pkt.eth.src:setString(srcmac)
+		pkt.eth.dst:setString(dstmac)
 		pkt.ip.src:set(baseIP + counter)
+		pkt.ip.dst:set(dstip)
 		counter = (counter + 1) % numFlows
 		bufs:offloadUdpChecksums()
 		-- sync clocks and send
