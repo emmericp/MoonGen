@@ -16,7 +16,7 @@ function master(...)
 	size = (size or 128) - 4
 	local rxMempool = memory.createMemPool()
 	if txPort == rxPort then
-		txDev = device.config(txPort, rxMempool, 1, 2)
+		txDev = device.config(txPort, rxMempool, 2, 2)
 		rxDev = txDev
 		txDev:wait()
 	else
@@ -48,7 +48,7 @@ function loadSlave(port, queue, size, numFlows)
 	while dpdk.running() do
 		bufs:fill(size)
 		for i, buf in ipairs(bufs) do
-			local pkt = buf:getUDPPacket()
+			local pkt = buf:getUdpPacket()
 			pkt.ip.src:set(baseIP + counter)
 			if numFlows <= 32 then
 				-- this is significantly faster for small numbers
@@ -104,7 +104,7 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue, size, numFlows)
 	local baseIP = 0x01020304
 	while dpdk.running() do
 		bufs:fill(size + 4)
-		local pkt = bufs[1]:getUDPPacket()
+		local pkt = bufs[1]:getUdpPacket()
 		ts.fillPacket(bufs[1], 1234, size + 4)
 		pkt.ip.src:set(baseIP + counter)
 		counter = (counter + 1) % numFlows
