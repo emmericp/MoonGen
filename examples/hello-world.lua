@@ -39,7 +39,8 @@ function master(txPort, rxPort, rate, bgRate)
 	-- count the incoming packets
 	dpdk.launchLua("counterSlave", rxDev:getRxQueue(0), 42, 43)
 	-- measure latency from a second queue
-	dpdk.launchLua("timerSlave", txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, rate / bgRate)
+	--dpdk.launchLua("timerSlave", txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, rate / bgRate)
+	timerSlave(txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, rate / bgRate)
 	-- wait until all tasks are finished
 	dpdk.waitForSlaves()
 end
