@@ -15,9 +15,17 @@ function master(txPort, rxPort, rate, bgRate)
 	rate = rate or 100
 	bgRate = bgRate or 1500
 	-- 3 tx queues: traffic, background traffic, and timestamped packets
-	local txDev = device.config(txPort, 1, 3)
 	-- 2 rx queues: traffic and timestamped packets
-	local rxDev = device.config(rxPort, 2)
+	local txDev, rxDev
+	if txPort == rxPort then
+		-- sending and receiving from the same port
+		txDev = device.config(txPort, 2, 3)
+		rxDev = txDev
+	else
+		-- two different ports, different configuration
+		txDev = device.config(txPort, 1, 3)
+		rxDev = device.config(rxPort, 2)
+	end
 	-- wait until the link is up
 	device.waitForLinks()
 	-- setup rate limiters for CBR traffic
