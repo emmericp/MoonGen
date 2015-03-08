@@ -30,7 +30,7 @@ Users write custom scripts for their experiments. Users are encouraged to make u
 
 The following diagram shows the architecture and how multi-core support is handled.
 
-![Architecture](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png)
+-> ![Architecture](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png) <-
 
 Execution begins in the *master task* that must be defined in the user's script.
 This task configures queues and filters on the used NICs and then starts one or more *slave tasks*.
