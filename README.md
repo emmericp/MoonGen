@@ -15,8 +15,8 @@ Reading the example script [hello-world.lua](https://github.com/emmericp/MoonGen
 
 MoonGen focuses on four main points:
 
-* High performance and multi-core scaling: > 15 millionen packets per second per CPU core
-* Flexibility: Each packet is crafted in real time by a user-controlled Lua script
+* High performance and multi-core scaling: > 15 million packets per second per CPU core
+* Flexibility: Each packet is crafted in real time by a user-provided Lua script
 * Precise and accurate timestamping: Timestamping with sub-microsecond precision on commodity hardware
 * Precise and accurate rate control: Reliable generation of arbitrary traffic patterns on commodity hardware
 
@@ -26,7 +26,7 @@ You can have a look at [our slides from a recent talk](https://raw.githubusercon
 # Architecture
 
 MoonGen is basically a Lua wrapper around DPDK with utility functions for packet generation.
-Users write custom scripts for their experiments. Users are encouraged to make use of hard-coded setup-specific constants in their scripts. The script is the configuration, it is beside the point to write a complicated configuration interface for a script.
+Users write custom scripts for their experiments. It is recommended to make use of hard-coded setup-specific constants in your scripts. The script is the configuration, it is beside the point to write a complicated configuration interface for a script.
 
 The following diagram shows the architecture and how multi-core support is handled.
 
@@ -36,9 +36,9 @@ Execution begins in the *master task* that must be defined in the user's script.
 This task configures queues and filters on the used NICs and then starts one or more *slave tasks*.
 
 Note that Lua does not have any native support for multi threading.
-MoonGen therefore starts a new and completely independent LuaJIT VM for each thread that is started.
+MoonGen therefore starts a new and completely independent LuaJIT VM for each thread.
 The new VMs receive serialized arguments: the function to execute and arguments like the queue to send packets from.
-Tasks can only shared state through the underlying library.
+Threads only share state through the underlying library.
 
 The example script [hello-world.lua](https://github.com/emmericp/MoonGen/blob/master/examples/hello-world.lua) shows how this threading model can be used to implement a typical load generation task.
 It implements a QoS test by sending two different types of packets and measures their throughput and latency. It does so by starting two packet generation tasks: one for the background traffic and one for the prioritized traffic.
