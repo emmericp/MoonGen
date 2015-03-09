@@ -28,7 +28,7 @@ MoonGen focuses on four main points:
 * Precise and accurate timestamping: Timestamping with sub-microsecond precision on commodity hardware
 * Precise and accurate rate control: Reliable generation of arbitrary traffic patterns on commodity hardware
 
-You can have a look at [our slides from a recent talk](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/Slides.pdf) or read an early version of [our paper](http://arxiv.org/abs/1410.3322) [1] for a more detailed discussion of MoonGen's internals.
+You can have a look at [our slides from a recent talk](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/Slides.pdf) or read a draft of [our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_draft2.pdf) [1] for a more detailed discussion of MoonGen's internals.
 
 
 # Architecture
@@ -60,7 +60,7 @@ Intel commodity NICs like the 82599, X540, and 82580 support time stamping in ha
 The NICs implement this to support the IEEE 1588 PTP protocol, but this feature can be used to timestamp almost arbitrary UDP packets.
 The NICs achieve sub-microsecond precision and accuracy.
 
-A more detailed evaluation can be found in [our paper](http://arxiv.org/abs/1410.3322) [1].
+A more detailed evaluation can be found in [our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_draft2.pdf) [1].
 
 # Rate Control
 Precise control of inter-packet gaps is an important feature for reproducible tests.
@@ -92,7 +92,7 @@ MoonGen therefore implements two ways to prevent this problem.
 Intel 10 GbE NICs (82599 and X540) support rate control in hardware.
 This can be used to generate CBR or bursty traffic with precise inter-departure times.
 
-[Our paper](http://arxiv.org/abs/1410.3322) [1] features a detailed evaluation of this feature and compares it to software methods.
+[Our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_draft2.pdf) [1] features a detailed evaluation of this feature and compares it to software methods.
 
 ## Better Software Rate Control
 The hardware supports only CBR traffic. Other traffic patterns, especially a Poisson distribution, are desirable.
@@ -109,7 +109,7 @@ A bad packet is a packet that is not accepted by the DuT (device under test) and
 We currently use packets with an invalid CRC and an invalid length if necessary.
 All common NICs drop such packets immediately in hardware as further processing of a corrupted packet is pointless.
 This does not affect the running software.
-[Our slides from a recent talk](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/Slides.pdf) contain a measurement which shows that this is the case.
+[Our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_draft2.pdf) contains a measurement which shows that this is the case.
 
 If the DuT's NIC does not do this or if a hardware device is to be tested, then a switch can be used to remove these packets from the stream to generate 'real' space on the wire.
 The effects of the switch on the packet spacing needs to be analyzed carefully, e.g. with MoonGen's inter-arrival.lua example script.
@@ -180,7 +180,7 @@ We decided for DPDK as back end for the following reasons:
 Note that this might change. Using DPDK also comes with disadvantages like its bloated build system and configuration.
 
 # References
-[1] Paul Emmerich, Florian Wohlfart, Daniel Raumer, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator. 2014. Preprint available: [arXiv:1410.3322](http://arxiv.org/abs/1410.3322)
+[1] Paul Emmerich, Sebastian Gallenmüller, Florian Wohlfart, Daniel Raumer, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator, 2015. Draft. Conference TBD. [Preprint available](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_draft2.pdf).
 
 [2] Alessio Botta, Alberto Dainotti, and Antonio Pescapé. Do you trust your software-based traffic generator? In *IEEE Communications Magazine*, 48(9):158–165, 2010.
 
