@@ -80,6 +80,7 @@ function loadSlave(queue, port, rate)
 			-- you can modify other fields here (e.g. different source ports or destination addresses)
 		end
 		-- send packets
+		bufs:offloadUdpChecksums()
 		totalSent = totalSent + queue:send(bufs)
 		-- print statistics
 		-- TODO: this should be in a utility function
