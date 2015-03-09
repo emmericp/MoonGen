@@ -36,7 +36,9 @@ Users write custom scripts for their experiments. It is recommended to make use 
 
 The following diagram shows the architecture and how multi-core support is handled.
 
--> ![Architecture](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png) <-
+<p align="center">
+<img alt="Architecture" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png"/>
+</p>
 
 Execution begins in the *master task* that must be defined in the user's script.
 This task configures queues and filters on the used NICs and then starts one or more *slave tasks*.
@@ -65,7 +67,9 @@ However, software packet generators are usually bad at controlling the inter-pac
 
 The following diagram illustrates how a typical software packet generator tries to control the packet rate.
 
--> ![Software Rate Control](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-traditional-software.png) <-
+<p align="center">
+<img alt="Software Rate Control" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-traditional-software.png"/>
+</p>
 
 It simply tries to wait for a specified time after sending a packet.
 Network APIs often abstract NICs in a way that indicates that the API pushes a packet to the NIC, so this technique might seem reasonable.
@@ -74,7 +78,7 @@ It is now up to the NIC (which may or may not be notified by the API about the n
 
 This means that trying to push packets to a NIC is futile.
 This is especially important at rates above 1 GBit/s where nanosecond-level precision is required (length of a minimal sized packet at 10 GBit/s: 67.2 nanoseconds).
-Sending a single packet requires at least two round trips across the PCIe bus (one to notify the NIC about the updated queue, one for the NIC to fetch the packet), each which latencies and jitter in the nanosecond-range.
+Sending a single packet requires at least two round trips across the PCIe bus: One to notify the NIC about the updated queue, one for the NIC to fetch the packet. Each PCIe operation introduces latencies and jitter in the nanosecond-range.
 
 Another problem with this approach is that the queues, and therefore batch processing, cannot be used.
 However, batch processing is an important technique to achieve line rate at high packet rates [3].
@@ -95,7 +99,9 @@ The problem that software rate control faces is that it needs to generate an 'em
 We circumvent this problem by sending bad packets in the space between packets instead of trying to send nothing.
 The following diagram illustrates this concept.
 
--> ![Better Software Rate Control](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-moongen-software.png) <-
+<p align="center">
+<img alt="Better Software Rate Control" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-moongen-software.png"/>
+</p>
 
 A bad packet is a packet that is not accepted by the DuT (device under test) and filtered in hardware before it reaches the software. These packets are shaded in the figure above.
 We currently use packets with an invalid CRC and an invalid length if necessary.
