@@ -1,5 +1,7 @@
 ### TL;DR
-LuaJIT + DPDK = fast and flexible packet generator for 10 GBit Ethernet and above.
+LuaJIT + DPDK = fast and flexible packet generator for 10 GBit Ethernet and beyond.
+
+MoonGen uses hardware features for accurate and precise latency measurements and rate control.
 
 You have to write a simple script for your use case.
 Read [hello-world.lua](https://github.com/emmericp/MoonGen/blob/master/examples/hello-world.lua) to get started.
