@@ -59,7 +59,7 @@ function mempool:bufArray(n)
 end
 
 do
-	local function fill()
+	local function alloc()
 		error("buf array not associated with a memory pool", 2)
 	end
 	
@@ -74,7 +74,7 @@ do
 		return setmetatable({
 			size = n,
 			array = ffi.new("struct rte_mbuf*[?]", n),
-			fill = fill
+			alloc = alloc
 		}, bufArray)
 	end
 
@@ -134,7 +134,7 @@ function bufArray:offloadTcpChecksums(ipv4, l2Len, l3Len)
 end
 
 --- Allocates buffers from the memory pool and fills the array
-function bufArray:fill(size)
+function bufArray:alloc(size)
 	for i = 0, self.size - 1 do
 		self.array[i] = self.mem:alloc(size)
 	end

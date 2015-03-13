@@ -51,7 +51,7 @@ function loadSlave(port, queue)
 	local bufs = mem:bufArray(MAX_BURST_SIZE)
 	local seq = 0
 	while dpdk.running() do
-		bufs:fill(60)
+		bufs:alloc(60)
 		for i = 1, bufs.size do
 			local data = ffi.cast("uint32_t*", bufs[i].pkt.data)
 			data[4] = seq

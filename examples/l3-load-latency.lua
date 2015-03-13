@@ -52,7 +52,7 @@ function loadSlave(port, queue, size, numFlows)
 	local baseIP = srcip
 	local counter = 0
 	while dpdk.running() do
-		bufs:fill(size)
+		bufs:alloc(size)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
 			pkt.eth.src:setString(srcmac)
@@ -112,7 +112,7 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue, size, numFlows)
 	local counter = 0
 	local baseIP = dstip
 	while dpdk.running() do
-		bufs:fill(size + 4)
+		bufs:alloc(size + 4)
 		local pkt = bufs[1]:getUdpPacket()
 		ts.fillPacket(bufs[1], 1234, size)
 		pkt.eth.src:setString(srcmac)

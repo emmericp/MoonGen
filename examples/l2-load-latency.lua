@@ -61,7 +61,7 @@ function loadSlave(port, queue)
 	local lastSent = 0
 	local bufs = mem:bufArray(MAX_BURST_SIZE)
 	while dpdk.running() do
-		bufs:fill(60)
+		bufs:alloc(60)
 		totalSent = totalSent + queue:send(bufs)
 		local time = dpdk.getTime()
 		if time - lastPrint > 1 then
@@ -102,7 +102,7 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue)
 	local hist = {}
 	dpdk.sleepMillis(4000)
 	while dpdk.running() do
-		buf:fill(60)
+		buf:alloc(60)
 		ts.fillL2Packet(buf[1])
 		-- sync clocks and send
 		ts.syncClocks(txDev, rxDev)

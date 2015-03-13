@@ -27,7 +27,7 @@ function loadSlave(queue)
 	local lastSent = 0
 	local bufs = mem:bufArray(63)
 	while dpdk.running() do
-		bufs:fill(60)
+		bufs:alloc(60)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUDPPacket()
 			-- TODO: figure out if using a custom random number generator is faster

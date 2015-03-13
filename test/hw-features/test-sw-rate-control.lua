@@ -20,7 +20,7 @@ describe("software rate control", function()
 		local sent = 0
 		local start = dpdk.getTime()
 		while sent < 10^6 and dpdk.running() do
-			bufs:fill(60)
+			bufs:alloc()
 			sent = sent + queue:sendWithDelay(bufs, delays)
 		end
 		local time = dpdk.getTime() - start

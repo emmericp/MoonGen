@@ -70,7 +70,7 @@ function loadSlave(queue, port, rate)
 	local bufs = mem:bufArray()
 	while dpdk.running() do
 		-- allocate buffers from the mem pool and store them in this array
-		bufs:fill(PKT_SIZE)
+		bufs:alloc(PKT_SIZE)
 		for _, buf in ipairs(bufs) do
 			-- modify some fields here
 			local pkt = buf:getUdpPacket()
@@ -178,7 +178,7 @@ function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 	local counter = 0
 	local baseIP = parseIPAddress("10.0.0.1")
 	while dpdk.running() do
-		bufs:fill(PKT_SIZE)
+		bufs:alloc(PKT_SIZE)
 		local pkt = bufs[1]:getUdpPacket()
 		local port = math.random() <= ratio and port or bgPort
 		-- TODO: ts.fillPacket must be fixed

@@ -27,7 +27,7 @@ function loadSlave(port)
 	local lastSent = 0
 	local bufs = mem:bufArray(63)
 	while dpdk.running() do
-		bufs:fill(60)
+		bufs:alloc(60)
 		bufs:offloadUdpChecksums()
 		totalSent = totalSent + queue:send(bufs)
 		local time = dpdk.getTime()

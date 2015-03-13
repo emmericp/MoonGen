@@ -65,8 +65,8 @@ function loadSlave(port, queue, minA, numIPs)
 
 	print("Start sending...")
 	while dpdk.running() do
-		-- fill packets and set their size 
-		bufs:fill(packetLen)
+		-- faill packets and set their size 
+		bufs:alloc(packetLen)
 		for i, buf in ipairs(bufs) do 			
 			local pkt = buf:getTcpPacket(ipv4)
 			

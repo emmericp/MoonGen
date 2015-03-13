@@ -92,7 +92,7 @@ function trafficSlave(port, txQueueCount)
 	--Diese Zeile ändert nichts an dem ergebnis
 	local bufs = mem:bufArray(MAX_BURST_SIZE)
 	while dpdk.running() do
-		bufs:fill(60)
+		bufs:alloc(60)
 		
 		--Fill the packet with custom information
 		for i, buf in ipairs(bufs) do
@@ -152,7 +152,7 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue)
 	
 	dpdk.sleepMillis(4000)
 	while dpdk.running() do
-		bufs:fill(60)
+		bufs:alloc(60)
 		bufs[1].ol_flags = bit.bor(bufs[1].ol_flags, 0x8000)
 		-- sync clocks and send
 		ts.syncClocks(txDev, rxDev)

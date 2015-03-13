@@ -72,7 +72,7 @@ function loadSlave(port, queue, numFlows)
 	local baseIP = 0x01020304 -- TODO: ip.parse("1.2.3.4")
 	local counter = 0
 	while dpdk.running() do
-		bufs:fill(60)
+		bufs:alloc(60)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUDPPacket()
 			pkt.ip.src:set(baseIP + counter)

@@ -40,7 +40,7 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue)
 	local hist = {}
 	dpdk.sleepMillis(1000)
 	while dpdk.running() do
-		buf:fill(60)
+		buf:alloc(60)
 		ts.fillL2Packet(buf[1])
 		-- sync clocks and send
 		ts.syncClocks(txDev, rxDev)

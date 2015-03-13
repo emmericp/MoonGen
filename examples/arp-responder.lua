@@ -88,7 +88,7 @@ function arpRequesterSlave(port, rxQueue, txQueue)
 	print("Start sending...")
 	while dpdk.running() do
 		if c == 0 then -- only once
-			bufs:fill(packetLen)
+			bufs:alloc(packetLen)
 			for i, buf in ipairs(bufs) do 			
 				printf("ArpRequester requested:")
 				buf:dump()
@@ -153,7 +153,7 @@ function arpResponderSlave(port, rxQueue, txQueue)
 					if rxPkt.arp:getProtoDstString() == devIP then
 						printf("ArpResponderSlave received ARP request with matching IP address. Generating response.")
 						
-						txBufs:fill(packetLen)
+						txBufs:alloc(packetLen)
 						for i, buf in ipairs(txBufs) do
 							local pkt = buf:getArpPacket()
 

@@ -32,7 +32,7 @@ function loadSlave(dev, rxDev, queue, rate, size)
 	local totalReceived = 0
 	local bufs = mem:bufArray(31)
 	while dpdk.running() do
-		bufs:fill(size)
+		bufs:alloc(size)
 		for _, buf in ipairs(bufs) do
 			-- this script uses Mpps instead of Mbit (like the other scripts)
 			buf:setDelay(poissonDelay(10^10 / 8 / (rate * 10^6) - size - 24))
@@ -61,7 +61,7 @@ function timerSlave(txDev, rxDev, txQueue, rxQueue)
 	local hist = {}
 	dpdk.sleepMillis(4000)
 	while dpdk.running() do
-		buf:fill(60)
+		buf:alloc(60)
 		ts.fillL2Packet(buf[1])
 		-- sync clocks and send
 		ts.syncClocks(txDev, rxDev)
