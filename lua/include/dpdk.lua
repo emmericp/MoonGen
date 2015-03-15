@@ -210,8 +210,8 @@ function mod.setRuntime(time)
 end
 
 --- returns false once the app receives SIGTERM or SIGINT, the time set via setRuntime expires, or when a thread calls dpdk.stop()
-function mod.running()
-	return dpdkc.is_running() == 1 -- luajit-2.0.3 does not like bool return types (TRACE NYI: unsupported C function type)
+function mod.running(extraTime)
+	return dpdkc.is_running(extraTime or 0) == 1 -- luajit-2.0.3 does not like bool return types (TRACE NYI: unsupported C function type)
 end
 
 --- request all tasks to exit

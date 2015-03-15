@@ -78,7 +78,7 @@ function counterSlave(port)
 	local dev = device.get(port)
 	dev:l2Filter(0x1234, filter.DROP)
 	local total = 0
-	while dpdk.running() do
+	while dpdk.running(500) do
 		local time = dpdk.getTime()
 		dpdk.sleepMillis(1000)
 		local elapsed = dpdk.getTime() - time

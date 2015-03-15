@@ -189,7 +189,7 @@ ffi.cdef[[
 	uint64_t rte_get_tsc_hz();
 
 	// lifecycle
-	uint8_t is_running();
+	uint8_t is_running(uint32_t extra_time);
 	void set_runtime(uint32_t ms);
 
 	// timestamping
