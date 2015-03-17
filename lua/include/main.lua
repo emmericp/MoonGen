@@ -29,11 +29,12 @@ local function parseCommandLineArgs(...)
 		if tonumber(v) then
 			v = tonumber(v)
 		end
+		-- currently not supported as we can't pass structs to slaves
 		-- ip?
-		local ip = parseIPAddress(v)
-		if ip then
-			v = ip
-		end
+		-- local ip = parseIPAddress(v)
+		-- if ip then
+		-- 	v = ip
+		-- end
 		args[i] = v
 	end
 	return args
