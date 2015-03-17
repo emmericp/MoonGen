@@ -1,3 +1,6 @@
+--- Send UDPv4/v6 packets with <numIPs> different destination IPv4/v6 addresses
+-- <minIP> decides whether it's IPv4 or IPv6
+-- starts sending with <minIP>, increases IP by one for each packet (until <numIPs> reached, restart with <minIP>)
 local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
@@ -10,12 +13,7 @@ local packet	= require "packet"
 
 local ffi	= require "ffi"
 
-function master(...)
-	--parse args
-	local txPort = tonumber((select(1, ...)))
-	local minIP = select(2, ...)
-	local numIPs = tonumber((select(3, ...)))
-	local rate = tonumber(select(4, ...))
+function master(txPort, minIP, numIPs, rate)
 	
 	if not txPort or not minIP or not numIPs or not rate then
 		printf("usage: txPort minIP numIPs rate")
@@ -25,11 +23,13 @@ function master(...)
 	local txDev = device.config(txPort)
 	device.waitForLinks()
 
-	dpdk.launchLua("loadSlave", txDev, txDev:getTxQueue(0), rate, minIP, numIPs)
+	txDev:getTxQueue(0):setRate(rate)
+
+	dpdk.launchLua("loadSlave", txDev, txDev:getTxQueue(0), minIP, numIPs)
 	dpdk.waitForSlaves()
 end
 
-function loadSlave(dev, queue, rate, minA, numIPs)
+function loadSlave(dev, queue, minA, numIPs)
 	--- parse and check ip addresses
 	-- min UDP packet size for IPv6 is 66 bytes
 	-- 4 bytes subtracted as the CRC gets appended by the NIC
@@ -42,14 +42,15 @@ function loadSlave(dev, queue, rate, minA, numIPs)
 		errorf("Invalid minIP: %s", minA)
 	end
 
-	-- set rate and prefill buffers
-	queue:setRate(rate)
+	-- prefill buffers
 	local mem = memory.createMemPool(function(buf)
 		local pkt = buf:getUdpPacket(ipv4):fill{ 
 			ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
 			ipSrc="192.168.1.1", 
 			ip6Src="fd06::1",
-			pktLength=packetLen }
+			-- the destination address will be set for each packet individually (see below)
+			pktLength=packetLen 
+		}
 	end)
 
 	local lastPrint = dpdk.getTime()
@@ -67,8 +68,8 @@ function loadSlave(dev, queue, rate, minA, numIPs)
 		for i, buf in ipairs(bufs) do 			
 			local pkt = buf:getUdpPacket(ipv4)
 			
-			--increment IP
-			pkt.ip.dst:set(minIP)
+			-- increment IP
+			pkt.ip:setDst(minIP)
 			pkt.ip.dst:add(counter)
 			if numIPs <= 32 then
 				counter = (counter + 1) % numIPs
@@ -76,18 +77,21 @@ function loadSlave(dev, queue, rate, minA, numIPs)
 				counter = counter == numIPs and 0 or counter + 1
 			end
 
-			-- dump first packet
-			if c < 1 then
+			-- dump first few packets to see what we send
+			if c < 3 then
 				buf:dump()
 				c = c + 1
 			end
 		end 
-		--offload checksums to NIC
+		-- offload checksums to NIC
 		bufs:offloadUdpChecksums(ipv4)
 		
+		-- send packets
 		totalSent = totalSent + queue:send(bufs)
+		
+		-- print statistics
 		local time = dpdk.getTime()
-		if time - lastPrint > 0.1 then 	--counter frequency
+		if time - lastPrint > 0.1 then
 			local mpps = (totalSent - lastTotal) / (time - lastPrint) / 10^6
 			printf("%.5f %d", time - lastPrint, totalSent - lastTotal)	-- packet_counter-like output
 			--printf("Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", totalSent, mpps, mpps * 64 * 8, mpps * 84 * 8)
