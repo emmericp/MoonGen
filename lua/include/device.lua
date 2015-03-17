@@ -124,14 +124,16 @@ function mod.waitForLinks(...)
 		ports = { ... }
 	end
 	print("Waiting for ports to come up...")
+	local portsUp = 0
 	local portsSeen = {} -- do not wait twice if a port occurs more than once (e.g. if rx == tx)
 	for i, port in ipairs(ports) do
 		local port = mod.get(port)
 		if not portsSeen[port] then
 			portsSeen[port] = true
-			port:wait()
+			portsUp = portsUp + (port:wait() and 1 or 0)
 		end
 	end
+	printf("%d ports are up.", portsUp)
 end
 
 
@@ -141,6 +143,7 @@ function dev:wait()
 	local link = self:getLinkStatus()
 	self.speed = link.speed
 	printf("Port %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
+	return link.status
 end
 
 function dev:getLinkStatus()
