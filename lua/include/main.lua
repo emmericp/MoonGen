@@ -61,6 +61,9 @@ local function master(_, file, ...)
 end
 
 local function slave(file, func, ...)
+	if func == "master" then
+		print("[WARNING] Calling master as slave. This is probably a bug.")
+	end
 	--require("jit.p").start("l")
 	--require("jit.dump").on()
 	MOONGEN_TASK_NAME = func

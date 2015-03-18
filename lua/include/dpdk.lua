@@ -109,10 +109,20 @@ ffi.cdef[[
 	void launch_lua_core(int core, int argc, struct lua_core_arg* argv[]);
 ]]
 
+local function checkCore()
+	if MOONGEN_TASK_NAME ~= "master" then
+		print("[ERROR] Task trying to start a slave is not the master task.")
+		return false
+	end
+	return true
+end
 
 --- Launch a LuaJIT VM on a core with the given arguments.
 --- TODO: use proper serialization and only pass strings
 function mod.launchLuaOnCore(core, ...)
+	if not checkCore() then
+		return false
+	end
 	local args = { ... }
 	--- the (de-)serialization is ugly and needs a rewrite with a proper (de-)serialization library (Serpent?)
 	local argsArray = ffi.new("struct lua_core_arg*[?]", #args)
@@ -152,7 +162,9 @@ end
 
 --- launches the lua file on the first free core
 function mod.launchLua(...)
-	-- TODO: use dpdk iterator functions
+	if not checkCore() then
+		return false
+	end
 	for i = 2, #cores do -- skip master
 		local core = cores[i]
 		local status = dpdkc.rte_eal_get_lcore_state(core)
