@@ -155,7 +155,13 @@ function mod.launchLua(...)
 	-- TODO: use dpdk iterator functions
 	for i = 2, #cores do -- skip master
 		local core = cores[i]
-		if dpdkc.rte_eal_get_lcore_state(core) == dpdkc.WAIT then -- core is in WAIT state
+		local status = dpdkc.rte_eal_get_lcore_state(core)
+		if status == dpdkc.FINISHED then
+			dpdkc.rte_eal_wait_lcore(core)
+			-- should be guaranteed to be in WAIT state now according to DPDK documentation
+			status = dpdkc.rte_eal_get_lcore_state(core)
+		end
+		if status == dpdkc.WAIT then -- core is in WAIT state
 			mod.launchLuaOnCore(core, mod.userScript, ...)
 			return
 		end
