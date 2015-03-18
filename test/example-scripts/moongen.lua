@@ -14,28 +14,10 @@ function mg.start(script, ...)
 	return obj
 end
 
-local appendArg
--- don't ask.
-do
-	local function range(max, cur, ...)
-		cur = cur or 1
-		if cur > max then
-			return ...
-		end
-		return cur, range(max, cur + 1, select(2, ...))
-	end
-
-	local cachedFuncs = setmetatable({}, {__index = function(self, k)
-		local str = "return function(a, ...) local tbl = { ... } return " .. ("tbl[%d], "):rep(k) .. " a end"
-		str = str:format(range(k))
-		local v = loadstring(str)()
-		rawset(self, k, v)
-		return v
-	end})
-
-	function appendArg(a, ...)
-		return cachedFuncs[select("#", ...)](a, ...)
-	end
+local function appendArg(a, ...)
+	local varArgs = { ... }
+	varArgs[#varArgs + 1] = a
+	return unpack(varArgs)
 end
 
 function proc:waitFor(expr1, expr2)
