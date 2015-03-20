@@ -3,8 +3,10 @@ require "utils"
 require "packet"
 
 local dpdk	= require "dpdk"
+local dpdkc = require "dpdkc"
 local dev	= require "device"
 local stp	= require "StackTracePlus"
+local ffi	= require "ffi"
 
 -- TODO: add command line switches for this and other luajit-debugging features
 --require("jit.v").on()
@@ -60,13 +62,24 @@ local function master(_, file, ...)
 	-- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()
 end
 
-local function slave(file, func, ...)
+-- FIXME: implement serialization
+local function serialize(...)
+	local obj = { ... }
+	local str1, str2 = tostringall(#obj, obj)
+	local cStr1, cStr2 = ffi.new("char[?]", #str1 + 1), ffi.new("char[?]", #str2 + 1)
+	ffi.copy(cStr1, str1)
+	ffi.copy(cStr2, str2)
+	return cStr1, cStr2
+end
+
+local function slave(taskId, file, func, ...)
 	if func == "master" then
 		print("[WARNING] Calling master as slave. This is probably a bug.")
 	end
 	--require("jit.p").start("l")
 	--require("jit.dump").on()
 	MOONGEN_TASK_NAME = func
+	MOONGEN_TASK_ID = taskId
 	run(file)
 	-- decode args
 	local args = { ... }
@@ -86,7 +99,11 @@ local function slave(file, func, ...)
 			end
 		end
 	end
-	xpcall(_G[func], getStackTrace, unpack(args))
+	local results = { xpcall(_G[func], getStackTrace, unpack(args)) }
+	local ok = table.remove(results, 1)
+	if ok then
+		dpdkc.store_result(taskId, serialize(unpack(results)))
+	end
 	--require("jit.p").stop()
 end
 

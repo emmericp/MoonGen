@@ -106,23 +106,84 @@ ffi.cdef[[
 			bool boolean;
 		} arg;
 	};
-	void launch_lua_core(int core, int argc, struct lua_core_arg* argv[]);
+	void launch_lua_core(int core, uint64_t task_id, int argc, struct lua_core_arg* argv[]);
+
+	uint64_t generate_task_id();
+	void store_result(uint64_t task_id, char* result1, char* result2);
+	bool get_result_size(uint64_t task_id, uint64_t* result1, uint64_t* result2);
+	bool get_result(uint64_t task_id, char* result1, char* result2, size_t buf_size1, size_t buf_size2);
 ]]
 
 local function checkCore()
 	if MOONGEN_TASK_NAME ~= "master" then
-		print("[ERROR] Task trying to start a slave is not the master task.")
+		error("[ERROR] This function is only available on the master task.", 2)
+	end
+end
+
+local task = {}
+task.__index = task
+
+local tasks = {}
+
+function task:new(core)
+	checkCore()
+	local obj = setmetatable({
+		-- double instead of uint64_t is easier here and okay (unless you want to start more than 2^53 tasks)
+		id = tonumber(ffi.C.generate_task_id()),
+		core = core
+	}, task)
+	tasks[core] = obj
+	return obj
+end
+
+local function deserialize(buf1, buf2)
+	return ffi.string(buf1), ffi.string(buf2)
+end
+
+--- Wait for a task and return any arguments returned by the task
+function task:wait()
+	checkCore()
+	while true do
+		if dpdkc.rte_eal_get_lcore_state(self.core) ~= dpdkc.RUNNING then
+			-- task is finished
+			-- TODO: this is a pretty ugly API
+			local bufSize1, bufSize2 = ffi.new("uint64_t[1]"), ffi.new("uint64_t[1]")
+			local ok = dpdkc.get_result_size(self.id, bufSize1, bufSize2)
+			bufSize1, bufSize2 = bufSize1[0], bufSize2[0]
+			if not ok then
+				-- no results :(
+				-- only happens if the thread crashes in a really bad way
+				-- (no results would be an empty array)
+				return
+			end
+			local buf1 = ffi.new("char[?]", bufSize1)
+			local buf2 = ffi.new("char[?]", bufSize2)
+			local hasResult = dpdkc.get_result(self.id, buf1, buf2, bufSize1, bufSize2)
+			if not hasResult then
+				-- should not happen
+				return
+			end
+			return deserialize(buf1, buf2)
+		end
+		ffi.C.usleep(100)
+	end
+end
+
+function task:isRunning()
+	checkCore()
+	if not tasks[self.core] or task[self.core].id ~= self.id then
+		-- something else or nothing is running on this core
 		return false
 	end
-	return true
+	-- this task is still on this cora, but is it still running?
+	return dpdkc.rte_eal_get_lcore_state(core) == dpdkc.RUNNING
 end
+
 
 --- Launch a LuaJIT VM on a core with the given arguments.
 --- TODO: use proper serialization and only pass strings
 function mod.launchLuaOnCore(core, ...)
-	if not checkCore() then
-		return false
-	end
+	checkCore()
 	local args = { ... }
 	--- the (de-)serialization is ugly and needs a rewrite with a proper (de-)serialization library (Serpent?)
 	local argsArray = ffi.new("struct lua_core_arg*[?]", #args)
@@ -157,14 +218,14 @@ function mod.launchLuaOnCore(core, ...)
 			end
 		end
 	end
-	dpdkc.launch_lua_core(core, #args, argsArray)
+	local task = task:new(core)
+	dpdkc.launch_lua_core(core, task.id, #args, argsArray)
+	return task
 end
 
 --- launches the lua file on the first free core
 function mod.launchLua(...)
-	if not checkCore() then
-		return false
-	end
+	checkCore() 
 	for i = 2, #cores do -- skip master
 		local core = cores[i]
 		local status = dpdkc.rte_eal_get_lcore_state(core)
@@ -174,8 +235,7 @@ function mod.launchLua(...)
 			status = dpdkc.rte_eal_get_lcore_state(core)
 		end
 		if status == dpdkc.WAIT then -- core is in WAIT state
-			mod.launchLuaOnCore(core, mod.userScript, ...)
-			return
+			return mod.launchLuaOnCore(core, mod.userScript, ...)
 		end
 	end
 	error("not enough cores to start this lua task")

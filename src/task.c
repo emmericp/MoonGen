@@ -42,6 +42,7 @@ int lua_core_main(void* arg) {
 	}
 	lua_getglobal(L, "main");
 	lua_pushstring(L, "slave");
+	lua_pushnumber(L, cfg->task_id);
 	for (int i = 0; i < cfg->argc; i++) {
 		struct lua_core_arg* arg = cfg->argv[i];
 		switch (arg->arg_type) {
@@ -67,7 +68,7 @@ int lua_core_main(void* arg) {
 				lua_settable(L, -3);
 		}
 	}
-	if (lua_pcall(L, cfg->argc + 1, 0, 0)) {
+	if (lua_pcall(L, cfg->argc + 2, 0, 0)) {
 		printf("Lua error: %s\n", lua_tostring(L, -1));
 		goto error;
 	}
@@ -84,8 +85,9 @@ error:
 	return rc;
 }
 
-void launch_lua_core(int core, int argc, struct lua_core_arg* argv[]) {
+void launch_lua_core(int core, uint64_t task_id, int argc, struct lua_core_arg* argv[]) {
 	struct lua_core_config* cfg = (struct lua_core_config*) malloc(sizeof(struct lua_core_config));
+	cfg->task_id = task_id;
 	cfg->argc = argc;
 	cfg->argv = (struct lua_core_arg**) malloc(argc * sizeof(struct lua_core_arg*));
 	for (int i = 0; i < argc; i++) {

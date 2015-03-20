@@ -2,6 +2,7 @@
 #define TASK_H__
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <lauxlib.h>
 #include <lualib.h>
@@ -18,11 +19,12 @@ struct lua_core_arg {
 
 struct lua_core_config {
 	int argc;
+	uint64_t task_id;
 	struct lua_core_arg** argv;
 };
 
 lua_State* launch_lua();
 
-void launch_lua_core(int core, int argc, struct lua_core_arg* argv[]);
+void launch_lua_core(int core, uint64_t task_id, int argc, struct lua_core_arg* argv[]);
 
 #endif
