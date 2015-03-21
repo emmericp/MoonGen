@@ -245,3 +245,30 @@ function mergeTables(...)
 	return table
 end
 
+--- Return all integerss in the range [start, max].
+-- @param max upper bound
+-- @param start lower bound, default = 1
+function range(max, start, ...)
+	start = start or 1
+	if start > max then
+		return ...
+	end
+	return start, range(max, start + 1, select(2, ...))
+end
+
+
+local unpackers = setmetatable({}, { __index = function(self, n)
+	local func = loadstring(([[
+		return function(tbl)
+			return ]] .. ("tbl[%d], "):rep(n):sub(0, -3) .. [[
+		end
+	]]):format(range(n)))()
+	rawset(self, n, func)
+	return func
+end })
+
+--- unpack() with support for arrays with 'holes'.
+function unpackAll(tbl)
+	return unpackers[table.maxn(tbl)](tbl)
+end
+
