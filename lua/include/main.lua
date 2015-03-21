@@ -72,7 +72,9 @@ local function serialize(...)
 	return cStr1, cStr2
 end
 
-local function slave(taskId, file, func, ...)
+local function slave(taskId, args)
+	args = loadstring(args)()
+	file, func = unpack(args)
 	if func == "master" then
 		print("[WARNING] Calling master as slave. This is probably a bug.")
 	end
@@ -82,24 +84,7 @@ local function slave(taskId, file, func, ...)
 	MOONGEN_TASK_ID = taskId
 	run(file)
 	-- decode args
-	local args = { ... }
-	-- TODO: ugly work-around until someone implements proper serialization
-	for i, v in ipairs(args) do
-		if type(v) == "table" then
-			local obj = {}
-			for v in v[1]:gmatch("([^,]+)") do
-				obj[#obj + 1] = v
-			end
-			if obj[1] == "device" then
-				args[i] = dev.get(tonumber(obj[2]))
-			elseif obj[1] == "rxQueue" then
-				args[i] = dev.get(tonumber(obj[2])):getRxQueue(tonumber(obj[3]))
-			elseif obj[1] == "txQueue" then
-				args[i] = dev.get(tonumber(obj[2])):getTxQueue(tonumber(obj[3]))
-			end
-		end
-	end
-	local results = { xpcall(_G[func], getStackTrace, unpack(args)) }
+	local results = { xpcall(_G[func], getStackTrace, select(3, unpack(args))) }
 	local ok = table.remove(results, 1)
 	if ok then
 		dpdkc.store_result(taskId, serialize(unpack(results)))

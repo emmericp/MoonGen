@@ -2,6 +2,7 @@
 local mod = {}
 local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
+local serpent	= require "Serpent"
 
 -- DPDK constants (lib/librte_mbuf/rte_mbuf.h)
 -- TODO: import more constants here
@@ -97,16 +98,7 @@ function mod.init()
 end
 
 ffi.cdef[[
-	struct lua_core_arg {
-		enum { ARG_TYPE_STRING, ARG_TYPE_NUMBER, ARG_TYPE_BOOLEAN, ARG_TYPE_POINTER, ARG_TYPE_NIL, ARG_TYPE_OBJECT } arg_type;
-		union {
-			const char* str;
-			double number;
-			void* ptr;
-			bool boolean;
-		} arg;
-	};
-	void launch_lua_core(int core, uint64_t task_id, int argc, struct lua_core_arg* argv[]);
+	void launch_lua_core(int core, uint64_t task_id, char* args);
 
 	uint64_t generate_task_id();
 	void store_result(uint64_t task_id, char* result1, char* result2);
@@ -184,42 +176,11 @@ end
 --- TODO: use proper serialization and only pass strings
 function mod.launchLuaOnCore(core, ...)
 	checkCore()
-	local args = { ... }
-	--- the (de-)serialization is ugly and needs a rewrite with a proper (de-)serialization library (Serpent?)
-	local argsArray = ffi.new("struct lua_core_arg*[?]", #args)
-	for i, v in ipairs(args) do
-		argsArray[i - 1] = ffi.new("struct lua_core_arg")
-		if type(v) == "string" then
-			argsArray[i - 1].arg_type = ffi.C.ARG_TYPE_STRING
-			argsArray[i - 1].arg.str = ffi.new("const char*", v)
-		elseif type(v) == "number" then
-			argsArray[i - 1].arg_type = ffi.C.ARG_TYPE_NUMBER
-			argsArray[i - 1].arg.number = v
-		elseif type(v) == "boolean" then
-			argsArray[i - 1].arg_type = ffi.C.ARG_TYPE_BOOLEAN
-			argsArray[i - 1].arg.boolean = v
-		elseif type(v) == "cdata" or type(v) == "userdata" then
-			argsArray[i - 1].arg_type = ffi.C.ARG_TYPE_POINTER
-			argsArray[i - 1].arg.ptr = v
-		else
-			local objectOk = false
-			if type(v) == "table" and getmetatable(v) then
-				local t = getmetatable(v).__type
-				if t == "device" or t == "rxQueue" or t == "txQueue" then
-					-- TODO: this is obviously just a temporary work-around
-					argsArray[i - 1].arg_type = ffi.C.ARG_TYPE_OBJECT
-					argsArray[i - 1].arg.str = ffi.new("const char*", t .. "," ..
-						(t == "device" and v.id or (v.id .. "," .. v.qid)))
-					objectOk = true
-				end
-			end
-			if not objectOk then
-				error(("arguments of type %s are not supported for slave cores"):format(type(v)))
-			end
-		end
-	end
+	local args = serpent.dump({ mod.userScript, ... })
 	local task = task:new(core)
-	dpdkc.launch_lua_core(core, task.id, #args, argsArray)
+	local buf = ffi.new("char[?]", #args + 1)
+	ffi.copy(buf, args)
+	dpdkc.launch_lua_core(core, task.id, buf)
 	return task
 end
 
@@ -235,7 +196,7 @@ function mod.launchLua(...)
 			status = dpdkc.rte_eal_get_lcore_state(core)
 		end
 		if status == dpdkc.WAIT then -- core is in WAIT state
-			return mod.launchLuaOnCore(core, mod.userScript, ...)
+			return mod.launchLuaOnCore(core, ...)
 		end
 	end
 	error("not enough cores to start this lua task")
