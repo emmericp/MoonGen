@@ -1,3 +1,5 @@
+-- TODO: this is completely broken for some reason :(
+
 local dpdk		= require "dpdk"
 local dpdkc		= require "dpdkc"
 
