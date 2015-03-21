@@ -99,11 +99,11 @@ end
 
 ffi.cdef[[
 	void launch_lua_core(int core, uint64_t task_id, char* args);
-
+	
+	void free(void* ptr);
 	uint64_t generate_task_id();
-	void store_result(uint64_t task_id, char* result1, char* result2);
-	bool get_result_size(uint64_t task_id, uint64_t* result1, uint64_t* result2);
-	bool get_result(uint64_t task_id, char* result1, char* result2, size_t buf_size1, size_t buf_size2);
+	void store_result(uint64_t task_id, char* result);
+	char* get_result(uint64_t task_id);
 ]]
 
 local function checkCore()
@@ -128,34 +128,20 @@ function task:new(core)
 	return obj
 end
 
-local function deserialize(buf1, buf2)
-	return ffi.string(buf1), ffi.string(buf2)
-end
-
 --- Wait for a task and return any arguments returned by the task
 function task:wait()
 	checkCore()
 	while true do
 		if dpdkc.rte_eal_get_lcore_state(self.core) ~= dpdkc.RUNNING then
 			-- task is finished
-			-- TODO: this is a pretty ugly API
-			local bufSize1, bufSize2 = ffi.new("uint64_t[1]"), ffi.new("uint64_t[1]")
-			local ok = dpdkc.get_result_size(self.id, bufSize1, bufSize2)
-			bufSize1, bufSize2 = bufSize1[0], bufSize2[0]
-			if not ok then
-				-- no results :(
-				-- only happens if the thread crashes in a really bad way
-				-- (no results would be an empty array)
+			local result = dpdkc.get_result(self.id)
+			if result == nil then
+				-- thread crashed :(
 				return
 			end
-			local buf1 = ffi.new("char[?]", bufSize1)
-			local buf2 = ffi.new("char[?]", bufSize2)
-			local hasResult = dpdkc.get_result(self.id, buf1, buf2, bufSize1, bufSize2)
-			if not hasResult then
-				-- should not happen
-				return
-			end
-			return deserialize(buf1, buf2)
+			local resultString = ffi.string(result)
+			dpdkc.free(result)
+			return unpackAll(loadstring(resultString)())
 		end
 		ffi.C.usleep(100)
 	end
