@@ -48,7 +48,11 @@ local function s(t, opts)
       return tag..'nil'..comment('ref', level) end
     if type(mt) == 'table' and (mt.__serialize or mt.__tostring) then -- knows how to serialize itself
       seen[t] = insref or spath
-      if mt.__serialize then t = mt.__serialize(t) else t = tostring(t) end
+      local func
+      if mt.__serialize then t, func = mt.__serialize(t) else t = tostring(t) end
+      if func then
+        return tag .. "(function() " .. t .. " end)()"
+      end
       ttype = type(t) end -- new value falls through to be serialized
     if ttype == "table" then
       if level >= maxl then return tag..'{}'..comment('max', level) end
