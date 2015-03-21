@@ -225,14 +225,6 @@ end
 
 local RTTDQSEL = 0x00004904
 
---- See txQueue:setTxRate() for details.
-function txQueue:setWireRate(rate, packetSize)
-	packetSize = packetSize or 64
-	-- the NIC doesn't take the preamble and IFG into account, so adjust as needed
-	-- the rate limit will then only be correct for this packet size, tough
-	self:setTxRateRaw(packetSize * rate / ((packetSize + 20)))
-end
-
 --- Set the tx rate of a queue in MBit/s.
 -- This sets the payload rate, not to the actual wire rate, i.e. preamble, SFD, and IFG are ignored.
 -- The X540 and 82599 chips seem to have a hardware bug (?): they seem use the wire rate in some point of the throttling process.
