@@ -87,7 +87,11 @@ local function s(t, opts)
       return (custom and custom(tag,head,body,tail) or tag..head..body..tail)..comment(t, level)
     elseif ttype == "cdata" then
       local cType, addr = tostring(t):match("cdata<(.-)>: (.+)")
-      return tag .. ("(function() local ffi = require 'ffi' return ffi.cast('%s', ffi.cast('void*', %d)) end)()"):format(cType .. "*", addr)
+      local isPtr = cType:find("*%s*$")  
+      return tag .. ("(function() local ffi = require 'ffi' return ffi.cast('%s', ffi.cast('void*', %d)) end)()"):format(
+        cType .. (not isPtr and "*" or ""),
+        addr
+      )
     elseif badtype[ttype] then
       seen[t] = insref or spath
       return tag..globerr(t, level)
