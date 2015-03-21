@@ -27,6 +27,10 @@ function dev:__tostring()
 	return ("[Device: id=%d]"):format(self.id)
 end
 
+function dev:__serialize()
+	return ('local dev = require "device" return dev.get(%d)'):format(self.id), true
+end
+
 local txQueue = {}
 txQueue.__index = txQueue
 txQueue.__type = "txQueue"
@@ -35,12 +39,20 @@ function txQueue:__tostring()
 	return ("[TxQueue: id=%d, qid=%d]"):format(self.id, self.qid)
 end
 
+function txQueue:__serialize()
+	return ('local dev = require "device" return dev.get(%d):getTxQueue(%d)'):format(self.id, self.qid), true
+end
+
 local rxQueue = {}
 rxQueue.__index = rxQueue
 rxQueue.__type = "rxQueue"
 
 function rxQueue:__tostring()
 	return ("[RxQueue: id=%d, qid=%d]"):format(self.id, self.qid)
+end
+
+function rxQueue:__serialize()
+	return ('local dev = require "device" return dev.get(%d):getRxQueue(%d)'):format(self.id, self.qid), true
 end
 
 local devices = {}
