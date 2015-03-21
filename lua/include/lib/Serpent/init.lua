@@ -1,7 +1,7 @@
 local n, v = "serpent", 0.28 -- (C) 2012-15 Paul Kulchenko; MIT License
 local c, d = "Paul Kulchenko", "Lua serializer and pretty printer"
 local snum = {[tostring(1/0)]='1/0 --[[math.huge]]',[tostring(-1/0)]='-1/0 --[[-math.huge]]',[tostring(0/0)]='0/0'}
-local badtype = {thread = true, userdata = true, cdata = true}
+local badtype = {thread = true, userdata = true}
 local keyword, globals, G = {}, {}, (_G or _ENV)
 for _,k in ipairs({'and', 'break', 'do', 'else', 'elseif', 'end', 'false',
   'for', 'function', 'goto', 'if', 'in', 'local', 'nil', 'not', 'or', 'repeat',
@@ -85,6 +85,9 @@ local function s(t, opts)
       local body = table.concat(out, ','..(indent and '\n'..prefix..indent or space))
       local tail = indent and "\n"..prefix..'}' or '}'
       return (custom and custom(tag,head,body,tail) or tag..head..body..tail)..comment(t, level)
+    elseif ttype == "cdata" then
+      local cType, addr = tostring(t):match("cdata<(.-)>: (.+)")
+      return tag .. ("(function() local ffi = require 'ffi' return ffi.cast('%s', ffi.cast('void*', %d)) end)()"):format(cType .. "*", addr)
     elseif badtype[ttype] then
       seen[t] = insref or spath
       return tag..globerr(t, level)
