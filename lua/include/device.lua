@@ -263,6 +263,11 @@ function txQueue:setRate(rate)
 	end
 end
 
+function txQueue:setRateMpps(rate, pktSize)
+	pktSize = pktSize or 60
+	self:setRate(rate * (pktSize + 4) * 8)
+end
+
 local RF_X540_82599 = 0x00004984
 local RF_ENABLE_BIT = bit.lshift(1, 31)
 
