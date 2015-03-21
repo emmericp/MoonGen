@@ -251,7 +251,7 @@ function txQueue:setRate(rate)
 	-- ethernet frame is 64 byte when it is actually 84 byte (8 byte preamble/SFD, 12 byte IFG)
 	-- TODO: software fallback for bugged rates and unsupported NICs
 	if rate >= (64 * 64) / (84 * 84) and rate < 1 then
-		print("WARNING: rates with a wire rate >= 64/84% do not work properly with small packets due to a hardware bug, see documentation for details")
+		print("WARNING: rates with a payload rate >= 64/84% do not work properly with small packets due to a hardware bug, see documentation for details")
 	end
 	if rate <= 0 then
 		error("rate must be > 0")
