@@ -359,13 +359,17 @@ end
 --- Receive packets from a rx queue with a timeout.
 function rxQueue:tryRecv(bufArray, maxWait)
 	maxWait = maxWait or math.huge
-	while maxWait > 0 do
+	while maxWait >= 0 do
 		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, bufArray.size)
 		if rx > 0 then
 			return rx
 		end
-		dpdk.sleepMicros(1)
 		maxWait = maxWait - 1
+		-- don't sleep pointlessly
+		if maxWait < 0 then
+			break
+		end
+		dpdk.sleepMicros(1)
 	end
 	return 0
 end
