@@ -246,6 +246,9 @@ function txQueue:setRate(rate)
 		print("WARNING: link down, assuming 10 GbE connection")
 		speed = 10000
 	end
+	if rate <= 0 then
+		rate = speed
+	end
 	self.rate = math.min(rate, speed)
 	self.speed = speed
 	local link = self.dev:getLinkStatus()
