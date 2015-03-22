@@ -222,7 +222,7 @@ uint64_t get_bad_pkts_sent(uint8_t port_id) {
 }
 
 uint64_t get_bad_bytes_sent(uint8_t port_id) {
-	return __sync_fetch_and_and(&bad_pkts_sent[port_id], 0);
+	return __sync_fetch_and_and(&bad_bytes_sent[port_id], 0);
 }
 
 // TODO: figure out which NICs can actually transmit short frames, currently tested:
@@ -292,7 +292,7 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 			if (pkt) {
 				num_bad_pkts++;
 				// packet size: [MAC, CRC] to be consistent with HW counters
-				num_bad_bytes += pkt->pkt.pkt_len;
+				num_bad_bytes += pkt->pkt.pkt_len + 4;
 				pkts[send_buf_idx++] = pkt;
 			}
 			if (send_buf_idx >= BUF_SIZE) {
