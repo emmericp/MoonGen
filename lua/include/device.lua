@@ -208,11 +208,15 @@ function mod.getDevices()
 	return result
 end
 
-local TPR = 0x000040D0
+-- FIXME: only tested on X540, 82599 and 82580 chips
+-- these functions must be wrapped in a device-specific way
+local GORCL = 0x00004088
+local GORCH	= 0x0000408C
+local GPRC	= 0x00004074
 
 --- get the number of packets received since the last call to this function
 function dev:getRxStats()
-	return dpdkc.read_reg32(self.id, TPR)
+	return dpdkc.read_reg32(self.id, GPRC), dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
 end
 
 
