@@ -60,7 +60,7 @@ function loadSlave(queue, rxDev, rate)
 	local bufs = mem:bufArray()
 	local runtime = timer:new(RUN_TIME)
 	local rxStats = stats:newRxCounter(rxDev, "plain")
-	local txStats = stats:newTxCounter(rxDev, "plain")
+	local txStats = stats:newTxCounter(queue, "plain")
 	while runtime:running() and dpdk.running() do
 		bufs:alloc(PKT_SIZE)
 		if rate then
@@ -72,9 +72,11 @@ function loadSlave(queue, rxDev, rate)
 			queue:send(bufs)
 		end
 		rxStats:update()
+		txStats:update()
 	end
-	-- wait for packets in flight
+	-- wait for packets in flight/in the tx queue
 	dpdk.sleepMillis(500)
+	txStats:finalize()
 	rxStats:finalize()
 	return rxStats
 end
