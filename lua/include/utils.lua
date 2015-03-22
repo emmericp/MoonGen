@@ -39,8 +39,12 @@ end
 -- @returns the number of byte-times to wait to achieve the given average wait-time
 function poissonDelay(average)
 	return floor(-log(1 - random()) / (1 / average) + 0.5)
- end
+end
 
+function rateToByteDelay(rate, size)
+	size = size or 60
+	return 10^10 / 8 / (rate * 10^6) - size - 24
+end
 
 function bswap16(n)
 	return bor(rshift(n, 8), lshift(band(n, 0xFF), 8))
