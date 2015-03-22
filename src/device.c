@@ -212,7 +212,20 @@ void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts
 	return;
 }
 
-// TODO: figure out which NICs can actually transmit short frames, currently test:
+// software rate control
+
+static uint64_t bad_pkts_sent[RTE_MAX_ETHPORTS];
+static uint64_t bad_bytes_sent[RTE_MAX_ETHPORTS];
+
+uint64_t get_bad_pkts_sent(uint8_t port_id) {
+	return __sync_fetch_and_and(&bad_pkts_sent[port_id], 0);
+}
+
+uint64_t get_bad_bytes_sent(uint8_t port_id) {
+	return __sync_fetch_and_and(&bad_pkts_sent[port_id], 0);
+}
+
+// TODO: figure out which NICs can actually transmit short frames, currently tested:
 // NIC      Min Frame Length (including CRC, preamble, SFD, and IFG, i.e. a regular Ethernet frame would be 84 bytes)
 // X540		76
 // 82599	76
@@ -265,6 +278,8 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 	const int BUF_SIZE = 128;
 	struct rte_mbuf* pkts[BUF_SIZE];
 	int send_buf_idx = 0;
+	uint32_t num_bad_pkts = 0;
+	uint32_t num_bad_bytes = 0;
 	for (uint16_t i = 0; i < num_pkts; i++) {
 		struct rte_mbuf* pkt = load_pkts[i];
 		// desired inter-frame spacing is encoded in the hash field (not used on TX packets)
@@ -273,7 +288,13 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 		uint32_t delay = pkt->pkt.hash.rss;
 		// step 1: generate delay-packets
 		while (delay > 0) {
-			pkts[send_buf_idx++] = get_delay_pkt_invalid_size(pool, &delay);
+			struct rte_mbuf* pkt = get_delay_pkt_invalid_size(pool, &delay);
+			if (pkt) {
+				num_bad_pkts++;
+				// packet size: [MAC, CRC] to be consistent with HW counters
+				num_bad_bytes += pkt->pkt.pkt_len;
+				pkts[send_buf_idx++] = pkt;
+			}
 			if (send_buf_idx >= BUF_SIZE) {
 				send_all_packets(port_id, queue_id, pkts, send_buf_idx);
 				send_buf_idx = 0;
@@ -286,6 +307,8 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 			send_buf_idx = 0;
 		}
 	}
+	__sync_fetch_and_add(&bad_pkts_sent[port_id], num_bad_pkts);
+	__sync_fetch_and_add(&bad_bytes_sent[port_id], num_bad_bytes);
 	return;
 }
 
@@ -331,11 +354,14 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 	return pkt;
 }
 
-// NOTE: this function only works on ixgbe-based NICs as it relies on a driver modification to disable CRC for packets with hash != 0
+
+// NOTE: this function only works on ixgbe-based NICs as it relies on a driver modification allow disabling CRC on a per-packet basis
 void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool) {
 	const int BUF_SIZE = 128;
 	struct rte_mbuf* pkts[BUF_SIZE];
 	int send_buf_idx = 0;
+	uint32_t num_bad_pkts = 0;
+	uint32_t num_bad_bytes = 0;
 	for (uint16_t i = 0; i < num_pkts; i++) {
 		struct rte_mbuf* pkt = load_pkts[i];
 		// desired inter-frame spacing is encoded in the hash field (not used on TX packets)
@@ -345,7 +371,12 @@ void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, str
 		// step 1: generate delay-packets
 		while (delay > 0) {
 			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay);
-			if (pkt) pkts[send_buf_idx++] = pkt;
+			if (pkt) {
+				num_bad_pkts++;
+				// packet size: [MAC, CRC] to be consistent with HW counters
+				num_bad_bytes += pkt->pkt.pkt_len;
+				pkts[send_buf_idx++] = pkt;
+			}
 			if (send_buf_idx >= BUF_SIZE) {
 				send_all_packets(port_id, queue_id, pkts, send_buf_idx);
 				send_buf_idx = 0;
@@ -358,6 +389,9 @@ void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, str
 			send_buf_idx = 0;
 		}
 	}
+	// atomic as multiple threads may use the same stats register from multiple queues
+	__sync_fetch_and_add(&bad_pkts_sent[port_id], num_bad_pkts);
+	__sync_fetch_and_add(&bad_bytes_sent[port_id], num_bad_bytes);
 	return;
 }
 

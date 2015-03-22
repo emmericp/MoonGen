@@ -210,13 +210,25 @@ end
 
 -- FIXME: only tested on X540, 82599 and 82580 chips
 -- these functions must be wrapped in a device-specific way
+-- rx stats
+local GPRC	= 0x00004074
 local GORCL = 0x00004088
 local GORCH	= 0x0000408C
-local GPRC	= 0x00004074
+
+-- tx stats
+local GPTC	= 0x00004080
+local GOTCL	= 0x00004090
+local GOTCH	= 0x00004094
 
 --- get the number of packets received since the last call to this function
 function dev:getRxStats()
 	return dpdkc.read_reg32(self.id, GPRC), dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
+end
+
+function dev:getTxStats()
+	local badPkts = tonumber(dpdkc.get_bad_pkts_sent(self.id))
+	local badBytes = tonumber(dpdkc.get_bad_bytes_sent(self.id))
+	return dpdkc.read_reg32(self.id, GPTC) - badPkts, dpdkc.read_reg32(self.id, GOTCL) + dpdkc.read_reg32(self.id, GOTCH) * 2^32 - badBytes
 end
 
 
