@@ -43,39 +43,46 @@ function mod.addStats(data, ignoreFirstAndLast)
 	data.median = mod.median(copy)
 end
 
-local formatters = {}
-formatters["plain"] = {
-	rxStatsInit = function(stats, file)
-		-- nothing for plain, machine-readable formats can print a header here
-	end,
-
-	rxStatsUpdate = function(stats, file, total, mpps, mbit, wireMbit)
-		file:write(("%s Received %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate.\n"):format(stats.dev, total, mpps, mbit, wireMbit))
+local function getPlainUpdate(direction)
+	return function(stats, file, total, mpps, mbit, wireMbit)
+		file:write(("%s %s %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate.\n"):format(stats.dev, direction, total, mpps, mbit, wireMbit))
 		file:flush()
-	end,
+	end
+end
 
-	rxStatsFinal = function(stats, file)
-		file:write(("%s Received %d packets and %d bytes.\n"):format(stats.dev, stats.total, stats.totalBytes))
-		file:write(("%s Received %f (StdDev %f) Mpps, %f (StdDev %f) MBit/s, %f (StdDev %f) MBit/s wire rate on average.\n"):format(
-			stats.dev,	
+local function getPlainFinal(direction)
+	return function(stats, file)
+		file:write(("%s %s %d packets with %d bytes payload (including CRC).\n"):format(stats.dev, direction, stats.total, stats.totalBytes))
+		file:write(("%s %s %f (StdDev %f) Mpps, %f (StdDev %f) MBit/s, %f (StdDev %f) MBit/s wire rate on average.\n"):format(
+			stats.dev, direction,
 			stats.mpps.avg, stats.mpps.stdDev,
 			stats.mbit.avg, stats.mbit.stdDev,
 			stats.wireMbit.avg, stats.wireMbit.stdDev
 		))
 		file:flush()
-	end,
+	end
+end
+
+local formatters = {}
+formatters["plain"] = {
+	rxStatsInit = function() end, -- nothing for plain, machine-readable formats can print a header here
+	rxStatsUpdate = getPlainUpdate("Received"),
+	rxStatsFinal = getPlainFinal("Received"),
+
+	txStatsInit = function() end,
+	txStatsUpdate = getPlainUpdate("Sent"),
+	txStatsFinal = getPlainFinal("Sent"),
 }
 
 formatters["CSV"] = formatters["plain"] -- TODO
 
-
-local rxCounter = {}
-rxCounter.__index = rxCounter
-
---- Create a new rx counter
--- @param dev the device to track
--- @param format the output format, "CSV" (default) and "plain" are currently supported
-function mod:newRxCounter(dev, format, file)
+-- base 'class' for rx and tx counters
+local function newCounter(dev, format, file)
+	if type(dev) == "table" and dev.qid then
+		-- device is a queue, use the queue's device instead
+		-- TODO: per-queue statistics (tricky as the abstraction in DPDK sucks)
+		dev = dev.dev
+	end
 	file = file or io.stdout
 	local closeFile = false
 	if type(file) == "string" then
@@ -86,7 +93,7 @@ function mod:newRxCounter(dev, format, file)
 	if not formatters[format] then
 		error("unsupported output format " .. format)
 	end
-	return setmetatable({
+	return {
 		dev = dev,
 		format = format or "CSV",
 		file = file,
@@ -96,17 +103,22 @@ function mod:newRxCounter(dev, format, file)
 		mpps = {},
 		mbit = {},
 		wireMbit = {},
-	}, rxCounter)
+	}
 end
 
-function rxCounter:update()
-	local time = dpdk.getTime()
-	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+local function printStats(self, statsType, event, ...)
+	local func = formatters[self.format][statsType .. event]
+	if func then
+		func(self, self.file, ...)
+	else
+		print("[Missing formatter for " .. self.format .. "]", self.dev, statsType, event, ...)
 	end
+end
+
+local function updateCounter(self, time, pkts, bytes)
 	if not self.lastUpdate then
 		-- very first call, save current stats but do not print anything
-		self.total, self.totalBytes = self.dev:getRxStats()
+		self.total, self.totalBytes = pkts, bytes
 		self.lastTotal = self.total
 		self.lastTotalBytes = self.totalBytes
 		self.lastUpdate = time
@@ -115,9 +127,8 @@ function rxCounter:update()
 	end
 	local elapsed = time - self.lastUpdate
 	self.lastUpdate = time
-	local rxPkts, rxBytes = self.dev:getRxStats()
-	self.total = self.total + rxPkts
-	self.totalBytes = self.totalBytes + rxBytes
+	self.total = self.total + pkts
+	self.totalBytes = self.totalBytes + bytes
 	local mpps = (self.total - self.lastTotal) / elapsed / 10^6
 	local mbit = (self.totalBytes - self.lastTotalBytes) / elapsed / 10^6 * 8
 	local wireRate = mbit + (mpps * 20 * 8)
@@ -129,14 +140,7 @@ function rxCounter:update()
 	self.lastTotalBytes = self.totalBytes
 end
 
-function rxCounter:print(event, ...)
-	local func = formatters[self.format]["rxStats" .. event]
-	if func then
-		func(self, self.file, ...)
-	end
-end
-
-function rxCounter:finalize()
+local function finalizeCounter(self)
 	mod.addStats(self.mpps, true)
 	mod.addStats(self.mbit, true)
 	mod.addStats(self.wireMbit, true)
@@ -146,6 +150,66 @@ function rxCounter:finalize()
 	end
 end
 
-	--printf("Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", self.total, mpps, mpps * 64 * 8, mpps * 84 * 8)
+
+local rxCounter = {}
+rxCounter.__index = rxCounter
+
+--- Create a new rx counter
+-- @param dev the device to track
+-- @param format the output format, "CSV" (default) and "plain" are currently supported
+-- @param file the output file, defaults to standard out
+function mod:newRxCounter(dev, format, file)
+	local obj = newCounter(dev, format, file)
+	return setmetatable(obj, rxCounter)
+end
+
+function rxCounter:update()
+	local time = dpdk.getTime()
+	if self.lastUpdate and time <= self.lastUpdate + 1 then
+		return
+	end
+	local pkts, bytes = self.dev:getRxStats()
+	updateCounter(self, time, pkts, bytes)
+end
+
+function rxCounter:print(event, ...)
+	printStats(self, "rxStats", event, ...)
+end
+
+function rxCounter:finalize()
+	finalizeCounter(self)
+end
+
+local txCounter = {}
+txCounter.__index = txCounter
+
+--- Create a new rx counter
+-- @param dev the device to track
+-- @param format the output format, "CSV" (default) and "plain" are currently supported
+-- @param file the file to write to, defaults to standard out
+function mod:newTxCounter(dev, format, file)
+	local obj = newCounter(dev, format, file)
+	return setmetatable(obj, txCounter)
+end
+
+
+function txCounter:update()
+	local time = dpdk.getTime()
+	if self.lastUpdate and time <= self.lastUpdate + 1 then
+		return
+	end
+	local pkts, bytes = self.dev:getTxStats()
+	updateCounter(self, time, pkts, bytes)
+end
+
+function txCounter:print(event, ...)
+	printStats(self, "txStats", event, ...)
+end
+
+function txCounter:finalize()
+	finalizeCounter(self)
+end
+
 
 return mod
+
