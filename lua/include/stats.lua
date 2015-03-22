@@ -184,6 +184,7 @@ local txCounter = {}
 txCounter.__index = txCounter
 
 --- Create a new rx counter
+-- FIXME: this is slightly off when using queue:sendWithDelay() (error seems to be below 0.5%)
 -- @param dev the device to track
 -- @param format the output format, "CSV" (default) and "plain" are currently supported
 -- @param file the file to write to, defaults to standard out
