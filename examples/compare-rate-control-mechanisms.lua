@@ -8,6 +8,7 @@ local ts		= require "timestamping"
 local device	= require "device"
 local filter	= require "filter"
 local timer		= require "timer"
+local stats		= require "stats"
 
 local REPS = 1
 local RUN_TIME = 10
@@ -29,55 +30,53 @@ function master(...)
 	rxDev:l2Filter(0x1234, filter.DROP)
 	device.waitForLinks()
 	for rate = minRate, maxRate, (maxRate - minRate) / 20 do
-		txQueue:setRateMpps(rate)
-		local loadTask = dpdk.launchLua("loadSlave", txQueue, rxDev, false)
-		local timerTask = dpdk.launchLua("timerSlave", txDev, rxDev, txQueueTs, rxQueueTs)
-		local rate = loadTask:wait()
-		local hist = timerTask:wait()
-		print(rate, hist)
+		for i = 1, REPS do
+			for method = 1, 2 do
+				printf("Testing rate %f Mpps with %s rate control, test run %d", rate, method == 1 and "hardware" or "software", i)
+				txQueue:setRateMpps(method == 1 and rate or 0)
+				local loadTask = dpdk.launchLua("loadSlave", txQueue, rxDev, method == 2 and rate)
+				local timerTask = dpdk.launchLua("timerSlave", txDev, rxDev, txQueueTs, rxQueueTs)
+				local rate = loadTask:wait()
+				local hist = timerTask:wait()
+				dpdk.sleepMillis(500)
+			end
+			if not dpdk.running() then
+				break
+			end
+		end
 		if not dpdk.running() then
 			break
 		end
-		dpdk.sleepMillis(1000)
 	end
 end
 
-function loadSlave(queue, rxDev, softwareRateControl)
+function loadSlave(queue, rxDev, rate)
 	-- TODO: this leaks memory as mempools cannot be deleted in DPDK
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
 			ethType = 0x1234
 		}
 	end)
-	local lastPrint = dpdk.getTime()
-	local totalSent = 0
-	local lastTotal = 0
-	local lastSent = 0
-	local totalReceived = 0
 	local bufs = mem:bufArray()
 	local runtime = timer:new(RUN_TIME)
+	local rxStats = stats:newRxCounter(rxDev, "plain")
+	local txStats = stats:newTxCounter(rxDev, "plain")
 	while runtime:running() and dpdk.running() do
 		bufs:alloc(PKT_SIZE)
-		if softwareRateControl then
+		if rate then
 			for _, buf in ipairs(bufs) do
-				buf:setDelay(10)
+				buf:setRate(rate)
 			end
-			totalSent = totalSent + queue:sendWithDelay(bufs)
+			queue:sendWithDelay(bufs)
 		else
-			totalSent = totalSent + queue:send(bufs)
+			queue:send(bufs)
 		end
-		local time = dpdk.getTime()
-		if time - lastPrint > 1 then
-			local rx = rxDev:getRxStats()
-			totalReceived = totalReceived + rx
-			local mpps = (totalSent - lastTotal) / (time - lastPrint) / 10^6
-			printf("Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", totalSent, mpps, mpps * 64 * 8, mpps * 84 * 8)
-			printf("Received %d packets, current rate %.2f Mpps", totalReceived, rx / (time - lastPrint) / 10^6)
-			lastTotal = totalSent
-			lastPrint = time
-		end
+		rxStats:update()
 	end
-	printf("Sent %d packets", totalSent)
+	-- wait for packets in flight
+	dpdk.sleepMillis(500)
+	rxStats:finalize()
+	return rxStats
 end
 
 function timerSlave(txDev, rxDev, txQueue, rxQueue)
@@ -88,7 +87,7 @@ function timerSlave(txDev, rxDev, txQueue, rxQueue)
 	rxQueue:enableTimestamps()
 	local hist = {}
 	dpdk.sleepMillis(1000)
-	local runtime = timer:new(RUN_TIME - 1)
+	local runtime = timer:new(RUN_TIME - 2)
 	while runtime:running() and dpdk.running() do
 		buf:alloc(PKT_SIZE)
 		ts.fillL2Packet(buf[1])
@@ -98,7 +97,7 @@ function timerSlave(txDev, rxDev, txQueue, rxQueue)
 		-- increment the wait time when using large packets or slower links
 		local tx = txQueue:getTimestamp(100)
 		if tx then
-			dpdk.sleepMicros(500) -- minimum latency to limit the packet rate
+			dpdk.sleepMicros(5000) -- minimum latency to limit the packet rate
 			-- sent was successful, try to get the packet back (max. 10 ms wait time before we assume the packet is lost)
 			local rx = rxQueue:tryRecv(rxBufs, 10000)
 			if rx > 0 then
@@ -121,7 +120,7 @@ function timerSlave(txDev, rxDev, txQueue, rxQueue)
 	for _, v in ipairs(sortedHist) do
 		sum = sum + v.k * v.v
 		samples = samples + v.v
-		print(v.k, v.v)
+		--print(v.k, v.v)
 	end
 	print()
 	print("Average: " .. (sum / samples) .. " ns, " .. samples .. " samples")
