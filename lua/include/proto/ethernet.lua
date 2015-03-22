@@ -181,7 +181,7 @@ function etherHeader:fill(args)
 		self:setSrcString(args.ethSrc)
 	elseif istype(macAddrType, args.ethSrc) then
 		self:setSrc(args.ethSrc)
-	elseif type(args.ethSrc) == "table" and args.ethSrc.qid then
+	elseif type(args.ethSrc) == "table" and args.ethSrc.id then
 		self:setSrcString((args.ethSrc.dev or args.ethSrc):getMacString())
 	end
 	if type(args.ethDst) == "string" then
