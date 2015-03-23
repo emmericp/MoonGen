@@ -36,8 +36,9 @@ function master(...)
 				txQueue:setRateMpps(method == 1 and rate or 0)
 				local loadTask = dpdk.launchLua("loadSlave", txQueue, rxDev, method == 2 and rate)
 				local timerTask = dpdk.launchLua("timerSlave", txDev, rxDev, txQueueTs, rxQueueTs)
-				local rate = loadTask:wait()
+				loadTask:wait()
 				local hist = timerTask:wait()
+				printf("\n")
 				dpdk.sleepMillis(500)
 			end
 			if not dpdk.running() then
@@ -54,7 +55,7 @@ function loadSlave(queue, rxDev, rate)
 	-- TODO: this leaks memory as mempools cannot be deleted in DPDK
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
-			ethType = 0x1234
+			ethType = 0x1234,
 		}
 	end)
 	local bufs = mem:bufArray()
@@ -78,38 +79,98 @@ function loadSlave(queue, rxDev, rate)
 	dpdk.sleepMillis(500)
 	txStats:finalize()
 	rxStats:finalize()
-	return rxStats
+end
+
+
+local timestamper = {}
+timestamper.__index = timestamper
+
+local function newTimestamper(txQueue, rxQueue, mem)
+	mem = mem or memory.createMemPool(function(buf)
+		buf:getPtpPacket():fill{} -- defaults are good enough for us
+	end)
+	txQueue:enableTimestamps()
+	rxQueue:enableTimestamps()
+	return setmetatable({
+		mem = mem,
+		txBufs = mem:bufArray(1),
+		rxBufs = mem:bufArray(128),
+		txQueue = txQueue,
+		rxQueue = rxQueue,
+		txDev = txQueue.dev,
+		rxDev = rxQueue.dev,
+		seq = 1,
+	}, timestamper)
+end
+
+--- Try to measure the latency of a single packet.
+-- @param pktSize the size of the generated packet
+-- @param packetModifier a function that is called with the generated packet, e.g. to modified addresses
+-- @param maxWait the time in ms to wait before the packet is assumed to be lost (default = 15)
+function timestamper:measureLatency(pktSize, packetModifier, maxWait)
+	maxWait = (maxWait or 15) / 1000
+	self.txBufs:alloc(pktSize)
+	local buf = self.txBufs[1]
+	buf:enableTimestamps()
+	buf:getPtpPacket().ptp:setSequenceID(self.seq)
+	local expectedSeq = self.seq
+	if packetModifier then
+		packetModifier(buf, pktSize)
+	end
+	self.seq = self.seq + 1
+	ts.syncClocks(self.txDev, self.rxDev)
+	self.txQueue:send(self.txBufs)
+	local tx = self.txQueue:getTimestamp(500)
+	if tx then
+		-- sent was successful, try to get the packet back (assume that it is lost after a given delay)
+		local timer = timer:new(maxWait)
+		while timer:running() do
+			local rx = self.rxQueue:tryRecv(self.rxBufs, 1000)
+			-- only one packet in a batch can be timestamped as the register must be read before a new packet is timestamped
+			for i = 1, rx do
+				local buf = self.rxBufs[i]
+				local pkt = buf:getPtpPacket()
+				local seq = pkt.ptp:getSequenceID()
+				if buf:hasTimestamp() and seq == expectedSeq then
+					-- yay!
+					local delay = (self.rxQueue:getTimestamp() - tx) * 6.4
+					self.rxBufs:freeAll()
+					return delay
+				elseif buf:hasTimestamp() then
+					-- we got a timestamp but the wrong sequence number. meh.
+					self.rxQueue:getTimestamp() -- clears the register
+					-- continue, we may still get our packet :)
+				elseif seq == expectedSeq then
+					-- we got our packet back but it wasn't timestamped
+					-- we likely ran into the previous case earlier and cleared the ts register too late
+					self.rxBufs:freeAll()
+					return
+				end
+			end
+		end
+		-- looks like our packet got lost :(
+		return
+	else
+		-- uhm, how did this happen? an unsupported NIC should throw an error earlier
+		print("Warning: failed to timestamp packet on transmission")
+		timer:new(maxWait):wait()
+	end
 end
 
 function timerSlave(txDev, rxDev, txQueue, rxQueue)
-	local mem = memory.createMemPool()
-	local buf = mem:bufArray(1)
-	local rxBufs = mem:bufArray(2)
-	txQueue:enableTimestamps()
-	rxQueue:enableTimestamps()
+	local timestamper = newTimestamper(txQueue, rxQueue) -- ts:newTimestamper()
 	local hist = {}
+	-- wait for a second to give the other task a chance to start
+	-- TODO: maybe add sync points? but we don't want to start timestamping right away anyways
 	dpdk.sleepMillis(1000)
 	local runtime = timer:new(RUN_TIME - 2)
+	local rateLimiter = timer:new(0.001)
 	while runtime:running() and dpdk.running() do
-		buf:alloc(PKT_SIZE)
-		ts.fillL2Packet(buf[1])
-		-- sync clocks and send
-		ts.syncClocks(txDev, rxDev)
-		txQueue:send(buf)
-		-- increment the wait time when using large packets or slower links
-		local tx = txQueue:getTimestamp(100)
-		if tx then
-			dpdk.sleepMicros(5000) -- minimum latency to limit the packet rate
-			-- sent was successful, try to get the packet back (max. 10 ms wait time before we assume the packet is lost)
-			local rx = rxQueue:tryRecv(rxBufs, 10000)
-			if rx > 0 then
-				local delay = (rxQueue:getTimestamp() - tx) * 6.4
-				if delay > 0 and delay < 100000000 then
-					hist[delay] = (hist[delay] or 0) + 1
-				end
-				rxBufs:freeAll()
-			end
-		end
+		rateLimiter:reset()
+		print(timestamper:measureLatency(PKT_SIZE))
+		-- keep the timestamping packets limited to about 1 kpps
+		-- this is important when testing low rates
+		rateLimiter:busyWait()
 	end
 	local sortedHist = {}
 	for k, v in pairs(hist) do 
@@ -118,13 +179,11 @@ function timerSlave(txDev, rxDev, txQueue, rxQueue)
 	local sum = 0
 	local samples = 0
 	table.sort(sortedHist, function(e1, e2) return e1.k < e2.k end)
-	print("Histogram:")
 	for _, v in ipairs(sortedHist) do
 		sum = sum + v.k * v.v
 		samples = samples + v.v
 		--print(v.k, v.v)
 	end
-	print()
 	print("Average: " .. (sum / samples) .. " ns, " .. samples .. " samples")
 	print("----------------------------------------------")
 	io.stdout:flush()
