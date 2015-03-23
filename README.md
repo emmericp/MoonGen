@@ -4,7 +4,7 @@ LuaJIT + DPDK = fast and flexible packet generator for 10 GBit Ethernet and beyo
 MoonGen uses hardware features for accurate and precise latency measurements and rate control.
 
 You have to write a simple script for your use case.
-Read [hello-world.lua](https://github.com/emmericp/MoonGen/blob/master/examples/hello-world.lua) to get started.
+Read [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua) to get started.
 
 # MoonGen Packet Generator
 
@@ -19,7 +19,7 @@ Lua script, it can be used to implement advanced test scripts. E.g. one can use
 two instances of MoonGen that establish a connection with each other. This
 setup can be used to benchmark middle-boxes like firewalls.
 
-Reading the example script [hello-world.lua](https://github.com/emmericp/MoonGen/blob/master/examples/hello-world.lua) is a good way to learn more about our scripting API.
+Reading the example script [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service.lua) is a good way to learn more about our scripting API as this script uses most features of MoonGen.
 
 MoonGen focuses on four main points:
 
@@ -50,7 +50,7 @@ MoonGen therefore starts a new and completely independent LuaJIT VM for each thr
 The new VMs receive serialized arguments: the function to execute and arguments like the queue to send packets from.
 Threads only share state through the underlying library.
 
-The example script [hello-world.lua](https://github.com/emmericp/MoonGen/blob/master/examples/hello-world.lua) shows how this threading model can be used to implement a typical load generation task.
+The example script [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua) shows how this threading model can be used to implement a typical load generation task.
 It implements a QoS test by sending two different types of packets and measures their throughput and latency. It does so by starting two packet generation tasks: one for the background traffic and one for the prioritized traffic.
 A third task is used to categorize and count the incoming packets.
 
@@ -143,12 +143,12 @@ Use `deps/dpdk/tools/dpdk_nic_bind.py` to unbind NICs from the DPDK driver.
 # Examples
 MoonGen comes with examples in the examples folder which can be used as a basis for custom scripts.
 
-    ./build/MoonGen ./examples/hello-world.lua 0 0
+    ./build/MoonGen ./examples/quality-of-service-test.lua 0 1
 
 The two command line arguments are the transmission and reception ports. MoonGen prints all available ports on startup, so adjust this if necessary.
 
 Note that we recently changed our internal API and some example scripts are outdated or even broken. See [issue #47](https://github.com/emmericp/MoonGen/issues/47) for details.
-However, `hello-world.lua` is always kept up to date and uses most important features.
+However, `quality-of-service-test.lua` is always kept up to date and uses most important features.
 
 # Frequently Asked Questions
 
