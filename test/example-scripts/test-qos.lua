@@ -2,9 +2,9 @@ local mg = require "moongen"
 
 require "number-assert"
 
-describe("hello-world-example", function()
+describe("quality-of-service-test example", function()
 	it("should run", function()
-		local proc = mg.start("./examples/hello-world.lua", 8, 9, 100, 1000)
+		local proc = mg.start("./examples/quality-of-service-test.lua", 8, 9, 100, 1000)
 		finally(function() proc:destroy() end)
 		proc:waitForPorts(2)
 		--[[
