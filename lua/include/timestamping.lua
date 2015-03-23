@@ -5,6 +5,9 @@ local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
 local device	= require "device"
 local eth		= require "proto.ethernet"
+local memory	= require "memory"
+local timer		= require "timer"
+
 require "proto.ptp"
 
 local dev = device.__devicePrototype
@@ -64,6 +67,8 @@ local PKT_TX_IP_CKSUM		= 0x1000
 local PKT_TX_UDP_CKSUM		= 0x6000
 
 
+---
+-- @deprecated
 function mod.fillL2Packet(buf, seq)
 	seq = seq or (((3 * 255) + 2) * 255 + 1) * 255
 	buf.pkt.pkt_len = 60
@@ -74,6 +79,8 @@ function mod.fillL2Packet(buf, seq)
 	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
 end
 
+---
+-- @deprecated
 function mod.readSeq(buf)
 	if buf.pkt.pkt_len < 4 then
 	  return nil
@@ -81,6 +88,8 @@ function mod.readSeq(buf)
 	return buf:getPtpPacket().ptp:getSequenceID()
 end
 
+---
+-- @deprecated
 function mod.fillPacket(buf, port, size)
 	size = size or 80
 	-- min 76 bytes as the NIC refuses to timestamp 'truncated' PTP packets
@@ -320,6 +329,85 @@ function mod.readTimestampsSoftware(queue, memory)
 	dpdkc.read_timestamps_software(queue.id, queue.qid, arr, numElements)
 	return arr
 end
+
+
+local timestamper = {}
+timestamper.__index = timestamper
+
+--- Create a new timestamper.
+function mod:newTimestamper(txQueue, rxQueue, mem)
+	mem = mem or memory.createMemPool(function(buf)
+		buf:getPtpPacket():fill{} -- defaults are good enough for us
+	end)
+	txQueue:enableTimestamps()
+	rxQueue:enableTimestamps()
+	return setmetatable({
+		mem = mem,
+		txBufs = mem:bufArray(1),
+		rxBufs = mem:bufArray(128),
+		txQueue = txQueue,
+		rxQueue = rxQueue,
+		txDev = txQueue.dev,
+		rxDev = rxQueue.dev,
+		seq = 1,
+	}, timestamper)
+end
+
+--- Try to measure the latency of a single packet.
+-- @param pktSize the size of the generated packet
+-- @param packetModifier a function that is called with the generated packet, e.g. to modified addresses
+-- @param maxWait the time in ms to wait before the packet is assumed to be lost (default = 15)
+function timestamper:measureLatency(pktSize, packetModifier, maxWait)
+	maxWait = (maxWait or 15) / 1000
+	self.txBufs:alloc(pktSize)
+	local buf = self.txBufs[1]
+	buf:enableTimestamps()
+	buf:getPtpPacket().ptp:setSequenceID(self.seq)
+	local expectedSeq = self.seq
+	if packetModifier then
+		packetModifier(buf, pktSize)
+	end
+	self.seq = self.seq + 1
+	mod.syncClocks(self.txDev, self.rxDev)
+	self.txQueue:send(self.txBufs)
+	local tx = self.txQueue:getTimestamp(500)
+	if tx then
+		-- sent was successful, try to get the packet back (assume that it is lost after a given delay)
+		local timer = timer:new(maxWait)
+		while timer:running() do
+			local rx = self.rxQueue:tryRecv(self.rxBufs, 1000)
+			-- only one packet in a batch can be timestamped as the register must be read before a new packet is timestamped
+			for i = 1, rx do
+				local buf = self.rxBufs[i]
+				local pkt = buf:getPtpPacket()
+				local seq = pkt.ptp:getSequenceID()
+				if buf:hasTimestamp() and seq == expectedSeq then
+					-- yay!
+					local delay = (self.rxQueue:getTimestamp() - tx) * 6.4
+					self.rxBufs:freeAll()
+					return delay
+				elseif buf:hasTimestamp() then
+					-- we got a timestamp but the wrong sequence number. meh.
+					self.rxQueue:getTimestamp() -- clears the register
+					-- continue, we may still get our packet :)
+				elseif seq == expectedSeq then
+					-- we got our packet back but it wasn't timestamped
+					-- we likely ran into the previous case earlier and cleared the ts register too late
+					self.rxBufs:freeAll()
+					return
+				end
+			end
+		end
+		-- looks like our packet got lost :(
+		return
+	else
+		-- uhm, how did this happen? an unsupported NIC should throw an error earlier
+		print("Warning: failed to timestamp packet on transmission")
+		timer:new(maxWait):wait()
+	end
+end
+
+
 
 return mod
 
