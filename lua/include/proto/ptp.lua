@@ -275,7 +275,7 @@ end
 
 function ptpHeader:fill(args)
 	self:setMessageType(args.ptpMessageType)
-	self:setVersion(args.ptpVersion)
+	self:setVersion(args.ptpVersion or 2)
 	self:setLength(args.ptpLength)
 	self:setDomain(args.ptpDomain)
 	self:setReserved(args.ptpReserved)
