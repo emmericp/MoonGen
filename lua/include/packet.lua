@@ -40,6 +40,10 @@ function pkt:getTimestamp()
 	end
 end
 
+function pkt:hasTimestamp()
+	return bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0
+end
+
 --- Set the time to wait before the packet is sent for software rate-controlled send methods.
 -- @param delay the time to wait before this packet (in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE)
 function pkt:setDelay(delay)
@@ -169,6 +173,9 @@ function pkt:offloadTcpChecksum(ipv4, l2_len, l3_len)
 	end
 end
 
+function pkt:enableTimestamps()
+	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IEEE1588_TMST)
+end
 
 -------------------------------------------------------------------------------------------
 --- Return packet as XYZ
