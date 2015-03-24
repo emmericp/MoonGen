@@ -77,7 +77,11 @@ formatters["plain"] = {
 formatters["CSV"] = formatters["plain"] -- TODO
 
 -- base 'class' for rx and tx counters
-local function newCounter(dev, format, file)
+local function newCounter(dev, pktSize, format, file)
+	if type(dev) == "table" then
+		-- case 1: (device, format, file)
+		return newCounter(dev, nil, pktSize, format)
+	end -- else: (description, size, format, file)
 	if type(dev) == "table" and dev.qid then
 		-- device is a queue, use the queue's device instead
 		-- TODO: per-queue statistics (tricky as the abstraction in DPDK sucks)
@@ -95,15 +99,17 @@ local function newCounter(dev, format, file)
 	end
 	return {
 		dev = dev,
+		pktSize = pktSize,
 		format = format or "CSV",
 		file = file,
 		closeFile = closeFile,
 		total = 0,
 		totalBytes = 0,
+		manualPkts = 0,
 		mpps = {},
 		mbit = {},
 		wireMbit = {},
-	}
+	}, type(dev) ~= "table"
 end
 
 local function printStats(self, statsType, event, ...)
@@ -158,8 +164,11 @@ rxCounter.__index = rxCounter
 -- @param dev the device to track
 -- @param format the output format, "CSV" (default) and "plain" are currently supported
 -- @param file the output file, defaults to standard out
-function mod:newRxCounter(dev, format, file)
-	local obj = newCounter(dev, format, file)
+function mod:newRxCounter(...)
+	local obj, isManual = newCounter(...)
+	if isManual then
+		obj.update = rxCounter.updateManual
+	end
 	return setmetatable(obj, rxCounter)
 end
 
@@ -169,6 +178,16 @@ function rxCounter:update()
 		return
 	end
 	local pkts, bytes = self.dev:getRxStats()
+	updateCounter(self, time, pkts, bytes)
+end
+
+function rxCounter:updateManual(pkts)
+	self.manualPkts = self.manualPkts + pkts
+	local time = dpdk.getTime()
+	if self.lastUpdate and time <= self.lastUpdate + 1 then
+		return
+	end
+	local pkts, bytes = self.manualPkts, self.manualPkts * (self.pktSize + 4)
 	updateCounter(self, time, pkts, bytes)
 end
 
@@ -188,8 +207,11 @@ txCounter.__index = txCounter
 -- @param dev the device to track
 -- @param format the output format, "CSV" (default) and "plain" are currently supported
 -- @param file the file to write to, defaults to standard out
-function mod:newTxCounter(dev, format, file)
-	local obj = newCounter(dev, format, file)
+function mod:newTxCounter(...)
+	local obj, isManual = newCounter(...)
+	if isManual then
+		obj.update = txCounter.updateManual
+	end
 	return setmetatable(obj, txCounter)
 end
 
@@ -200,6 +222,17 @@ function txCounter:update()
 		return
 	end
 	local pkts, bytes = self.dev:getTxStats()
+	updateCounter(self, time, pkts, bytes)
+end
+
+function txCounter:updateManual(pkts)
+	self.manualPkts = self.manualPkts + pkts
+	local time = dpdk.getTime()
+	if self.lastUpdate and time <= self.lastUpdate + 1 then
+		return
+	end
+	local pkts, bytes = self.manualPkts, self.manualPkts * (self.pktSize + 4)
+	self.manualPkts = 0
 	updateCounter(self, time, pkts, bytes)
 end
 
