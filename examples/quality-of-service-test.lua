@@ -4,6 +4,7 @@ local memory	= require "memory"
 local device	= require "device"
 local ts		= require "timestamping"
 local filter	= require "filter"
+local stats		= require "stats"
 local hist		= require "histogram"
 
 local PKT_SIZE = 124
@@ -60,11 +61,8 @@ function loadSlave(queue, port, rate)
 			-- payload will be initialized to 0x00 as new memory pools are initially empty
 		}
 	end)
-	local lastPrint = dpdk.getTime()
-	local totalSent = 0
-	local lastTotal = 0
-	local lastSent = 0
-	local totalReceived = 0
+	-- TODO: fix per-queue stats counters to use the statistics registers here
+	local txCtr = stats:newTxCounter("Port " .. port, PKT_SIZE, "plain")
 	local baseIP = parseIPAddress("10.0.0.1")
 	-- a buf array is essentially a very thing wrapper around a rte_mbuf*[], i.e. an array of pointers to packet buffers
 	local bufs = mem:bufArray()
@@ -81,19 +79,9 @@ function loadSlave(queue, port, rate)
 		end
 		-- send packets
 		bufs:offloadUdpChecksums()
-		totalSent = totalSent + queue:send(bufs)
-		-- print statistics
-		-- TODO: this should be in a utility function
-		local time = dpdk.getTime()
-		if time - lastPrint > 1 then
-			--local rx = dev:getRxStats(port)
-			local mpps = (totalSent - lastTotal) / (time - lastPrint) / 10^6
-			printf("%s Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", queue, totalSent, mpps, mpps * (PKT_SIZE + 4) * 8, mpps * (PKT_SIZE + 24) * 8)
-			lastTotal = totalSent
-			lastPrint = time
-		end
+		txCtr:update(queue:send(bufs))
 	end
-	printf("%s Sent %d packets", queue, totalSent)
+	txCtr:finalize()
 end
 
 function counterSlave(queue)
