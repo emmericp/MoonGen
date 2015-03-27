@@ -39,7 +39,7 @@ Users write custom scripts for their experiments. It is recommended to make use 
 The following diagram shows the architecture and how multi-core support is handled.
 
 <p align="center">
-<img alt="Architecture" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png"/>
+<img alt="Architecture" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png" srcset="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png 1x, https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture@2x.png 2x"/>
 </p>
 
 Execution begins in the *master task* that must be defined in the user's script.
@@ -70,7 +70,7 @@ However, software packet generators are usually bad at controlling the inter-pac
 The following diagram illustrates how a typical software packet generator tries to control the packet rate.
 
 <p align="center">
-<img alt="Software Rate Control" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-traditional-software.png"/>
+<img alt="Software Rate Control" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-traditional-software.png" srcset="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-traditional-software.png 1x, https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-traditional-software.png@2x 2x"/>
 </p>
 
 It simply tries to wait for a specified time after sending a packet.
@@ -102,7 +102,7 @@ We circumvent this problem by sending bad packets in the space between packets i
 The following diagram illustrates this concept.
 
 <p align="center">
-<img alt="Better Software Rate Control" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-moongen-software.png"/>
+<img alt="Better Software Rate Control" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-moongen-software.png" srcset="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-moongen-software.png 1x, https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/ratecontrol-moongen-software@2x.png 2x"/>
 </p>
 
 A bad packet is a packet that is not accepted by the DuT (device under test) and filtered in hardware before it reaches the software. These packets are shaded in the figure above.
