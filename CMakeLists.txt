@@ -15,6 +15,7 @@ SET(FILES
 	src/lifecycle.c
 	src/timestamping.c
 	src/task-results.cpp
+	src/pipe.cpp
 )
 
 SET(DPDK_LIBS
