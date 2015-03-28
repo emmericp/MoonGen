@@ -13,8 +13,6 @@ static std::unordered_map<uint64_t, std::string> results;
 static std::mutex results_mutex;
 static std::atomic<uint64_t> task_id_ctr(1);
 
-// TODO: two char*s is obviously not the best API
-
 extern "C" {
 
 uint64_t generate_task_id() {
