@@ -4,6 +4,26 @@ local ffi = require "ffi"
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 
+ffi.cdef [[
+	void* malloc(size_t size);
+	void free(void* buf);
+]]
+
+local C = ffi.C
+local cast = ffi.cast
+
+--- Off-heap allocation, not garbage-collected.
+-- @param ctype a ffi type, must be a pointer or array type
+-- @param size the amount of memory to allocate
+function mod.alloc(ctype, size)
+	return cast(ctype, C.malloc(size))
+end
+
+--- Free off-heap allocated object.
+function mod.free(buf)
+	C.free(buf)
+end
+
 
 --- Create a new memory pool.
 -- @param n optional (default = 2047), size of the mempool
