@@ -9,19 +9,20 @@ local device	= require "device"
 local filter	= require "filter"
 local timer		= require "timer"
 local stats		= require "stats"
+local hist		= require "histogram"
 
-local REPS = 1
+local REPS = 10
 local RUN_TIME = 10
 local PKT_SIZE = 60
 
 function master(...)
-	local txPort, rxPort, maxRate = tonumberall(...)
+	local txPort, rxPort, maxRate, steps = tonumberall(...)
 	if not txPort or not rxPort then
 		errorf("usage: txPort rxPort [maxRate (Mpps)] [steps]")
 	end
 	local minRate = 0.02
 	maxRate = maxRate or 7.44
-	steps = steps or 20
+	steps = (steps or 20) - 1
 	local txDev = device.config(txPort, 2, 2)
 	local rxDev = device.config(rxPort, 2, 2)
 	local txQueue = txDev:getTxQueue(0)
@@ -29,7 +30,11 @@ function master(...)
 	local rxQueueTs = rxDev:getRxQueue(1)
 	rxDev:l2Filter(0x1234, filter.DROP)
 	device.waitForLinks()
-	for rate = minRate, maxRate, (maxRate - minRate) / 20 do
+	local results = {}
+	local rate = minRate
+	while rate <= maxRate do
+		local result = {rate = rate, hw = {{}, {}, {}}, sw = {{}, {}, {}}}
+		table.insert(results, result)
 		for i = 1, REPS do
 			for method = 1, 2 do
 				printf("Testing rate %f Mpps with %s rate control, test run %d", rate, method == 1 and "hardware" or "software", i)
@@ -37,7 +42,10 @@ function master(...)
 				local loadTask = dpdk.launchLua("loadSlave", txQueue, rxDev, method == 2 and rate)
 				local timerTask = dpdk.launchLua("timerSlave", txDev, rxDev, txQueueTs, rxQueueTs)
 				loadTask:wait()
-				local hist = timerTask:wait()
+				local quarts = { timerTask:wait() }
+				for i, v in ipairs(quarts) do
+					table.insert(result[method == 1 and "hw" or "sw"][i], v)
+				end
 				printf("\n")
 				dpdk.sleepMillis(500)
 			end
@@ -48,6 +56,19 @@ function master(...)
 		if not dpdk.running() then
 			break
 		end
+		rate = rate + (maxRate - minRate) / steps
+	end
+	printCsv("Rate", "Percentile", "Avg-SW", "Avg-HW", "StdDev-SW", "StdDev-HW")
+	for i, r in ipairs(results) do
+		for i, v in ipairs(r.sw) do
+			stats.addStats(v)
+		end
+		for i, v in ipairs(r.hw) do
+			stats.addStats(v)
+		end
+		printCsv(r.rate, "25", r.sw[1].avg, r.hw[1].avg, r.sw[1].stdDev, r.hw[1].stdDev)
+		printCsv(r.rate, "50", r.sw[2].avg, r.hw[2].avg, r.sw[2].stdDev, r.hw[2].stdDev)
+		printCsv(r.rate, "75", r.sw[3].avg, r.hw[3].avg, r.sw[3].stdDev, r.hw[3].stdDev)
 	end
 end
 
@@ -77,11 +98,13 @@ function loadSlave(queue, rxDev, rate)
 	end
 	txStats:finalize()
 	rxStats:finalize()
+	local loss = txStats.total - rxStats.total
+	printf("Packet loss: %d (%f%%)", loss, loss / txStats.total * 100)
 end
 
 function timerSlave(txDev, rxDev, txQueue, rxQueue)
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
-	local hist = {}
+	local hist = hist:new()
 	-- wait for a second to give the other task a chance to start
 	-- TODO: maybe add sync points? but we don't want to start timestamping right away anyways
 	dpdk.sleepMillis(1000)
@@ -89,26 +112,13 @@ function timerSlave(txDev, rxDev, txQueue, rxQueue)
 	local rateLimiter = timer:new(0.001)
 	while runtime:running() and dpdk.running() do
 		rateLimiter:reset()
-		timestamper:measureLatency(PKT_SIZE)
+		hist:update(timestamper:measureLatency(PKT_SIZE))
 		-- keep the timestamping packets limited to about 1 kpps
 		-- this is important when testing low rates
 		rateLimiter:busyWait()
 	end
-	local sortedHist = {}
-	for k, v in pairs(hist) do 
-		table.insert(sortedHist,  { k = k, v = v })
-	end
-	local sum = 0
-	local samples = 0
-	table.sort(sortedHist, function(e1, e2) return e1.k < e2.k end)
-	for _, v in ipairs(sortedHist) do
-		sum = sum + v.k * v.v
-		samples = samples + v.v
-		--print(v.k, v.v)
-	end
-	print("Average: " .. (sum / samples) .. " ns, " .. samples .. " samples")
-	print("----------------------------------------------")
-	io.stdout:flush()
-	return hist
+	dpdk.sleepMillis(1500)
+	hist:print()
+	return hist:quartiles()
 end
 
