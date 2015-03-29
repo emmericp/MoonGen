@@ -268,24 +268,58 @@ manualRxCounter.print = rxCounter.print
 manualRxCounter.finalize = rxCounter.finalize
 
 
-local txCounter = {}
-txCounter.__index = txCounter
+local txCounter = {} -- base 'class' (not actually a class, though)
+local devTxCounter = {}
+local pktTxCounter = {}
+local manualTxCounter = {}
+devTxCounter.__index = devTxCounter
+pktTxCounter.__index = pktTxCounter
+manualTxCounter.__index = manualTxCounter
 
---- Create a new rx counter
+--- Create a new tx counter using device statistics registers.
 -- FIXME: this is slightly off when using queue:sendWithDelay() (error seems to be below 0.5%)
+-- @param name the name of the counter, included in the output. defaults to the device name
 -- @param dev the device to track
 -- @param format the output format, "CSV" (default) and "plain" are currently supported
--- @param file the file to write to, defaults to standard out
-function mod:newTxCounter(...)
-	local obj, isManual = newCounter(...)
-	if isManual then
-		obj.update = txCounter.updateManual
+-- @param file the output file, defaults to standard out
+function mod:newDevTxCounter(name, dev, format, file)
+	if type(name) == "table" then
+		return self:newDevTxCounter(nil, name, dev, format)
 	end
-	return setmetatable(obj, txCounter)
+	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
+	local obj = newCounter("dev", name, dev, format, file)
+	return setmetatable(obj, devTxCounter)
 end
 
+--- Create a new tx counter that can be updated by passing packet buffers to it.
+-- @param name the name of the counter, included in the output
+-- @param format the output format, "CSV" (default) and "plain" are currently supported
+-- @param file the output file, defaults to standard out
+function mod:newPktTxCounter(name, format, file)
+	local obj = newCounter("pkt", name, nil, format, file)
+	return setmetatable(obj, pktTxCounter)
+end
 
-function txCounter:update()
+--- Create a new tx counter that has to be updated manually.
+-- @param name the name of the counter, included in the output
+-- @param format the output format, "CSV" (default) and "plain" are currently supported
+-- @param file the output file, defaults to standard out
+function mod:newManualTxCounter(name, format, file)
+	local obj = newCounter("manual", name, nil, format, file)
+	return setmetatable(obj, manualTxCounter)
+end
+
+-- 'Base class' (the counters are not actually derived from it, though)
+function txCounter:finalize()
+	finalizeCounter(self)
+end
+
+function txCounter:print(event, ...)
+	printStats(self, "txStats", event, ...)
+end
+
+-- Device-based counter
+function devTxCounter:update()
 	local time = dpdk.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
@@ -294,24 +328,57 @@ function txCounter:update()
 	updateCounter(self, time, pkts, bytes)
 end
 
-function txCounter:updateManual(pkts)
-	self.manualPkts = self.manualPkts + pkts
+devTxCounter.print = txCounter.print
+devTxCounter.finalize = txCounter.finalize
+
+-- Packet-based counter
+function pktTxCounter:countPacket(buf)
+	self.current = self.current + 1
+	self.currentBytes = self.currentBytes + buf.pkt.pkt_len + 4 -- include CRC
+end
+
+function pktTxCounter:update()
 	local time = dpdk.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self.manualPkts, self.manualPkts * (self.pktSize + 4)
-	self.manualPkts = 0
+	local pkts, bytes = self.current, self.currentBytes
+	self.current, self.currentBytes = 0, 0
 	updateCounter(self, time, pkts, bytes)
 end
 
-function txCounter:print(event, ...)
-	printStats(self, "txStats", event, ...)
+pktTxCounter.print = txCounter.print
+pktTxCounter.finalize = txCounter.finalize
+
+
+-- Manual rx counter
+function manualTxCounter:update(pkts, bytes)
+	self.current = self.current + pkts
+	self.currentBytes = self.currentBytes + bytes
+	local time = dpdk.getTime()
+	if self.lastUpdate and time <= self.lastUpdate + 1 then
+		return
+	end
+	local pkts, bytes = self.current, self.currentBytes
+	self.current, self.currentBytes = 0, 0
+	updateCounter(self, time, pkts, bytes)
 end
 
-function txCounter:finalize()
-	finalizeCounter(self)
+function manualTxCounter:updateWithSize(pkts, size)
+	self.current = self.current + pkts
+	self.currentBytes = self.currentBytes + pkts * (size + 4)
+	local time = dpdk.getTime()
+	if self.lastUpdate and time <= self.lastUpdate + 1 then
+		return
+	end
+	local pkts, bytes = self.current, self.currentBytes
+	self.current, self.currentBytes = 0, 0
+	updateCounter(self, time, pkts, bytes)
 end
+
+manualTxCounter.print = txCounter.print
+manualTxCounter.finalize = txCounter.finalize
+
 
 
 return mod
