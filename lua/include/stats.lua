@@ -183,9 +183,11 @@ function mod:newDevRxCounter(name, dev, format, file)
 	if type(name) == "table" then
 		return self:newDevRxCounter(nil, name, dev, format)
 	end
+	-- use device if queue objects are passed
+	dev = dev and dev.dev or dev
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
-	obj.sleep = 50
+	obj.sleep = 100
 	return setmetatable(obj, devRxCounter)
 end
 
@@ -292,9 +294,11 @@ function mod:newDevTxCounter(name, dev, format, file)
 	if type(name) == "table" then
 		return self:newDevTxCounter(nil, name, dev, format)
 	end
+	-- use device if queue objects are passed
+	dev = dev and dev.dev or dev
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
-	obj.sleep = 10
+	obj.sleep = 50
 	return setmetatable(obj, devTxCounter)
 end
 
