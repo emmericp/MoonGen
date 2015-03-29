@@ -18,6 +18,9 @@ function master(txPort, rxPort, rate, bgRate)
 	-- 3 tx queues: traffic, background traffic, and timestamped packets
 	-- 2 rx queues: traffic and timestamped packets
 	local txDev, rxDev
+	-- these two cases could actually be merged as re-configurations of ports are ignored
+	-- the dual-port case could just config the 'first' device with 2/3 queues
+	-- however, this example scripts shows the explicit configuration instead of implicit magic
 	if txPort == rxPort then
 		-- sending and receiving from the same port
 		txDev = device.config(txPort, 2, 3)
@@ -27,7 +30,7 @@ function master(txPort, rxPort, rate, bgRate)
 		txDev = device.config(txPort, 1, 3)
 		rxDev = device.config(rxPort, 2)
 	end
-	-- wait until the link is up
+	-- wait until the links are up
 	device.waitForLinks()
 	-- setup rate limiters for CBR traffic
 	-- see l2-poisson.lua for an example with different traffic patterns
