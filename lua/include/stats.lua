@@ -121,7 +121,7 @@ local function printStats(self, statsType, event, ...)
 	end
 end
 
-local function updateCounter(self, time, pkts, bytes)
+local function updateCounter(self, time, pkts, bytes, dontPrint)
 	if not self.lastUpdate then
 		-- first call, save current stats but do not print anything
 		self.total, self.totalBytes = pkts, bytes
@@ -138,7 +138,9 @@ local function updateCounter(self, time, pkts, bytes)
 	local mpps = (self.total - self.lastTotal) / elapsed / 10^6
 	local mbit = (self.totalBytes - self.lastTotalBytes) / elapsed / 10^6 * 8
 	local wireRate = mbit + (mpps * 20 * 8)
-	self:print("Update", self.total, mpps, mbit, wireRate)
+	if not dontPrint then
+		self:print("Update", self.total, mpps, mbit, wireRate)
+	end
 	table.insert(self.mpps, mpps)
 	table.insert(self.mbit, mbit)
 	table.insert(self.wireMbit, wireRate)
@@ -146,7 +148,13 @@ local function updateCounter(self, time, pkts, bytes)
 	self.lastTotalBytes = self.totalBytes
 end
 
-local function finalizeCounter(self)
+local function finalizeCounter(self, sleep)
+	-- wait for any remaining packets to arrive/be sent if necessary
+	dpdk.sleepMillis(sleep)
+	-- last stats are probably complete nonsense, especially if sleep ~= 0
+	-- we just do this to get the correct totals
+	local pkts, bytes = self:getStats()
+	updateCounter(self, dpdk.getTime(), pkts, bytes, true)
 	mod.addStats(self.mpps, true)
 	mod.addStats(self.mbit, true)
 	mod.addStats(self.wireMbit, true)
@@ -177,6 +185,7 @@ function mod:newDevRxCounter(name, dev, format, file)
 	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
+	obj.sleep = 50
 	return setmetatable(obj, devRxCounter)
 end
 
@@ -199,8 +208,8 @@ function mod:newManualRxCounter(name, format, file)
 end
 
 -- Base class
-function rxCounter:finalize()
-	finalizeCounter(self)
+function rxCounter:finalize(sleep)
+	finalizeCounter(self, self.sleep or 0)
 end
 
 function rxCounter:print(event, ...)
@@ -285,6 +294,7 @@ function mod:newDevTxCounter(name, dev, format, file)
 	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
+	obj.sleep = 10
 	return setmetatable(obj, devTxCounter)
 end
 
@@ -307,8 +317,8 @@ function mod:newManualTxCounter(name, format, file)
 end
 
 -- Base class
-function txCounter:finalize()
-	finalizeCounter(self)
+function txCounter:finalize(sleep)
+	finalizeCounter(self, self.sleep or 0)
 end
 
 function txCounter:print(event, ...)
