@@ -34,6 +34,25 @@ function tonumberall(...)
 	return mapVarArg(tonumber, ...)
 end
 
+function toCsv(...)
+	local vals = { tostringall(...) }
+	for i, v in ipairs(vals) do
+		if v:find("\"") then
+			v = v:gsub("\"", "\"\"")
+		end
+		-- fields just containing \n or \r but not \n\r are not required to be quoted by RFC 4180...
+		-- but I doubt that most parser could handle this ;)
+		if v:find("\n") or v:find("\r") or v:find("\"") or v:find(",") then
+			vals[i] = ("\"%s\""):format(v)
+		end
+	end
+	return table.concat(vals, ",")
+end
+
+function printCsv(...)
+	return print(toCsv(...))
+end
+
 --- Get the time to wait (in byte-times) for the next packet based on a poisson process.
 -- @param average the average wait time between two packets
 -- @returns the number of byte-times to wait to achieve the given average wait-time
