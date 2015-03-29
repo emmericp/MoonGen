@@ -102,4 +102,12 @@ function histogram:samples()
 	end
 end
 
+-- FIXME: add support for different formats
+function histogram:print()
+	if self.dirty then self:calc() end
+
+	printf("Samples: %d, Average: %.1f, StdDev: %.1f, Quartiles: %.1f/%.1f/%.1f", self.numSamples, self.avg, self.stdDev, unpack(self.quarts))
+end
+
 return histogram
+
