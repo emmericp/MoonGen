@@ -157,10 +157,11 @@ local function finalizeCounter(self)
 end
 
 
-local rxCounter = {} -- base 'class' (not actually a class, though)
-local devRxCounter = {}
-local pktRxCounter = {}
-local manualRxCounter = {}
+local rxCounter = {} -- base class
+local devRxCounter = setmetatable({}, rxCounter)
+local pktRxCounter = setmetatable({}, rxCounter)
+local manualRxCounter = setmetatable({}, rxCounter)
+rxCounter.__index = rxCounter
 devRxCounter.__index = devRxCounter
 pktRxCounter.__index = pktRxCounter
 manualRxCounter.__index = manualRxCounter
@@ -197,7 +198,7 @@ function mod:newManualRxCounter(name, format, file)
 	return setmetatable(obj, manualRxCounter)
 end
 
--- 'Base class' (the counters are not actually derived from it, though)
+-- Base class
 function rxCounter:finalize()
 	finalizeCounter(self)
 end
@@ -216,9 +217,6 @@ function devRxCounter:update()
 	updateCounter(self, time, pkts, bytes)
 end
 
-devRxCounter.print = rxCounter.print
-devRxCounter.finalize = rxCounter.finalize
-
 -- Packet-based counter
 function pktRxCounter:countPacket(buf)
 	self.current = self.current + 1
@@ -234,9 +232,6 @@ function pktRxCounter:update()
 	self.current, self.currentBytes = 0, 0
 	updateCounter(self, time, pkts, bytes)
 end
-
-pktRxCounter.print = rxCounter.print
-pktRxCounter.finalize = rxCounter.finalize
 
 
 -- Manual rx counter
@@ -264,14 +259,12 @@ function manualRxCounter:updateWithSize(pkts, size)
 	updateCounter(self, time, pkts, bytes)
 end
 
-manualRxCounter.print = rxCounter.print
-manualRxCounter.finalize = rxCounter.finalize
 
-
-local txCounter = {} -- base 'class' (not actually a class, though)
-local devTxCounter = {}
-local pktTxCounter = {}
-local manualTxCounter = {}
+local txCounter = {} -- base class for tx counters
+local devTxCounter = setmetatable({}, txCounter)
+local pktTxCounter = setmetatable({}, txCounter)
+local manualTxCounter = setmetatable({}, txCounter)
+txCounter.__index = txCounter
 devTxCounter.__index = devTxCounter
 pktTxCounter.__index = pktTxCounter
 manualTxCounter.__index = manualTxCounter
@@ -309,7 +302,7 @@ function mod:newManualTxCounter(name, format, file)
 	return setmetatable(obj, manualTxCounter)
 end
 
--- 'Base class' (the counters are not actually derived from it, though)
+-- Base class
 function txCounter:finalize()
 	finalizeCounter(self)
 end
@@ -328,8 +321,6 @@ function devTxCounter:update()
 	updateCounter(self, time, pkts, bytes)
 end
 
-devTxCounter.print = txCounter.print
-devTxCounter.finalize = txCounter.finalize
 
 -- Packet-based counter
 function pktTxCounter:countPacket(buf)
@@ -346,10 +337,6 @@ function pktTxCounter:update()
 	self.current, self.currentBytes = 0, 0
 	updateCounter(self, time, pkts, bytes)
 end
-
-pktTxCounter.print = txCounter.print
-pktTxCounter.finalize = txCounter.finalize
-
 
 -- Manual rx counter
 function manualTxCounter:update(pkts, bytes)
@@ -375,10 +362,6 @@ function manualTxCounter:updateWithSize(pkts, size)
 	self.current, self.currentBytes = 0, 0
 	updateCounter(self, time, pkts, bytes)
 end
-
-manualTxCounter.print = txCounter.print
-manualTxCounter.finalize = txCounter.finalize
-
 
 
 return mod
