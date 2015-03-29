@@ -14,6 +14,10 @@ static volatile uint64_t signal_at = -1;
 
 static void handler(int unused) {
 	(void) unused;
+	if (signal_at != (uint64_t) -1) {
+		// cancel was requested more than once, just bail out
+		exit(-1);
+	}
 	signal_at = rte_rdtsc();
 }
 
