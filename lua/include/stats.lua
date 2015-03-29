@@ -51,16 +51,16 @@ end
 
 local function getPlainUpdate(direction)
 	return function(stats, file, total, mpps, mbit, wireMbit)
-		file:write(("%s %s %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate.\n"):format(stats.dev, direction, total, mpps, mbit, wireMbit))
+		file:write(("[%s] %s %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate.\n"):format(stats.name, direction, total, mpps, mbit, wireMbit))
 		file:flush()
 	end
 end
 
 local function getPlainFinal(direction)
 	return function(stats, file)
-		file:write(("%s %s %d packets with %d bytes payload (including CRC).\n"):format(stats.dev, direction, stats.total, stats.totalBytes))
-		file:write(("%s %s %f (StdDev %f) Mpps, %f (StdDev %f) MBit/s, %f (StdDev %f) MBit/s wire rate on average.\n"):format(
-			stats.dev, direction,
+		file:write(("[%s] %s %d packets with %d bytes payload (including CRC).\n"):format(stats.name, direction, stats.total, stats.totalBytes))
+		file:write(("[%s] %s %f (StdDev %f) Mpps, %f (StdDev %f) MBit/s, %f (StdDev %f) MBit/s wire rate on average.\n"):format(
+			stats.name, direction,
 			stats.mpps.avg, stats.mpps.stdDev,
 			stats.mbit.avg, stats.mbit.stdDev,
 			stats.wireMbit.avg, stats.wireMbit.stdDev
@@ -82,54 +82,48 @@ formatters["plain"] = {
 
 formatters["CSV"] = formatters["plain"] -- TODO
 
--- base 'class' for rx and tx counters
-local function newCounter(dev, pktSize, format, file)
-	if type(dev) == "table" then
-		-- case 1: (device, format, file)
-		return newCounter(dev, nil, pktSize, format)
-	end -- else: (description, size, format, file)
-	if type(dev) == "table" and dev.qid then
-		-- device is a queue, use the queue's device instead
-		-- TODO: per-queue statistics (tricky as the abstraction in DPDK sucks)
-		dev = dev.dev
-	end
+-- base constructor for rx and tx counters
+local function newCounter(ctrType, name, dev, format, file)
+	format = format or "CSV"
 	file = file or io.stdout
 	local closeFile = false
 	if type(file) == "string" then
 		file = io.open("w+")
 		closeFile = true
 	end
-	format = format or "CSV"
 	if not formatters[format] then
 		error("unsupported output format " .. format)
 	end
 	return {
+		name = name,
 		dev = dev,
-		pktSize = pktSize,
-		format = format or "CSV",
+		format = format,
 		file = file,
 		closeFile = closeFile,
 		total = 0,
 		totalBytes = 0,
-		manualPkts = 0,
+		current = 0,
+		currentBytes = 0,
 		mpps = {},
 		mbit = {},
 		wireMbit = {},
-	}, type(dev) ~= "table"
+	}
 end
+
+-- base class for rx and tx counters
 
 local function printStats(self, statsType, event, ...)
 	local func = formatters[self.format][statsType .. event]
 	if func then
 		func(self, self.file, ...)
 	else
-		print("[Missing formatter for " .. self.format .. "]", self.dev, statsType, event, ...)
+		print("[Missing formatter for " .. self.format .. "]", self.name, statsType, event, ...)
 	end
 end
 
 local function updateCounter(self, time, pkts, bytes)
 	if not self.lastUpdate then
-		-- very first call, save current stats but do not print anything
+		-- first call, save current stats but do not print anything
 		self.total, self.totalBytes = pkts, bytes
 		self.lastTotal = self.total
 		self.lastTotalBytes = self.totalBytes
@@ -163,22 +157,57 @@ local function finalizeCounter(self)
 end
 
 
-local rxCounter = {}
-rxCounter.__index = rxCounter
+local rxCounter = {} -- base 'class' (not actually a class, though)
+local devRxCounter = {}
+local pktRxCounter = {}
+local manualRxCounter = {}
+devRxCounter.__index = devRxCounter
+pktRxCounter.__index = pktRxCounter
+manualRxCounter.__index = manualRxCounter
 
---- Create a new rx counter
+--- Create a new rx counter using device statistics registers.
+-- @param name the name of the counter, included in the output. defaults to the device name
 -- @param dev the device to track
 -- @param format the output format, "CSV" (default) and "plain" are currently supported
 -- @param file the output file, defaults to standard out
-function mod:newRxCounter(...)
-	local obj, isManual = newCounter(...)
-	if isManual then
-		obj.update = rxCounter.updateManual
+function mod:newDevRxCounter(name, dev, format, file)
+	if type(name) == "table" then
+		return self:newDevRxCounter(nil, name, dev, format)
 	end
-	return setmetatable(obj, rxCounter)
+	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
+	local obj = newCounter("dev", name, dev, format, file)
+	return setmetatable(obj, devRxCounter)
 end
 
-function rxCounter:update()
+--- Create a new rx counter that can be updated by passing packet buffers to it.
+-- @param name the name of the counter, included in the output
+-- @param format the output format, "CSV" (default) and "plain" are currently supported
+-- @param file the output file, defaults to standard out
+function mod:newPktRxCounter(name, format, file)
+	local obj = newCounter("pkt", name, nil, format, file)
+	return setmetatable(obj, pktRxCounter)
+end
+
+--- Create a new rx counter that has to be updated manually.
+-- @param name the name of the counter, included in the output
+-- @param format the output format, "CSV" (default) and "plain" are currently supported
+-- @param file the output file, defaults to standard out
+function mod:newManualRxCounter(name, format, file)
+	local obj = newCounter("manual", name, nil, format, file)
+	return setmetatable(obj, manualRxCounter)
+end
+
+-- 'Base class' (the counters are not actually derived from it, though)
+function rxCounter:finalize()
+	finalizeCounter(self)
+end
+
+function rxCounter:print(event, ...)
+	printStats(self, "rxStats", event, ...)
+end
+
+-- Device-based counter
+function devRxCounter:update()
 	local time = dpdk.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
@@ -187,23 +216,57 @@ function rxCounter:update()
 	updateCounter(self, time, pkts, bytes)
 end
 
-function rxCounter:updateManual(pkts)
-	self.manualPkts = self.manualPkts + pkts
+devRxCounter.print = rxCounter.print
+devRxCounter.finalize = rxCounter.finalize
+
+-- Packet-based counter
+function pktRxCounter:countPacket(buf)
+	self.current = self.current + 1
+	self.currentBytes = self.currentBytes + buf.pkt.pkt_len + 4 -- include CRC
+end
+
+function pktRxCounter:update()
 	local time = dpdk.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self.manualPkts, self.manualPkts * (self.pktSize + 4)
+	local pkts, bytes = self.current, self.currentBytes
+	self.current, self.currentBytes = 0, 0
 	updateCounter(self, time, pkts, bytes)
 end
 
-function rxCounter:print(event, ...)
-	printStats(self, "rxStats", event, ...)
+pktRxCounter.print = rxCounter.print
+pktRxCounter.finalize = rxCounter.finalize
+
+
+-- Manual rx counter
+function manualRxCounter:update(pkts, bytes)
+	self.current = self.current + pkts
+	self.currentBytes = self.currentBytes + bytes
+	local time = dpdk.getTime()
+	if self.lastUpdate and time <= self.lastUpdate + 1 then
+		return
+	end
+	local pkts, bytes = self.current, self.currentBytes
+	self.current, self.currentBytes = 0, 0
+	updateCounter(self, time, pkts, bytes)
 end
 
-function rxCounter:finalize()
-	finalizeCounter(self)
+function manualRxCounter:updateWithSize(pkts, size)
+	self.current = self.current + pkts
+	self.currentBytes = self.currentBytes + pkts * (size + 4)
+	local time = dpdk.getTime()
+	if self.lastUpdate and time <= self.lastUpdate + 1 then
+		return
+	end
+	local pkts, bytes = self.current, self.currentBytes
+	self.current, self.currentBytes = 0, 0
+	updateCounter(self, time, pkts, bytes)
 end
+
+manualRxCounter.print = rxCounter.print
+manualRxCounter.finalize = rxCounter.finalize
+
 
 local txCounter = {}
 txCounter.__index = txCounter
