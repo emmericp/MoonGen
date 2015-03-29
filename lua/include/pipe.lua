@@ -47,7 +47,9 @@ function slowPipe:tryRecv(wait)
 	while wait >= 0 do
 		local buf = C.try_dequeue(self.pipe)
 		if buf ~= nil then
-			return unpackAll(loadstring(ffi.string(buf))())
+			local result = loadstring(ffi.string(buf))()
+			memory.free(buf)
+			return unpackAll(result)
 		end
 		wait = wait - 10
 		if wait < 0 then
