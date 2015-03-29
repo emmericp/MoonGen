@@ -40,20 +40,18 @@ function histogram:calc()
 	-- however, it doesn't really matter for the number of samples we usually use
 	local quartSamples = self.numSamples / 4
 
-	self.lowerQuart = nil
-	self.median = nil
-	self.upperQuart = nil
+	self.quarts = {}
 
 	local idx = 0
 	for _, p in ipairs(self.sortedHisto) do
 		-- TODO: inefficient
 		for _ = 1, p.v do
-			if not self.lowerQuart and idx >= quartSamples then
-				self.lowerQuart = p.k
-			elseif not self.median and idx >= quartSamples * 2 then
-				self.median = p.k
-			elseif not self.upperQuart and idx >= quartSamples * 3 then
-				self.upperQuart = p.k
+			if not self.quarts[1] and idx >= quartSamples then
+				self.quarts[1] = p.k
+			elseif not self.quarts[2] and idx >= quartSamples * 2 then
+				self.quarts[2] = p.k
+			elseif not self.quarts[3] and idx >= quartSamples * 3 then
+				self.quarts[3] = p.k
 				break
 			end
 			idx = idx + 1
@@ -82,8 +80,14 @@ end
 
 function histogram:quartiles()
 	if self.dirty then self:calc() end
+	
+	return unpack(self.quarts)
+end
 
-	return self.lowerQuart, self.median, self.upperQuart
+function histogram:median()
+	if self.dirty then self:calc() end
+
+	return self.quarts[2]
 end
 
 function histogram:samples()
