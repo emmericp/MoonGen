@@ -35,8 +35,14 @@ end
 
 function mod.addStats(data, ignoreFirstAndLast)
 	local copy = { }
-	for i = 2, #data - 1 do
-		copy[i - 1] = data[i]
+	if ignoreFirstAndLast then
+		for i = 2, #data - 1 do
+			copy[i - 1] = data[i]
+		end
+	else
+		for i = 1, #data do
+			copy[i] = data[i]
+		end
 	end
 	data.avg = mod.average(copy)
 	data.stdDev = mod.stdDev(copy)
