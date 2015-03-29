@@ -10,7 +10,7 @@ for k,v in pairs(G) do globals[v] = k end -- build func to name mapping
 for _,g in ipairs({'coroutine', 'debug', 'io', 'math', 'string', 'table', 'os'}) do
   for k,v in pairs(G[g] or {}) do globals[v] = g..'.'..k end end
 
-local function s(t, opts)
+local function s(t, opts, ignoreMt)
   local name, indent, fatal, maxnum = opts.name, opts.indent, opts.fatal, opts.maxnum
   local sparse, custom, huge = opts.sparse, opts.custom, not opts.nohuge
   local space, maxl = (opts.compact and '' or ' '), (opts.maxlevel or math.huge)
@@ -46,7 +46,7 @@ local function s(t, opts)
     if seen[t] then -- already seen this element
       sref[#sref+1] = spath..space..'='..space..seen[t]
       return tag..'nil'..comment('ref', level) end
-    if type(mt) == 'table' and (mt.__serialize or mt.__tostring) then -- knows how to serialize itself
+    if type(mt) == 'table' and not ignoreMt and (mt.__serialize or mt.__tostring) then -- knows how to serialize itself
       seen[t] = insref or spath
       local func
       if mt.__serialize then t, func = mt.__serialize(t) else t = tostring(t) end
@@ -131,5 +131,8 @@ local function merge(a, b) if b then for k,v in pairs(b) do a[k] = v end end; re
 return { _NAME = n, _COPYRIGHT = c, _DESCRIPTION = d, _VERSION = v, serialize = s,
   load = deserialize,
   dump = function(a, opts) return s(a, merge({name = '_', compact = true, sparse = true}, opts)) end,
+  dumpRaw = function(a, opts) return s(a, merge({name = '_', compact = true, sparse = true}, opts), true) end,
   line = function(a, opts) return s(a, merge({sortkeys = true, comment = true}, opts)) end,
-  block = function(a, opts) return s(a, merge({indent = '  ', sortkeys = true, comment = true}, opts)) end }
+  block = function(a, opts) return s(a, merge({indent = '  ', sortkeys = true, comment = true}, opts)) end,
+  addMt = function(buf, mt) return 'setmetatable((function() ' .. buf .. ' end)(), ' .. mt .. ')' end,
+ }
