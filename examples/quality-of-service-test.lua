@@ -82,7 +82,8 @@ function loadSlave(queue, port, rate)
 		end
 		-- send packets
 		bufs:offloadUdpChecksums()
-		txCtr:update(queue:send(bufs))
+		--txCtr:update(queue:send(bufs))
+		queue:send(bufs)
 	end
 	txCtr:finalize()
 end
@@ -92,32 +93,31 @@ function counterSlave(queue)
 	-- an alternative would be using flow director to filter packets by port and use the queue statistics
 	-- however, the current implementation is limited to filtering timestamp packets
 	-- (changing this wouldn't be too complicated, have a look at filter.lua if you want to implement this)
+	-- however, queue statistics are also not yet implemented and the DPDK abstraction is somewhat annoying
 	local bufs = memory.bufArray()
-	local stats = {}
-	local lastPrint = 0
-	local lastStats = {}
+	local ctrs = {}
 	while dpdk.running() do
 		local rx = queue:recv(bufs)
 		for i = 1, rx do
 			local buf = bufs[i]
 			local pkt = buf:getUdpPacket()
 			local port = pkt.udp:getDstPort()
-			stats[port] = (stats[port] or 0) + 1
+			local ctr = ctrs[port]
+			if not ctr then
+				ctr = stats:newPktRxCounter("Port " .. port, "plain")
+				ctrs[port] = ctr
+			end
+			ctr:countPacket(buf)
+		end
+		-- update() on rxPktCounters must be called to print statistics periodically
+		-- this is not done in countPacket() for performance reasons (needs to check timestamps)
+		for k, v in pairs(ctrs) do
+			v:update()
 		end
 		bufs:freeAll()
-		local time = dpdk.getTime()
-		if time - lastPrint > 1 then
-			for k, v in pairs(stats) do
-				local last = lastStats[k] or 0
-				local mpps = (v - last) / (time - lastPrint) / 10^6
-				printf("%s Port %d: Received %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", queue, k, v, mpps, mpps * (PKT_SIZE + 4) * 8, mpps * (PKT_SIZE + 24) * 8)
-				lastStats[k] = v
-			end
-			lastPrint = time
-		end
 	end
-	for k, v in pairs(stats) do
-		printf("%s Port %d: Received %d packets", queue, k, v)
+	for k, v in pairs(ctrs) do
+		v:finalize()
 	end
 	-- TODO: check the queue's overflow counter to detect lost packets
 end
