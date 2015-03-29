@@ -285,7 +285,6 @@ pktTxCounter.__index = pktTxCounter
 manualTxCounter.__index = manualTxCounter
 
 --- Create a new tx counter using device statistics registers.
--- FIXME: this is slightly off when using queue:sendWithDelay() (error seems to be below 0.5%)
 -- @param name the name of the counter, included in the output. defaults to the device name
 -- @param dev the device to track
 -- @param format the output format, "CSV" (default) and "plain" are currently supported
