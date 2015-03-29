@@ -207,15 +207,19 @@ function rxCounter:print(event, ...)
 	printStats(self, "rxStats", event, ...)
 end
 
--- Device-based counter
-function devRxCounter:update()
+function rxCounter:update()
 	local time = dpdk.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self.dev:getRxStats()
+	local pkts, bytes = self:getStats()
 	updateCounter(self, time, pkts, bytes)
 end
+
+-- Device-based counter
+function devRxCounter:getStats() 
+    return self.dev:getRxStats() 
+end 
 
 -- Packet-based counter
 function pktRxCounter:countPacket(buf)
@@ -223,14 +227,10 @@ function pktRxCounter:countPacket(buf)
 	self.currentBytes = self.currentBytes + buf.pkt.pkt_len + 4 -- include CRC
 end
 
-function pktRxCounter:update()
-	local time = dpdk.getTime()
-	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
-	end
+function pktRxCounter:getStats()
 	local pkts, bytes = self.current, self.currentBytes
 	self.current, self.currentBytes = 0, 0
-	updateCounter(self, time, pkts, bytes)
+	return pkts, bytes
 end
 
 
@@ -242,9 +242,14 @@ function manualRxCounter:update(pkts, bytes)
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
+	local pkts, bytes = self:getStats()
+	updateCounter(self, time, pkts, bytes)
+end
+
+function manualRxCounter:getStats()
 	local pkts, bytes = self.current, self.currentBytes
 	self.current, self.currentBytes = 0, 0
-	updateCounter(self, time, pkts, bytes)
+	return pkts, bytes
 end
 
 function manualRxCounter:updateWithSize(pkts, size)
@@ -254,8 +259,7 @@ function manualRxCounter:updateWithSize(pkts, size)
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self.current, self.currentBytes
-	self.current, self.currentBytes = 0, 0
+	local pkts, bytes = self:getStats()
 	updateCounter(self, time, pkts, bytes)
 end
 
@@ -312,15 +316,18 @@ function txCounter:print(event, ...)
 end
 
 -- Device-based counter
-function devTxCounter:update()
+function txCounter:update()
 	local time = dpdk.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self.dev:getTxStats()
+	local pkts, bytes = self:getStats()
 	updateCounter(self, time, pkts, bytes)
 end
 
+function devTxCounter:getStats()
+	return self.dev:getTxStats()
+end
 
 -- Packet-based counter
 function pktTxCounter:countPacket(buf)
@@ -328,14 +335,10 @@ function pktTxCounter:countPacket(buf)
 	self.currentBytes = self.currentBytes + buf.pkt.pkt_len + 4 -- include CRC
 end
 
-function pktTxCounter:update()
-	local time = dpdk.getTime()
-	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
-	end
+function pktTxCounter:getStats()
 	local pkts, bytes = self.current, self.currentBytes
 	self.current, self.currentBytes = 0, 0
-	updateCounter(self, time, pkts, bytes)
+	return pkts, bytes
 end
 
 -- Manual rx counter
@@ -346,8 +349,7 @@ function manualTxCounter:update(pkts, bytes)
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self.current, self.currentBytes
-	self.current, self.currentBytes = 0, 0
+	local pkts, bytes = self:getStats()
 	updateCounter(self, time, pkts, bytes)
 end
 
@@ -358,11 +360,15 @@ function manualTxCounter:updateWithSize(pkts, size)
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self.current, self.currentBytes
-	self.current, self.currentBytes = 0, 0
+	local pkts, bytes = self:getStats()
 	updateCounter(self, time, pkts, bytes)
 end
 
+function manualTxCounter:getStats()
+	local pkts, bytes = self.current, self.currentBytes
+	self.current, self.currentBytes = 0, 0
+	return pkts, bytes
+end
 
 return mod
 
