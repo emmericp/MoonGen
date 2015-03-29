@@ -60,8 +60,8 @@ function loadSlave(queue, rxDev, rate)
 	end)
 	local bufs = mem:bufArray()
 	local runtime = timer:new(RUN_TIME)
-	local rxStats = stats:newRxCounter(rxDev, "plain")
-	local txStats = stats:newTxCounter(queue, "plain")
+	local rxStats = stats:newDevRxCounter(rxDev, "plain")
+	local txStats = stats:newDevTxCounter(queue, "plain")
 	while runtime:running() and dpdk.running() do
 		bufs:alloc(PKT_SIZE)
 		if rate then
@@ -75,8 +75,6 @@ function loadSlave(queue, rxDev, rate)
 		rxStats:update()
 		txStats:update()
 	end
-	-- wait for packets in flight/in the tx queue
-	dpdk.sleepMillis(500)
 	txStats:finalize()
 	rxStats:finalize()
 end
@@ -91,7 +89,7 @@ function timerSlave(txDev, rxDev, txQueue, rxQueue)
 	local rateLimiter = timer:new(0.001)
 	while runtime:running() and dpdk.running() do
 		rateLimiter:reset()
-		print(timestamper:measureLatency(PKT_SIZE))
+		timestamper:measureLatency(PKT_SIZE)
 		-- keep the timestamping packets limited to about 1 kpps
 		-- this is important when testing low rates
 		rateLimiter:busyWait()
