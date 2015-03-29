@@ -1,12 +1,15 @@
 local histogram = {}
 histogram.__index = histogram
 
-function histogram.create()
+function histogram:create()
 	local histo = setmetatable({}, histogram)
 	histo.histo = {}
 	histo.dirty = true
 	return histo
 end
+
+histogram.new = histogram.create
+
 setmetatable(histogram, { __call = histogram.create })
 
 function histogram:update(k)
