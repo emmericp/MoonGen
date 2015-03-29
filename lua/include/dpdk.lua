@@ -259,6 +259,16 @@ function mod.sleepMicros(t)
 	dpdkc.rte_delay_us_export(t)
 end
 
+--- Sleep by t milliseconds by calling usleep().
+function mod.sleepMillisIdle(t)
+	ffi.C.usleep(t * 1000)
+end
+
+--- Sleep by t microseconds by calling usleep().
+function mod.sleepMicrosIdle(t)
+	ffi.C.usleep(t)
+end
+
 --- Get the core and socket id for the current thread
 function mod.getCore()
 	return dpdkc.get_current_core(), dpdkc.get_current_socket()
