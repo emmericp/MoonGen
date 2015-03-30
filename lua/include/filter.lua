@@ -29,6 +29,12 @@ end
 local dev = device.__devicePrototype
 
 function dev:l2Filter(etype, queue)
+	if type(queue) == "table" then
+		if queue.dev ~= self then
+			error("Queue must belong to the device being configured")
+		end
+		queue = queue.qid
+	end
 	-- TODO: support for other NICs
 	if queue == -1 then
 		queue = 63
