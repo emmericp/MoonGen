@@ -3,6 +3,8 @@ local ffi = require "ffi"
 require "headers"
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
+local memory = require "memory"
+local filter = require "filter"
 
 local eth = require "proto.ethernet"
 
@@ -316,6 +318,76 @@ end
 
 
 ---------------------------------------------------------------------------------
+--- ARP Handler Task
+---------------------------------------------------------------------------------
+
+--- Arp handler task, responds to ARP queries for given IPs
+-- TODO: implement arp request support, but this depends on some other features (something like globals)
+arp.arpTask = "__MG_ARP_TASK"
+
+local function arpTask(rxQueue, txQueue, ips)
+	if type(ips) ~= "table" then
+		ips = { ips }
+	end
+	local ipToMac = {}
+	for i, v in ipairs(ips) do
+		if type(v) == "string" then
+			v = parseIPAddress(v)
+			ips[i] = v
+		end
+		ipToMac[v] = true -- TODO: support different MACs for different IPs
+	end
+	if rxQueue.dev ~= txQueue.dev then
+		error("both queues must belong to the same device")
+	end
+
+	local dev = rxQueue.dev
+	local devMac = dev:getMac()
+	local rxBufs = memory.createBufArray(1)
+	local txMem = memory.createMemPool(function(buf)
+		buf:getArpPacket():fill{ 
+			ethSrc			= devMac,  
+			arpOperation	= arp.OP_REPLY,
+			arpHardwareSrc	= devMac,
+			arpProtoSrc 	= devIP,
+			pktLength		= 60
+		}
+	end)
+	local txBufs = txMem:bufArray(1)
+	dev:l2Filter(eth.TYPE_ARP, rxQueue)
+	
+	
+	while dpdk.running() do
+		rx = rxQueue:tryRecv(rxBufs, 10000)
+		assert(rx <= 1)
+		if rx > 0 then
+			local rxPkt = rxBufs[1]:getArpPacket()
+			if rxPkt.eth:getType() == eth.TYPE_ARP and rxPkt.arp:getOperation() == arp.OP_REQUEST then
+				local ip = rxPkt.arp:getProtoDst()
+				local mac = ipToMac[ip]
+				if mac then
+					if mac == true then
+						mac = devMac
+					end
+					txBufs:alloc(60)
+					local pkt = txBufs[1]:getArpPacket()
+					pkt.eth:setDst(rxPkt.eth:getSrc())
+					pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
+					pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
+					pkt.arp:setProtoSrc(ip)
+					txQueue:send(txBufs)
+				end
+			end
+			rxBufs:freeAll()
+		end
+		dpdk.sleepMillisIdle(1)
+	end
+end
+
+__MG_ARP_TASK = arpTask
+
+
+---------------------------------------------------------------------------------
 --- Metatypes
 ---------------------------------------------------------------------------------
 
@@ -323,3 +395,4 @@ ffi.metatype("struct arp_header", arpHeader)
 ffi.metatype("struct arp_packet", arpPacket)
 
 return arp
+
