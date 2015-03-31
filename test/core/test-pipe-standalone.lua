@@ -30,6 +30,7 @@ end
 
 
 function slave(pipe)
+	assert(pipe:count() == 3)
 	local a, b, c, d = pipe:recv()
 	assert(a == 1 and b == 2 and c == 3 and d == 4)
 	assert(pipe:recv() == "string")
@@ -38,6 +39,7 @@ function slave(pipe)
 	assert(obj[2] == 2)
 	assert(obj.subtable[1] == 1)
 	assert(pipe:tryRecv(10 * 1000) == nil)
+	assert(pipe:count() == 0)
 	dpdk.sleepMillis(40)
 	assert(pipe:tryRecv(1000) == "delayed")
 end

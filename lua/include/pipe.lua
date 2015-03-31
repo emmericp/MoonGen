@@ -70,6 +70,10 @@ function slowPipe:recv()
 	return loop()
 end
 
+function slowPipe:count()
+	return C.count(self.pipe)
+end
+
 function slowPipe:__serialize()
 	return "require'pipe'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('pipe').slowPipe"), true
 end
