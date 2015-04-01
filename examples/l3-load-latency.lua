@@ -40,9 +40,14 @@ end
 function loadSlave(port, queue, size, numFlows)
 	local queue = device.get(port):getTxQueue(queue)
 	local mempool = memory.createMemPool(function(buf)
+		-- TODO: port this to new PTP/timestamping functions, ffi.cast in a userscript is not the point
 		ts.fillPacket(buf, 1234, size)
 		local data = ffi.cast("uint8_t*", buf.pkt.data)
 		data[43] = 0x00 -- PTP version, set to 0 to disable timestamping for load packets
+		local pkt = buf:getUdpPacket()
+		pkt.eth.src:setString(srcmac)
+		pkt.eth.dst:setString(dstmac)
+		pkt.ip.dst:set(dstip)
 	end)
 	local lastPrint = dpdk.getTime()
 	local totalSent = 0
@@ -55,10 +60,7 @@ function loadSlave(port, queue, size, numFlows)
 		bufs:alloc(size)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
-			pkt.eth.src:setString(srcmac)
-			pkt.eth.dst:setString(dstmac)
 			pkt.ip.src:set(baseIP + counter)
-			pkt.ip.dst:set(dstip)
 			if numFlows <= 32 then
 				-- this is significantly faster for small numbers
 				-- TODO: this optimization shouldn't be necessary...
