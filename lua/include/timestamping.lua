@@ -354,10 +354,14 @@ function mod:newTimestamper(txQueue, rxQueue, mem)
 end
 
 --- Try to measure the latency of a single packet.
--- @param pktSize the size of the generated packet
--- @param packetModifier a function that is called with the generated packet, e.g. to modified addresses
--- @param maxWait the time in ms to wait before the packet is assumed to be lost (default = 15)
+-- @param pktSize optional, the size of the generated packet, optional, defaults to the smallest possible size
+-- @param packetModifier optional, a function that is called with the generated packet, e.g. to modified addresses
+-- @param maxWait optional (cannot be the only argument) the time in ms to wait before the packet is assumed to be lost (default = 15)
 function timestamper:measureLatency(pktSize, packetModifier, maxWait)
+	if type(pktSize) == "function" then -- optional first argument was skipped
+		return self:measureLatency(nil, pktSize, packetModifier)
+	end
+	pktSize = self.udp and 76 or 60
 	maxWait = (maxWait or 15) / 1000
 	self.txBufs:alloc(pktSize)
 	local buf = self.txBufs[1]
