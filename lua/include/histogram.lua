@@ -13,6 +13,7 @@ histogram.new = histogram.create
 setmetatable(histogram, { __call = histogram.create })
 
 function histogram:update(k)
+	if not k then return end
 	self.histo[k] = (self.histo[k] or 0) +1
 	self.dirty = true
 end
