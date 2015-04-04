@@ -69,6 +69,25 @@ local function getPlainFinal(direction)
 	end
 end
 
+local function getIniUpdate(direction)
+	return function(stats, file, total, mpps, mbit, wireMbit)
+		file:write(("%s%s,packets=%d,rate=%.2f,rate_mbits=%.2f,rate_wire=%.2f\n"):format(stats.name, direction, total, mpps, mbit, wireMbit))
+		file:flush()
+	end
+end
+
+local function getIniFinal(direction)
+	return function(stats, file)
+		file:write(("%sTotal%s,packets=%d,bytes=%d,rate=%f,rate_dev=%f,rate_mbits=%f,rate_mbits_dev=%f,rate_wire=%f,rate_wire_dev=%f.\n"):format(
+			stats.name, direction,
+			stats.total, stats.totalBytes,
+			stats.mpps.avg, stats.mpps.stdDev,
+			stats.mbit.avg, stats.mbit.stdDev,
+			stats.wireMbit.avg, stats.wireMbit.stdDev
+		))
+		file:flush()
+	end
+end
 local formatters = {}
 formatters["plain"] = {
 	rxStatsInit = function() end, -- nothing for plain, machine-readable formats can print a header here
@@ -78,6 +97,28 @@ formatters["plain"] = {
 	txStatsInit = function() end,
 	txStatsUpdate = getPlainUpdate("Sent"),
 	txStatsFinal = getPlainFinal("Sent"),
+}
+
+-- Formatter that does nothing
+formatters["nil"] = {
+	rxStatsInit = function() end,
+	rxStatsUpdate = function() end,
+	rxStatsFinal = function() end,
+
+	txStatsInit = function() end,
+	txStatsUpdate = function() end,
+	txStatsFinal = function () end,
+}
+
+-- Ini-Like Formatting
+formatters["ini"] = {
+	rxStatsInit = function() end,
+	rxStatsUpdate = getIniUpdate("Received"),
+	rxStatsFinal = getIniFinal("Received"),
+
+	txStatsInit = function() end,
+	txStatsUpdate = getIniUpdate("Sent"),
+	txStatsFinal = getIniFinal("Sent"),
 }
 
 formatters["CSV"] = formatters["plain"] -- TODO
