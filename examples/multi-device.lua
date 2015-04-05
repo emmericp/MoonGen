@@ -17,7 +17,7 @@ end
 function loadSlave(port)
 	local queue = device.get(port):getTxQueue(0)
 	local mem = memory.createMemPool(function(buf)
-		buf:getUDPPacket():fill({
+		buf:getUdpPacket():fill({
 			pktLength = 60
 		})
 	end)
