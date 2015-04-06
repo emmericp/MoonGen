@@ -80,7 +80,7 @@ ffi.cdef[[
 		struct rte_mempool *pool;
 		struct rte_mbuf *next;
 
-		uint64_t tx_offload;
+		uint64_t header_lengths;
 	};
 	// device status/info
 	struct rte_eth_link {

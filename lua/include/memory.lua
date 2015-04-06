@@ -107,15 +107,15 @@ function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
 	if ipv4 then
 		l3_len = l3_len or 20
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
-			self.array[i].header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_UDP_CKSUM)
+			self.array[i].header_lengths = l2_len + l3_len * 128
 		end
 		dpdkc.calc_ipv4_pseudo_header_checksums(self.array, self.size, 20)
 	else 
 		l3_len = l3_len or 40
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_UDP_CKSUM)
-			self.array[i].header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV6, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_UDP_CKSUM)
+			self.array[i].header_lengths = l2_len + l3_len * 128
 		end
 		dpdkc.calc_ipv6_pseudo_header_checksums(self.array, self.size, 30)
 	end
@@ -123,12 +123,18 @@ end
 
 function bufArray:offloadIPChecksums(ipv4, l2Len, l3Len)
 	ipv4 = ipv4 == nil or ipv4
+	l2_len = l2_len or 14
 	if ipv4 then
-		l2_len = l2_len or 14
 		l3_len = l3_len or 20
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4_CSUM)
-			self.array[i].header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM)
+			self.array[i].header_lengths = l2_len + l3_len * 128
+		end
+	else
+		l3_len = l3_len or 40
+		for i = 0, self.size - 1 do
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV6, dpdk.PKT_TX_IP_CKSUM)
+			self.array[i].header_lengths = l2_len + l3_len * 128
 		end
 	end
 end
@@ -139,15 +145,15 @@ function bufArray:offloadTcpChecksums(ipv4, l2Len, l3Len)
 	if ipv4 then
 		l3_len = l3_len or 20
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_TCP_CKSUM)
-			self.array[i].header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_TCP_CKSUM)
+			self.array[i].header_lengths = l2_len + l3_len * 128
 		end
 		dpdkc.calc_ipv4_pseudo_header_checksums(self.array, self.size, 25)
 	else 
 		l3_len = l3_len or 40
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_TCP_CKSUM)
-			self.array[i].header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV6, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_TCP_CKSUM)
+			self.array[i].header_lengths = l2_len + l3_len * 128
 		end
 		dpdkc.calc_ipv6_pseudo_header_checksums(self.array, self.size, 35)
 	end
