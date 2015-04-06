@@ -90,10 +90,10 @@ end
 
 ---
 -- @deprecated
-function mod.fillPacket(buf, port, size)
+function mod.fillPacket(buf, port, size, ignoreBadSize)
 	size = size or 80
 	-- min 76 bytes as the NIC refuses to timestamp 'truncated' PTP packets
-	if size < 76 then
+	if size < 76 and not ignoreBadSize then
 		error("time stamped UDP packets must be at least 76 bytes long")
 	end
 	buf.pkt.pkt_len = size
