@@ -268,8 +268,8 @@ static struct rte_mbuf* get_delay_pkt_invalid_size(struct rte_mempool* pool, uin
 	// TODO: consider allocating these packets at the beginning for performance reasons
 	struct rte_mbuf* pkt = rte_pktmbuf_alloc(pool);
 	// account for CRC offloading
-	pkt->pkt.data_len = delay - 24;
-	pkt->pkt.pkt_len = delay - 24;
+	pkt->data_len = delay - 24;
+	pkt->pkt_len = delay - 24;
 	//printf("%d\n", delay - 24);
 	return pkt;
 }
@@ -282,17 +282,15 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 	uint32_t num_bad_bytes = 0;
 	for (uint16_t i = 0; i < num_pkts; i++) {
 		struct rte_mbuf* pkt = load_pkts[i];
-		// desired inter-frame spacing is encoded in the hash field (not used on TX packets)
-		// it would also be possible to use the buffer's headroom but this is ugly from Lua
-		// TODO: this can be changed to the new userdata or udata64 fields in DPDK 1.8
-		uint32_t delay = pkt->pkt.hash.rss;
+		// desired inter-frame spacing is encoded in the hash 'usr' field
+		uint32_t delay = pkt->hash.usr;
 		// step 1: generate delay-packets
 		while (delay > 0) {
 			struct rte_mbuf* pkt = get_delay_pkt_invalid_size(pool, &delay);
 			if (pkt) {
 				num_bad_pkts++;
 				// packet size: [MAC, CRC] to be consistent with HW counters
-				num_bad_bytes += pkt->pkt.pkt_len + 4;
+				num_bad_bytes += pkt->pkt_len + 4;
 				pkts[send_buf_idx++] = pkt;
 			}
 			if (send_buf_idx >= BUF_SIZE) {
@@ -347,8 +345,8 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 	*rem_delay -= delay;
 	struct rte_mbuf* pkt = rte_pktmbuf_alloc(pool);
 	// account for preamble, sfd, and ifg (CRC is disabled)
-	pkt->pkt.data_len = delay - 20;
-	pkt->pkt.pkt_len = delay - 20;
+	pkt->data_len = delay - 20;
+	pkt->pkt_len = delay - 20;
 	pkt->ol_flags |= PKT_TX_NO_CRC_CSUM;
 	current += delay;
 	return pkt;
@@ -364,17 +362,15 @@ void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, str
 	uint32_t num_bad_bytes = 0;
 	for (uint16_t i = 0; i < num_pkts; i++) {
 		struct rte_mbuf* pkt = load_pkts[i];
-		// desired inter-frame spacing is encoded in the hash field (not used on TX packets)
-		// it would also be possible to use the buffer's headroom but this is ugly from Lua
-		// TODO: this can be changed to the new userdata or udata64 fields in DPDK 1.8
-		uint32_t delay = pkt->pkt.hash.rss;
+		// desired inter-frame spacing is encoded in the hash 'usr' field
+		uint32_t delay = pkt->hash.usr;
 		// step 1: generate delay-packets
 		while (delay > 0) {
 			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay);
 			if (pkt) {
 				num_bad_pkts++;
 				// packet size: [MAC, CRC] to be consistent with HW counters
-				num_bad_bytes += pkt->pkt.pkt_len;
+				num_bad_bytes += pkt->pkt_len;
 				pkts[send_buf_idx++] = pkt;
 			}
 			if (send_buf_idx >= BUF_SIZE) {
