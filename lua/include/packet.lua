@@ -25,12 +25,18 @@ local istype = ffi.istype
 local pkt = {}
 pkt.__index = pkt
 
+
+--- Get a void* pointer to the packet data.
+function pkt:getData()
+	return ffi.cast("void*", ffi.cast("uint8_t*", self.buf_addr) + self.data_off)
+end
+
 --- Retrieve the time stamp information.
 -- @return The timestamp or nil if the packet was not time stamped.
 function pkt:getTimestamp()
 	if bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0 then
 		-- TODO: support timestamps that are stored in registers instead of the rx buffer
-		local data = ffi.cast("uint32_t* ", self.pkt.data)
+		local data = ffi.cast("uint32_t* ", self:getData())
 		-- TODO: this is only tested with the Intel 82580 NIC at the moment
 		-- the datasheet claims that low and high are swapped, but this doesn't seem to be the case
 		-- TODO: check other NICs
@@ -47,11 +53,11 @@ end
 --- Set the time to wait before the packet is sent for software rate-controlled send methods.
 -- @param delay the time to wait before this packet (in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE)
 function pkt:setDelay(delay)
-	self.pkt.hash.rss = delay
+	self.hash.rss = delay
 end
 
 function pkt:setRate(rate)
-	self.pkt.hash.rss = 10^10 / 8 / (rate * 10^6) - self.pkt.pkt_len - 24
+	self.hash.rss = 10^10 / 8 / (rate * 10^6) - self.pkt_len - 24
 end
 
 --- Print a hex dump of the complete packet.
@@ -103,7 +109,7 @@ function pkt:dump()
 			p = self:getTcp6Packet()
 		end
 	end
-	p:dump(self.pkt.pkt_len)
+	p:dump(self.pkt_len)
 end
 
 
@@ -123,7 +129,7 @@ function pkt:offloadIPChecksum(ipv4, l2_len, l3_len)
 		l2_len = l2_len or 14
 		l3_len = l3_len or 20
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM)
-		self.pkt.header_lengths = l2_len * 512 + l3_len
+		self.header_lengths = l2_len * 512 + l3_len
 	end
 end
 
@@ -138,15 +144,15 @@ function pkt:offloadUdpChecksum(ipv4, l2_len, l3_len)
 	if ipv4 then
 		l3_len = l3_len or 20
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
-		self.pkt.header_lengths = l2_len * 512 + l3_len
+		self.header_lengths = l2_len * 512 + l3_len
 		-- calculate pseudo header checksum because the NIC doesn't do this...
-		dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data, 20)
+		dpdkc.calc_ipv4_pseudo_header_checksum(self:getData(), 20)
 	else 
 		l3_len = l3_len or 40
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_UDP_CKSUM)
-		self.pkt.header_lengths = l2_len * 512 + l3_len
+		self.header_lengths = l2_len * 512 + l3_len
 		-- calculate pseudo header checksum because the NIC doesn't do this...
-		dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data, 30)
+		dpdkc.calc_ipv6_pseudo_header_checksum(self:getData(), 30)
 	end
 end
 
@@ -161,15 +167,15 @@ function pkt:offloadTcpChecksum(ipv4, l2_len, l3_len)
 	if ipv4 then
 		l3_len = l3_len or 20
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_TCP_CKSUM)
-		self.pkt.header_lengths = l2_len * 512 + l3_len
+		self.header_lengths = l2_len * 512 + l3_len
 		-- calculate pseudo header checksum because the NIC doesn't do this...
-		dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data, 25)
+		dpdkc.calc_ipv4_pseudo_header_checksum(self:getData(), 25)
 	else 
 		l3_len = l3_len or 40
 		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_TCP_CKSUM)
-		self.pkt.header_lengths = l2_len * 512 + l3_len
+		self.header_lengths = l2_len * 512 + l3_len
 		-- calculate pseudo header checksum because the NIC doesn't do this...
-		dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data, 35)
+		dpdkc.calc_ipv6_pseudo_header_checksum(self:getData(), 35)
 	end
 end
 
@@ -185,35 +191,35 @@ local etherPacketType = ffi.typeof("struct ethernet_packet*")
 --- Retrieve an ethernet packet.
 -- @return Packet in 'struct ethernet_packet' format
 function pkt:getEthernetPacket()
-	return etherPacketType(self.pkt.data)
+	return etherPacketType(self:getData())
 end
 
 local arpPacketType = ffi.typeof("struct arp_packet*")
 --- Retrieve an ARP packet.
 -- @return Packet in 'struct arp_packet' format
 function pkt:getArpPacket()
-	return arpPacketType(self.pkt.data)
+	return arpPacketType(self:getData())
 end
 
 local ptpPacketType = ffi.typeof("struct ptp_packet*")
 --- Retrieve an PTP packet.
 -- @return Packet in 'struct ptp_packet' format
 function pkt:getPtpPacket()
-	return ptpPacketType(self.pkt.data)
+	return ptpPacketType(self:getData())
 end
 
 local ip4PacketType = ffi.typeof("struct ip_packet*")
 --- Retrieve an IP4 packet.
 -- @return Packet in 'struct ip_packet' format
 function pkt:getIP4Packet()
-	return ip4PacketType(self.pkt.data)
+	return ip4PacketType(self:getData())
 end
 
 local ip6PacketType = ffi.typeof("struct ip_v6_packet*")
 --- Retrieve an IP6 packet.
 -- @return Packet in 'struct ip_v6_packet' format
 function pkt:getIP6Packet()
-	return ip6PacketType(self.pkt.data)
+	return ip6PacketType(self:getData())
 end
 
 --- Retrieve either an IPv4 or IPv6 packet.
@@ -232,14 +238,14 @@ local icmp4PacketType = ffi.typeof("struct icmp_packet*")
 --- Retrieve an ICMPv4 packet.
 -- @return Packet in 'struct icmp_packet' format
 function pkt:getIcmp4Packet()
-	return icmp4PacketType(self.pkt.data)
+	return icmp4PacketType(self:getData())
 end
 
 local icmp6PacketType = ffi.typeof("struct icmp_v6_packet*")
 --- Retrieve an ICMPv6 packet.
 -- @return Packet in 'struct icmp_v6_packet' format
 function pkt:getIcmp6Packet()
-	return icmp6PacketType(self.pkt.data)
+	return icmp6PacketType(self:getData())
 end
 
 --- Retrieve either an ICMPv4 or ICMPv6 packet.
@@ -258,14 +264,14 @@ local udpPacketType = ffi.typeof("struct udp_packet*")
 --- Retrieve an IPv4 UDP packet.
 -- @return Packet in 'struct udp_packet' format.
 function pkt:getUdp4Packet()
-	return udpPacketType(self.pkt.data)
+	return udpPacketType(self:getData())
 end
 
 local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
 --- Retrieve an IPv6 UDP packet.
 -- @return Packet in 'struct udp_v6_packet' format.
 function pkt:getUdp6Packet()
-	return udp6PacketType(self.pkt.data)
+	return udp6PacketType(self:getData())
 end
 
 --- Retrieve either an UDPv4 or UDPv6 packet.
@@ -284,14 +290,14 @@ local tcp4PacketType = ffi.typeof("struct tcp_packet*")
 --- Retrieve an TCPv4 packet.
 -- @return Packet in 'struct tcp_packet' format
 function pkt:getTcp4Packet()
-	return tcp4PacketType(self.pkt.data)
+	return tcp4PacketType(self:getData())
 end
 
 local tcp6PacketType = ffi.typeof("struct tcp_v6_packet*")
 --- Retrieve an TCPv6 packet.
 -- @return Packet in 'struct tcp_v6_packet' format
 function pkt:getTcp6Packet()
-	return tcp6PacketType(self.pkt.data)
+	return tcp6PacketType(self:getData())
 end
 
 --- Retrieve either an TCPv4 or TCPv6 packet.

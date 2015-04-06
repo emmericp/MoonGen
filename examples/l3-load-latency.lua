@@ -42,7 +42,7 @@ function loadSlave(port, queue, size, numFlows)
 	local mempool = memory.createMemPool(function(buf)
 		-- TODO: port this to new PTP/timestamping functions, ffi.cast in a userscript is not the point
 		ts.fillPacket(buf, 1234, size)
-		local data = ffi.cast("uint8_t*", buf.pkt.data)
+		local data = ffi.cast("uint8_t*", buf:getData())
 		data[43] = 0x00 -- PTP version, set to 0 to disable timestamping for load packets
 		local pkt = buf:getUdpPacket()
 		pkt.eth.src:setString(srcmac)

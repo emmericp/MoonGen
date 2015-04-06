@@ -45,7 +45,7 @@ end
 function loadSlave(port, queue)
 	local queue = device.get(port):getTxQueue(queue)
 	local mem = memory.createMemPool(function(buf)
-		local data = ffi.cast("uint8_t*", buf.pkt.data)
+		local data = ffi.cast("uint8_t*", buf:getData())
 		-- src/dst mac
 		for i = 0, 11 do
 			data[i] = i

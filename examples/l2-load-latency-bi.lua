@@ -59,7 +59,7 @@ function trafficSlave(port, txQueueCount)
 		queue[i] = device.get(port):getTxQueue(i)
 	end
 	local mem = memory.createMemPool(function(buf)
-		local data = ffi.cast("uint8_t*", buf.pkt.data)
+		local data = ffi.cast("uint8_t*", buf:getData())
 		--dst mac
 		data[0] = 0x90
 		data[1] = 0xe2

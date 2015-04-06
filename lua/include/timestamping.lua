@@ -71,8 +71,8 @@ local PKT_TX_UDP_CKSUM		= 0x6000
 -- @deprecated
 function mod.fillL2Packet(buf, seq)
 	seq = seq or (((3 * 255) + 2) * 255 + 1) * 255
-	buf.pkt.pkt_len = 60
-	buf.pkt.data_len = 60
+	buf.pkt_len = 60
+	buf.data_len = 60
 	buf:getPtpPacket():fill{
 		ptpSequenceID = seq
 	}
@@ -82,7 +82,7 @@ end
 ---
 -- @deprecated
 function mod.readSeq(buf)
-	if buf.pkt.pkt_len < 4 then
+	if buf.pkt_len < 4 then
 	  return nil
 	end
 	return buf:getPtpPacket().ptp:getSequenceID()
@@ -96,10 +96,10 @@ function mod.fillPacket(buf, port, size, ignoreBadSize)
 	if size < 76 and not ignoreBadSize then
 		error("time stamped UDP packets must be at least 76 bytes long")
 	end
-	buf.pkt.pkt_len = size
-	buf.pkt.data_len = size
+	buf.pkt_len = size
+	buf.data_len = size
 	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
-	local data = ffi.cast("uint8_t*", buf.pkt.data)
+	local data = ffi.cast("uint8_t*", buf:getData())
 	data[0] = 0x00 -- dst mac
 	data[1] = 0x25
 	data[2] = 0x90

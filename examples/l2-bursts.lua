@@ -34,7 +34,7 @@ end
 function loadSlave(port, queue)
 	local queue = device.get(port):getTxQueue(queue)
 	local mem = memory.createMemPool(function(buf)
-		local data = ffi.cast("uint8_t*", buf.pkt.data)
+		local data = ffi.cast("uint8_t*", buf:getData())
 		-- src/dst mac
 		for i = 0, 11 do
 			data[i] = i
@@ -53,7 +53,7 @@ function loadSlave(port, queue)
 	while dpdk.running() do
 		bufs:alloc(60)
 		for i = 1, bufs.size do
-			local data = ffi.cast("uint32_t*", bufs[i].pkt.data)
+			local data = ffi.cast("uint32_t*", bufs[i]:getData())
 			data[4] = seq
 			seq = seq + 1
 		end
