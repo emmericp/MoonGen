@@ -51,14 +51,15 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 			.nb_flexmasks = 1,
 			.flex_set = {
 				[0] = {
-					.type = RTE_ETH_L3_PAYLOAD,
-					.src_offset = { [0] = 21 }, // TODO: support other values
+					.type = RTE_ETH_RAW_PAYLOAD,
+					.src_offset = { [0] = 42, [1] = 43 }, // TODO: support other values
 				}
 			},
 			.flex_mask = {
 				[0] = {
-					.flow_type = 0, // TODO: what is this and why is it not documented?
-					.mask = { [0] = 0xFF }
+					// any other value is apparently an error for this undocumented field
+					.flow_type = RTE_ETH_FLOW_UNKNOWN,
+					.mask = { [0] = 0xFF, [1] = 0xFF }
 				}
 			},
 		},
