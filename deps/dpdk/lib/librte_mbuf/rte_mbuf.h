@@ -106,6 +106,11 @@ extern "C" {
 /* add new TX flags here */
 
 /**
+ * Disable CRC checksum offload
+ */
+#define PKT_TX_NO_CRC_CSUM   (1ULL << 49)
+
+/**
  * TCP segmentation offload. To enable this offload feature for a
  * packet to be transmitted on hardware supporting TSO:
  *  - set the PKT_TX_TCP_SEG flag in mbuf->ol_flags (this flag implies
