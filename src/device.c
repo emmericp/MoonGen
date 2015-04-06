@@ -6,6 +6,7 @@
 #include <rte_mbuf.h>
 #include <ixgbe_type.h>
 #include <rte_mbuf.h>
+#include <rte_eth_ctrl.h>
 
 // default descriptors per queue
 #define DEFAULT_RX_DESCS 512
@@ -45,7 +46,22 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.mode = RTE_FDIR_MODE_PERFECT,
 		.pballoc = RTE_FDIR_PBALLOC_64K,
 		.status = RTE_FDIR_REPORT_STATUS_ALWAYS,
-		.flexbytes_offset = 21, // TODO support other values
+		.flex_conf = {
+			.nb_payloads = 1,
+			.nb_flexmasks = 1,
+			.flex_set = {
+				[0] = {
+					.type = RTE_ETH_L3_PAYLOAD,
+					.src_offset = { [0] = 21 }, // TODO: support other values
+				}
+			},
+			.flex_mask = {
+				[0] = {
+					.flow_type = 0, // TODO: what is this and why is it not documented?
+					.mask = { [0] = 0xFF }
+				}
+			},
+		},
 		.drop_queue = 63, // TODO: support for other NICs
 	};
 	struct rte_eth_conf port_conf = {
