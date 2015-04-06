@@ -2297,20 +2297,15 @@ ixgbe_dev_link_status_print(struct rte_eth_dev *dev)
 	memset(&link, 0, sizeof(link));
 	rte_ixgbe_dev_atomic_read_link_status(dev, &link);
 	if (link.link_status) {
-		PMD_INIT_LOG(INFO, "Port %d: Link Up - speed %u Mbps - %s",
-					(int)(dev->data->port_id),
+		PMD_INIT_LOG(DEBUG, "Port %u: Link Up - speed %u Mbps - %s",
+					dev->data->port_id,
 					(unsigned)link.link_speed,
 			link.link_duplex == ETH_LINK_FULL_DUPLEX ?
 					"full-duplex" : "half-duplex");
 	} else {
-		PMD_INIT_LOG(INFO, " Port %d: Link Down",
-				(int)(dev->data->port_id));
+		PMD_INIT_LOG(DEBUG, "Port %d: Link Down",
+				dev->data->port_id);
 	}
-	PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
-				dev->pci_dev->addr.domain,
-				dev->pci_dev->addr.bus,
-				dev->pci_dev->addr.devid,
-				dev->pci_dev->addr.function);
 }
 
 /*

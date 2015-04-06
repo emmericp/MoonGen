@@ -1781,23 +1781,23 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS)
 			&& (txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST)) {
-		PMD_INIT_LOG(INFO, "Using simple tx code path");
+		PMD_INIT_LOG(DEBUG, "Using simple tx code path");
 #ifdef RTE_IXGBE_INC_VECTOR
 		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
 				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
 					ixgbe_txq_vec_setup(txq) == 0)) {
-			PMD_INIT_LOG(INFO, "Vector tx enabled.");
+			PMD_INIT_LOG(DEBUG, "Vector tx enabled.");
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
 		} else
 #endif
 		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
 	} else {
-		PMD_INIT_LOG(INFO, "Using full-featured tx code path");
-		PMD_INIT_LOG(INFO,
+		PMD_INIT_LOG(DEBUG, "Using full-featured tx code path");
+		PMD_INIT_LOG(DEBUG,
 				" - txq_flags = %lx " "[IXGBE_SIMPLE_FLAGS=%lx]",
 				(unsigned long)txq->txq_flags,
 				(unsigned long)IXGBE_SIMPLE_FLAGS);
-		PMD_INIT_LOG(INFO,
+		PMD_INIT_LOG(DEBUG,
 				" - tx_rs_thresh = %lu " "[RTE_PMD_IXGBE_TX_MAX_BURST=%lu]",
 				(unsigned long)txq->tx_rs_thresh,
 				(unsigned long)RTE_PMD_IXGBE_TX_MAX_BURST);
@@ -3549,7 +3549,7 @@ void ixgbe_set_rx_function(struct rte_eth_dev *dev)
 	 *    - Single buffer allocation (the simplest one)
 	 */
 	} else if (hw->rx_vec_allowed) {
-		PMD_INIT_LOG(INFO, "Vector rx enabled, please make sure RX "
+		PMD_INIT_LOG(DEBUG, "Vector rx enabled, please make sure RX "
 				   "burst size no less than 32.");
 
 		dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
