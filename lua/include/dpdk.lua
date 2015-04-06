@@ -6,12 +6,43 @@ local serpent	= require "Serpent"
 
 -- DPDK constants (lib/librte_mbuf/rte_mbuf.h)
 -- TODO: import more constants here
-mod.PKT_RX_IEEE1588_TMST	= 0x0400
-mod.PKT_TX_IPV4_CSUM		= 0x1000
-mod.PKT_TX_TCP_CKSUM     	= 0x2000
-mod.PKT_TX_UDP_CKSUM		= 0x6000
-mod.PKT_TX_NO_CRC_CSUM		= 0x0001
-mod.PKT_TX_IEEE1588_TMST	= 0x8000
+mod.PKT_RX_IEEE1588_TMST	= bit.lshift(1ULL, 10)
+mod.PKT_RX_VLAN_PKT			= bit.lshift(1ULL, 0)
+mod.PKT_RX_RSS_HASH			= bit.lshift(1ULL, 1)
+mod.PKT_RX_FDIR				= bit.lshift(1ULL, 2)
+mod.PKT_RX_L4_CKSUM_BAD		= bit.lshift(1ULL, 3) 
+mod.PKT_RX_IP_CKSUM_BAD		= bit.lshift(1ULL, 4)
+mod.PKT_RX_EIP_CKSUM_BAD	= bit.lshift(0ULL, 0)
+mod.PKT_RX_OVERSIZE			= bit.lshift(0ULL, 0)
+mod.PKT_RX_HBUF_OVERFLOW	= bit.lshift(0ULL, 0)
+mod.PKT_RX_RECIP_ERR		= bit.lshift(0ULL, 0)
+mod.PKT_RX_MAC_ERR			= bit.lshift(0ULL, 0)
+mod.PKT_RX_IPV4_HDR			= bit.lshift(1ULL, 5)
+mod.PKT_RX_IPV4_HDR_EXT		= bit.lshift(1ULL, 6)
+mod.PKT_RX_IPV6_HDR			= bit.lshift(1ULL, 7)
+mod.PKT_RX_IPV6_HDR_EXT		= bit.lshift(1ULL, 8)
+mod.PKT_RX_IEEE1588_PTP		= bit.lshift(1ULL, 9)
+mod.PKT_RX_IEEE1588_TMST	= bit.lshift(1ULL, 10)
+mod.PKT_RX_TUNNEL_IPV4_HDR	= bit.lshift(1ULL, 11)
+mod.PKT_RX_TUNNEL_IPV6_HDR	= bit.lshift(1ULL, 12)
+mod.PKT_RX_FDIR_ID			= bit.lshift(1ULL, 13)
+mod.PKT_RX_FDIR_FLX			= bit.lshift(1ULL, 14)
+
+mod.PKT_TX_NO_CRC_CSUM		= bit.lshift(1ULL, 49)
+mod.PKT_TX_TCP_SEG			= bit.lshift(1ULL, 50)
+mod.PKT_TX_IEEE1588_TMST	= bit.lshift(1ULL, 51)
+mod.PKT_TX_L4_NO_CKSUM		= bit.lshift(0ULL, 52)
+mod.PKT_TX_TCP_CKSUM		= bit.lshift(1ULL, 52)
+mod.PKT_TX_SCTP_CKSUM		= bit.lshift(2ULL, 52)
+mod.PKT_TX_UDP_CKSUM		= bit.lshift(3ULL, 52)
+mod.PKT_TX_L4_MASK			= bit.lshift(3ULL, 52)
+mod.PKT_TX_IP_CKSUM			= bit.lshift(1ULL, 54)
+mod.PKT_TX_IPV4				= bit.lshift(1ULL, 55)
+mod.PKT_TX_IPV6				= bit.lshift(1ULL, 56)
+mod.PKT_TX_VLAN_PKT			= bit.lshift(1ULL, 57)
+mod.PKT_TX_OUTER_IP_CKSUM	= bit.lshift(1ULL, 58)
+mod.PKT_TX_OUTER_IPV4		= bit.lshift(1ULL, 59)
+mod.PKT_TX_OUTER_IPV6		= bit.lshift(1ULL, 60)
 
 local function fileExists(f)
 	local file = io.open(f, "r")
