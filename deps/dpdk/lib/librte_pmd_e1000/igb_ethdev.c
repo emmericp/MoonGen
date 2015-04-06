@@ -580,7 +580,7 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
 	E1000_WRITE_FLUSH(hw);
 
-	PMD_INIT_LOG(INFO, "port_id %d vendorID=0x%x deviceID=0x%x",
+	PMD_INIT_LOG(DEBUG, "port_id %d vendorID=0x%x deviceID=0x%x",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id);
 
@@ -1906,17 +1906,17 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev)
 		memset(&link, 0, sizeof(link));
 		rte_igb_dev_atomic_read_link_status(dev, &link);
 		if (link.link_status) {
-			PMD_INIT_LOG(INFO,
+			PMD_INIT_LOG(DEBUG,
 				     " Port %d: Link Up - speed %u Mbps - %s",
 				     dev->data->port_id,
 				     (unsigned)link.link_speed,
 				     link.link_duplex == ETH_LINK_FULL_DUPLEX ?
 				     "full-duplex" : "half-duplex");
 		} else {
-			PMD_INIT_LOG(INFO, " Port %d: Link Down",
+			PMD_INIT_LOG(DEBUG, " Port %d: Link Down",
 				     dev->data->port_id);
 		}
-		PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
+		PMD_INIT_LOG(DEBUG, "PCI Address: %04d:%02d:%02d:%d",
 			     dev->pci_dev->addr.domain,
 			     dev->pci_dev->addr.bus,
 			     dev->pci_dev->addr.devid,
