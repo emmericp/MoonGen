@@ -168,7 +168,9 @@ struct virtio_hw {
 	uint32_t    max_tx_queues;
 	uint32_t    max_rx_queues;
 	uint16_t    vtnet_hdr_size;
+	uint8_t	    vlan_strip;
 	uint8_t	    use_msix;
+	uint8_t     started;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
 };
 
@@ -253,8 +255,6 @@ void vtpci_reset(struct virtio_hw *);
 
 void vtpci_reinit_complete(struct virtio_hw *);
 
-uint8_t vtpci_get_status(struct virtio_hw *);
-
 void vtpci_set_status(struct virtio_hw *, uint8_t);
 
 uint32_t vtpci_negotiate_features(struct virtio_hw *, uint32_t);
@@ -262,5 +262,9 @@ uint32_t vtpci_negotiate_features(struct virtio_hw *, uint32_t);
 void vtpci_write_dev_config(struct virtio_hw *, uint64_t, void *, int);
 
 void vtpci_read_dev_config(struct virtio_hw *, uint64_t, void *, int);
+
+uint8_t vtpci_isr(struct virtio_hw *);
+
+uint16_t vtpci_irq_config(struct virtio_hw *, uint16_t);
 
 #endif /* _VIRTIO_PCI_H_ */

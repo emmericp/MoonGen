@@ -44,86 +44,73 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 
-static struct rte_mbuf mb_def = {
-
-	.ol_flags = 0,
-	{
-		.pkt = {
-			.data_len = 0,
-			.pkt_len = 0,
-
-			.vlan_macip = {
-				.data = 0,
-			},
-			.hash = {
-				.rss = 0,
-			},
-
-			.nb_segs = 1,
-			.in_port = 0,
-
-			.next = NULL,
-			.data = NULL,
-		},
-	},
-};
-
 static inline void
-ixgbe_rxq_rearm(struct igb_rx_queue *rxq)
+ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 {
 	int i;
 	uint16_t rx_id;
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct igb_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
+	struct ixgbe_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
-	__m128i def_low;
 	__m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM,
 			RTE_PKTMBUF_HEADROOM);
-
-	/* Pull 'n' more MBUFs into the software ring */
-	if (rte_mempool_get_bulk(rxq->mb_pool,
-				 (void *)rxep, RTE_IXGBE_RXQ_REARM_THRESH) < 0)
-		return;
+	__m128i dma_addr0, dma_addr1;
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
-	def_low = _mm_load_si128((__m128i *)&(mb_def.pkt));
+	/* Pull 'n' more MBUFs into the software ring */
+	if (rte_mempool_get_bulk(rxq->mb_pool,
+				 (void *)rxep,
+				 RTE_IXGBE_RXQ_REARM_THRESH) < 0) {
+		if (rxq->rxrearm_nb + RTE_IXGBE_RXQ_REARM_THRESH >=
+		    rxq->nb_rx_desc) {
+			dma_addr0 = _mm_setzero_si128();
+			for (i = 0; i < RTE_IXGBE_DESCS_PER_LOOP; i++) {
+				rxep[i].mbuf = &rxq->fake_mbuf;
+				_mm_store_si128((__m128i *)&rxdp[i].read,
+						dma_addr0);
+			}
+		}
+		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
+			RTE_IXGBE_RXQ_REARM_THRESH;
+		return;
+	}
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < RTE_IXGBE_RXQ_REARM_THRESH; i += 2, rxep += 2) {
-		__m128i dma_addr0, dma_addr1;
 		__m128i vaddr0, vaddr1;
+		uintptr_t p0, p1;
 
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
+
+		/*
+		 * Flush mbuf with pkt template.
+		 * Data to be rearmed is 6 bytes long.
+		 * Though, RX will overwrite ol_flags that are coming next
+		 * anyway. So overwrite whole 8 bytes with one load:
+		 * 6 bytes of rearm_data plus first 2 bytes of ol_flags.
+		 */
+		p0 = (uintptr_t)&mb0->rearm_data;
+		*(uint64_t *)p0 = rxq->mbuf_initializer;
+		p1 = (uintptr_t)&mb1->rearm_data;
+		*(uint64_t *)p1 = rxq->mbuf_initializer;
 
 		/* load buf_addr(lo 64bit) and buf_physaddr(hi 64bit) */
 		vaddr0 = _mm_loadu_si128((__m128i *)&(mb0->buf_addr));
 		vaddr1 = _mm_loadu_si128((__m128i *)&(mb1->buf_addr));
 
-		/* calc va/pa of pkt data point */
-		vaddr0 = _mm_add_epi64(vaddr0, hdr_room);
-		vaddr1 = _mm_add_epi64(vaddr1, hdr_room);
-
 		/* convert pa to dma_addr hdr/data */
 		dma_addr0 = _mm_unpackhi_epi64(vaddr0, vaddr0);
 		dma_addr1 = _mm_unpackhi_epi64(vaddr1, vaddr1);
 
-		/* fill va into t0 def pkt template */
-		vaddr0 = _mm_unpacklo_epi64(def_low, vaddr0);
-		vaddr1 = _mm_unpacklo_epi64(def_low, vaddr1);
+		/* add headroom to pa values */
+		dma_addr0 = _mm_add_epi64(dma_addr0, hdr_room);
+		dma_addr1 = _mm_add_epi64(dma_addr1, hdr_room);
 
 		/* flush desc with pa dma_addr */
 		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr0);
 		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr1);
-
-		/* flush mbuf with pkt template */
-		_mm_store_si128((__m128i *)&mb0->pkt, vaddr0);
-		_mm_store_si128((__m128i *)&mb1->pkt, vaddr1);
-
-		/* update refcnt per pkt */
-		rte_mbuf_refcnt_set(mb0, 1);
-		rte_mbuf_refcnt_set(mb1, 1);
 	}
 
 	rxq->rxrearm_start += RTE_IXGBE_RXQ_REARM_THRESH;
@@ -199,19 +186,24 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
  *   numbers of DD bit
  * - don't support ol_flags for rss and csum err
  */
-uint16_t
-ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
-		uint16_t nb_pkts)
+static inline uint16_t
+_recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts, uint8_t *split_packet)
 {
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct igb_rx_queue *rxq = rx_queue;
-	struct igb_rx_entry *sw_ring;
+	struct ixgbe_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 	int pos;
 	uint64_t var;
 	__m128i shuf_msk;
-	__m128i in_port;
-	__m128i dd_check;
+	__m128i crc_adjust = _mm_set_epi16(
+				0, 0, 0, 0, /* ignore non-length fields */
+				0,          /* ignore high-16bits of pkt_len */
+				-rxq->crc_len, /* sub crc on pkt_len */
+				-rxq->crc_len, /* sub crc on data_len */
+				0            /* ignore pkt_type field */
+			);
+	__m128i dd_check, eop_check;
 
 	if (unlikely(nb_pkts < RTE_IXGBE_VPMD_RX_BURST))
 		return 0;
@@ -236,6 +228,9 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	/* 4 packets DD mask */
 	dd_check = _mm_set_epi64x(0x0000000100000001LL, 0x0000000100000001LL);
 
+	/* 4 packets EOP mask */
+	eop_check = _mm_set_epi64x(0x0000000200000002LL, 0x0000000200000002LL);
+
 	/* mask to shuffle from desc. to mbuf */
 	shuf_msk = _mm_set_epi8(
 		7, 6, 5, 4,  /* octet 4~7, 32bits rss */
@@ -243,22 +238,19 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		15, 14,      /* octet 14~15, low 16 bits vlan_macip */
 		0xFF, 0xFF,  /* skip high 16 bits pkt_len, zero out */
 		13, 12,      /* octet 12~13, low 16 bits pkt_len */
-		0xFF, 0xFF,  /* skip nb_segs and in_port, zero out */
-		13, 12       /* octet 12~13, 16 bits data_len */
+		13, 12,      /* octet 12~13, 16 bits data_len */
+		0xFF, 0xFF   /* skip pkt_type field */
 		);
-
 
 	/* Cache is empty -> need to scan the buffer rings, but first move
 	 * the next 'n' mbufs into the cache */
 	sw_ring = &rxq->sw_ring[rxq->rx_tail];
 
-	/* in_port, nb_seg = 1, crc_len */
-	in_port = rxq->misc_info;
-
 	/*
 	 * A. load 4 packet in one loop
 	 * B. copy 4 mbuf point from swring to rx_pkts
 	 * C. calc the number of DD bits among the 4 packets
+	 * [C*. extract the end-of-packet bit, if requested]
 	 * D. fill info. from desc to mbuf
 	 */
 	for (pos = 0, nb_pkts_recd = 0; pos < RTE_IXGBE_VPMD_RX_BURST;
@@ -268,6 +260,13 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		__m128i pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
 		__m128i zero, staterr, sterr_tmp1, sterr_tmp2;
 		__m128i mbp1, mbp2; /* two mbuf pointer in one XMM reg. */
+
+		if (split_packet) {
+			rte_prefetch0(&rx_pkts[pos]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 1]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 2]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 3]->cacheline1);
+		}
 
 		/* B.1 load 1 mbuf point */
 		mbp1 = _mm_loadu_si128((__m128i *)&sw_ring[pos]);
@@ -306,8 +305,8 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		desc_to_olflags_v(descs, &rx_pkts[pos]);
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
-		pkt_mb4 = _mm_add_epi16(pkt_mb4, in_port);
-		pkt_mb3 = _mm_add_epi16(pkt_mb3, in_port);
+		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);
+		pkt_mb3 = _mm_add_epi16(pkt_mb3, crc_adjust);
 
 		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
 		pkt_mb2 = _mm_shuffle_epi8(descs[1], shuf_msk);
@@ -318,23 +317,50 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		staterr = _mm_unpacklo_epi32(sterr_tmp1, sterr_tmp2);
 
 		/* D.3 copy final 3,4 data to rx_pkts */
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+3]->pkt.data_len),
+		_mm_storeu_si128((void *)&rx_pkts[pos+3]->rx_descriptor_fields1,
 				pkt_mb4);
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+2]->pkt.data_len),
+		_mm_storeu_si128((void *)&rx_pkts[pos+2]->rx_descriptor_fields1,
 				pkt_mb3);
 
 		/* D.2 pkt 1,2 set in_port/nb_seg and remove crc */
-		pkt_mb2 = _mm_add_epi16(pkt_mb2, in_port);
-		pkt_mb1 = _mm_add_epi16(pkt_mb1, in_port);
+		pkt_mb2 = _mm_add_epi16(pkt_mb2, crc_adjust);
+		pkt_mb1 = _mm_add_epi16(pkt_mb1, crc_adjust);
 
-		/* C.3 calc avaialbe number of desc */
+		/* C* extract and record EOP bit */
+		if (split_packet) {
+			__m128i eop_shuf_mask = _mm_set_epi8(
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0x04, 0x0C, 0x00, 0x08
+					);
+
+			/* and with mask to extract bits, flipping 1-0 */
+			__m128i eop_bits = _mm_andnot_si128(staterr, eop_check);
+			/* the staterr values are not in order, as the count
+			 * count of dd bits doesn't care. However, for end of
+			 * packet tracking, we do care, so shuffle. This also
+			 * compresses the 32-bit values to 8-bit */
+			eop_bits = _mm_shuffle_epi8(eop_bits, eop_shuf_mask);
+			/* store the resulting 32-bit value */
+			*(int *)split_packet = _mm_cvtsi128_si32(eop_bits);
+			split_packet += RTE_IXGBE_DESCS_PER_LOOP;
+
+			/* zero-out next pointers */
+			rx_pkts[pos]->next = NULL;
+			rx_pkts[pos + 1]->next = NULL;
+			rx_pkts[pos + 2]->next = NULL;
+			rx_pkts[pos + 3]->next = NULL;
+		}
+
+		/* C.3 calc available number of desc */
 		staterr = _mm_and_si128(staterr, dd_check);
 		staterr = _mm_packs_epi32(staterr, zero);
 
 		/* D.3 copy final 1,2 data to rx_pkts */
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos+1]->pkt.data_len),
+		_mm_storeu_si128((void *)&rx_pkts[pos+1]->rx_descriptor_fields1,
 				pkt_mb2);
-		_mm_storeu_si128((__m128i *)&(rx_pkts[pos]->pkt.data_len),
+		_mm_storeu_si128((void *)&rx_pkts[pos]->rx_descriptor_fields1,
 				pkt_mb1);
 
 		/* C.4 calc avaialbe number of desc */
@@ -352,45 +378,138 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_pkts_recd;
 }
 
+/*
+ * vPMD receive routine, now only accept (nb_pkts == RTE_IXGBE_VPMD_RX_BURST)
+ * in one loop
+ *
+ * Notice:
+ * - nb_pkts < RTE_IXGBE_VPMD_RX_BURST, just return no packet
+ * - nb_pkts > RTE_IXGBE_VPMD_RX_BURST, only scan RTE_IXGBE_VPMD_RX_BURST
+ *   numbers of DD bit
+ * - don't support ol_flags for rss and csum err
+ */
+uint16_t
+ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	return _recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
+}
+
+static inline uint16_t
+reassemble_packets(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_bufs,
+		uint16_t nb_bufs, uint8_t *split_flags)
+{
+	struct rte_mbuf *pkts[RTE_IXGBE_VPMD_RX_BURST]; /*finished pkts*/
+	struct rte_mbuf *start = rxq->pkt_first_seg;
+	struct rte_mbuf *end =  rxq->pkt_last_seg;
+	unsigned pkt_idx, buf_idx;
+
+
+	for (buf_idx = 0, pkt_idx = 0; buf_idx < nb_bufs; buf_idx++) {
+		if (end != NULL) {
+			/* processing a split packet */
+			end->next = rx_bufs[buf_idx];
+			rx_bufs[buf_idx]->data_len += rxq->crc_len;
+
+			start->nb_segs++;
+			start->pkt_len += rx_bufs[buf_idx]->data_len;
+			end = end->next;
+
+			if (!split_flags[buf_idx]) {
+				/* it's the last packet of the set */
+				start->hash = end->hash;
+				start->ol_flags = end->ol_flags;
+				/* we need to strip crc for the whole packet */
+				start->pkt_len -= rxq->crc_len;
+				if (end->data_len > rxq->crc_len)
+					end->data_len -= rxq->crc_len;
+				else {
+					/* free up last mbuf */
+					struct rte_mbuf *secondlast = start;
+					while (secondlast->next != end)
+						secondlast = secondlast->next;
+					secondlast->data_len -= (rxq->crc_len -
+							end->data_len);
+					secondlast->next = NULL;
+					rte_pktmbuf_free_seg(end);
+					end = secondlast;
+				}
+				pkts[pkt_idx++] = start;
+				start = end = NULL;
+			}
+		} else {
+			/* not processing a split packet */
+			if (!split_flags[buf_idx]) {
+				/* not a split packet, save and skip */
+				pkts[pkt_idx++] = rx_bufs[buf_idx];
+				continue;
+			}
+			end = start = rx_bufs[buf_idx];
+			rx_bufs[buf_idx]->data_len += rxq->crc_len;
+			rx_bufs[buf_idx]->pkt_len += rxq->crc_len;
+		}
+	}
+
+	/* save the partial packet for next time */
+	rxq->pkt_first_seg = start;
+	rxq->pkt_last_seg = end;
+	memcpy(rx_bufs, pkts, pkt_idx * (sizeof(*pkts)));
+	return pkt_idx;
+}
+
+/*
+ * vPMD receive routine that reassembles scattered packets
+ *
+ * Notice:
+ * - don't support ol_flags for rss and csum err
+ * - now only accept (nb_pkts == RTE_IXGBE_VPMD_RX_BURST)
+ */
+uint16_t
+ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct ixgbe_rx_queue *rxq = rx_queue;
+	uint8_t split_flags[RTE_IXGBE_VPMD_RX_BURST] = {0};
+
+	/* get some new buffers */
+	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
+			split_flags);
+	if (nb_bufs == 0)
+		return 0;
+
+	/* happy day case, full burst + no packets to be joined */
+	const uint32_t *split_fl32 = (uint32_t *)split_flags;
+	if (rxq->pkt_first_seg == NULL &&
+			split_fl32[0] == 0 && split_fl32[1] == 0 &&
+			split_fl32[2] == 0 && split_fl32[3] == 0)
+		return nb_bufs;
+
+	/* reassemble any packets that need reassembly*/
+	unsigned i = 0;
+	if (rxq->pkt_first_seg == NULL) {
+		/* find the first split flag, and only reassemble then*/
+		while (i < nb_bufs && !split_flags[i])
+			i++;
+		if (i == nb_bufs)
+			return nb_bufs;
+	}
+	return i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
+		&split_flags[i]);
+}
+
 static inline void
 vtx1(volatile union ixgbe_adv_tx_desc *txdp,
-		struct rte_mbuf *pkt, __m128i flags)
+		struct rte_mbuf *pkt, uint64_t flags)
 {
-	__m128i t0, t1, offset, ols, ba, ctl;
-
-	/* load buf_addr/buf_physaddr in t0 */
-	t0 = _mm_loadu_si128((__m128i *)&(pkt->buf_addr));
-	/* load data, ... pkt_len in t1 */
-	t1 = _mm_loadu_si128((__m128i *)&(pkt->pkt.data));
-
-	/* calc offset = (data - buf_adr) */
-	offset = _mm_sub_epi64(t1, t0);
-
-	/* cmd_type_len: pkt_len |= DCMD_DTYP_FLAGS */
-	ctl = _mm_or_si128(t1, flags);
-
-	/* reorder as buf_physaddr/buf_addr */
-	offset = _mm_shuffle_epi32(offset, 0x4E);
-
-	/* olinfo_stats: pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT */
-	ols = _mm_slli_epi32(t1, IXGBE_ADVTXD_PAYLEN_SHIFT);
-
-	/* buffer_addr = buf_physaddr + offset */
-	ba = _mm_add_epi64(t0, offset);
-
-	/* format cmd_type_len/olinfo_status */
-	ctl = _mm_unpackhi_epi32(ctl, ols);
-
-	/* format buf_physaddr/cmd_type_len */
-	ba = _mm_unpackhi_epi64(ba, ctl);
-
-	/* write desc */
-	_mm_store_si128((__m128i *)&txdp->read, ba);
+	__m128i descriptor = _mm_set_epi64x((uint64_t)pkt->pkt_len << 46 |
+			flags | pkt->data_len,
+			pkt->buf_physaddr + pkt->data_off);
+	_mm_store_si128((__m128i *)&txdp->read, descriptor);
 }
 
 static inline void
 vtx(volatile union ixgbe_adv_tx_desc *txdp,
-		struct rte_mbuf **pkt, uint16_t nb_pkts,  __m128i flags)
+		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
 {
 	int i;
 	for (i = 0; i < nb_pkts; ++i, ++txdp, ++pkt)
@@ -398,17 +517,14 @@ vtx(volatile union ixgbe_adv_tx_desc *txdp,
 }
 
 static inline int __attribute__((always_inline))
-ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
+ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 {
-	struct igb_tx_entry_v *txep;
-	struct igb_tx_entry_seq *txsp;
+	struct ixgbe_tx_entry_v *txep;
 	uint32_t status;
-	uint32_t n, k;
-#ifdef RTE_MBUF_SCATTER_GATHER
+	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
 	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
-#endif
 
 	/* check DD bit on threshold descriptor */
 	status = txq->tx_ring[txq->tx_next_dd].wb.status;
@@ -421,25 +537,32 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 	 * first buffer to free from S/W ring is at index
 	 * tx_next_dd - (tx_rs_thresh-1)
 	 */
-	txep = &((struct igb_tx_entry_v *)txq->sw_ring)[txq->tx_next_dd -
+	txep = &((struct ixgbe_tx_entry_v *)txq->sw_ring)[txq->tx_next_dd -
 			(n - 1)];
-	txsp = &txq->sw_ring_seq[txq->tx_next_dd - (n - 1)];
-
-	while (n > 0) {
-		k = RTE_MIN(n, txsp[n-1].same_pool);
-#ifdef RTE_MBUF_SCATTER_GATHER
-		for (i = 0; i < k; i++) {
-			m = __rte_pktmbuf_prefree_seg((txep+n-k+i)->mbuf);
-			if (m != NULL)
-				free[nb_free++] = m;
+	m = __rte_pktmbuf_prefree_seg(txep[0].mbuf);
+	if (likely(m != NULL)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (likely(m != NULL)) {
+				if (likely(m->pool == free[0]->pool))
+					free[nb_free++] = m;
+				else {
+					rte_mempool_put_bulk(free[0]->pool,
+							(void *)free, nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
 		}
-		rte_mempool_put_bulk((void *)txsp[n-1].pool,
-				(void **)free, nb_free);
-#else
-		rte_mempool_put_bulk((void *)txsp[n-1].pool,
-				(void **)(txep+n-k), k);
-#endif
-		n -= k;
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (m != NULL)
+				rte_mempool_put(m->pool, m);
+		}
 	}
 
 	/* buffers were freed, update counters */
@@ -452,34 +575,24 @@ ixgbe_tx_free_bufs(struct igb_tx_queue *txq)
 }
 
 static inline void __attribute__((always_inline))
-tx_backlog_entry(struct igb_tx_entry_v *txep,
-		 struct igb_tx_entry_seq *txsp,
+tx_backlog_entry(struct ixgbe_tx_entry_v *txep,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
-	for (i = 0; i < (int)nb_pkts; ++i) {
+	for (i = 0; i < (int)nb_pkts; ++i)
 		txep[i].mbuf = tx_pkts[i];
-		/* check and update sequence number */
-		txsp[i].pool = tx_pkts[i]->pool;
-		if (txsp[i-1].pool == tx_pkts[i]->pool)
-			txsp[i].same_pool = txsp[i-1].same_pool + 1;
-		else
-			txsp[i].same_pool = 1;
-	}
 }
 
 uint16_t
 ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts)
 {
-	struct igb_tx_queue *txq = (struct igb_tx_queue *)tx_queue;
+	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
 	volatile union ixgbe_adv_tx_desc *txdp;
-	struct igb_tx_entry_v *txep;
-	struct igb_tx_entry_seq *txsp;
+	struct ixgbe_tx_entry_v *txep;
 	uint16_t n, nb_commit, tx_id;
-	__m128i flags = _mm_set_epi32(DCMD_DTYP_FLAGS, 0, 0, 0);
-	__m128i rs = _mm_set_epi32(IXGBE_ADVTXD_DCMD_RS|DCMD_DTYP_FLAGS,
-			0, 0, 0);
+	uint64_t flags = DCMD_DTYP_FLAGS;
+	uint64_t rs = IXGBE_ADVTXD_DCMD_RS|DCMD_DTYP_FLAGS;
 	int i;
 
 	if (unlikely(nb_pkts > RTE_IXGBE_VPMD_TX_BURST))
@@ -494,15 +607,14 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = txq->tx_tail;
 	txdp = &txq->tx_ring[tx_id];
-	txep = &((struct igb_tx_entry_v *)txq->sw_ring)[tx_id];
-	txsp = &txq->sw_ring_seq[tx_id];
+	txep = &((struct ixgbe_tx_entry_v *)txq->sw_ring)[tx_id];
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
 	n = (uint16_t)(txq->nb_tx_desc - tx_id);
 	if (nb_commit >= n) {
 
-		tx_backlog_entry(txep, txsp, tx_pkts, n);
+		tx_backlog_entry(txep, tx_pkts, n);
 
 		for (i = 0; i < n - 1; ++i, ++tx_pkts, ++txdp)
 			vtx1(txdp, *tx_pkts, flags);
@@ -516,11 +628,10 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* avoid reach the end of ring */
 		txdp = &(txq->tx_ring[tx_id]);
-		txep = &(((struct igb_tx_entry_v *)txq->sw_ring)[tx_id]);
-		txsp = &(txq->sw_ring_seq[tx_id]);
+		txep = &(((struct ixgbe_tx_entry_v *)txq->sw_ring)[tx_id]);
 	}
 
-	tx_backlog_entry(txep, txsp, tx_pkts, nb_commit);
+	tx_backlog_entry(txep, tx_pkts, nb_commit);
 
 	vtx(txdp, tx_pkts, nb_commit, flags);
 
@@ -540,11 +651,10 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 static void
-ixgbe_tx_queue_release_mbufs(struct igb_tx_queue *txq)
+ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 {
 	unsigned i;
-	struct igb_tx_entry_v *txe;
-	struct igb_tx_entry_seq *txs;
+	struct ixgbe_tx_entry_v *txe;
 	uint16_t nb_free, max_desc;
 
 	if (txq->sw_ring != NULL) {
@@ -554,46 +664,36 @@ ixgbe_tx_queue_release_mbufs(struct igb_tx_queue *txq)
 		for (i = txq->tx_next_dd - (txq->tx_rs_thresh - 1);
 		     nb_free < max_desc && i != txq->tx_tail;
 		     i = (i + 1) & max_desc) {
-			txe = (struct igb_tx_entry_v *)&txq->sw_ring[i];
+			txe = (struct ixgbe_tx_entry_v *)&txq->sw_ring[i];
 			if (txe->mbuf != NULL)
 				rte_pktmbuf_free_seg(txe->mbuf);
 		}
 		/* reset tx_entry */
 		for (i = 0; i < txq->nb_tx_desc; i++) {
-			txe = (struct igb_tx_entry_v *)&txq->sw_ring[i];
+			txe = (struct ixgbe_tx_entry_v *)&txq->sw_ring[i];
 			txe->mbuf = NULL;
-
-			txs = &txq->sw_ring_seq[i];
-			txs->pool = NULL;
-			txs->same_pool = 0;
 		}
 	}
 }
 
 static void
-ixgbe_tx_free_swring(struct igb_tx_queue *txq)
+ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 {
 	if (txq == NULL)
 		return;
 
 	if (txq->sw_ring != NULL) {
-		rte_free((struct igb_rx_entry *)txq->sw_ring - 1);
+		rte_free((struct ixgbe_rx_entry *)txq->sw_ring - 1);
 		txq->sw_ring = NULL;
-	}
-
-	if (txq->sw_ring_seq != NULL) {
-		rte_free(txq->sw_ring_seq - 1);
-		txq->sw_ring_seq = NULL;
 	}
 }
 
 static void
-ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
+ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
 	static const union ixgbe_adv_tx_desc zeroed_desc = { .read = {
 			.buffer_addr = 0} };
-	struct igb_tx_entry_v *txe = (struct igb_tx_entry_v *)txq->sw_ring;
-	struct igb_tx_entry_seq *txs = txq->sw_ring_seq;
+	struct ixgbe_tx_entry_v *txe = (struct ixgbe_tx_entry_v *)txq->sw_ring;
 	uint16_t i;
 
 	/* Zero out HW ring memory */
@@ -605,8 +705,6 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 		volatile union ixgbe_adv_tx_desc *txd = &txq->tx_ring[i];
 		txd->wb.status = IXGBE_TXD_STAT_DD;
 		txe[i].mbuf = NULL;
-		txs[i].pool = NULL;
-		txs[i].same_pool = 0;
 	}
 
 	txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
@@ -625,55 +723,44 @@ ixgbe_reset_tx_queue(struct igb_tx_queue *txq)
 		IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
 }
 
-static struct ixgbe_txq_ops vec_txq_ops = {
+static const struct ixgbe_txq_ops vec_txq_ops = {
 	.release_mbufs = ixgbe_tx_queue_release_mbufs,
 	.free_swring = ixgbe_tx_free_swring,
 	.reset = ixgbe_reset_tx_queue,
 };
 
-int ixgbe_txq_vec_setup(struct igb_tx_queue *txq,
-			unsigned int socket_id)
+int
+ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq)
 {
-	uint16_t nb_desc;
+	uintptr_t p;
+	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
 
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.port = rxq->port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	p = (uintptr_t)&mb_def.rearm_data;
+	rxq->mbuf_initializer = *(uint64_t *)p;
+	return 0;
+}
+
+int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
+{
 	if (txq->sw_ring == NULL)
 		return -1;
 
-	/* request addtional one entry for continous sequence check */
-	nb_desc = (uint16_t)(txq->nb_tx_desc + 1);
-
-	txq->sw_ring_seq = rte_zmalloc_socket("txq->sw_ring_seq",
-				sizeof(struct igb_tx_entry_seq) * nb_desc,
-				CACHE_LINE_SIZE, socket_id);
-	if (txq->sw_ring_seq == NULL)
-		return -1;
-
-
 	/* leave the first one for overflow */
-	txq->sw_ring = (struct igb_tx_entry *)
-		((struct igb_tx_entry_v *)txq->sw_ring + 1);
-	txq->sw_ring_seq += 1;
+	txq->sw_ring = (struct ixgbe_tx_entry *)
+		((struct ixgbe_tx_entry_v *)txq->sw_ring + 1);
 	txq->ops = &vec_txq_ops;
 
 	return 0;
 }
 
-int ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq,
-			__rte_unused unsigned int socket_id)
-{
-	rxq->misc_info =
-		_mm_set_epi16(
-			0, 0, 0, 0, 0,
-			(uint16_t)-rxq->crc_len, /* sub crc on pkt_len */
-			(uint16_t)(rxq->port_id << 8 | 1),
-			/* 8b port_id and 8b nb_seg*/
-			(uint16_t)-rxq->crc_len  /* sub crc on data_len */
-			);
-
-	return 0;
-}
-
-int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev)
+int ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 {
 #ifndef RTE_LIBRTE_IEEE1588
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;

@@ -41,6 +41,9 @@
  */
 
 #include <stdint.h>
+#include <sched.h>
+
+#include <rte_per_lcore.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,18 +81,12 @@ struct rte_config {
 	/** Primary or secondary configuration */
 	enum rte_proc_type_t process_type;
 
-	/** A set of general status flags */
-	unsigned flags;
-
 	/**
 	 * Pointer to memory configuration, which may be shared across multiple
 	 * Intel DPDK instances
 	 */
 	struct rte_mem_config *mem_config;
 } __attribute__((__packed__));
-
-/* Flag definitions for rte_config flags */
-#define EAL_FLG_HIGH_IOPL 1 /**< indicates high IO privilege in a linux env */
 
 /**
  * Get the global configuration structure.
@@ -119,14 +116,24 @@ enum rte_lcore_role_t rte_eal_lcore_role(unsigned lcore_id);
 enum rte_proc_type_t rte_eal_process_type(void);
 
 /**
+ * Request iopl privilege for all RPL.
+ *
+ * This function should be called by pmds which need access to ioports.
+
+ * @return
+ *   - On success, returns 0.
+ *   - On failure, returns -1.
+ */
+int rte_eal_iopl_init(void);
+
+/**
  * Initialize the Environment Abstraction Layer (EAL).
  *
  * This function is to be executed on the MASTER lcore only, as soon
  * as possible in the application's main() function.
  *
- * The function finishes the initialization process that was started
- * during boot (in case of baremetal) or before main() is called (in
- * case of linuxapp). It puts the SLAVE lcores in the WAIT state.
+ * The function finishes the initialization process before main() is called.
+ * It puts the SLAVE lcores in the WAIT state.
  *
  * When the multi-partition feature is supported, depending on the
  * configuration (if CONFIG_RTE_EAL_MAIN_PARTITION is disabled), this
@@ -188,64 +195,6 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func );
  */
 #define RTE_EAL_MEMPOOL_RWLOCK            (&rte_eal_get_configuration()->mem_config->mplock)
 
-
-/**
- * Utility macro to do a thread-safe tailq 'INSERT' of rte_mem_config
- *
- * @param idx
- *   a kind of tailq define in enum rte_tailq_t
- *
- * @param type
- *   type of list(tailq head)
- *
- * @param elm
- *   The element will be added into the list
- *
- */
-#define RTE_EAL_TAILQ_INSERT_TAIL(idx, type, elm) do {	\
-	struct type *list;                                      \
-	list = RTE_TAILQ_LOOKUP_BY_IDX(idx, type);              \
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);            \
-	TAILQ_INSERT_TAIL(list, elm, next);                     \
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);          \
-} while (0)
-
-/**
- * Utility macro to do a thread-safe tailq 'REMOVE' of rte_mem_config
- *
- * @param idx
- *   a kind of tailq define in enum rte_tailq_t
- *
- * @param type
- *   type of list(tailq head)
- *
- * @param elm
- *   The element will be remove from the list
- *
- */
-#define RTE_EAL_TAILQ_REMOVE(idx, type, elm) do {	\
-	struct type *list;                                      \
-	list = RTE_TAILQ_LOOKUP_BY_IDX(idx, type);              \
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);            \
-	TAILQ_REMOVE(list, elm, next);                          \
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);          \
-} while (0)                                                     \
-
-
-/**
- *  macro to check TAILQ exist
- *
- *  @param idx
- *    a kind of tailq define in enum rte_tailq_t
- *
- */
-#define RTE_EAL_TAILQ_EXIST_CHECK(idx) do {   \
-	if (RTE_TAILQ_LOOKUP_BY_IDX(idx, rte_tailq_head) == NULL){      \
-		rte_errno = E_RTE_NO_TAILQ;				\
-		return NULL;						\
-	}								\
-} while(0)
-
 /**
  * Whether EAL is using huge pages (disabled by --no-huge option).
  * The no-huge mode cannot be used with UIO poll-mode drivers like igb/ixgbe.
@@ -257,6 +206,30 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func );
  *   Nonzero if hugepages are enabled.
  */
 int rte_eal_has_hugepages(void);
+
+/**
+ * A wrap API for syscall gettid.
+ *
+ * @return
+ *   On success, returns the thread ID of calling process.
+ *   It is always successful.
+ */
+int rte_sys_gettid(void);
+
+/**
+ * Get system unique thread id.
+ *
+ * @return
+ *   On success, returns the thread ID of calling process.
+ *   It is always successful.
+ */
+static inline int rte_gettid(void)
+{
+	static RTE_DEFINE_PER_LCORE(int, _thread_id) = -1;
+	if (RTE_PER_LCORE(_thread_id) == -1)
+		RTE_PER_LCORE(_thread_id) = rte_sys_gettid();
+	return RTE_PER_LCORE(_thread_id);
+}
 
 #ifdef __cplusplus
 }

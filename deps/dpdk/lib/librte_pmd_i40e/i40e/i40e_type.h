@@ -60,6 +60,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I40E_DEV_ID_QSFP_A		0x1583
 #define I40E_DEV_ID_QSFP_B		0x1584
 #define I40E_DEV_ID_QSFP_C		0x1585
+#define I40E_DEV_ID_10G_BASE_T		0x1586
 #define I40E_DEV_ID_VF			0x154C
 #define I40E_DEV_ID_VF_HV		0x1571
 
@@ -67,8 +68,10 @@ POSSIBILITY OF SUCH DAMAGE.
 					 (d) == I40E_DEV_ID_QSFP_B  || \
 					 (d) == I40E_DEV_ID_QSFP_C)
 
+#ifndef I40E_MASK
 /* I40E_MASK is a macro used on 32 bit registers */
 #define I40E_MASK(mask, shift) (mask << shift)
+#endif
 
 #define I40E_MAX_PF			16
 #define I40E_MAX_PF_VSI			64
@@ -215,10 +218,10 @@ enum i40e_fc_mode {
 
 enum i40e_set_fc_aq_failures {
 	I40E_SET_FC_AQ_FAIL_NONE = 0,
-	I40E_SET_FC_AQ_FAIL_GET1 = 1,
+	I40E_SET_FC_AQ_FAIL_GET = 1,
 	I40E_SET_FC_AQ_FAIL_SET = 2,
-	I40E_SET_FC_AQ_FAIL_GET2 = 4,
-	I40E_SET_FC_AQ_FAIL_SET_GET = 6
+	I40E_SET_FC_AQ_FAIL_UPDATE = 4,
+	I40E_SET_FC_AQ_FAIL_SET_UPDATE = 6
 };
 
 enum i40e_vsi_type {
@@ -1403,46 +1406,6 @@ enum i40e_reset_type {
 	I40E_RESET_GLOBR	= 2,
 	I40E_RESET_EMPR		= 3,
 };
-#ifdef I40E_DCB_SW
-
-/* EMP Settings Module Header Section */
-struct i40e_emp_settings_module {
-	u16 length;
-	u16 fw_params;
-	u16 reserved;
-	u16 features;
-	u16 oem_cfg;
-	u16 pfalloc_ptr;
-	u16 eee_variables;
-	u16 phy_cap_lan0_ptr;
-	u16 phy_cap_lan1_ptr;
-	u16 phy_cap_lan2_ptr;
-	u16 phy_cap_lan3_ptr;
-	u16 phy_map_lan0_ptr;
-	u16 phy_map_lan1_ptr;
-	u16 phy_map_lan2_ptr;
-	u16 phy_map_lan3_ptr;
-	u16 lldp_cfg_ptr;
-	u16 ltr_max_snoop;
-	u16 ltr_max_no_snoop;
-	u16 ltr_delta;
-	u16 ltr_grade_value;
-	u16 lldp_tlv_ptr;
-	u16 crc8;
-};
-
-/* IEEE 802.1AB LLDP Agent Variables from NVM */
-#define I40E_NVM_LLDP_CFG_PTR		0xF
-struct i40e_lldp_variables {
-	u16 length;
-	u16 adminstatus;
-	u16 msgfasttx;
-	u16 msgtxinterval;
-	u16 txparams;
-	u16 timers;
-	u16 crc8;
-};
-#endif /* I40E_DCB_SW */
 
 /* Offsets into Alternate Ram */
 #define I40E_ALT_STRUCT_FIRST_PF_OFFSET		0   /* in dwords */

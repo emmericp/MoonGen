@@ -39,6 +39,10 @@ LIB = libethdev.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_ether_version.map
+
+LIBABIVER := 1
+
 SRCS-y += rte_ethdev.c
 
 #
@@ -46,6 +50,7 @@ SRCS-y += rte_ethdev.c
 #
 SYMLINK-y-include += rte_ether.h
 SYMLINK-y-include += rte_ethdev.h
+SYMLINK-y-include += rte_eth_ctrl.h
 
 # this lib depends upon:
 DEPDIRS-y += lib/librte_eal lib/librte_mempool lib/librte_ring lib/librte_mbuf

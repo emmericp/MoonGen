@@ -135,31 +135,6 @@ static uint32_t enable_vm2vm = 1;
 /* Enable stats. */
 static uint32_t enable_stats = 0;
 
-/* Default configuration for rx and tx thresholds etc. */
-static const struct rte_eth_rxconf rx_conf_default = {
-	.rx_thresh = {
-		.pthresh = RX_PTHRESH,
-		.hthresh = RX_HTHRESH,
-		.wthresh = RX_WTHRESH,
-	},
-	.rx_drop_en = 1,
-};
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe/igb PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-static const struct rte_eth_txconf tx_conf_default = {
-	.tx_thresh = {
-		.pthresh = TX_PTHRESH,
-		.hthresh = TX_HTHRESH,
-		.wthresh = TX_WTHRESH,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-};
-
 /* empty vmdq configuration structure. Filled in programatically */
 static const struct rte_eth_conf vmdq_conf_default = {
 	.rxmode = {
@@ -301,6 +276,7 @@ static inline int
 port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf *rxconf;
 	struct rte_eth_conf port_conf;
 	uint16_t rx_rings, tx_rings = (uint16_t)rte_lcore_count();
 	const uint16_t rx_ring_size = RTE_TEST_RX_DESC_DEFAULT, tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
@@ -331,17 +307,21 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	if (retval != 0)
 		return retval;
 
+	rte_eth_dev_info_get(port, &dev_info);
+	rxconf = &dev_info.default_rxconf;
+	rxconf->rx_drop_en = 1;
 	/* Setup the queues. */
 	for (q = 0; q < rx_rings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, rx_ring_size,
-						rte_eth_dev_socket_id(port), &rx_conf_default,
+						rte_eth_dev_socket_id(port), rxconf,
 						mbuf_pool);
 		if (retval < 0)
 			return retval;
 	}
 	for (q = 0; q < tx_rings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, tx_ring_size,
-						rte_eth_dev_socket_id(port), &tx_conf_default);
+						rte_eth_dev_socket_id(port),
+						NULL);
 		if (retval < 0)
 			return retval;
 	}
@@ -677,7 +657,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 		vq->used->ring[res_cur_idx & (vq->size - 1)].len = packet_len;
 
 		/* Copy mbuf data to buffer */
-		rte_memcpy((void *)(uintptr_t)buff_addr, (const void*)buff->pkt.data, rte_pktmbuf_data_len(buff));
+		rte_memcpy((void *)(uintptr_t)buff_addr, (const void*)buff->data, rte_pktmbuf_data_len(buff));
 
 		res_cur_idx++;
 		packet_success++;
@@ -808,7 +788,7 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 	struct ether_hdr *pkt_hdr;
 	uint64_t ret = 0;
 
-	pkt_hdr = (struct ether_hdr *)m->pkt.data;
+	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
 	/*get the used devices list*/
 	dev_ll = ll_root_used;
@@ -879,22 +859,24 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 	if(!mbuf)
 		return;
 
-	mbuf->pkt.data_len = m->pkt.data_len + VLAN_HLEN;
-	mbuf->pkt.pkt_len = mbuf->pkt.data_len;
+	mbuf->data_len = m->data_len + VLAN_HLEN;
+	mbuf->pkt_len = mbuf->data_len;
 
 	/* Copy ethernet header to mbuf. */
-	rte_memcpy((void*)mbuf->pkt.data, (const void*)m->pkt.data, ETH_HLEN);
+	rte_memcpy(rte_pktmbuf_mtod(mbuf, void*),
+			rte_pktmbuf_mtod(m, const void*), ETH_HLEN);
 
 
 	/* Setup vlan header. Bytes need to be re-ordered for network with htons()*/
-	vlan_hdr = (struct vlan_ethhdr *) mbuf->pkt.data;
+	vlan_hdr = rte_pktmbuf_mtod(mbuf, struct vlan_ethhdr *);
 	vlan_hdr->h_vlan_encapsulated_proto = vlan_hdr->h_vlan_proto;
 	vlan_hdr->h_vlan_proto = htons(ETH_P_8021Q);
 	vlan_hdr->h_vlan_TCI = htons(vlan_tag);
 
 	/* Copy the remaining packet contents to the mbuf. */
-	rte_memcpy((void*) ((uint8_t*)mbuf->pkt.data + VLAN_ETH_HLEN),
-		(const void*) ((uint8_t*)m->pkt.data + ETH_HLEN), (m->pkt.data_len - ETH_HLEN));
+	rte_memcpy((void *)(rte_pktmbuf_mtod(mbuf, uint8_t *) + VLAN_ETH_HLEN),
+		(const void *)(rte_pktmbuf_mtod(m, uint8_t *) + ETH_HLEN),
+		(m->data_len - ETH_HLEN));
 	tx_q->m_table[len] = mbuf;
 	len++;
 	if (enable_stats) {
@@ -980,9 +962,9 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 		rte_prefetch0((void*)(uintptr_t)buff_addr);
 
 		/* Setup dummy mbuf. This is copied to a real mbuf if transmitted out the physical port. */
-		m.pkt.data_len = desc->len;
-		m.pkt.data = (void*)(uintptr_t)buff_addr;
-		m.pkt.nb_segs = 1;
+		m.data_len = desc->len;
+		m.data_off = 0;
+		m.nb_segs = 1;
 
 		virtio_tx_route(dev, &m, mbuf_pool, 0);
 
@@ -1443,7 +1425,7 @@ int init_virtio_net(struct virtio_net_device_ops const * const ops);
  * device is also registered here to handle the IOCTLs.
  */
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
 	unsigned lcore_id, core_id = 0;
@@ -1463,9 +1445,6 @@ MAIN(int argc, char *argv[])
 	ret = us_vhost_parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid argument\n");
-
-	if (rte_eal_pci_probe() != 0)
-		rte_exit(EXIT_FAILURE, "Error with NIC driver initialization\n");
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
 		if (rte_lcore_is_enabled(lcore_id))

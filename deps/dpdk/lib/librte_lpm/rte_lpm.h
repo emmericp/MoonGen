@@ -46,7 +46,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_memory.h>
 #include <rte_common.h>
-#include <rte_common_vect.h>
+#include <rte_vect.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -163,7 +163,6 @@ struct rte_lpm {
  *   to an appropriate values. Possible rte_errno values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the lpm object list
  *    - EINVAL - invalid parameter passed to function
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists
@@ -420,7 +419,7 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, __m128i ip, uint16_t hop[4],
 	tbl[3] = *(const uint16_t *)&lpm->tbl24[idx >> 32];
 
 	/* get 4 indexes for tbl8[]. */
-	i8.m = _mm_and_si128(ip, mask8);
+	i8.x = _mm_and_si128(ip, mask8);
 
 	pt = (uint64_t)tbl[0] |
 		(uint64_t)tbl[1] << 16 |

@@ -36,61 +36,79 @@
 
 #include <sys/queue.h>
 
-#define TEST_ASSERT(cond, msg, ...) do {						\
-		if (!(cond)) {											\
-			printf("TestCase %s() line %d failed: "			\
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
-			return -1;											\
-		}														\
+#define TEST_SUCCESS  (0)
+#define TEST_FAILED  (-1)
+
+/* Before including test.h file you can define
+ * TEST_TRACE_FAILURE(_file, _line, _func) macro to better trace/debug test
+ * failures. Mostly useful in test development phase. */
+#ifndef TEST_TRACE_FAILURE
+# define TEST_TRACE_FAILURE(_file, _line, _func)
+#endif
+
+#define TEST_ASSERT(cond, msg, ...) do {                         \
+		if (!(cond)) {                                           \
+			printf("TestCase %s() line %d failed: "              \
+				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
+			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
+			return TEST_FAILED;                                  \
+		}                                                        \
 } while (0)
 
-#define TEST_ASSERT_EQUAL(a, b, msg, ...)  {					\
-		if (!(a == b)) {										\
-			printf("TestCase %s() line %d failed: "				\
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
-			return -1;											\
-		}														\
+#define TEST_ASSERT_EQUAL(a, b, msg, ...) do {                   \
+		if (!(a == b)) {                                         \
+			printf("TestCase %s() line %d failed: "              \
+				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
+			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
+			return TEST_FAILED;                                  \
+		}                                                        \
 } while (0)
 
-#define TEST_ASSERT_NOT_EQUAL(a, b, msg, ...) do {				\
-		if (!(a != b)) {										\
-			printf("TestCase %s() line %d failed: "			\
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
-			return -1;											\
-		}														\
+#define TEST_ASSERT_NOT_EQUAL(a, b, msg, ...) do {               \
+		if (!(a != b)) {                                         \
+			printf("TestCase %s() line %d failed: "              \
+				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
+			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
+			return TEST_FAILED;                                  \
+		}                                                        \
 } while (0)
 
-#define TEST_ASSERT_SUCCESS(val, msg, ...) do {					\
-		if (!(val == 0)) {										\
-			printf("TestCase %s() line %d failed: "			\
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
-			return -1;											\
-		}														\
+#define TEST_ASSERT_SUCCESS(val, msg, ...) do {                  \
+		typeof(val) _val = (val);                                \
+		if (!(_val == 0)) {                                      \
+			printf("TestCase %s() line %d failed (err %d): "     \
+				msg "\n", __func__, __LINE__, _val,              \
+				##__VA_ARGS__);                                  \
+			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
+			return TEST_FAILED;                                  \
+		}                                                        \
 } while (0)
 
-#define TEST_ASSERT_FAIL(val, msg, ...) do {					\
-		if (!(val != -1)) {										\
-			printf("TestCase %s() line %d failed: "			\
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
-			return -1;											\
-		}														\
+#define TEST_ASSERT_FAIL(val, msg, ...) do {                     \
+		if (!(val != 0)) {                                       \
+			printf("TestCase %s() line %d failed: "              \
+				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
+			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
+			return TEST_FAILED;                                  \
+		}                                                        \
 } while (0)
 
-
-#define TEST_ASSERT_NULL(val, msg, ...) do {					\
-		if (!(val == NULL)) {									\
-			printf("TestCase %s() line %d failed: "			\
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
-			return -1;											\
-		}														\
+#define TEST_ASSERT_NULL(val, msg, ...) do {                     \
+		if (!(val == NULL)) {                                    \
+			printf("TestCase %s() line %d failed: "              \
+				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
+			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
+			return TEST_FAILED;                                  \
+		}                                                        \
 } while (0)
 
-#define TEST_ASSERT_NOT_NULL(val, msg, ...) do {				\
-		if (!(val != NULL)) {									\
-			printf("TestCase %s() line %d failed: "			\
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);	\
-			return -1;											\
-		}														\
+#define TEST_ASSERT_NOT_NULL(val, msg, ...) do {                 \
+		if (!(val != NULL)) {                                    \
+			printf("TestCase %s() line %d failed: "              \
+				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
+			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
+			return TEST_FAILED;                                  \
+		}                                                        \
 } while (0)
 
 struct unit_test_case {
@@ -103,8 +121,11 @@ struct unit_test_case {
 
 #define TEST_CASE(fn) { NULL, NULL, fn, #fn " succeeded", #fn " failed"}
 
-#define TEST_CASE_ST(setup, teardown, testcase) 		\
-		{ setup, teardown, testcase, #testcase " succeeded",	\
+#define TEST_CASE_NAMED(name, fn) { NULL, NULL, fn, name " succeeded", \
+		name " failed"}
+
+#define TEST_CASE_ST(setup, teardown, testcase)         \
+		{ setup, teardown, testcase, #testcase " succeeded",    \
 		#testcase " failed "}
 
 #define TEST_CASES_END() { NULL, NULL, NULL, NULL, NULL }
@@ -118,18 +139,14 @@ struct unit_test_suite {
 
 int unit_test_suite_runner(struct unit_test_suite *suite);
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
-#endif
-
 #define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
+
+#include <cmdline_parse.h>
+#include <cmdline_parse_string.h>
 
 extern const char *prgname;
 
 int commands_init(void);
-
-int main(int argc, char **argv);
 
 int test_pci(void);
 int test_pci_run;
@@ -137,6 +154,9 @@ int test_pci_run;
 int test_mp_secondary(void);
 
 int test_ivshmem(void);
+int test_set_rxtx_conf(cmdline_fixed_string_t mode);
+int test_set_rxtx_anchor(cmdline_fixed_string_t type);
+int test_set_rxtx_sc(cmdline_fixed_string_t type);
 
 typedef int (test_callback)(void);
 TAILQ_HEAD(test_commands_list, test_command);
@@ -149,7 +169,7 @@ struct test_command {
 void add_test_command(struct test_command *t);
 
 #define REGISTER_TEST_COMMAND(t) \
-static void testfn_##t(void);\
+static void __attribute__((used)) testfn_##t(void);\
 void __attribute__((constructor, used)) testfn_##t(void)\
 {\
 	add_test_command(&t);\

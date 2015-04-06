@@ -34,12 +34,6 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define MAIN _main
-#else
-#define MAIN main
-#endif
-
 //#define DEBUG
 
 #ifdef DEBUG
@@ -57,12 +51,48 @@
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER2
 #define RTE_LOGTYPE_VHOST_PORT   RTE_LOGTYPE_USER3
 
+/**
+ * Information relating to memory regions including offsets to
+ * addresses in host physical space.
+ */
+struct virtio_memory_regions_hpa {
+	/**< Base guest physical address of region. */
+	uint64_t    guest_phys_address;
+	/**< End guest physical address of region. */
+	uint64_t    guest_phys_address_end;
+	/**< Size of region. */
+	uint64_t    memory_size;
+	/**< Offset of region for gpa to hpa translation. */
+	uint64_t    host_phys_addr_offset;
+};
+
 /*
  * Device linked list structure for data path.
  */
+struct vhost_dev {
+	/**< Pointer to device created by vhost lib. */
+	struct virtio_net      *dev;
+	/**< Number of memory regions for gpa to hpa translation. */
+	uint32_t nregions_hpa;
+	/**< Memory region information for gpa to hpa translation. */
+	struct virtio_memory_regions_hpa *regions_hpa;
+	/**< Device MAC address (Obtained on first TX packet). */
+	struct ether_addr mac_address;
+	/**< RX VMDQ queue number. */
+	uint16_t vmdq_rx_q;
+	/**< Vlan tag assigned to the pool */
+	uint32_t vlan_tag;
+	/**< Data core that the device is added to. */
+	uint16_t coreid;
+	/**< A device is set as ready if the MAC address has been set. */
+	volatile uint8_t ready;
+	/**< Device is marked for removal from the data core. */
+	volatile uint8_t remove;
+} __rte_cache_aligned;
+
 struct virtio_net_data_ll
 {
-	struct virtio_net			*dev;	/* Pointer to device created by configuration core. */
+	struct vhost_dev		*vdev;	/* Pointer to device created by configuration core. */
 	struct virtio_net_data_ll	*next;  /* Pointer to next device in linked list. */
 };
 
@@ -82,5 +112,4 @@ struct lcore_info
 	struct lcore_ll_info	*lcore_ll;	/* Pointer to data core specific lcore_ll_info struct */
 };
 
-int MAIN(int argc, char **argv);
 #endif /* _MAIN_H_ */

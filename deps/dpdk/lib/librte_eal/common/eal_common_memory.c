@@ -40,7 +40,6 @@
 
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_log.h>
@@ -96,7 +95,7 @@ rte_dump_physmem_layout(FILE *f)
 
 		fprintf(f, "Segment %u: phys:0x%"PRIx64", len:%zu, "
 		       "virt:%p, socket_id:%"PRId32", "
-		       "hugepage_sz:%zu, nchannel:%"PRIx32", "
+		       "hugepage_sz:%"PRIu64", nchannel:%"PRIx32", "
 		       "nrank:%"PRIx32"\n", i,
 		       mcfg->memseg[i].phys_addr,
 		       mcfg->memseg[i].len,

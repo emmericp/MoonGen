@@ -37,6 +37,10 @@ LIB = librte_acl.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
+EXPORT_MAP := rte_acl_version.map
+
+LIBABIVER := 1
+
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += tb_mem.c
 
@@ -48,16 +52,29 @@ SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_sse.c
 
 CFLAGS_acl_run_sse.o += -msse4.1
 
+#
+# If the compiler supports AVX2 instructions,
+# then add support for AVX2 classify method.
+#
+
+CC_AVX2_SUPPORT=$(shell $(CC) -march=core-avx2 -dM -E - </dev/null 2>&1 | \
+grep -q AVX2 && echo 1)
+
+ifeq ($(CC_AVX2_SUPPORT), 1)
+	SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_avx2.c
+	CFLAGS_rte_acl.o += -DCC_AVX2_SUPPORT
+	ifeq ($(CC), icc)
+	CFLAGS_acl_run_avx2.o += -march=core-avx2
+	else
+	CFLAGS_acl_run_avx2.o += -mavx2
+	endif
+endif
+
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include := rte_acl_osdep.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include += rte_acl.h
 
-ifeq ($(CONFIG_RTE_LIBRTE_ACL_STANDALONE),y)
-# standalone build
-SYMLINK-$(CONFIG_RTE_LIBRTE_ACL)-include += rte_acl_osdep_alone.h
-else
 # this lib needs eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_ACL) += lib/librte_eal lib/librte_malloc
-endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

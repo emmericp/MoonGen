@@ -67,7 +67,7 @@ enum {
 };
 
 /**
- * ACL Field defintion.
+ * ACL Field definition.
  * Each field in the ACL rule has an associate definition.
  * It defines the type of field, its size, its offset in the input buffer,
  * the field index, and the input index.
@@ -94,6 +94,8 @@ struct rte_acl_config {
 	uint32_t num_fields;     /**< Number of field definitions. */
 	struct rte_acl_field_def defs[RTE_ACL_MAX_FIELDS];
 	/**< array of field definitions. */
+	size_t max_size;
+	/**< max memory limit for internal run-time structures. */
 };
 
 /**
@@ -168,7 +170,6 @@ struct rte_acl_param {
  *   Pointer to ACL context structure that is used in future ACL
  *   operations, or NULL on error, with error code set in rte_errno.
  *   Possible rte_errno errors include:
- *   - E_RTE_NO_TAILQ - no tailq list could be got for the ACL context list
  *   - EINVAL - invalid parameter passed to function
  */
 struct rte_acl_ctx *
@@ -259,12 +260,14 @@ void
 rte_acl_reset(struct rte_acl_ctx *ctx);
 
 /**
- *  Avaialble implementations of ACL classify.
+ *  Available implementations of ACL classify.
  */
 enum rte_acl_classify_alg {
 	RTE_ACL_CLASSIFY_DEFAULT = 0,
 	RTE_ACL_CLASSIFY_SCALAR = 1,  /**< generic implementation. */
-	RTE_ACL_CLASSIFY_SSE = 2,     /**< requries SSE4.1 support. */
+	RTE_ACL_CLASSIFY_SSE = 2,     /**< requires SSE4.1 support. */
+	RTE_ACL_CLASSIFY_AVX2 = 3,    /**< requires AVX2 support. */
+	RTE_ACL_CLASSIFY_NUM          /* should always be the last one. */
 };
 
 /**
@@ -330,7 +333,7 @@ rte_acl_classify(const struct rte_acl_ctx *ctx,
  *   match per category.
  * @param alg
  *   Algorithm to be used for the search.
- *   It is the caller responibility to ensure that the value refers to the
+ *   It is the caller responsibility to ensure that the value refers to the
  *   existing algorithm, and that it could be run on the given CPU.
  * @return
  *   zero on successful completion.
@@ -349,7 +352,7 @@ rte_acl_classify_alg(const struct rte_acl_ctx *ctx,
  *   ACL context to change classify function for.
  * @param alg
  *   New default classify algorithm for given ACL context.
- *   It is the caller responibility to ensure that the value refers to the
+ *   It is the caller responsibility to ensure that the value refers to the
  *   existing algorithm, and that it could be run on the given CPU.
  * @return
  *   - -EINVAL if the parameters are invalid.

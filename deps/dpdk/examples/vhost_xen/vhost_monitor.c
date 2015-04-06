@@ -138,7 +138,7 @@ add_xen_guest(int32_t dom_id)
 	if ((guest = get_xen_guest(dom_id)) != NULL)
 		return guest;
 
-	guest = (struct xen_guest * )calloc(1, sizeof(struct xen_guest));
+	guest = calloc(1, sizeof(struct xen_guest));
 	if (guest) {
 		RTE_LOG(ERR, XENHOST, "  %s: return newly created guest with %d rings\n", __func__, guest->vring_num);
 		TAILQ_INSERT_TAIL(&guest_root, guest, next);
@@ -255,8 +255,8 @@ virtio_net_config_ll *new_device(unsigned int virtio_idx, struct xen_guest *gues
 
 	/* Setup device and virtqueues. */
 	new_ll_dev   = calloc(1, sizeof(struct virtio_net_config_ll));
-	virtqueue_rx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), CACHE_LINE_SIZE);
-	virtqueue_tx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), CACHE_LINE_SIZE);
+	virtqueue_rx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), RTE_CACHE_LINE_SIZE);
+	virtqueue_tx = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), RTE_CACHE_LINE_SIZE);
 	if (new_ll_dev == NULL || virtqueue_rx == NULL || virtqueue_tx == NULL)
 		goto err;
 

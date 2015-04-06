@@ -54,7 +54,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
@@ -79,25 +78,9 @@
 #include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
-
-#define OPT_HUGE_DIR    "huge-dir"
-#define OPT_PROC_TYPE   "proc-type"
-#define OPT_NO_SHCONF   "no-shconf"
-#define OPT_NO_HPET     "no-hpet"
-#define OPT_VMWARE_TSC_MAP   "vmware-tsc-map"
-#define OPT_NO_PCI      "no-pci"
-#define OPT_NO_HUGE     "no-huge"
-#define OPT_FILE_PREFIX "file-prefix"
-#define OPT_SOCKET_MEM  "socket-mem"
-#define OPT_USE_DEVICE "use-device"
-#define OPT_PCI_WHITELIST "pci-whitelist"
-#define OPT_PCI_BLACKLIST "pci-blacklist"
-#define OPT_VDEV        "vdev"
-#define OPT_SYSLOG      "syslog"
+#include "eal_options.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
-
-#define BITS_PER_HEX 4
 
 /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook = NULL;
@@ -240,7 +223,7 @@ rte_eal_config_attach(void)
 }
 
 /* Detect if we are a primary or a secondary process */
-static enum rte_proc_type_t
+enum rte_proc_type_t
 eal_proc_type_detect(void)
 {
 	enum rte_proc_type_t ptype = RTE_PROC_PRIMARY;
@@ -263,9 +246,7 @@ eal_proc_type_detect(void)
 static void
 rte_config_init(void)
 {
-	rte_config.process_type = (internal_config.process_type == RTE_PROC_AUTO) ?
-			eal_proc_type_detect() : /* for auto, detect the type */
-			internal_config.process_type; /* otherwise use what's already set */
+	rte_config.process_type = internal_config.process_type;
 
 	switch (rte_config.process_type){
 	case RTE_PROC_PRIMARY:
@@ -285,33 +266,8 @@ rte_config_init(void)
 static void
 eal_usage(const char *prgname)
 {
-	printf("\nUsage: %s -c COREMASK -n NUM [-m NB] [-r NUM] [-b <domain:bus:devid.func>]"
-	       "[--proc-type primary|secondary|auto] \n\n"
-	       "EAL options:\n"
-	       "  -c COREMASK  : A hexadecimal bitmask of cores to run on\n"
-	       "  -n NUM       : Number of memory channels\n"
-	       "  -v           : Display version information on startup\n"
-	       "  -m MB        : memory to allocate\n"
-	       "  -r NUM       : force number of memory ranks (don't detect)\n"
-	       "  --"OPT_PROC_TYPE"  : type of this process\n"
-	       "  --"OPT_PCI_BLACKLIST", -b: add a PCI device in black list.\n"
-	       "               Prevent EAL from using this PCI device. The argument\n"
-	       "               format is <domain:bus:devid.func>.\n"
-	       "  --"OPT_PCI_WHITELIST", -w: add a PCI device in white list.\n"
-	       "               Only use the specified PCI devices. The argument format\n"
-	       "               is <[domain:]bus:devid.func>. This option can be present\n"
-	       "               several times (once per device).\n"
-	       "               [NOTE: PCI whitelist cannot be used with -b option]\n"
-	       "  --"OPT_VDEV": add a virtual device.\n"
-	       "               The argument format is <driver><id>[,key=val,...]\n"
-	       "               (ex: --vdev=eth_pcap0,iface=eth2).\n"
-	       "  --"OPT_VMWARE_TSC_MAP": use VMware TSC map instead of native RDTSC\n"
-	       "\nEAL options for DEBUG use only:\n"
-	       "  --"OPT_NO_HUGE"  : use malloc instead of hugetlbfs\n"
-	       "  --"OPT_NO_PCI"   : disable pci\n"
-	       "  --"OPT_NO_SHCONF": no shared config (mmap'd files)\n"
-	       "\n",
-	       prgname);
+	printf("\nUsage: %s ", prgname);
+	eal_common_usage();
 	/* Allow the application to print its usage message too if hook is set */
 	if ( rte_application_usage_hook ) {
 		printf("===== Application Usage =====\n\n");
@@ -332,114 +288,6 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func )
 	return old_func;
 }
 
-/*
- * Parse the coremask given as argument (hexadecimal string) and fill
- * the global configuration (core role and core count) with the parsed
- * value.
- */
-static int xdigit2val(unsigned char c)
-{
-	int val;
-	if(isdigit(c))
-		val = c - '0';
-	else if(isupper(c))
-		val = c - 'A' + 10;
-	else
-		val = c - 'a' + 10;
-	return val;
-}
-static int
-eal_parse_coremask(const char *coremask)
-{
-	struct rte_config *cfg = rte_eal_get_configuration();
-	int i, j, idx = 0 ;
-	unsigned count = 0;
-	char c;
-	int val;
-
-	if (coremask == NULL)
-		return -1;
-	/* Remove all blank characters ahead and after .
-	 * Remove 0x/0X if exists.
-	 */
-	while (isblank(*coremask))
-		coremask++;
-	if (coremask[0] == '0' && ((coremask[1] == 'x')
-		||  (coremask[1] == 'X')) )
-		coremask += 2;
-	i = strnlen(coremask, sysconf(_SC_ARG_MAX));
-	while ((i > 0) && isblank(coremask[i - 1]))
-		i--;
-	if (i == 0)
-		return -1;
-
-	for (i = i - 1; i >= 0 && idx < RTE_MAX_LCORE; i--) {
-		c = coremask[i];
-		if (isxdigit(c) == 0) {
-			/* invalid characters */
-			return (-1);
-		}
-		val = xdigit2val(c);
-		for(j = 0; j < BITS_PER_HEX && idx < RTE_MAX_LCORE; j++, idx++) {
-			if((1 << j) & val) {
-				cfg->lcore_role[idx] = ROLE_RTE;
-				if(count == 0)
-					cfg->master_lcore = idx;
-				count++;
-			} else  {
-				cfg->lcore_role[idx] = ROLE_OFF;
-			}
-		}
-	}
-	for(; i >= 0; i--)
-		if(coremask[i] != '0')
-			return -1;
-	for(; idx < RTE_MAX_LCORE; idx++)
-		cfg->lcore_role[idx] = ROLE_OFF;
-	if(count == 0)
-		return -1;
-	return 0;
-}
-
-static int
-eal_parse_syslog(const char *facility)
-{
-	int i;
-	static struct {
-		const char *name;
-		int value;
-	} map[] = {
-		{ "auth", LOG_AUTH },
-		{ "cron", LOG_CRON },
-		{ "daemon", LOG_DAEMON },
-		{ "ftp", LOG_FTP },
-		{ "kern", LOG_KERN },
-		{ "lpr", LOG_LPR },
-		{ "mail", LOG_MAIL },
-		{ "news", LOG_NEWS },
-		{ "syslog", LOG_SYSLOG },
-		{ "user", LOG_USER },
-		{ "uucp", LOG_UUCP },
-		{ "local0", LOG_LOCAL0 },
-		{ "local1", LOG_LOCAL1 },
-		{ "local2", LOG_LOCAL2 },
-		{ "local3", LOG_LOCAL3 },
-		{ "local4", LOG_LOCAL4 },
-		{ "local5", LOG_LOCAL5 },
-		{ "local6", LOG_LOCAL6 },
-		{ "local7", LOG_LOCAL7 },
-		{ NULL, 0 }
-	};
-
-	for (i = 0; map[i].name; i++) {
-		if (!strcmp(facility, map[i].name)) {
-			internal_config.syslog_facility = map[i].value;
-			return 0;
-		}
-	}
-	return -1;
-}
-
 static inline size_t
 eal_get_hugepage_mem_size(void)
 {
@@ -458,266 +306,73 @@ eal_get_hugepage_mem_size(void)
 	return (size < SIZE_MAX) ? (size_t)(size) : SIZE_MAX;
 }
 
-static enum rte_proc_type_t
-eal_parse_proc_type(const char *arg)
-{
-	if (strncasecmp(arg, "primary", sizeof("primary")) == 0)
-		return RTE_PROC_PRIMARY;
-	if (strncasecmp(arg, "secondary", sizeof("secondary")) == 0)
-		return RTE_PROC_SECONDARY;
-	if (strncasecmp(arg, "auto", sizeof("auto")) == 0)
-		return RTE_PROC_AUTO;
-
-	return RTE_PROC_INVALID;
-}
-
 /* Parse the argument given in the command line of the application */
 static int
 eal_parse_args(int argc, char **argv)
 {
-	int opt, ret, i;
+	int opt, ret;
 	char **argvopt;
 	int option_index;
-	int coremask_ok = 0;
 	char *prgname = argv[0];
-	static struct option lgopts[] = {
-		{OPT_NO_HUGE, 0, 0, 0},
-		{OPT_NO_PCI, 0, 0, 0},
-		{OPT_NO_HPET, 0, 0, 0},
-		{OPT_VMWARE_TSC_MAP, 0, 0, 0},
-		{OPT_HUGE_DIR, 1, 0, 0},
-		{OPT_NO_SHCONF, 0, 0, 0},
-		{OPT_PROC_TYPE, 1, 0, 0},
-		{OPT_FILE_PREFIX, 1, 0, 0},
-		{OPT_SOCKET_MEM, 1, 0, 0},
-		{OPT_PCI_WHITELIST, 1, 0, 0},
-		{OPT_PCI_BLACKLIST, 1, 0, 0},
-		{OPT_VDEV, 1, 0, 0},
-		{OPT_SYSLOG, 1, NULL, 0},
-		{0, 0, 0, 0}
-	};
 
 	argvopt = argv;
 
-	internal_config.memory = 0;
-	internal_config.force_nrank = 0;
-	internal_config.force_nchannel = 0;
-	internal_config.hugefile_prefix = HUGEFILE_PREFIX_DEFAULT;
-	internal_config.hugepage_dir = NULL;
-	internal_config.force_sockets = 0;
-	internal_config.syslog_facility = LOG_DAEMON;
-#ifdef RTE_LIBEAL_USE_HPET
-	internal_config.no_hpet = 0;
-#else
-	internal_config.no_hpet = 1;
-#endif
-	/* zero out the NUMA config */
-	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		internal_config.socket_mem[i] = 0;
+	eal_reset_internal_config(&internal_config);
 
-	/* zero out hugedir descriptors */
-	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
-		internal_config.hugepage_info[i].lock_descriptor = 0;
+	while ((opt = getopt_long(argc, argvopt, eal_short_options,
+				  eal_long_options, &option_index)) != EOF) {
 
-	internal_config.vmware_tsc_map = 0;
+		int ret;
 
-	while ((opt = getopt_long(argc, argvopt, "b:w:c:m:n:r:v",
-				  lgopts, &option_index)) != EOF) {
+		/* getopt is not happy, stop right now */
+		if (opt == '?') {
+			eal_usage(prgname);
+			return -1;
+		}
+
+		ret = eal_parse_common_option(opt, optarg, &internal_config);
+		/* common parser is not happy */
+		if (ret < 0) {
+			eal_usage(prgname);
+			return -1;
+		}
+		/* common parser handled this option */
+		if (ret == 0)
+			continue;
 
 		switch (opt) {
-		/* blacklist */
-		case 'b':
-			if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
-					optarg) < 0) {
-				eal_usage(prgname);
-				return (-1);
-			}
-			break;
-		/* whitelist */
-		case 'w':
-			if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI,
-					optarg) < 0) {
-				eal_usage(prgname);
-				return -1;
-			}
-			break;
-		/* coremask */
-		case 'c':
-			if (eal_parse_coremask(optarg) < 0) {
-				RTE_LOG(ERR, EAL, "invalid coremask\n");
-				eal_usage(prgname);
-				return -1;
-			}
-			coremask_ok = 1;
-			break;
-		/* size of memory */
-		case 'm':
-			internal_config.memory = atoi(optarg);
-			internal_config.memory *= 1024ULL;
-			internal_config.memory *= 1024ULL;
-			break;
-		/* force number of channels */
-		case 'n':
-			internal_config.force_nchannel = atoi(optarg);
-			if (internal_config.force_nchannel == 0 ||
-			    internal_config.force_nchannel > 4) {
-				RTE_LOG(ERR, EAL, "invalid channel number\n");
-				eal_usage(prgname);
-				return -1;
-			}
-			break;
-		/* force number of ranks */
-		case 'r':
-			internal_config.force_nrank = atoi(optarg);
-			if (internal_config.force_nrank == 0 ||
-			    internal_config.force_nrank > 16) {
-				RTE_LOG(ERR, EAL, "invalid rank number\n");
-				eal_usage(prgname);
-				return -1;
-			}
-			break;
-		case 'v':
-			/* since message is explicitly requested by user, we
-			 * write message at highest log level so it can always be seen
-			 * even if info or warning messages are disabled */
-			RTE_LOG(CRIT, EAL, "RTE Version: '%s'\n", rte_version());
-			break;
-
-		/* long options */
-		case 0:
-			if (!strcmp(lgopts[option_index].name, OPT_NO_HUGE)) {
-				internal_config.no_hugetlbfs = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_NO_PCI)) {
-				internal_config.no_pci = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_NO_HPET)) {
-				internal_config.no_hpet = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_VMWARE_TSC_MAP)) {
-				internal_config.vmware_tsc_map = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_NO_SHCONF)) {
-				internal_config.no_shconf = 1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_HUGE_DIR)) {
-				RTE_LOG(ERR, EAL, "Option "OPT_HUGE_DIR" is not supported on"
-						"FreeBSD\n");
-				return -1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_PROC_TYPE)) {
-				internal_config.process_type = eal_parse_proc_type(optarg);
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_FILE_PREFIX)) {
-				RTE_LOG(ERR, EAL, "Option "OPT_FILE_PREFIX" is not supported on"
-						"FreeBSD\n");
-				return -1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_SOCKET_MEM)) {
-				RTE_LOG(ERR, EAL, "Option "OPT_SOCKET_MEM" is not supported on"
-						"FreeBSD\n");
-				return -1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_USE_DEVICE)) {
-				printf("The --use-device option is deprecated, please use\n"
-					"--whitelist or --vdev instead.\n");
-				eal_usage(prgname);
-				return -1;
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_PCI_BLACKLIST)) {
-				if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
-						optarg) < 0) {
-					eal_usage(prgname);
-					return -1;
-				}
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_PCI_WHITELIST)) {
-				if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI,
-						optarg) < 0) {
-					eal_usage(prgname);
-					return -1;
-				}
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_VDEV)) {
-				if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
-						optarg) < 0) {
-					eal_usage(prgname);
-					return -1;
-				}
-			}
-			else if (!strcmp(lgopts[option_index].name, OPT_SYSLOG)) {
-				if (eal_parse_syslog(optarg) < 0) {
-					RTE_LOG(ERR, EAL, "invalid parameters for --"
-							OPT_SYSLOG "\n");
-					eal_usage(prgname);
-					return -1;
-				}
-			}
-			break;
-
+		case 'h':
+			eal_usage(prgname);
+			exit(EXIT_SUCCESS);
 		default:
+			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
+				RTE_LOG(ERR, EAL, "Option %c is not supported "
+					"on FreeBSD\n", opt);
+			} else if (opt >= OPT_LONG_MIN_NUM &&
+				   opt < OPT_LONG_MAX_NUM) {
+				RTE_LOG(ERR, EAL, "Option %s is not supported "
+					"on FreeBSD\n",
+					eal_long_options[option_index].name);
+			} else {
+				RTE_LOG(ERR, EAL, "Option %d is not supported "
+					"on FreeBSD\n", opt);
+			}
 			eal_usage(prgname);
 			return -1;
 		}
 	}
 
-	/* sanity checks */
-	if (!coremask_ok) {
-		RTE_LOG(ERR, EAL, "coremask not specified\n");
-		eal_usage(prgname);
+	if (eal_adjust_config(&internal_config) != 0)
 		return -1;
-	}
-	if (internal_config.process_type == RTE_PROC_AUTO){
-		internal_config.process_type = eal_proc_type_detect();
-	}
-	if (internal_config.process_type == RTE_PROC_INVALID){
-		RTE_LOG(ERR, EAL, "Invalid process type specified\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	if (internal_config.process_type == RTE_PROC_PRIMARY &&
-			internal_config.force_nchannel == 0) {
-		RTE_LOG(ERR, EAL, "Number of memory channels (-n) not specified\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	if (index(internal_config.hugefile_prefix,'%') != NULL){
-		RTE_LOG(ERR, EAL, "Invalid char, '%%', in '"OPT_FILE_PREFIX"' option\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	if (internal_config.memory > 0 && internal_config.force_sockets == 1) {
-		RTE_LOG(ERR, EAL, "Options -m and --socket-mem cannot be specified "
-				"at the same time\n");
-		eal_usage(prgname);
-		return -1;
-	}
-	/* --no-huge doesn't make sense with either -m or --socket-mem */
-	if (internal_config.no_hugetlbfs &&
-			(internal_config.memory > 0 ||
-					internal_config.force_sockets == 1)) {
-		RTE_LOG(ERR, EAL, "Options -m or --socket-mem cannot be specified "
-				"together with --no-huge!\n");
-		eal_usage(prgname);
-		return -1;
-	}
 
-	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) != 0 &&
-		rte_eal_devargs_type_count(RTE_DEVTYPE_BLACKLISTED_PCI) != 0) {
-		RTE_LOG(ERR, EAL, "Error: blacklist [-b] and whitelist "
-			"[-w] options cannot be used at the same time\n");
+	/* sanity checks */
+	if (eal_check_common_options(&internal_config) != 0) {
 		eal_usage(prgname);
 		return -1;
 	}
 
 	if (optind >= 0)
 		argv[optind-1] = prgname;
-
-	/* if no memory amounts were requested, this will result in 0 and
-	 * will be overriden later, right after eal_hugepage_info_init() */
-	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		internal_config.memory += internal_config.socket_mem[i];
-
 	ret = optind-1;
 	optind = 0; /* reset getopt lib */
 	return ret;
@@ -763,13 +418,15 @@ int rte_eal_has_hugepages(void)
 }
 
 /* Abstraction for port I/0 privilege */
-static int
+int
 rte_eal_iopl_init(void)
 {
-	int fd = -1;
+	int fd;
+
 	fd = open("/dev/io", O_RDWR);
 	if (fd < 0)
 		return -1;
+	close(fd);
 	return 0;
 }
 
@@ -780,6 +437,7 @@ rte_eal_init(int argc, char **argv)
 	int i, fctret, ret;
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
+	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
@@ -789,9 +447,15 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_log_early_init() < 0)
 		rte_panic("Cannot init early logs\n");
 
+	if (rte_eal_cpu_init() < 0)
+		rte_panic("Cannot detect lcores\n");
+
 	fctret = eal_parse_args(argc, argv);
 	if (fctret < 0)
 		exit(1);
+
+	/* set log level as early as possible */
+	rte_set_log_level(internal_config.log_level);
 
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
@@ -820,12 +484,6 @@ rte_eal_init(int argc, char **argv)
 
 	rte_config_init();
 
-	if (rte_eal_iopl_init() == 0)
-		rte_config.flags |= EAL_FLG_HIGH_IOPL;
-
-	if (rte_eal_cpu_init() < 0)
-		rte_panic("Cannot detect lcores\n");
-
 	if (rte_eal_memory_init() < 0)
 		rte_panic("Cannot init memory\n");
 
@@ -850,14 +508,19 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
 
-	RTE_LOG(DEBUG, EAL, "Master core %u is ready (tid=%p)\n",
-		rte_config.master_lcore, thread_id);
-
 	eal_check_mem_on_local_socket();
 
 	rte_eal_mcfg_complete();
 
-	if (rte_eal_dev_init(PMD_INIT_PRE_PCI_PROBE) < 0)
+	eal_thread_init_master(rte_config.master_lcore);
+
+	ret = eal_thread_dump_affinity(cpuset, RTE_CPU_AFFINITY_STR_LEN);
+
+	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%p;cpuset=[%s%s])\n",
+		rte_config.master_lcore, thread_id, cpuset,
+		ret == 0 ? "" : "...");
+
+	if (rte_eal_dev_init() < 0)
 		rte_panic("Cannot init pmd devices\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
@@ -880,8 +543,6 @@ rte_eal_init(int argc, char **argv)
 			rte_panic("Cannot create thread\n");
 	}
 
-	eal_thread_init_master(rte_config.master_lcore);
-
 	/*
 	 * Launch a dummy function on all slave lcores, so that master lcore
 	 * knows they are all ready when this function returns.
@@ -891,11 +552,7 @@ rte_eal_init(int argc, char **argv)
 
 	/* Probe & Initialize PCI devices */
 	if (rte_eal_pci_probe())
-			rte_panic("Cannot probe PCI\n");
-
-	/* Initialize any outstanding devices */
-	if (rte_eal_dev_init(PMD_INIT_POST_PCI_PROBE) < 0)
-		rte_panic("Cannot init pmd devices\n");
+		rte_panic("Cannot probe PCI\n");
 
 	return fctret;
 }

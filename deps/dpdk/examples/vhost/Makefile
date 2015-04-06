@@ -48,12 +48,10 @@ else
 APP = vhost-switch
 
 # all source are stored in SRCS-y
-#SRCS-y := cusedrv.c loopback-userspace.c
-SRCS-y := main.c virtio-net.c vhost-net-cdev.c
+SRCS-y := main.c
 
-CFLAGS += -O2 -I/usr/local/include -D_FILE_OFFSET_BITS=64 -Wno-unused-parameter
+CFLAGS += -O2 -D_FILE_OFFSET_BITS=64
 CFLAGS += $(WERROR_FLAGS)
-LDFLAGS += -lfuse
 
 include $(RTE_SDK)/mk/rte.extapp.mk
 

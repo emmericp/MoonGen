@@ -41,9 +41,7 @@ POSSIBILITY OF SUCH DAMAGE.
 		IXGBE_WRITE_REG(hw, reg, (u32) value); \
 		IXGBE_WRITE_REG(hw, reg + 4, (u32) (value >> 32)); \
 	} while (0)
-#ifndef IXGBE_REMOVED
 #define IXGBE_REMOVED(a) (0)
-#endif /* IXGBE_REMOVED */
 struct ixgbe_pba {
 	u16 word[2];
 	u16 *pba_block;
@@ -90,7 +88,7 @@ s32 ixgbe_read_eeprom_bit_bang_generic(struct ixgbe_hw *hw, u16 offset,
 				       u16 *data);
 s32 ixgbe_read_eeprom_buffer_bit_bang_generic(struct ixgbe_hw *hw, u16 offset,
 					      u16 words, u16 *data);
-u16 ixgbe_calc_eeprom_checksum_generic(struct ixgbe_hw *hw);
+s32 ixgbe_calc_eeprom_checksum_generic(struct ixgbe_hw *hw);
 s32 ixgbe_validate_eeprom_checksum_generic(struct ixgbe_hw *hw,
 					   u16 *checksum_val);
 s32 ixgbe_update_eeprom_checksum_generic(struct ixgbe_hw *hw);
@@ -116,8 +114,8 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw);
 void ixgbe_fc_autoneg(struct ixgbe_hw *hw);
 
 s32 ixgbe_validate_mac_addr(u8 *mac_addr);
-s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u16 mask);
-void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u16 mask);
+s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u32 mask);
+void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u32 mask);
 s32 ixgbe_disable_pcie_master(struct ixgbe_hw *hw);
 
 s32 prot_autoc_read_generic(struct ixgbe_hw *hw, bool *, u32 *reg_val);
@@ -159,13 +157,26 @@ s32 ixgbe_set_fw_drv_ver_generic(struct ixgbe_hw *hw, u8 maj, u8 min,
 				 u8 build, u8 ver);
 u8 ixgbe_calculate_checksum(u8 *buffer, u32 length);
 s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
-				 u32 length);
+				 u32 length, bool return_data);
+
 void ixgbe_clear_tx_pending(struct ixgbe_hw *hw);
 
 extern s32 ixgbe_reset_pipeline_82599(struct ixgbe_hw *hw);
 extern void ixgbe_stop_mac_link_on_d3_82599(struct ixgbe_hw *hw);
 bool ixgbe_mng_enabled(struct ixgbe_hw *hw);
 
+#define IXGBE_I2C_THERMAL_SENSOR_ADDR	0xF8
+#define IXGBE_EMC_INTERNAL_DATA		0x00
+#define IXGBE_EMC_INTERNAL_THERM_LIMIT	0x20
+#define IXGBE_EMC_DIODE1_DATA		0x01
+#define IXGBE_EMC_DIODE1_THERM_LIMIT	0x19
+#define IXGBE_EMC_DIODE2_DATA		0x23
+#define IXGBE_EMC_DIODE2_THERM_LIMIT	0x1A
+#define IXGBE_EMC_DIODE3_DATA		0x2A
+#define IXGBE_EMC_DIODE3_THERM_LIMIT	0x30
+
+s32 ixgbe_get_thermal_sensor_data_generic(struct ixgbe_hw *hw);
+s32 ixgbe_init_thermal_sensor_thresh_generic(struct ixgbe_hw *hw);
 void ixgbe_disable_rx_generic(struct ixgbe_hw *hw);
 void ixgbe_enable_rx_generic(struct ixgbe_hw *hw);
 #endif /* IXGBE_COMMON */

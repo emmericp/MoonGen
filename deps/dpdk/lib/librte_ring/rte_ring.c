@@ -77,7 +77,6 @@
 #include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_atomic.h>
@@ -91,6 +90,11 @@
 #include "rte_ring.h"
 
 TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
+
+static struct rte_tailq_elem rte_ring_tailq = {
+	.name = RTE_TAILQ_RING_NAME,
+};
+EAL_REGISTER_TAILQ(rte_ring_tailq)
 
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
@@ -110,7 +114,7 @@ rte_ring_get_memsize(unsigned count)
 	}
 
 	sz = sizeof(struct rte_ring) + count * sizeof(void *);
-	sz = RTE_ALIGN(sz, CACHE_LINE_SIZE);
+	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
 	return sz;
 }
 
@@ -120,18 +124,18 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 {
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #ifdef RTE_RING_SPLIT_PROD_CONS
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, cons) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #endif
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, prod) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #ifdef RTE_LIBRTE_RING_DEBUG
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring_debug_stats) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, stats) &
-			  CACHE_LINE_MASK) != 0);
+			  RTE_CACHE_LINE_MASK) != 0);
 #endif
 
 	/* init the ring structure */
@@ -162,12 +166,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	int mz_flags = 0;
 	struct rte_ring_list* ring_list = NULL;
 
-	/* check that we have an initialised tail queue */
-	if ((ring_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	ring_list = RTE_TAILQ_CAST(rte_ring_tailq.head, rte_ring_list);
 
 	ring_size = rte_ring_get_memsize(count);
 	if (ring_size < 0) {
@@ -288,12 +287,7 @@ rte_ring_list_dump(FILE *f)
 	const struct rte_tailq_entry *te;
 	struct rte_ring_list *ring_list;
 
-	/* check that we have an initialised tail queue */
-	if ((ring_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	ring_list = RTE_TAILQ_CAST(rte_ring_tailq.head, rte_ring_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 
@@ -312,12 +306,7 @@ rte_ring_lookup(const char *name)
 	struct rte_ring *r = NULL;
 	struct rte_ring_list *ring_list;
 
-	/* check that we have an initialized tail queue */
-	if ((ring_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_RING, rte_ring_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	ring_list = RTE_TAILQ_CAST(rte_ring_tailq.head, rte_ring_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 

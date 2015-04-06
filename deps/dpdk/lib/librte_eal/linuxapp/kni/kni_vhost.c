@@ -33,6 +33,7 @@
 #include <linux/if_tun.h>
 #include <linux/version.h>
 
+#include "compat.h"
 #include "kni_dev.h"
 #include "kni_fifo.h"
 
@@ -104,7 +105,8 @@ kni_vhost_net_tx(struct kni_dev *kni, struct iovec *iov,
 		void *data_kva;
 
 		pkt_kva = (void *)pkt_va - kni->mbuf_va + kni->mbuf_kva;
-		data_kva = pkt_kva->data - kni->mbuf_va + kni->mbuf_kva;
+		data_kva = pkt_kva->buf_addr + pkt_kva->data_off
+		           - kni->mbuf_va + kni->mbuf_kva;
 
 		memcpy_fromiovecend(data_kva, iov, offset, len);
 		if (unlikely(len < ETH_ZLEN)) {
@@ -177,7 +179,7 @@ kni_vhost_net_rx(struct kni_dev *kni, struct iovec *iov,
 	KNI_DBG_RX("rx offset=%d, len=%d, pkt_len=%d, iovlen=%d\n",
 		   offset, len, pkt_len, (int)iov->iov_len);
 
-	data_kva = kva->data - kni->mbuf_va + kni->mbuf_kva;
+	data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va + kni->mbuf_kva;
 	if (unlikely(memcpy_toiovecend(iov, data_kva, offset, pkt_len)))
 		goto drop;
 
@@ -214,10 +216,19 @@ kni_sock_poll(struct file *file, struct socket *sock, poll_table * wait)
 		return POLLERR;
 
 	kni = q->kni;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
 	KNI_DBG("start kni_poll on group %d, wq 0x%16llx\n",
 		  kni->group_id, (uint64_t)sock->wq);
+#else
+	KNI_DBG("start kni_poll on group %d, wait at 0x%16llx\n",
+		  kni->group_id, (uint64_t)&sock->wait);
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
 	poll_wait(file, &sock->wq->wait, wait);
+#else
+	poll_wait(file, &sock->wait, wait);
+#endif
 
 	if (kni_fifo_count(kni->rx_q) > 0)
 		mask |= POLLIN | POLLRDNORM;
@@ -680,10 +691,17 @@ kni_vhost_backend_init(struct kni_dev *kni)
 
 	kni->vq_status = BE_START;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
 	KNI_DBG("backend init sockfd=%d, sock->wq=0x%16llx,"
 		  "sk->sk_wq=0x%16llx",
 		  q->sockfd, (uint64_t)q->sock->wq,
 		  (uint64_t)q->sk.sk_wq);
+#else
+	KNI_DBG("backend init sockfd=%d, sock->wait at 0x%16llx,"
+		  "sk->sk_sleep=0x%16llx",
+		  q->sockfd, (uint64_t)&q->sock->wait,
+		  (uint64_t)q->sk.sk_sleep);
+#endif
 
 	return 0;
 
@@ -739,7 +757,7 @@ set_sock_en(struct device *dev, struct device_attribute *attr,
 	unsigned long en;
 	int err = 0;
 
-	if (0 != strict_strtoul(buf, 0, &en))
+	if (0 != kstrtoul(buf, 0, &en))
 		return -EINVAL;
 
 	if (en)

@@ -44,6 +44,8 @@ s32 ixgbe_init_shared_code(struct ixgbe_hw *hw);
 extern s32 ixgbe_init_ops_82598(struct ixgbe_hw *hw);
 extern s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw);
 extern s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw);
+extern s32 ixgbe_init_ops_X550(struct ixgbe_hw *hw);
+extern s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw);
 extern s32 ixgbe_init_ops_vf(struct ixgbe_hw *hw);
 
 s32 ixgbe_set_mac_type(struct ixgbe_hw *hw);
@@ -125,6 +127,8 @@ s32 ixgbe_set_vlvf(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 s32 ixgbe_fc_enable(struct ixgbe_hw *hw);
 s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
 			 u8 ver);
+s32 ixgbe_get_thermal_sensor_data(struct ixgbe_hw *hw);
+s32 ixgbe_init_thermal_sensor_thresh(struct ixgbe_hw *hw);
 void ixgbe_set_mta(struct ixgbe_hw *hw, u8 *mc_addr);
 s32 ixgbe_get_phy_firmware_version(struct ixgbe_hw *hw,
 				   u16 *firmware_version);
@@ -172,11 +176,27 @@ s32 ixgbe_write_i2c_eeprom(struct ixgbe_hw *hw, u8 byte_offset, u8 eeprom_data);
 s32 ixgbe_get_san_mac_addr(struct ixgbe_hw *hw, u8 *san_mac_addr);
 s32 ixgbe_set_san_mac_addr(struct ixgbe_hw *hw, u8 *san_mac_addr);
 s32 ixgbe_get_device_caps(struct ixgbe_hw *hw, u16 *device_caps);
-s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u16 mask);
-void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u16 mask);
+s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u32 mask);
+void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u32 mask);
 s32 ixgbe_get_wwn_prefix(struct ixgbe_hw *hw, u16 *wwnn_prefix,
 			 u16 *wwpn_prefix);
 s32 ixgbe_get_fcoe_boot_status(struct ixgbe_hw *hw, u16 *bs);
+s32 ixgbe_dmac_config(struct ixgbe_hw *hw);
+s32 ixgbe_dmac_update_tcs(struct ixgbe_hw *hw);
+s32 ixgbe_dmac_config_tcs(struct ixgbe_hw *hw);
+s32 ixgbe_setup_eee(struct ixgbe_hw *hw, bool enable_eee);
+void ixgbe_set_source_address_pruning(struct ixgbe_hw *hw, bool enable,
+				      unsigned int vf);
+void ixgbe_set_ethertype_anti_spoofing(struct ixgbe_hw *hw, bool enable,
+				       int vf);
+s32 ixgbe_read_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
+			u32 device_type, u32 *phy_data);
+s32 ixgbe_write_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
+			u32 device_type, u32 phy_data);
+void ixgbe_disable_mdd(struct ixgbe_hw *hw);
+void ixgbe_enable_mdd(struct ixgbe_hw *hw);
+void ixgbe_mdd_event(struct ixgbe_hw *hw, u32 *vf_bitmap);
+void ixgbe_restore_mdd_vf(struct ixgbe_hw *hw, u32 vf);
 void ixgbe_disable_rx(struct ixgbe_hw *hw);
 void ixgbe_enable_rx(struct ixgbe_hw *hw);
 

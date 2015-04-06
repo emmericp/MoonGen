@@ -78,7 +78,7 @@ struct cmdline_token_ops cmdline_token_portlist_ops = {
 };
 
 static void
-parse_set_list(cmdline_portlist_t * pl, int low, int high)
+parse_set_list(cmdline_portlist_t *pl, size_t low, size_t high)
 {
 	do {
 		pl->map |= (1 << low++);
@@ -86,7 +86,7 @@ parse_set_list(cmdline_portlist_t * pl, int low, int high)
 }
 
 static int
-parse_ports(cmdline_portlist_t * pl, const char * str)
+parse_ports(cmdline_portlist_t *pl, const char *str)
 {
 	size_t ps, pe;
 	const char *first, *last;
@@ -127,7 +127,7 @@ parse_ports(cmdline_portlist_t * pl, const char * str)
 
 int
 cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
-		const char *buf, void *res)
+	const char *buf, void *res, unsigned ressize)
 {
 	unsigned int token_len = 0;
 	char portlist_str[PORTLIST_TOKEN_SIZE+1];
@@ -135,6 +135,9 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 
 	if (!buf || ! *buf)
 		return (-1);
+
+	if (res && ressize < sizeof(cmdline_portlist_t))
+		return -1;
 
 	pl = res;
 

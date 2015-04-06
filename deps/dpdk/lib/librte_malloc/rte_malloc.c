@@ -40,7 +40,6 @@
 #include <rte_memcpy.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_branch_prediction.h>
@@ -75,7 +74,7 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
 	void *ret;
 
 	/* return NULL if size is 0 or alignment is not power-of-2 */
-	if (size == 0 || !rte_is_power_of_2(align))
+	if (size == 0 || (align && !rte_is_power_of_2(align)))
 		return NULL;
 
 	if (socket_arg == SOCKET_ID_ANY)
@@ -169,7 +168,7 @@ rte_realloc(void *ptr, size_t size, unsigned align)
 	if (elem == NULL)
 		rte_panic("Fatal error: memory corruption detected\n");
 
-	size = CACHE_LINE_ROUNDUP(size), align = CACHE_LINE_ROUNDUP(align);
+	size = RTE_CACHE_LINE_ROUNDUP(size), align = RTE_CACHE_LINE_ROUNDUP(align);
 	/* check alignment matches first, and if ok, see if we can resize block */
 	if (RTE_PTR_ALIGN(ptr,align) == ptr &&
 			malloc_elem_resize(elem, size) == 0)

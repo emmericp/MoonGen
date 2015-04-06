@@ -40,6 +40,10 @@ LIB = librte_pmd_pcap.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_pmd_pcap_version.map
+
+LIBABIVER := 1
+
 #
 # all source are stored in SRCS-y
 #

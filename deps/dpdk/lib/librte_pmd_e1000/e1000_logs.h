@@ -34,11 +34,14 @@
 #ifndef _E1000_LOGS_H_
 #define _E1000_LOGS_H_
 
-#ifdef RTE_LIBRTE_E1000_DEBUG_INIT
 #define PMD_INIT_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+	rte_log(RTE_LOG_ ## level, RTE_LOGTYPE_PMD, \
+		"PMD: %s(): " fmt "\n", __func__, ##args)
+
+#ifdef RTE_LIBRTE_E1000_DEBUG_INIT
+#define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 #else
-#define PMD_INIT_LOG(level, fmt, args...) do { } while(0)
+#define PMD_INIT_FUNC_TRACE() do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_E1000_DEBUG_RX
@@ -63,10 +66,13 @@
 #endif
 
 #ifdef RTE_LIBRTE_E1000_DEBUG_DRIVER
-#define PMD_DRV_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+#define PMD_DRV_LOG_RAW(level, fmt, args...) \
+	RTE_LOG(level, PMD, "%s(): " fmt, __func__, ## args)
 #else
-#define PMD_DRV_LOG(level, fmt, args...) do { } while(0)
+#define PMD_DRV_LOG_RAW(level, fmt, args...) do { } while (0)
 #endif
+
+#define PMD_DRV_LOG(level, fmt, args...) \
+	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
 
 #endif /* _E1000_LOGS_H_ */

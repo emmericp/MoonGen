@@ -53,25 +53,28 @@ extern "C" {
 #endif
 
 enum rte_page_sizes {
-	RTE_PGSIZE_4K = 1 << 12,
-	RTE_PGSIZE_2M = RTE_PGSIZE_4K << 9,
-	RTE_PGSIZE_1G = RTE_PGSIZE_2M <<9
+	RTE_PGSIZE_4K = 1ULL << 12,
+	RTE_PGSIZE_2M = 1ULL << 21,
+	RTE_PGSIZE_1G = 1ULL << 30,
+	RTE_PGSIZE_64K = 1ULL << 16,
+	RTE_PGSIZE_16M = 1ULL << 24,
+	RTE_PGSIZE_16G = 1ULL << 34
 };
 
 #define SOCKET_ID_ANY -1                    /**< Any NUMA socket. */
-#ifndef CACHE_LINE_SIZE
-#define CACHE_LINE_SIZE 64                  /**< Cache line size. */
+#ifndef RTE_CACHE_LINE_SIZE
+#define RTE_CACHE_LINE_SIZE 64                  /**< Cache line size. */
 #endif
-#define CACHE_LINE_MASK (CACHE_LINE_SIZE-1) /**< Cache line mask. */
+#define RTE_CACHE_LINE_MASK (RTE_CACHE_LINE_SIZE-1) /**< Cache line mask. */
 
-#define CACHE_LINE_ROUNDUP(size) \
-	(CACHE_LINE_SIZE * ((size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE))
+#define RTE_CACHE_LINE_ROUNDUP(size) \
+	(RTE_CACHE_LINE_SIZE * ((size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE))
 /**< Return the first cache-aligned value greater or equal to size. */
 
 /**
  * Force alignment to cache line.
  */
-#define __rte_cache_aligned __attribute__((__aligned__(CACHE_LINE_SIZE)))
+#define __rte_cache_aligned __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)))
 
 typedef uint64_t phys_addr_t; /**< Physical address definition. */
 #define RTE_BAD_PHYS_ADDR ((phys_addr_t)-1)
@@ -89,7 +92,7 @@ struct rte_memseg {
 	phys_addr_t ioremap_addr; /**< Real physical address inside the VM */
 #endif
 	size_t len;               /**< Length of the segment. */
-	size_t hugepage_sz;       /**< The pagesize of underlying memory */
+	uint64_t hugepage_sz;       /**< The pagesize of underlying memory */
 	int32_t socket_id;          /**< NUMA socket ID. */
 	uint32_t nchannel;          /**< Number of channels. */
 	uint32_t nrank;             /**< Number of ranks. */

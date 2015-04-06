@@ -36,9 +36,9 @@
 
 
 #define RTE_PMD_IXGBE_TX_MAX_BURST 32
+#define RTE_PMD_IXGBE_RX_MAX_BURST 32
 
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
-#define RTE_PMD_IXGBE_RX_MAX_BURST 32
 #define RTE_IXGBE_DESCS_PER_LOOP           4
 #elif defined(RTE_IXGBE_INC_VECTOR)
 #define RTE_IXGBE_DESCS_PER_LOOP           4
@@ -47,8 +47,7 @@
 #endif
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (uint64_t)((char *)((mb)->pkt.data) - \
-	(char *)(mb)->buf_addr))
+	(uint64_t) ((mb)->buf_physaddr + (mb)->data_off)
 
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
 	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
@@ -76,14 +75,14 @@
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
-struct igb_rx_entry {
+struct ixgbe_rx_entry {
 	struct rte_mbuf *mbuf; /**< mbuf associated with RX descriptor. */
 };
 
 /**
  * Structure associated with each descriptor of the TX ring of a TX queue.
  */
-struct igb_tx_entry {
+struct ixgbe_tx_entry {
 	struct rte_mbuf *mbuf; /**< mbuf associated with TX desc, if any. */
 	uint16_t next_id; /**< Index of next descriptor in ring. */
 	uint16_t last_id; /**< Index of last scattered descriptor. */
@@ -92,30 +91,23 @@ struct igb_tx_entry {
 /**
  * Structure associated with each descriptor of the TX ring of a TX queue.
  */
-struct igb_tx_entry_v {
+struct ixgbe_tx_entry_v {
 	struct rte_mbuf *mbuf; /**< mbuf associated with TX desc, if any. */
-};
-
-/**
- * continuous entry sequence, gather by the same mempool
- */
-struct igb_tx_entry_seq {
-	const struct rte_mempool* pool;
-	uint32_t same_pool;
 };
 
 /**
  * Structure associated with each RX queue.
  */
-struct igb_rx_queue {
+struct ixgbe_rx_queue {
 	struct rte_mempool  *mb_pool; /**< mbuf pool to populate RX ring. */
 	volatile union ixgbe_adv_rx_desc *rx_ring; /**< RX ring virtual address. */
 	uint64_t            rx_ring_phys_addr; /**< RX ring DMA address. */
 	volatile uint32_t   *rdt_reg_addr; /**< RDT register address. */
 	volatile uint32_t   *rdh_reg_addr; /**< RDH register address. */
-	struct igb_rx_entry *sw_ring; /**< address of RX software ring. */
+	struct ixgbe_rx_entry *sw_ring; /**< address of RX software ring. */
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
 	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
+	uint64_t            mbuf_initializer; /**< value to init mbufs */
 	uint16_t            nb_rx_desc; /**< number of RX descriptors. */
 	uint16_t            rx_tail;  /**< current value of RDT register. */
 	uint16_t            nb_rx_hold; /**< number of held free RX desc. */
@@ -127,7 +119,6 @@ struct igb_rx_queue {
 #ifdef RTE_IXGBE_INC_VECTOR
 	uint16_t            rxrearm_nb; /**< the idx we start the re-arming from */
 	uint16_t            rxrearm_start;  /**< number of remaining to be re-armed */
-	__m128i             misc_info;  /**< cache XMM combine port_id/crc/nb_segs */
 #endif
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id; /**< RX queue index. */
@@ -135,7 +126,7 @@ struct igb_rx_queue {
 	uint8_t             port_id;  /**< Device port identifier. */
 	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
-	uint8_t             start_rx_per_q;
+	uint8_t             rx_deferred_start; /**< not in global dev start. */
 #ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
@@ -153,28 +144,49 @@ enum ixgbe_advctx_num {
 	IXGBE_CTX_NUM  = 2, /**< CTX NUMBER  */
 };
 
+/** Offload features */
+union ixgbe_tx_offload {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
+		uint64_t l4_len:8; /**< L4 (TCP/UDP) Header Length. */
+		uint64_t tso_segsz:16; /**< TCP TSO segment size */
+		uint64_t vlan_tci:16;
+		/**< VLAN Tag Control Identifier (CPU order). */
+	};
+};
+
+/*
+ * Compare mask for vlan_macip_len.data,
+ * should be in sync with ixgbe_vlan_macip.f layout.
+ * */
+#define TX_VLAN_CMP_MASK        0xFFFF0000  /**< VLAN length - 16-bits. */
+#define TX_MAC_LEN_CMP_MASK     0x0000FE00  /**< MAC length - 7-bits. */
+#define TX_IP_LEN_CMP_MASK      0x000001FF  /**< IP  length - 9-bits. */
+/** MAC+IP  length. */
+#define TX_MACIP_LEN_CMP_MASK   (TX_MAC_LEN_CMP_MASK | TX_IP_LEN_CMP_MASK)
+
 /**
  * Structure to check if new context need be built
  */
 
 struct ixgbe_advctx_info {
-	uint16_t flags;           /**< ol_flags for context build. */
-	uint32_t cmp_mask;        /**< compare mask for vlan_macip_lens */
-	union rte_vlan_macip vlan_macip_lens; /**< vlan, mac ip length. */
+	uint64_t flags;           /**< ol_flags for context build. */
+	/**< tx offload: vlan, tso, l2-l3-l4 lengths. */
+	union ixgbe_tx_offload tx_offload;
+	/** compare mask for tx offload. */
+	union ixgbe_tx_offload tx_offload_mask;
 };
 
 /**
  * Structure associated with each TX queue.
  */
-struct igb_tx_queue {
+struct ixgbe_tx_queue {
 	/** TX ring virtual address. */
 	volatile union ixgbe_adv_tx_desc *tx_ring;
 	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
-	struct igb_tx_entry *sw_ring;      /**< virtual address of SW ring. */
-#ifdef RTE_IXGBE_INC_VECTOR
-	/** continuous tx entry sequence within the same mempool */
-	struct igb_tx_entry_seq *sw_ring_seq;
-#endif
+	struct ixgbe_tx_entry *sw_ring;      /**< virtual address of SW ring. */
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
 	uint16_t            tx_tail;       /**< current value of TDT reg. */
@@ -199,14 +211,14 @@ struct igb_tx_queue {
 	uint32_t            ctx_curr;      /**< Hardware context states. */
 	/** Hardware context0 history. */
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
-	struct ixgbe_txq_ops *ops;          /**< txq ops */
-	uint8_t             start_tx_per_q;
+	const struct ixgbe_txq_ops *ops;       /**< txq ops */
+	uint8_t             tx_deferred_start; /**< not in global dev start. */
 };
 
 struct ixgbe_txq_ops {
-	void (*release_mbufs)(struct igb_tx_queue *txq);
-	void (*free_swring)(struct igb_tx_queue *txq);
-	void (*reset)(struct igb_tx_queue *txq);
+	void (*release_mbufs)(struct ixgbe_tx_queue *txq);
+	void (*free_swring)(struct ixgbe_tx_queue *txq);
+	void (*reset)(struct ixgbe_tx_queue *txq);
 };
 
 /*
@@ -236,12 +248,41 @@ struct ixgbe_txq_ops {
 			 IXGBE_ADVTXD_DCMD_DEXT |\
 			 IXGBE_ADVTXD_DCMD_EOP)
 
-#ifdef RTE_IXGBE_INC_VECTOR
-uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
-uint16_t ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
-int ixgbe_txq_vec_setup(struct igb_tx_queue *txq, unsigned int socket_id);
-int ixgbe_rxq_vec_setup(struct igb_rx_queue *rxq, unsigned int socket_id);
-int ixgbe_rx_vec_condition_check(struct rte_eth_dev *dev);
-#endif
 
-#endif
+/* Takes an ethdev and a queue and sets up the tx function to be used based on
+ * the queue parameters. Used in tx_queue_setup by primary process and then
+ * in dev_init by secondary process when attaching to an existing ethdev.
+ */
+void ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq);
+
+/**
+ * Sets the rx_pkt_burst callback in the ixgbe rte_eth_dev instance.
+ *
+ * Sets the callback based on the device parameters:
+ *  - ixgbe_hw.rx_bulk_alloc_allowed
+ *  - rte_eth_dev_data.scattered_rx
+ *  - rte_eth_dev_data.lro
+ *  - conditions checked in ixgbe_rx_vec_condition_check()
+ *
+ *  This means that the parameters above have to be configured prior to calling
+ *  to this function.
+ *
+ * @dev rte_eth_dev handle
+ */
+void ixgbe_set_rx_function(struct rte_eth_dev *dev);
+
+uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+uint16_t ixgbe_recv_scattered_pkts_vec(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+int ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev);
+int ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq);
+
+#ifdef RTE_IXGBE_INC_VECTOR
+
+uint16_t ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq);
+
+#endif /* RTE_IXGBE_INC_VECTOR */
+#endif /* _IXGBE_RXTX_H_ */

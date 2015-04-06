@@ -3860,8 +3860,10 @@ static inline struct sk_buff *__kc__vlan_hwaccel_put_tag(struct sk_buff *skb,
 #endif /* >= 3.10.0 */
 
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0) )
-#if (!(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,0)))
-#if (!(UBUNTU_RELEASE_CODE == UBUNTU_RELEASE_VERSION(14,4) && UBUNTU_KERNEL_CODE >= UBUNTU_KERNEL_VERSION(3,13,0,30,54)))
+#if (!(RHEL_RELEASE_CODE && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,6)))
+#if (!(UBUNTU_KERNEL_CODE >= UBUNTU_KERNEL_VERSION(3,13,0,30,54) \
+    && (UBUNTU_RELEASE_CODE == UBUNTU_RELEASE_VERSION(12,4) \
+     || UBUNTU_RELEASE_CODE == UBUNTU_RELEASE_VERSION(14,4))))
 #ifdef NETIF_F_RXHASH
 #define PKT_HASH_TYPE_L3 0
 static inline void
@@ -3878,5 +3880,9 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #define SET_ETHTOOL_OPS(netdev, ops) ((netdev)->ethtool_ops = (ops))
 #define HAVE_VF_MIN_MAX_TXRATE 1
 #endif /* >= 3.16.0 */
+
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0) )
+#define HAVE_NDO_FDB_ADD_VID
+#endif /* >= 3.19.0 */
 
 #endif /* _KCOMPAT_H_ */

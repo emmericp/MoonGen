@@ -48,7 +48,6 @@
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -80,9 +79,8 @@
 #define MAKE_STRING(x)          # x
 
 static struct rte_mempool *pktmbuf_pool = NULL;
-static struct rte_mempool *ctrlmbuf_pool = NULL;
 
-#if defined RTE_MBUF_SCATTER_GATHER  && defined RTE_MBUF_REFCNT_ATOMIC
+#ifdef RTE_MBUF_REFCNT_ATOMIC
 
 static struct rte_mempool *refcnt_pool = NULL;
 static struct rte_ring *refcnt_mbuf_ring = NULL;
@@ -272,8 +270,8 @@ test_one_pktmbuf(void)
 		GOTO_FAIL("Buffer should be continuous");
 	memset(hdr, 0x55, MBUF_TEST_HDR2_LEN);
 
-	rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
-	rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
+	rte_mbuf_sanity_check(m, 1);
+	rte_mbuf_sanity_check(m, 0);
 	rte_pktmbuf_dump(stdout, m, 0);
 
 	/* this prepend should fail */
@@ -320,54 +318,9 @@ fail:
 	return -1;
 }
 
-/*
- * test control mbuf
- */
-static int
-test_one_ctrlmbuf(void)
-{
-	struct rte_mbuf *m = NULL;
-	char message[] = "This is a message carried by a ctrlmbuf";
-
-	printf("Test ctrlmbuf API\n");
-
-	/* alloc a mbuf */
-
-	m = rte_ctrlmbuf_alloc(ctrlmbuf_pool);
-	if (m == NULL)
-		GOTO_FAIL("Cannot allocate mbuf");
-	if (rte_ctrlmbuf_len(m) != 0)
-		GOTO_FAIL("Bad length");
-
-	/* set data */
-	rte_ctrlmbuf_data(m) = &message;
-	rte_ctrlmbuf_len(m) = sizeof(message);
-
-	/* read data */
-	if (rte_ctrlmbuf_data(m) != message)
-		GOTO_FAIL("Invalid data pointer");
-	if (rte_ctrlmbuf_len(m) != sizeof(message))
-		GOTO_FAIL("Invalid len");
-
-	rte_mbuf_sanity_check(m, RTE_MBUF_CTRL, 0);
-
-	/* free mbuf */
-	rte_ctrlmbuf_free(m);
-	m = NULL;
-	return 0;
-
-fail:
-	if (m)
-		rte_ctrlmbuf_free(m);
-	return -1;
-}
-
 static int
 testclone_testupdate_testdetach(void)
 {
-#ifndef RTE_MBUF_SCATTER_GATHER
-	return 0;
-#else
 	struct rte_mbuf *mc = NULL;
 	struct rte_mbuf *clone = NULL;
 
@@ -387,8 +340,8 @@ testclone_testupdate_testdetach(void)
 		GOTO_FAIL("cannot clone data\n");
 	rte_pktmbuf_free(clone);
 
-	mc->pkt.next = rte_pktmbuf_alloc(pktmbuf_pool);
-	if(mc->pkt.next == NULL)
+	mc->next = rte_pktmbuf_alloc(pktmbuf_pool);
+	if(mc->next == NULL)
 		GOTO_FAIL("Next Pkt Null\n");
 
 	clone = rte_pktmbuf_clone(mc, pktmbuf_pool);
@@ -406,7 +359,6 @@ fail:
 	if (mc)
 		rte_pktmbuf_free(mc);
 	return -1;
-#endif /* RTE_MBUF_SCATTER_GATHER */
 }
 #undef GOTO_FAIL
 
@@ -439,13 +391,11 @@ test_pktmbuf_pool(void)
 		printf("Error pool not empty");
 		ret = -1;
 	}
-#ifdef RTE_MBUF_SCATTER_GATHER
 	extra = rte_pktmbuf_clone(m[0], pktmbuf_pool);
 	if(extra != NULL) {
 		printf("Error pool not empty");
 		ret = -1;
 	}
-#endif
 	/* free them */
 	for (i=0; i<NB_MBUF; i++) {
 		if (m[i] != NULL)
@@ -475,7 +425,7 @@ test_pktmbuf_pool_ptr(void)
 			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
 			ret = -1;
 		}
-		m[i]->pkt.data = RTE_PTR_ADD(m[i]->pkt.data, 64);
+		m[i]->data_off += 64;
 	}
 
 	/* free them */
@@ -494,8 +444,8 @@ test_pktmbuf_pool_ptr(void)
 			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
 			ret = -1;
 		}
-		if (m[i]->pkt.data != RTE_PTR_ADD(m[i]->buf_addr, RTE_PKTMBUF_HEADROOM)) {
-			printf ("pkt.data pointer not set properly\n");
+		if (m[i]->data_off != RTE_PKTMBUF_HEADROOM) {
+			printf("invalid data_off\n");
 			ret = -1;
 		}
 	}
@@ -536,7 +486,7 @@ test_pktmbuf_free_segment(void)
 			mb = m[i];
 			while(mb != NULL) {
 				mt = mb;
-				mb = mb->pkt.next;
+				mb = mb->next;
 				rte_pktmbuf_free_seg(mt);
 			}
 		}
@@ -547,12 +497,11 @@ test_pktmbuf_free_segment(void)
 
 /*
  * Stress test for rte_mbuf atomic refcnt.
- * Implies that:
- * RTE_MBUF_SCATTER_GATHER and RTE_MBUF_REFCNT_ATOMIC are both defined.
+ * Implies that RTE_MBUF_REFCNT_ATOMIC is defined.
  * For more efficency, recomended to run with RTE_LIBRTE_MBUF_DEBUG defined.
  */
 
-#if defined RTE_MBUF_SCATTER_GATHER  && defined RTE_MBUF_REFCNT_ATOMIC
+#ifdef RTE_MBUF_REFCNT_ATOMIC
 
 static int
 test_refcnt_slave(__attribute__((unused)) void *arg)
@@ -657,7 +606,7 @@ test_refcnt_master(void)
 static int
 test_refcnt_mbuf(void)
 {
-#if defined RTE_MBUF_SCATTER_GATHER  && defined RTE_MBUF_REFCNT_ATOMIC
+#ifdef RTE_MBUF_REFCNT_ATOMIC
 
 	unsigned lnum, master, slave, tref;
 
@@ -720,21 +669,10 @@ test_refcnt_mbuf(void)
 	return (0);
 }
 
-#ifdef RTE_EXEC_ENV_BAREMETAL
-
-/* baremetal - don't test failing sanity checks */
-static int
-test_failing_mbuf_sanity_check(void)
-{
-	return 0;
-}
-
-#else
-
 #include <unistd.h>
 #include <sys/wait.h>
 
-/* linuxapp - use fork() to test mbuf errors panic */
+/* use fork() to test mbuf errors panic */
 static int
 verify_mbuf_check_panics(struct rte_mbuf *buf)
 {
@@ -744,7 +682,7 @@ verify_mbuf_check_panics(struct rte_mbuf *buf)
 	pid = fork();
 
 	if (pid == 0) {
-		rte_mbuf_sanity_check(buf, RTE_MBUF_PKT, 1); /* should panic */
+		rte_mbuf_sanity_check(buf, 1); /* should panic */
 		exit(0);  /* return normally if it doesn't panic */
 	} else if (pid < 0){
 		printf("Fork Failed\n");
@@ -781,13 +719,6 @@ test_failing_mbuf_sanity_check(void)
 	}
 
 	badbuf = *buf;
-	badbuf.type = (uint8_t)-1;
-	if (verify_mbuf_check_panics(&badbuf)) {
-		printf("Error with bad-type mbuf test\n");
-		return -1;
-	}
-
-	badbuf = *buf;
 	badbuf.pool = NULL;
 	if (verify_mbuf_check_panics(&badbuf)) {
 		printf("Error with bad-pool mbuf test\n");
@@ -808,7 +739,6 @@ test_failing_mbuf_sanity_check(void)
 		return -1;
 	}
 
-#ifdef RTE_MBUF_SCATTER_GATHER
 	badbuf = *buf;
 	badbuf.refcnt = 0;
 	if (verify_mbuf_check_panics(&badbuf)) {
@@ -822,17 +752,15 @@ test_failing_mbuf_sanity_check(void)
 		printf("Error with bad-refcnt(MAX) mbuf test\n");
 		return -1;
 	}
-#endif
 
 	return 0;
 }
-#endif
 
 
 static int
 test_mbuf(void)
 {
-	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) != RTE_CACHE_LINE_SIZE * 2);
 
 	/* create pktmbuf pool if it does not exist */
 	if (pktmbuf_pool == NULL) {
@@ -886,22 +814,6 @@ test_mbuf(void)
 
 	if (test_pktmbuf_with_non_ascii_data() < 0) {
 		printf("test_pktmbuf_with_non_ascii_data() failed\n");
-		return -1;
-	}
-
-	/* create ctrlmbuf pool if it does not exist */
-	if (ctrlmbuf_pool == NULL) {
-		ctrlmbuf_pool =
-			rte_mempool_create("test_ctrlmbuf_pool", NB_MBUF,
-					   sizeof(struct rte_mbuf), 32, 0,
-					   NULL, NULL,
-					   rte_ctrlmbuf_init, NULL,
-					   SOCKET_ID_ANY, 0);
-	}
-
-	/* test control mbuf */
-	if (test_one_ctrlmbuf() < 0) {
-		printf("test_one_ctrlmbuf() failed\n");
 		return -1;
 	}
 

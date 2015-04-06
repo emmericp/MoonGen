@@ -69,10 +69,8 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 bool i40e_asq_done(struct i40e_hw *hw);
 
 /* debug function for adminq */
-void i40e_debug_aq(struct i40e_hw *hw,
-		   enum i40e_debug_mask mask,
-		   void *desc,
-		   void *buffer);
+void i40e_debug_aq(struct i40e_hw *hw, enum i40e_debug_mask mask,
+		   void *desc, void *buffer, u16 buf_len);
 
 void i40e_idle_aq(struct i40e_hw *hw);
 void i40e_resume_aq(struct i40e_hw *hw);
@@ -90,6 +88,9 @@ enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,
 				u16 *fw_major_version, u16 *fw_minor_version,
 				u16 *api_major_version, u16 *api_minor_version,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_debug_write_register(struct i40e_hw *hw,
+				u32 reg_addr, u64 reg_val,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_phy_debug(struct i40e_hw *hw, u8 cmd_flags,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_default_vsi(struct i40e_hw *hw, u16 vsi_id,
@@ -103,10 +104,10 @@ enum i40e_status_code i40e_aq_set_phy_config(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
 				  bool atomic_reset);
+enum i40e_status_code i40e_aq_set_phy_int_mask(struct i40e_hw *hw, u16 mask,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_mac_config(struct i40e_hw *hw,
 				u16 max_frame_size, bool crc_en, u16 pacing,
-				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code i40e_aq_set_phy_int_mask(struct i40e_hw *hw, u16 mask,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_get_local_advt_reg(struct i40e_hw *hw,
 				u64 *advt_reg,
@@ -323,12 +324,6 @@ enum i40e_status_code i40e_aq_query_switch_comp_bw_config(struct i40e_hw *hw,
 		struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_resume_port_tx(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
-#ifdef I40E_DCB_SW
-enum i40e_status_code i40e_aq_suspend_port_tx(struct i40e_hw *hw, u16 seid,
-				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code i40e_read_lldp_cfg(struct i40e_hw *hw,
-					struct i40e_lldp_variables *lldp_cfg);
-#endif /* I40E_DCB_SW */
 enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 		u16 vsi,
 		struct i40e_aqc_add_remove_cloud_filters_element_data *filters,

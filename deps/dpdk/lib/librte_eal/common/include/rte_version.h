@@ -44,6 +44,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <string.h>
 #include <rte_common.h>
 
 /**
@@ -54,17 +55,17 @@ extern "C" {
 /**
  * Major version number i.e. the x in x.y.z
  */
-#define RTE_VER_MAJOR 1
+#define RTE_VER_MAJOR 2
 
 /**
  * Minor version number i.e. the y in x.y.z
  */
-#define RTE_VER_MINOR 7
+#define RTE_VER_MINOR 0
 
 /**
  * Patch level number i.e. the z in x.y.z
  */
-#define RTE_VER_PATCH_LEVEL 1
+#define RTE_VER_PATCH_LEVEL 0
 
 /**
  * Extra string to be appended to version number
@@ -104,13 +105,13 @@ rte_version(void)
 	if (version[0] != 0)
 		return version;
 	if (strlen(RTE_VER_SUFFIX) == 0)
-		sprintf(version, "%s %d.%d.%d",
+		snprintf(version, sizeof(version), "%s %d.%d.%d",
 			RTE_VER_PREFIX,
 			RTE_VER_MAJOR,
 			RTE_VER_MINOR,
 			RTE_VER_PATCH_LEVEL);
 	else
-		sprintf(version, "%s %d.%d.%d%s%d",
+		snprintf(version, sizeof(version), "%s %d.%d.%d%s%d",
 			RTE_VER_PREFIX,
 			RTE_VER_MAJOR,
 			RTE_VER_MINOR,

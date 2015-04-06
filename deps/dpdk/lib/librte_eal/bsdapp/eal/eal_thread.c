@@ -39,6 +39,7 @@
 #include <sched.h>
 #include <pthread_np.h>
 #include <sys/queue.h>
+#include <sys/thr.h>
 
 #include <rte_debug.h>
 #include <rte_atomic.h>
@@ -47,7 +48,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_per_lcore.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -55,7 +55,9 @@
 #include "eal_private.h"
 #include "eal_thread.h"
 
-RTE_DEFINE_PER_LCORE(unsigned, _lcore_id);
+RTE_DEFINE_PER_LCORE(unsigned, _lcore_id) = LCORE_ID_ANY;
+RTE_DEFINE_PER_LCORE(unsigned, _socket_id) = (unsigned)SOCKET_ID_ANY;
+RTE_DEFINE_PER_LCORE(rte_cpuset_t, _cpuset);
 
 /*
  * Send a message to a slave lcore identified by slave_id to call a
@@ -98,58 +100,13 @@ rte_eal_remote_launch(int (*f)(void *), void *arg, unsigned slave_id)
 static int
 eal_thread_set_affinity(void)
 {
-	int s;
-	pthread_t thread;
+	unsigned lcore_id = rte_lcore_id();
 
-/*
- * According to the section VERSIONS of the CPU_ALLOC man page:
- *
- * The CPU_ZERO(), CPU_SET(), CPU_CLR(), and CPU_ISSET() macros were added
- * in glibc 2.3.3.
- *
- * CPU_COUNT() first appeared in glibc 2.6.
- *
- * CPU_AND(),     CPU_OR(),     CPU_XOR(),    CPU_EQUAL(),    CPU_ALLOC(),
- * CPU_ALLOC_SIZE(), CPU_FREE(), CPU_ZERO_S(),  CPU_SET_S(),  CPU_CLR_S(),
- * CPU_ISSET_S(),  CPU_AND_S(), CPU_OR_S(), CPU_XOR_S(), and CPU_EQUAL_S()
- * first appeared in glibc 2.7.
- */
-#if defined(CPU_ALLOC)
-	size_t size;
-	cpu_set_t *cpusetp;
+	/* acquire system unique id  */
+	rte_gettid();
 
-	cpusetp = CPU_ALLOC(RTE_MAX_LCORE);
-	if (cpusetp == NULL) {
-		RTE_LOG(ERR, EAL, "CPU_ALLOC failed\n");
-		return -1;
-	}
-
-	size = CPU_ALLOC_SIZE(RTE_MAX_LCORE);
-	CPU_ZERO_S(size, cpusetp);
-	CPU_SET_S(rte_lcore_id(), size, cpusetp);
-
-	thread = pthread_self();
-	s = pthread_setaffinity_np(thread, size, cpusetp);
-	if (s != 0) {
-		RTE_LOG(ERR, EAL, "pthread_setaffinity_np failed\n");
-		CPU_FREE(cpusetp);
-		return -1;
-	}
-
-	CPU_FREE(cpusetp);
-#else /* CPU_ALLOC */
-	cpuset_t cpuset;
-	CPU_ZERO( &cpuset );
-	CPU_SET( rte_lcore_id(), &cpuset );
-
-	thread = pthread_self();
-	s = pthread_setaffinity_np(thread, sizeof( cpuset ), &cpuset);
-	if (s != 0) {
-		RTE_LOG(ERR, EAL, "pthread_setaffinity_np failed\n");
-		return -1;
-	}
-#endif
-	return 0;
+	/* update EAL thread core affinity */
+	return rte_thread_set_affinity(&lcore_config[lcore_id].cpuset);
 }
 
 void eal_thread_init_master(unsigned lcore_id)
@@ -171,6 +128,7 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 	unsigned lcore_id;
 	pthread_t thread_id;
 	int m2s, s2m;
+	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 
 	thread_id = pthread_self();
 
@@ -182,9 +140,6 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 	if (lcore_id == RTE_MAX_LCORE)
 		rte_panic("cannot retrieve lcore id\n");
 
-	RTE_LOG(DEBUG, EAL, "Core %u is ready (tid=%p)\n",
-		lcore_id, thread_id);
-
 	m2s = lcore_config[lcore_id].pipe_master2slave[0];
 	s2m = lcore_config[lcore_id].pipe_slave2master[1];
 
@@ -194,6 +149,11 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 	/* set CPU affinity */
 	if (eal_thread_set_affinity() < 0)
 		rte_panic("cannot set affinity\n");
+
+	ret = eal_thread_dump_affinity(cpuset, RTE_CPU_AFFINITY_STR_LEN);
+
+	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%p;cpuset=[%s%s])\n",
+		lcore_id, thread_id, cpuset, ret == 0 ? "" : "...");
 
 	/* read on our pipe to get commands */
 	while (1) {
@@ -230,4 +190,12 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 	/* never reached */
 	/* pthread_exit(NULL); */
 	/* return NULL; */
+}
+
+/* require calling thread tid by gettid() */
+int rte_sys_gettid(void)
+{
+	long lwpid;
+	thr_self(&lwpid);
+	return (int)lwpid;
 }

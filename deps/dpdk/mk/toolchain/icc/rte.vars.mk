@@ -41,11 +41,8 @@
 # Warning: we do not use CROSS environment variable as icc is mainly a
 # x86->x86 compiler
 
-ifeq ($(KERNELRELEASE),)
 CC        = icc
-else
-CC        = gcc
-endif
+KERNELCC  = gcc
 CPP       = cpp
 AS        = nasm
 AR        = ar
@@ -69,26 +66,18 @@ TOOLCHAIN_ASFLAGS =
 # Turn off some ICC warnings -
 #   Remark #271   : trailing comma is nonstandard
 #   Warning #1478 : function "<func_name>" (declared at line N of "<filename>")
+#   error #13368: loop was not vectorized with "vector always assert"
+#   error #15527: loop was not vectorized: function call to fprintf cannot be vectorize
 #                   was declared "deprecated"
-ifeq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
 WERROR_FLAGS := -Wall -Werror-all -w2 -diag-disable 271 -diag-warning 1478
-else
-
-# Turn off some ICC warnings -
-#   Remark #193   : zero used for undefined preprocessing identifier
-#                  (needed for newlib)
-#   Remark #271   : trailing comma is nonstandard
-#   Remark #1292  : attribute "warning" ignored ((warning ("the use of
-#                   `mktemp' is dangerous; use `mkstemp' instead"))));
-#                   (needed for newlib)
-#   Warning #1478 : function "<func_name>" (declared at line N of "<filename>")
-#                   was declared "deprecated"
-WERROR_FLAGS := -Wall -Werror-all -w2 -diag-disable 193,271,1292 \
-		-diag-warning 1478
-endif
+WERROR_FLAGS += -diag-disable 13368 -diag-disable 15527
 
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
+# disable max-inline params boundaries for ICC 15 compiler
+ifeq ($(shell test $(ICC_MAJOR_VERSION) -eq 15 && echo 1), 1)
+	TOOLCHAIN_CFLAGS += -no-inline-max-size -no-inline-max-total-size
+endif
 
 export CC AS AR LD OBJCOPY OBJDUMP STRIP READELF
 export TOOLCHAIN_CFLAGS TOOLCHAIN_LDFLAGS TOOLCHAIN_ASFLAGS

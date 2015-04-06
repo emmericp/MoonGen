@@ -42,7 +42,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
@@ -52,16 +51,17 @@
 #include <rte_branch_prediction.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
+#include <rte_debug.h>
 
 #include "eal_private.h"
 
-/**
- * Name of tailq_head
- */
-const char* rte_tailq_names[RTE_MAX_TAILQ] = {
-#define rte_tailq_elem(idx, name)     name,
-#include <rte_tailq_elem.h>
-};
+TAILQ_HEAD(rte_tailq_elem_head, rte_tailq_elem);
+/* local tailq list */
+static struct rte_tailq_elem_head rte_tailq_elem_head =
+	TAILQ_HEAD_INITIALIZER(rte_tailq_elem_head);
+
+/* number of tailqs registered, -1 before call to rte_eal_tailqs_init */
+static int rte_tailqs_count = -1;
 
 struct rte_tailq_head *
 rte_eal_tailq_lookup(const char *name)
@@ -73,38 +73,12 @@ rte_eal_tailq_lookup(const char *name)
 		return NULL;
 
 	for (i = 0; i < RTE_MAX_TAILQ; i++) {
-		if (rte_tailq_names[i] == NULL)
-			continue;
-		if (!strncmp(name, rte_tailq_names[i], RTE_TAILQ_NAMESIZE-1))
+		if (!strncmp(name, mcfg->tailq_head[i].name,
+			     RTE_TAILQ_NAMESIZE-1))
 			return &mcfg->tailq_head[i];
 	}
 
 	return NULL;
-}
-
-inline struct rte_tailq_head *
-rte_eal_tailq_lookup_by_idx(const unsigned tailq_idx)
-{
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-
-	if (tailq_idx >= RTE_MAX_TAILQ) {
-		RTE_LOG(ERR, EAL, "%s(): No more room in config\n", __func__);
-		return NULL;
-	}
-
-	return &mcfg->tailq_head[tailq_idx];
-}
-
-struct rte_tailq_head *
-rte_eal_tailq_reserve(const char *name)
-{
-	return rte_eal_tailq_lookup(name);
-}
-
-inline struct rte_tailq_head *
-rte_eal_tailq_reserve_by_idx(const unsigned tailq_idx)
-{
-	return rte_eal_tailq_lookup_by_idx(tailq_idx);
 }
 
 void
@@ -116,31 +90,113 @@ rte_dump_tailq(FILE *f)
 	mcfg = rte_eal_get_configuration()->mem_config;
 
 	rte_rwlock_read_lock(&mcfg->qlock);
-	for (i=0; i < RTE_MAX_TAILQ; i++) {
+	for (i = 0; i < RTE_MAX_TAILQ; i++) {
 		const struct rte_tailq_head *tailq = &mcfg->tailq_head[i];
 		const struct rte_tailq_entry_head *head = &tailq->tailq_head;
 
-		fprintf(f, "Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n", i,
-		       (rte_tailq_names[i] != NULL ? rte_tailq_names[i]:"nil"),
-		       head->tqh_first, head->tqh_last);
+		fprintf(f, "Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n",
+			i, tailq->name, head->tqh_first, head->tqh_last);
 	}
 	rte_rwlock_read_unlock(&mcfg->qlock);
+}
+
+static struct rte_tailq_head *
+rte_eal_tailq_create(const char *name)
+{
+	struct rte_tailq_head *head = NULL;
+
+	if (!rte_eal_tailq_lookup(name) &&
+	    (rte_tailqs_count + 1 < RTE_MAX_TAILQ)) {
+		struct rte_mem_config *mcfg;
+
+		mcfg = rte_eal_get_configuration()->mem_config;
+		head = &mcfg->tailq_head[rte_tailqs_count];
+		snprintf(head->name, sizeof(head->name) - 1, "%s", name);
+		TAILQ_INIT(&head->tailq_head);
+		rte_tailqs_count++;
+	}
+
+	return head;
+}
+
+/* local register, used to store "early" tailqs before rte_eal_init() and to
+ * ensure secondary process only registers tailqs once. */
+static int
+rte_eal_tailq_local_register(struct rte_tailq_elem *t)
+{
+	struct rte_tailq_elem *temp;
+
+	TAILQ_FOREACH(temp, &rte_tailq_elem_head, next) {
+		if (!strncmp(t->name, temp->name, sizeof(temp->name)))
+			return -1;
+	}
+
+	TAILQ_INSERT_TAIL(&rte_tailq_elem_head, t, next);
+	return 0;
+}
+
+static void
+rte_eal_tailq_update(struct rte_tailq_elem *t)
+{
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* primary process is the only one that creates */
+		t->head = rte_eal_tailq_create(t->name);
+	} else {
+		t->head = rte_eal_tailq_lookup(t->name);
+	}
+}
+
+int
+rte_eal_tailq_register(struct rte_tailq_elem *t)
+{
+	if (rte_eal_tailq_local_register(t) < 0) {
+		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
+			"%s tailq is already registered\n", t->name);
+		goto error;
+	}
+
+	/* if a register happens after rte_eal_tailqs_init(), then we can update
+	 * tailq head */
+	if (rte_tailqs_count >= 0) {
+		rte_eal_tailq_update(t);
+		if (t->head == NULL) {
+			rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
+				"Cannot initialize tailq: %s\n", t->name);
+			TAILQ_REMOVE(&rte_tailq_elem_head, t, next);
+			goto error;
+		}
+	}
+
+	return 0;
+
+error:
+	t->head = NULL;
+	return -1;
 }
 
 int
 rte_eal_tailqs_init(void)
 {
-	unsigned i;
-	struct rte_mem_config *mcfg = NULL;
+	struct rte_tailq_elem *t;
 
-	RTE_BUILD_BUG_ON(RTE_MAX_TAILQ < RTE_TAILQ_NUM);
+	rte_tailqs_count = 0;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		mcfg = rte_eal_get_configuration()->mem_config;
-		for (i = 0; i < RTE_MAX_TAILQ; i++)
-			TAILQ_INIT(&mcfg->tailq_head[i].tailq_head);
+	TAILQ_FOREACH(t, &rte_tailq_elem_head, next) {
+		/* second part of register job for "early" tailqs, see
+		 * rte_eal_tailq_register and EAL_REGISTER_TAILQ */
+		rte_eal_tailq_update(t);
+		if (t->head == NULL) {
+			rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
+				"Cannot initialize tailq: %s\n", t->name);
+			/* no need to TAILQ_REMOVE, we are going to panic in
+			 * rte_eal_init() */
+			goto fail;
+		}
 	}
 
 	return 0;
-}
 
+fail:
+	rte_dump_tailq(stderr);
+	return -1;
+}

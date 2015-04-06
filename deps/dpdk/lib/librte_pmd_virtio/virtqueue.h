@@ -46,9 +46,18 @@
 #include "virtio_ring.h"
 #include "virtio_logs.h"
 
-#define mb()  rte_mb()
-#define wmb() rte_wmb()
-#define rmb() rte_rmb()
+/*
+ * Per virtio_config.h in Linux.
+ *     For virtio_pci on SMP, we don't need to order with respect to MMIO
+ *     accesses through relaxed memory I/O windows, so smp_mb() et al are
+ *     sufficient.
+ *
+ * This driver is for virtio_pci on SMP and therefore can assume
+ * weaker (compiler barriers)
+ */
+#define virtio_mb()	rte_mb()
+#define virtio_rmb()	rte_compiler_barrier()
+#define virtio_wmb()	rte_compiler_barrier()
 
 #ifdef RTE_PMD_PACKET_PREFETCH
 #define rte_packet_prefetch(p)  rte_prefetch1(p)
@@ -59,8 +68,7 @@
 #define VIRTQUEUE_MAX_NAME_SZ 32
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (uint64_t)((char *)((mb)->pkt.data) - \
-	(char *)(mb)->buf_addr))
+	(uint64_t) ((mb)->buf_physaddr + (mb)->data_off)
 
 #define VTNET_SQ_RQ_QUEUE_IDX 0
 #define VTNET_SQ_TQ_QUEUE_IDX 1
@@ -91,6 +99,34 @@ enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
 #define VIRTIO_NET_CTRL_RX_NOBCAST      5
 
 /**
+ * Control the MAC
+ *
+ * The MAC filter table is managed by the hypervisor, the guest should
+ * assume the size is infinite.  Filtering should be considered
+ * non-perfect, ie. based on hypervisor resources, the guest may
+ * received packets from sources not specified in the filter list.
+ *
+ * In addition to the class/cmd header, the TABLE_SET command requires
+ * two out scatterlists.  Each contains a 4 byte count of entries followed
+ * by a concatenated byte stream of the ETH_ALEN MAC addresses.  The
+ * first sg list contains unicast addresses, the second is for multicast.
+ * This functionality is present if the VIRTIO_NET_F_CTRL_RX feature
+ * is available.
+ *
+ * The ADDR_SET command requests one out scatterlist, it contains a
+ * 6 bytes MAC address. This functionality is present if the
+ * VIRTIO_NET_F_CTRL_MAC_ADDR feature is available.
+ */
+struct virtio_net_ctrl_mac {
+	uint32_t entries;
+	uint8_t macs[][ETHER_ADDR_LEN];
+} __attribute__((__packed__));
+
+#define VIRTIO_NET_CTRL_MAC    1
+ #define VIRTIO_NET_CTRL_MAC_TABLE_SET        0
+ #define VIRTIO_NET_CTRL_MAC_ADDR_SET         1
+
+/**
  * Control VLAN filtering
  *
  * The VLAN filter table is controlled via a simple ADD/DEL interface.
@@ -113,7 +149,7 @@ typedef uint8_t virtio_net_ctrl_ack;
 #define VIRTIO_NET_OK     0
 #define VIRTIO_NET_ERR    1
 
-#define VIRTIO_MAX_CTRL_DATA 128
+#define VIRTIO_MAX_CTRL_DATA 2048
 
 struct virtio_pmd_ctrl {
 	struct virtio_net_ctrl_hdr hdr;
@@ -128,16 +164,16 @@ struct virtqueue {
 	struct rte_mempool       *mpool;  /**< mempool for mbuf allocation */
 	uint16_t    queue_id;             /**< DPDK queue index. */
 	uint8_t     port_id;              /**< Device port identifier. */
+	uint16_t    vq_queue_index;       /**< PCI queue index */
 
 	void        *vq_ring_virt_mem;    /**< linear address of vring*/
-	int         vq_alignment;
-	int         vq_ring_size;
+	unsigned int vq_ring_size;
 	phys_addr_t vq_ring_mem;          /**< physical address of vring */
 
 	struct vring vq_ring;    /**< vring keeping desc, used and avail */
 	uint16_t    vq_free_cnt; /**< num of desc available */
 	uint16_t    vq_nentries; /**< vring desc numbers */
-	uint16_t    vq_queue_index;       /**< PCI queue index */
+	uint16_t    vq_free_thresh; /**< free threshold */
 	/**
 	 * Head of the free chain in the descriptor table. If
 	 * there are no free descriptors, this will be set to
@@ -172,6 +208,10 @@ struct virtqueue {
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
+#endif
+#ifndef VIRTIO_NET_F_CTRL_MAC_ADDR
+#define VIRTIO_NET_F_CTRL_MAC_ADDR 0x800000
+#define VIRTIO_NET_CTRL_MAC_ADDR_SET         1
 #endif
 
 /**
@@ -226,7 +266,7 @@ virtqueue_full(const struct virtqueue *vq)
 static inline void
 vq_update_avail_idx(struct virtqueue *vq)
 {
-	rte_compiler_barrier();
+	virtio_wmb();
 	vq->vq_ring.avail->idx = vq->vq_avail_idx;
 }
 
@@ -256,7 +296,7 @@ static inline void
 virtqueue_notify(struct virtqueue *vq)
 {
 	/*
-	 * Ensure updated avail->idx is visible to host. mb() necessary?
+	 * Ensure updated avail->idx is visible to host.
 	 * For virtio on IA, the notificaiton is through io port operation
 	 * which is a serialization instruction itself.
 	 */

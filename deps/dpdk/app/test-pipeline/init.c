@@ -48,7 +48,6 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -112,7 +111,7 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
+			.rss_hf = ETH_RSS_IP,
 		},
 	},
 	.txmode = {
@@ -227,11 +226,6 @@ static void
 app_init_ports(void)
 {
 	uint32_t i;
-
-	/* Init driver */
-	RTE_LOG(INFO, USER1, "Initializing the PMD driver ...\n");
-	if (rte_eal_pci_probe() < 0)
-		rte_panic("Cannot probe PCI\n");
 
 	/* Init NIC ports, then start the ports */
 	for (i = 0; i < app.n_ports; i++) {

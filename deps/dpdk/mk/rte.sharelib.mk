@@ -29,6 +29,8 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+include $(RTE_SDK)/mk/internal/rte.build-pre.mk
+
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
 
@@ -45,7 +47,16 @@ sharelib: $(LIB_ONE) FORCE
 
 OBJS = $(wildcard $(RTE_OUTPUT)/build/lib/*.o)
 
-O_TO_S = $(LD) $(CPU_LDFLAGS) -shared $(OBJS) -o $(RTE_OUTPUT)/lib/$(LIB_ONE)
+ifeq ($(LINK_USING_CC),1)
+# Override the definition of LD here, since we're linking with CC
+LD := $(CC) $(CPU_CFLAGS)
+O_TO_S = $(LD) $(call linkerprefix,$(CPU_LDFLAGS)) \
+	-shared $(OBJS) -o $(RTE_OUTPUT)/lib/$(LIB_ONE)
+else
+O_TO_S = $(LD) $(CPU_LDFLAGS) \
+	-shared $(OBJS) -o $(RTE_OUTPUT)/lib/$(LIB_ONE)
+endif
+
 O_TO_S_STR = $(subst ','\'',$(O_TO_S)) #'# fix syntax highlight
 O_TO_S_DISP = $(if $(V),"$(O_TO_S_STR)","  LD $(@)")
 O_TO_S_CMD = "cmd_$@ = $(O_TO_S_STR)"

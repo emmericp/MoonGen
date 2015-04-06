@@ -40,13 +40,10 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_debug.h>
-
-#include "main.h"
 
 static int
 lcore_hello(__attribute__((unused)) void *arg)
@@ -58,7 +55,7 @@ lcore_hello(__attribute__((unused)) void *arg)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 	unsigned lcore_id;

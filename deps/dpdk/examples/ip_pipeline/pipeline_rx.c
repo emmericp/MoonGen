@@ -255,8 +255,8 @@ app_pkt_metadata_fill(struct rte_mbuf *m)
 	/* Pop Ethernet header */
 	if (app.ether_hdr_pop_push) {
 		rte_pktmbuf_adj(m, (uint16_t)sizeof(struct ether_hdr));
-		m->pkt.vlan_macip.f.l2_len = 0;
-		m->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+		m->l2_len = 0;
+		m->l3_len = sizeof(struct ipv4_hdr);
 	}
 }
 
@@ -295,7 +295,7 @@ app_main_loop_rx(void) {
 	RTE_LOG(INFO, USER1, "Core %u is doing RX (no pipeline)\n", core_id);
 
 	ma = rte_malloc_socket(NULL, sizeof(struct app_mbuf_array),
-		CACHE_LINE_SIZE, rte_socket_id());
+		RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (ma == NULL)
 		rte_panic("%s: cannot allocate buffer space\n", __func__);
 
@@ -348,7 +348,7 @@ app_message_handle(struct app_core_rx_message_handle_params *params)
 	port_in_id = params->port_in_id;
 
 	/* Handle request */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	switch (req->type) {
 	case APP_MSG_REQ_PING:
 	{
@@ -375,7 +375,7 @@ app_message_handle(struct app_core_rx_message_handle_params *params)
 	}
 
 	/* Fill in response message */
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	resp->result = result;
 
 	/* Send response */

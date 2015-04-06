@@ -51,6 +51,15 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_SFF_CABLE_SPEC_COMP	0x3C
 #define IXGBE_SFF_SFF_8472_SWAP		0x5C
 #define IXGBE_SFF_SFF_8472_COMP		0x5E
+#define IXGBE_SFF_IDENTIFIER_QSFP_PLUS	0xD
+#define IXGBE_SFF_QSFP_VENDOR_OUI_BYTE0	0xA5
+#define IXGBE_SFF_QSFP_VENDOR_OUI_BYTE1	0xA6
+#define IXGBE_SFF_QSFP_VENDOR_OUI_BYTE2	0xA7
+#define IXGBE_SFF_QSFP_CONNECTOR	0x82
+#define IXGBE_SFF_QSFP_10GBE_COMP	0x83
+#define IXGBE_SFF_QSFP_1GBE_COMP	0x86
+#define IXGBE_SFF_QSFP_CABLE_LENGTH	0x92
+#define IXGBE_SFF_QSFP_DEVICE_TECH	0x93
 
 /* Bitmasks */
 #define IXGBE_SFF_DA_PASSIVE_CABLE	0x4
@@ -61,16 +70,22 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_SFF_1GBASET_CAPABLE	0x8
 #define IXGBE_SFF_10GBASESR_CAPABLE	0x10
 #define IXGBE_SFF_10GBASELR_CAPABLE	0x20
-#ifdef SUPPORT_10GBASE_ER
-#define IXGBE_SFF_10GBASEER_CAPABLE    0x80
-#endif /* SUPPORT_10GBASE_ER */
 #define IXGBE_SFF_ADDRESSING_MODE	0x4
+#define IXGBE_SFF_QSFP_DA_ACTIVE_CABLE	0x1
+#define IXGBE_SFF_QSFP_DA_PASSIVE_CABLE	0x8
+#define IXGBE_SFF_QSFP_CONNECTOR_NOT_SEPARABLE	0x23
+#define IXGBE_SFF_QSFP_TRANSMITER_850NM_VCSEL	0x0
 #define IXGBE_I2C_EEPROM_READ_MASK	0x100
 #define IXGBE_I2C_EEPROM_STATUS_MASK	0x3
 #define IXGBE_I2C_EEPROM_STATUS_NO_OPERATION	0x0
 #define IXGBE_I2C_EEPROM_STATUS_PASS	0x1
 #define IXGBE_I2C_EEPROM_STATUS_FAIL	0x2
 #define IXGBE_I2C_EEPROM_STATUS_IN_PROGRESS	0x3
+
+#define IXGBE_CS4227			0x9E	/* CS4227 address */
+#define IXGBE_CS4227_SPARE24_LSB	0x12B0	/* Reg to program EDC */
+#define IXGBE_CS4227_EDC_MODE_CX1	0x0002
+#define IXGBE_CS4227_EDC_MODE_SR	0x0004
 
 /* Flow control defines */
 #define IXGBE_TAF_SYM_PAUSE		0x400
@@ -143,6 +158,8 @@ s32 ixgbe_get_phy_firmware_version_generic(struct ixgbe_hw *hw,
 s32 ixgbe_reset_phy_nl(struct ixgbe_hw *hw);
 s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw);
 s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw);
+s32 ixgbe_get_supported_phy_sfp_layer_generic(struct ixgbe_hw *hw);
+s32 ixgbe_identify_qsfp_module_generic(struct ixgbe_hw *hw);
 s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
 					u16 *list_offset,
 					u16 *data_offset);

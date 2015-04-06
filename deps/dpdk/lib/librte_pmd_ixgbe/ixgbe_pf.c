@@ -53,6 +53,8 @@
 #include "ixgbe_ethdev.h"
 
 #define IXGBE_MAX_VFTA     (128)
+#define IXGBE_VF_MSG_SIZE_DEFAULT 1
+#define IXGBE_VF_GET_QUEUE_MSG_SIZE 5
 
 static inline uint16_t
 dev_num_vf(struct rte_eth_dev *eth_dev)
@@ -449,8 +451,10 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 	uint32_t max_frs;
 	int max_frame = new_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
 
-	/* Only X540 supports jumbo frames in IOV mode */
-	if (hw->mac.type != ixgbe_mac_X540)
+	/* X540 and X550 support jumbo frames in IOV mode */
+	if (hw->mac.type != ixgbe_mac_X540 &&
+		hw->mac.type != ixgbe_mac_X550 &&
+		hw->mac.type != ixgbe_mac_X550EM_x)
 		return -1;
 
 	if ((max_frame < ETHER_MIN_LEN) || (max_frame > ETHER_MAX_JUMBO_FRAME_LEN))
@@ -467,9 +471,63 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 }
 
 static int
+ixgbe_negotiate_vf_api(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
+{
+	uint32_t api_version = msgbuf[1];
+	struct ixgbe_vf_info *vfinfo =
+		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
+
+	switch (api_version) {
+	case ixgbe_mbox_api_10:
+	case ixgbe_mbox_api_11:
+		vfinfo[vf].api_version = (uint8_t)api_version;
+		return 0;
+	default:
+		break;
+	}
+
+	RTE_LOG(ERR, PMD, "Negotiate invalid api version %u from VF %d\n",
+		api_version, vf);
+
+	return -1;
+}
+
+static int
+ixgbe_get_vf_queues(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
+{
+	struct ixgbe_vf_info *vfinfo =
+		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
+	uint32_t default_q = vf * RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+
+	/* Verify if the PF supports the mbox APIs version or not */
+	switch (vfinfo[vf].api_version) {
+	case ixgbe_mbox_api_20:
+	case ixgbe_mbox_api_11:
+		break;
+	default:
+		return -1;
+	}
+
+	/* Notify VF of Rx and Tx queue number */
+	msgbuf[IXGBE_VF_RX_QUEUES] = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+	msgbuf[IXGBE_VF_TX_QUEUES] = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+
+	/* Notify VF of default queue */
+	msgbuf[IXGBE_VF_DEF_QUEUE] = default_q;
+
+	/*
+	 * FIX ME if it needs fill msgbuf[IXGBE_VF_TRANS_VLAN]
+	 * for VLAN strip or VMDQ_DCB or VMDQ_DCB_RSS
+	 */
+
+	return 0;
+}
+
+static int
 ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
 	uint16_t mbx_size = IXGBE_VFMAILBOX_SIZE;
+	uint16_t msg_size = IXGBE_VF_MSG_SIZE_DEFAULT;
 	uint32_t msgbuf[IXGBE_VFMAILBOX_SIZE];
 	int32_t retval;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -478,7 +536,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 
 	retval = ixgbe_read_mbx(hw, msgbuf, mbx_size, vf);
 	if (retval) {
-		RTE_LOG(ERR, PMD, "Error mbx recv msg from VF %d\n", vf);
+		PMD_DRV_LOG(ERR, "Error mbx recv msg from VF %d", vf);
 		return retval;
 	}
 
@@ -510,8 +568,15 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	case IXGBE_VF_SET_VLAN:
 		retval = ixgbe_vf_set_vlan(dev, vf, msgbuf);
 		break;
+	case IXGBE_VF_API_NEGOTIATE:
+		retval = ixgbe_negotiate_vf_api(dev, vf, msgbuf);
+		break;
+	case IXGBE_VF_GET_QUEUES:
+		retval = ixgbe_get_vf_queues(dev, vf, msgbuf);
+		msg_size = IXGBE_VF_GET_QUEUE_MSG_SIZE;
+		break;
 	default:
-		RTE_LOG(DEBUG, PMD, "Unhandled Msg %8.8x\n", (unsigned)  msgbuf[0]);
+		PMD_DRV_LOG(DEBUG, "Unhandled Msg %8.8x", (unsigned)msgbuf[0]);
 		retval = IXGBE_ERR_MBX;
 		break;
 	}
@@ -524,7 +589,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 
 	msgbuf[0] |= IXGBE_VT_MSGTYPE_CTS;
 
-	ixgbe_write_mbx(hw, msgbuf, 1, vf);
+	ixgbe_write_mbx(hw, msgbuf, msg_size, vf);
 
 	return retval;
 }

@@ -43,6 +43,7 @@
 #include <rte_cycles.h>
 #include <rte_log.h>
 #include <rte_debug.h>
+#include <rte_byteorder.h>
 
 #include "../e1000_logs.h"
 
@@ -52,8 +53,8 @@
 #define msec_delay(x) DELAY(1000*(x))
 #define msec_delay_irq(x) DELAY(1000*(x))
 
-#define DEBUGFUNC(F)            DEBUGOUT(F);
-#define DEBUGOUT(S, args...)    PMD_DRV_LOG(DEBUG, S, ##args)
+#define DEBUGFUNC(F)            DEBUGOUT(F "\n");
+#define DEBUGOUT(S, args...)    PMD_DRV_LOG_RAW(DEBUG, S, ##args)
 #define DEBUGOUT1(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT2(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT3(S, args...)   DEBUGOUT(S, ##args)
@@ -96,7 +97,7 @@ typedef int		bool;
 #define E1000_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
 
 #define E1000_PCI_REG_WRITE(reg, value) do { \
-	E1000_PCI_REG((reg)) = (value); \
+	E1000_PCI_REG((reg)) = (rte_cpu_to_le_32(value)); \
 } while (0)
 
 #define E1000_PCI_REG_ADDR(hw, reg) \
@@ -107,7 +108,7 @@ typedef int		bool;
 
 static inline uint32_t e1000_read_addr(volatile void* addr)
 {
-	return E1000_PCI_REG(addr);
+	return rte_le_to_cpu_32(E1000_PCI_REG(addr));
 }
 
 /* Necessary defines */

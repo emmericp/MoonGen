@@ -81,8 +81,16 @@ s32 ixgbe_init_shared_code(struct ixgbe_hw *hw)
 	case ixgbe_mac_X540:
 		status = ixgbe_init_ops_X540(hw);
 		break;
+	case ixgbe_mac_X550:
+		status = ixgbe_init_ops_X550(hw);
+		break;
+	case ixgbe_mac_X550EM_x:
+		status = ixgbe_init_ops_X550EM(hw);
+		break;
 	case ixgbe_mac_82599_vf:
 	case ixgbe_mac_X540_vf:
+	case ixgbe_mac_X550_vf:
+	case ixgbe_mac_X550EM_x_vf:
 		status = ixgbe_init_ops_vf(hw);
 		break;
 	default:
@@ -138,8 +146,10 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_82599_SFP_EM:
 	case IXGBE_DEV_ID_82599_SFP_SF2:
 	case IXGBE_DEV_ID_82599_SFP_SF_QP:
+	case IXGBE_DEV_ID_82599_QSFP_SF_QP:
 	case IXGBE_DEV_ID_82599EN_SFP:
 	case IXGBE_DEV_ID_82599_CX4:
+	case IXGBE_DEV_ID_82599_LS:
 	case IXGBE_DEV_ID_82599_T3_LOM:
 		hw->mac.type = ixgbe_mac_82599EB;
 		break;
@@ -154,6 +164,23 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X540T:
 	case IXGBE_DEV_ID_X540T1:
 		hw->mac.type = ixgbe_mac_X540;
+		break;
+	case IXGBE_DEV_ID_X550T:
+		hw->mac.type = ixgbe_mac_X550;
+		break;
+	case IXGBE_DEV_ID_X550EM_X:
+	case IXGBE_DEV_ID_X550EM_X_KX4:
+	case IXGBE_DEV_ID_X550EM_X_KR:
+	case IXGBE_DEV_ID_X550EM_X_SFP:
+		hw->mac.type = ixgbe_mac_X550EM_x;
+		break;
+	case IXGBE_DEV_ID_X550_VF:
+	case IXGBE_DEV_ID_X550_VF_HV:
+		hw->mac.type = ixgbe_mac_X550_vf;
+		break;
+	case IXGBE_DEV_ID_X550EM_X_VF:
+	case IXGBE_DEV_ID_X550EM_X_VF_HV:
+		hw->mac.type = ixgbe_mac_X550EM_x_vf;
 		break;
 	default:
 		ret_val = IXGBE_ERR_DEVICE_NOT_SUPPORTED;
@@ -1016,7 +1043,188 @@ s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
 }
 
 
+/**
+ *  ixgbe_get_thermal_sensor_data - Gathers thermal sensor data
+ *  @hw: pointer to hardware structure
+ *
+ *  Updates the temperatures in mac.thermal_sensor_data
+ **/
+s32 ixgbe_get_thermal_sensor_data(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.get_thermal_sensor_data, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
 
+/**
+ *  ixgbe_init_thermal_sensor_thresh - Inits thermal sensor thresholds
+ *  @hw: pointer to hardware structure
+ *
+ *  Inits the thermal sensor thresholds according to the NVM map
+ **/
+s32 ixgbe_init_thermal_sensor_thresh(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.init_thermal_sensor_thresh, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_dmac_config - Configure DMA Coalescing registers.
+ *  @hw: pointer to hardware structure
+ *
+ *  Configure DMA coalescing. If enabling dmac, dmac is activated.
+ *  When disabling dmac, dmac enable dmac bit is cleared.
+ **/
+s32 ixgbe_dmac_config(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.dmac_config, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_dmac_update_tcs - Configure DMA Coalescing registers.
+ *  @hw: pointer to hardware structure
+ *
+ *  Disables dmac, updates per TC settings, and then enable dmac.
+ **/
+s32 ixgbe_dmac_update_tcs(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.dmac_update_tcs, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_dmac_config_tcs - Configure DMA Coalescing registers.
+ *  @hw: pointer to hardware structure
+ *
+ *  Configure DMA coalescing threshold per TC and set high priority bit for
+ *  FCOE TC. The dmac enable bit must be cleared before configuring.
+ **/
+s32 ixgbe_dmac_config_tcs(struct ixgbe_hw *hw)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.dmac_config_tcs, (hw),
+				IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_setup_eee - Enable/disable EEE support
+ *  @hw: pointer to the HW structure
+ *  @enable_eee: boolean flag to enable EEE
+ *
+ *  Enable/disable EEE based on enable_ee flag.
+ *  Auto-negotiation must be started after BASE-T EEE bits in PHY register 7.3C
+ *  are modified.
+ *
+ **/
+s32 ixgbe_setup_eee(struct ixgbe_hw *hw, bool enable_eee)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.setup_eee, (hw, enable_eee),
+			IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ * ixgbe_set_source_address_pruning - Enable/Disable source address pruning
+ * @hw: pointer to hardware structure
+ * @enbale: enable or disable source address pruning
+ * @pool: Rx pool - Rx pool to toggle source address pruning
+ **/
+void ixgbe_set_source_address_pruning(struct ixgbe_hw *hw, bool enable,
+				      unsigned int pool)
+{
+	if (hw->mac.ops.set_source_address_pruning)
+		hw->mac.ops.set_source_address_pruning(hw, enable, pool);
+}
+
+/**
+ *  ixgbe_set_ethertype_anti_spoofing - Enable/Disable Ethertype anti-spoofing
+ *  @hw: pointer to hardware structure
+ *  @enable: enable or disable switch for Ethertype anti-spoofing
+ *  @vf: Virtual Function pool - VF Pool to set for Ethertype anti-spoofing
+ *
+ **/
+void ixgbe_set_ethertype_anti_spoofing(struct ixgbe_hw *hw, bool enable, int vf)
+{
+	if (hw->mac.ops.set_ethertype_anti_spoofing)
+		hw->mac.ops.set_ethertype_anti_spoofing(hw, enable, vf);
+}
+
+/**
+ *  ixgbe_read_iosf_sb_reg - Read 32 bit PHY register
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit address of PHY register to read
+ *  @device_type: type of device you want to communicate with
+ *  @phy_data: Pointer to read data from PHY register
+ *
+ *  Reads a value from a specified PHY register
+ **/
+s32 ixgbe_read_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
+			   u32 device_type, u32 *phy_data)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.read_iosf_sb_reg, (hw, reg_addr,
+			       device_type, phy_data), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_write_iosf_sb_reg - Write 32 bit register through IOSF Sideband
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit PHY register to write
+ *  @device_type: type of device you want to communicate with
+ *  @phy_data: Data to write to the PHY register
+ *
+ *  Writes a value to specified PHY register
+ **/
+s32 ixgbe_write_iosf_sb_reg(struct ixgbe_hw *hw, u32 reg_addr,
+			    u32 device_type, u32 phy_data)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.write_iosf_sb_reg, (hw, reg_addr,
+			       device_type, phy_data), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
+ *  ixgbe_disable_mdd - Disable malicious driver detection
+ *  @hw: pointer to hardware structure
+ *
+ **/
+void ixgbe_disable_mdd(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.disable_mdd)
+		hw->mac.ops.disable_mdd(hw);
+}
+
+/**
+ *  ixgbe_enable_mdd - Enable malicious driver detection
+ *  @hw: pointer to hardware structure
+ *
+ **/
+void ixgbe_enable_mdd(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.enable_mdd)
+		hw->mac.ops.enable_mdd(hw);
+}
+
+/**
+ *  ixgbe_mdd_event - Handle malicious driver detection event
+ *  @hw: pointer to hardware structure
+ *  @vf_bitmap: vf bitmap of malicious vfs
+ *
+ **/
+void ixgbe_mdd_event(struct ixgbe_hw *hw, u32 *vf_bitmap)
+{
+	if (hw->mac.ops.mdd_event)
+		hw->mac.ops.mdd_event(hw, vf_bitmap);
+}
+
+/**
+ *  ixgbe_restore_mdd_vf - Restore VF that was disabled during malicious driver
+ *  detection event
+ *  @hw: pointer to hardware structure
+ *  @vf: vf index
+ *
+ **/
+void ixgbe_restore_mdd_vf(struct ixgbe_hw *hw, u32 vf)
+{
+	if (hw->mac.ops.restore_mdd_vf)
+		hw->mac.ops.restore_mdd_vf(hw, vf);
+}
 
 /**
  *  ixgbe_read_analog_reg8 - Reads 8 bit analog register
@@ -1178,7 +1386,7 @@ s32 ixgbe_enable_sec_rx_path(struct ixgbe_hw *hw)
  *  Acquires the SWFW semaphore through SW_FW_SYNC register for the specified
  *  function (CSR, PHY0, PHY1, EEPROM, Flash)
  **/
-s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
+s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u32 mask)
 {
 	return ixgbe_call_func(hw, hw->mac.ops.acquire_swfw_sync,
 			       (hw, mask), IXGBE_NOT_IMPLEMENTED);
@@ -1192,7 +1400,7 @@ s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
  *  Releases the SWFW semaphore through SW_FW_SYNC register for the specified
  *  function (CSR, PHY0, PHY1, EEPROM, Flash)
  **/
-void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u16 mask)
+void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u32 mask)
 {
 	if (hw->mac.ops.release_swfw_sync)
 		hw->mac.ops.release_swfw_sync(hw, mask);

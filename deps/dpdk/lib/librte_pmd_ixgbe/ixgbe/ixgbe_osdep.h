@@ -54,8 +54,8 @@
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 
-#define DEBUGFUNC(F)            DEBUGOUT(F);
-#define DEBUGOUT(S, args...)    PMD_DRV_LOG(DEBUG, S, ##args)
+#define DEBUGFUNC(F)            DEBUGOUT(F "\n");
+#define DEBUGOUT(S, args...)    PMD_DRV_LOG_RAW(DEBUG, S, ##args)
 #define DEBUGOUT1(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT2(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT3(S, args...)   DEBUGOUT(S, ##args)
@@ -82,11 +82,23 @@
 #define UNREFERENCED_3PARAMETER(_p, _q, _r) 
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s) 
 
+/* Shared code error reporting */
+enum {
+	IXGBE_ERROR_SOFTWARE,
+	IXGBE_ERROR_POLLING,
+	IXGBE_ERROR_INVALID_STATE,
+	IXGBE_ERROR_UNSUPPORTED,
+	IXGBE_ERROR_ARGUMENT,
+	IXGBE_ERROR_CAUTION,
+};
+
 #define STATIC static
 #define IXGBE_NTOHL(_i)	rte_be_to_cpu_32(_i)
 #define IXGBE_NTOHS(_i)	rte_be_to_cpu_16(_i)
 #define IXGBE_CPU_TO_LE32(_i)  rte_cpu_to_le_32(_i)
 #define IXGBE_LE32_TO_CPUS(_i) rte_le_to_cpu_32(_i)
+#define IXGBE_CPU_TO_BE16(_i)  rte_cpu_to_be_16(_i)
+#define IXGBE_CPU_TO_BE32(_i)  rte_cpu_to_be_32(_i)
 
 typedef uint8_t		u8;
 typedef int8_t		s8;
@@ -107,11 +119,11 @@ typedef int		bool;
 
 static inline uint32_t ixgbe_read_addr(volatile void* addr)
 {
-	return IXGBE_PCI_REG(addr);
+	return rte_le_to_cpu_32(IXGBE_PCI_REG(addr));
 }
 
 #define IXGBE_PCI_REG_WRITE(reg, value) do { \
-	IXGBE_PCI_REG((reg)) = (value); \
+	IXGBE_PCI_REG((reg)) = (rte_cpu_to_le_32(value)); \
 } while(0)
 
 #define IXGBE_PCI_REG_ADDR(hw, reg) \

@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright 2014 6WIND S.A.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -77,6 +78,11 @@
  */
 
 #include <stdint.h>
+#include <netinet/in.h>
+
+#include <rte_memcpy.h>
+#include <rte_byteorder.h>
+#include <rte_mbuf.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,6 +110,14 @@ struct ipv4_hdr {
 					   (((c) & 0xff) << 8)  | \
 					   ((d) & 0xff))
 
+/** Internet header length mask for version_ihl field */
+#define IPV4_HDR_IHL_MASK	(0x0f)
+/**
+ * Internet header length field multiplier (IHL field specifies overall header
+ * length in number of 4-byte words)
+ */
+#define IPV4_IHL_MULTIPLIER	(4)
+
 /* Fragment Offset * Flags. */
 #define	IPV4_HDR_DF_SHIFT	14
 #define	IPV4_HDR_MF_SHIFT	13
@@ -115,117 +129,6 @@ struct ipv4_hdr {
 #define	IPV4_HDR_OFFSET_MASK	((1 << IPV4_HDR_MF_SHIFT) - 1)
 
 #define	IPV4_HDR_OFFSET_UNITS	8
-
-/* IPv4 protocols */
-#define IPPROTO_IP         0  /**< dummy for IP */
-#define IPPROTO_HOPOPTS    0  /**< IP6 hop-by-hop options */
-#define IPPROTO_ICMP       1  /**< control message protocol */
-#define IPPROTO_IGMP       2  /**< group mgmt protocol */
-#define IPPROTO_GGP        3  /**< gateway^2 (deprecated) */
-#define IPPROTO_IPV4       4  /**< IPv4 encapsulation */
-#define IPPROTO_TCP        6  /**< tcp */
-#define IPPROTO_ST         7  /**< Stream protocol II */
-#define IPPROTO_EGP        8  /**< exterior gateway protocol */
-#define IPPROTO_PIGP       9  /**< private interior gateway */
-#define IPPROTO_RCCMON    10  /**< BBN RCC Monitoring */
-#define IPPROTO_NVPII     11  /**< network voice protocol*/
-#define IPPROTO_PUP       12  /**< pup */
-#define IPPROTO_ARGUS     13  /**< Argus */
-#define IPPROTO_EMCON     14  /**< EMCON */
-#define IPPROTO_XNET      15  /**< Cross Net Debugger */
-#define IPPROTO_CHAOS     16  /**< Chaos*/
-#define IPPROTO_UDP       17  /**< user datagram protocol */
-#define IPPROTO_MUX       18  /**< Multiplexing */
-#define IPPROTO_MEAS      19  /**< DCN Measurement Subsystems */
-#define IPPROTO_HMP       20  /**< Host Monitoring */
-#define IPPROTO_PRM       21  /**< Packet Radio Measurement */
-#define IPPROTO_IDP       22  /**< xns idp */
-#define IPPROTO_TRUNK1    23  /**< Trunk-1 */
-#define IPPROTO_TRUNK2    24  /**< Trunk-2 */
-#define IPPROTO_LEAF1     25  /**< Leaf-1 */
-#define IPPROTO_LEAF2     26  /**< Leaf-2 */
-#define IPPROTO_RDP       27  /**< Reliable Data */
-#define IPPROTO_IRTP      28  /**< Reliable Transaction */
-#define IPPROTO_TP        29  /**< tp-4 w/ class negotiation */
-#define IPPROTO_BLT       30  /**< Bulk Data Transfer */
-#define IPPROTO_NSP       31  /**< Network Services */
-#define IPPROTO_INP       32  /**< Merit Internodal */
-#define IPPROTO_SEP       33  /**< Sequential Exchange */
-#define IPPROTO_3PC       34  /**< Third Party Connect */
-#define IPPROTO_IDPR      35  /**< InterDomain Policy Routing */
-#define IPPROTO_XTP       36  /**< XTP */
-#define IPPROTO_DDP       37  /**< Datagram Delivery */
-#define IPPROTO_CMTP      38  /**< Control Message Transport */
-#define IPPROTO_TPXX      39  /**< TP++ Transport */
-#define IPPROTO_IL        40  /**< IL transport protocol */
-#define IPPROTO_IPV6      41  /**< IP6 header */
-#define IPPROTO_SDRP      42  /**< Source Demand Routing */
-#define IPPROTO_ROUTING   43  /**< IP6 routing header */
-#define IPPROTO_FRAGMENT  44  /**< IP6 fragmentation header */
-#define IPPROTO_IDRP      45  /**< InterDomain Routing*/
-#define IPPROTO_RSVP      46  /**< resource reservation */
-#define IPPROTO_GRE       47  /**< General Routing Encap. */
-#define IPPROTO_MHRP      48  /**< Mobile Host Routing */
-#define IPPROTO_BHA       49  /**< BHA */
-#define IPPROTO_ESP       50  /**< IP6 Encap Sec. Payload */
-#define IPPROTO_AH        51  /**< IP6 Auth Header */
-#define IPPROTO_INLSP     52  /**< Integ. Net Layer Security */
-#define IPPROTO_SWIPE     53  /**< IP with encryption */
-#define IPPROTO_NHRP      54  /**< Next Hop Resolution */
-/* 55-57: Unassigned */
-#define IPPROTO_ICMPV6    58  /**< ICMP6 */
-#define IPPROTO_NONE      59  /**< IP6 no next header */
-#define IPPROTO_DSTOPTS   60  /**< IP6 destination option */
-#define IPPROTO_AHIP      61  /**< any host internal protocol */
-#define IPPROTO_CFTP      62  /**< CFTP */
-#define IPPROTO_HELLO     63  /**< "hello" routing protocol */
-#define IPPROTO_SATEXPAK  64  /**< SATNET/Backroom EXPAK */
-#define IPPROTO_KRYPTOLAN 65  /**< Kryptolan */
-#define IPPROTO_RVD       66  /**< Remote Virtual Disk */
-#define IPPROTO_IPPC      67  /**< Pluribus Packet Core */
-#define IPPROTO_ADFS      68  /**< Any distributed FS */
-#define IPPROTO_SATMON    69  /**< Satnet Monitoring */
-#define IPPROTO_VISA      70  /**< VISA Protocol */
-#define IPPROTO_IPCV      71  /**< Packet Core Utility */
-#define IPPROTO_CPNX      72  /**< Comp. Prot. Net. Executive */
-#define IPPROTO_CPHB      73  /**< Comp. Prot. HeartBeat */
-#define IPPROTO_WSN       74  /**< Wang Span Network */
-#define IPPROTO_PVP       75  /**< Packet Video Protocol */
-#define IPPROTO_BRSATMON  76  /**< BackRoom SATNET Monitoring */
-#define IPPROTO_ND        77  /**< Sun net disk proto (temp.) */
-#define IPPROTO_WBMON     78  /**< WIDEBAND Monitoring */
-#define IPPROTO_WBEXPAK   79  /**< WIDEBAND EXPAK */
-#define IPPROTO_EON       80  /**< ISO cnlp */
-#define IPPROTO_VMTP      81  /**< VMTP */
-#define IPPROTO_SVMTP     82  /**< Secure VMTP */
-#define IPPROTO_VINES     83  /**< Banyon VINES */
-#define IPPROTO_TTP       84  /**< TTP */
-#define IPPROTO_IGP       85  /**< NSFNET-IGP */
-#define IPPROTO_DGP       86  /**< dissimilar gateway prot. */
-#define IPPROTO_TCF       87  /**< TCF */
-#define IPPROTO_IGRP      88  /**< Cisco/GXS IGRP */
-#define IPPROTO_OSPFIGP   89  /**< OSPFIGP */
-#define IPPROTO_SRPC      90  /**< Strite RPC protocol */
-#define IPPROTO_LARP      91  /**< Locus Address Resoloution */
-#define IPPROTO_MTP       92  /**< Multicast Transport */
-#define IPPROTO_AX25      93  /**< AX.25 Frames */
-#define IPPROTO_IPEIP     94  /**< IP encapsulated in IP */
-#define IPPROTO_MICP      95  /**< Mobile Int.ing control */
-#define IPPROTO_SCCSP     96  /**< Semaphore Comm. security */
-#define IPPROTO_ETHERIP   97  /**< Ethernet IP encapsulation */
-#define IPPROTO_ENCAP     98  /**< encapsulation header */
-#define IPPROTO_APES      99  /**< any private encr. scheme */
-#define IPPROTO_GMTP     100  /**< GMTP */
-#define IPPROTO_IPCOMP   108  /**< payload compression (IPComp) */
-/* 101-254: Partly Unassigned */
-#define IPPROTO_PIM      103  /**< Protocol Independent Mcast */
-#define IPPROTO_PGM      113  /**< PGM */
-#define IPPROTO_SCTP     132  /**< Stream Control Transport Protocol */
-/* 255: Reserved */
-/* BSD Private, local use, namespace incursion */
-#define IPPROTO_DIVERT   254  /**< divert pseudo-protocol */
-#define IPPROTO_RAW      255  /**< raw IP packet */
-#define IPPROTO_MAX      256  /**< maximum protocol number */
 
 /*
  * IPv4 address types
@@ -247,6 +150,177 @@ struct ipv4_hdr {
 	((x) >= IPV4_MIN_MCAST && (x) <= IPV4_MAX_MCAST) /**< check if IPv4 address is multicast */
 
 /**
+ * @internal Calculate a sum of all words in the buffer.
+ * Helper routine for the rte_raw_cksum().
+ *
+ * @param buf
+ *   Pointer to the buffer.
+ * @param len
+ *   Length of the buffer.
+ * @param sum
+ *   Initial value of the sum.
+ * @return
+ *   sum += Sum of all words in the buffer.
+ */
+static inline uint32_t
+__rte_raw_cksum(const void *buf, size_t len, uint32_t sum)
+{
+	/* workaround gcc strict-aliasing warning */
+	uintptr_t ptr = (uintptr_t)buf;
+	const uint16_t *u16 = (const uint16_t *)ptr;
+
+	while (len >= (sizeof(*u16) * 4)) {
+		sum += u16[0];
+		sum += u16[1];
+		sum += u16[2];
+		sum += u16[3];
+		len -= sizeof(*u16) * 4;
+		u16 += 4;
+	}
+	while (len >= sizeof(*u16)) {
+		sum += *u16;
+		len -= sizeof(*u16);
+		u16 += 1;
+	}
+
+	/* if length is in odd bytes */
+	if (len == 1)
+		sum += *((const uint8_t *)u16);
+
+	return sum;
+}
+
+/**
+ * @internal Reduce a sum to the non-complemented checksum.
+ * Helper routine for the rte_raw_cksum().
+ *
+ * @param sum
+ *   Value of the sum.
+ * @return
+ *   The non-complemented checksum.
+ */
+static inline uint16_t
+__rte_raw_cksum_reduce(uint32_t sum)
+{
+	sum = ((sum & 0xffff0000) >> 16) + (sum & 0xffff);
+	sum = ((sum & 0xffff0000) >> 16) + (sum & 0xffff);
+	return (uint16_t)sum;
+}
+
+/**
+ * Process the non-complemented checksum of a buffer.
+ *
+ * @param buf
+ *   Pointer to the buffer.
+ * @param len
+ *   Length of the buffer.
+ * @return
+ *   The non-complemented checksum.
+ */
+static inline uint16_t
+rte_raw_cksum(const void *buf, size_t len)
+{
+	uint32_t sum;
+
+	sum = __rte_raw_cksum(buf, len, 0);
+	return __rte_raw_cksum_reduce(sum);
+}
+
+/**
+ * Process the IPv4 checksum of an IPv4 header.
+ *
+ * The checksum field must be set to 0 by the caller.
+ *
+ * @param ipv4_hdr
+ *   The pointer to the contiguous IPv4 header.
+ * @return
+ *   The complemented checksum to set in the IP packet.
+ */
+static inline uint16_t
+rte_ipv4_cksum(const struct ipv4_hdr *ipv4_hdr)
+{
+	uint16_t cksum;
+	cksum = rte_raw_cksum(ipv4_hdr, sizeof(struct ipv4_hdr));
+	return ((cksum == 0xffff) ? cksum : ~cksum);
+}
+
+/**
+ * Process the pseudo-header checksum of an IPv4 header.
+ *
+ * The checksum field must be set to 0 by the caller.
+ *
+ * Depending on the ol_flags, the pseudo-header checksum expected by the
+ * drivers is not the same. For instance, when TSO is enabled, the IP
+ * payload length must not be included in the packet.
+ *
+ * When ol_flags is 0, it computes the standard pseudo-header checksum.
+ *
+ * @param ipv4_hdr
+ *   The pointer to the contiguous IPv4 header.
+ * @param ol_flags
+ *   The ol_flags of the associated mbuf.
+ * @return
+ *   The non-complemented checksum to set in the L4 header.
+ */
+static inline uint16_t
+rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
+{
+	struct ipv4_psd_header {
+		uint32_t src_addr; /* IP address of source host. */
+		uint32_t dst_addr; /* IP address of destination host. */
+		uint8_t  zero;     /* zero. */
+		uint8_t  proto;    /* L4 protocol type. */
+		uint16_t len;      /* L4 length. */
+	} psd_hdr;
+
+	psd_hdr.src_addr = ipv4_hdr->src_addr;
+	psd_hdr.dst_addr = ipv4_hdr->dst_addr;
+	psd_hdr.zero = 0;
+	psd_hdr.proto = ipv4_hdr->next_proto_id;
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		psd_hdr.len = 0;
+	} else {
+		psd_hdr.len = rte_cpu_to_be_16(
+			(uint16_t)(rte_be_to_cpu_16(ipv4_hdr->total_length)
+				- sizeof(struct ipv4_hdr)));
+	}
+	return rte_raw_cksum(&psd_hdr, sizeof(psd_hdr));
+}
+
+/**
+ * Process the IPv4 UDP or TCP checksum.
+ *
+ * The IPv4 header should not contains options. The IP and layer 4
+ * checksum must be set to 0 in the packet by the caller.
+ *
+ * @param ipv4_hdr
+ *   The pointer to the contiguous IPv4 header.
+ * @param l4_hdr
+ *   The pointer to the beginning of the L4 header.
+ * @return
+ *   The complemented checksum to set in the IP packet.
+ */
+static inline uint16_t
+rte_ipv4_udptcp_cksum(const struct ipv4_hdr *ipv4_hdr, const void *l4_hdr)
+{
+	uint32_t cksum;
+	uint32_t l4_len;
+
+	l4_len = rte_be_to_cpu_16(ipv4_hdr->total_length) -
+		sizeof(struct ipv4_hdr);
+
+	cksum = rte_raw_cksum(l4_hdr, l4_len);
+	cksum += rte_ipv4_phdr_cksum(ipv4_hdr, 0);
+
+	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
+	cksum = (~cksum) & 0xffff;
+	if (cksum == 0)
+		cksum = 0xffff;
+
+	return cksum;
+}
+
+/**
  * IPv6 Header
  */
 struct ipv6_hdr {
@@ -257,6 +331,77 @@ struct ipv6_hdr {
 	uint8_t  src_addr[16]; /**< IP address of source host. */
 	uint8_t  dst_addr[16]; /**< IP address of destination host(s). */
 } __attribute__((__packed__));
+
+/**
+ * Process the pseudo-header checksum of an IPv6 header.
+ *
+ * Depending on the ol_flags, the pseudo-header checksum expected by the
+ * drivers is not the same. For instance, when TSO is enabled, the IPv6
+ * payload length must not be included in the packet.
+ *
+ * When ol_flags is 0, it computes the standard pseudo-header checksum.
+ *
+ * @param ipv6_hdr
+ *   The pointer to the contiguous IPv6 header.
+ * @param ol_flags
+ *   The ol_flags of the associated mbuf.
+ * @return
+ *   The non-complemented checksum to set in the L4 header.
+ */
+static inline uint16_t
+rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
+{
+	uint32_t sum;
+	struct {
+		uint32_t len;   /* L4 length. */
+		uint32_t proto; /* L4 protocol - top 3 bytes must be zero */
+	} psd_hdr;
+
+	psd_hdr.proto = (ipv6_hdr->proto << 24);
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		psd_hdr.len = 0;
+	} else {
+		psd_hdr.len = ipv6_hdr->payload_len;
+	}
+
+	sum = __rte_raw_cksum(ipv6_hdr->src_addr,
+		sizeof(ipv6_hdr->src_addr) + sizeof(ipv6_hdr->dst_addr),
+		0);
+	sum = __rte_raw_cksum(&psd_hdr, sizeof(psd_hdr), sum);
+	return __rte_raw_cksum_reduce(sum);
+}
+
+/**
+ * Process the IPv6 UDP or TCP checksum.
+ *
+ * The IPv4 header should not contains options. The layer 4 checksum
+ * must be set to 0 in the packet by the caller.
+ *
+ * @param ipv6_hdr
+ *   The pointer to the contiguous IPv6 header.
+ * @param l4_hdr
+ *   The pointer to the beginning of the L4 header.
+ * @return
+ *   The complemented checksum to set in the IP packet.
+ */
+static inline uint16_t
+rte_ipv6_udptcp_cksum(const struct ipv6_hdr *ipv6_hdr, const void *l4_hdr)
+{
+	uint32_t cksum;
+	uint32_t l4_len;
+
+	l4_len = rte_be_to_cpu_16(ipv6_hdr->payload_len);
+
+	cksum = rte_raw_cksum(l4_hdr, l4_len);
+	cksum += rte_ipv6_phdr_cksum(ipv6_hdr, 0);
+
+	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
+	cksum = (~cksum) & 0xffff;
+	if (cksum == 0)
+		cksum = 0xffff;
+
+	return cksum;
+}
 
 #ifdef __cplusplus
 }

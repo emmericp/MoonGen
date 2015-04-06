@@ -48,7 +48,6 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -70,8 +69,6 @@
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
 
-#include "main.h"
-
 #define MAX_QUEUES 128
 /*
  * For 10 GbE, 128 queues require roughly
@@ -80,25 +77,6 @@
 #define NUM_MBUFS_PER_PORT (128*512)
 #define MBUF_CACHE_SIZE 64
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
-
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-#define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
-#define RX_HTHRESH 8 /**< Default values of RX host threshold reg. */
-#define RX_WTHRESH 4 /**< Default values of RX write-back threshold reg. */
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-#define TX_PTHRESH 36 /**< Default values of TX prefetch threshold reg. */
-#define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
-#define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST 32
 
@@ -111,42 +89,11 @@
 #define INVALID_PORT_ID 0xFF
 
 /* mask of enabled ports */
-static uint32_t enabled_port_mask = 0;
+static uint32_t enabled_port_mask;
 
 /* number of pools (if user does not specify any, 8 by default */
 static uint32_t num_queues = 8;
 static uint32_t num_pools = 8;
-
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-/* Default configuration for rx and tx thresholds etc. */
-static const struct rte_eth_rxconf rx_conf_default = {
-	.rx_thresh = {
-		.pthresh = RX_PTHRESH,
-		.hthresh = RX_HTHRESH,
-		.wthresh = RX_WTHRESH,
-	},
-	.rx_drop_en = 1,
-};
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe/igb PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-static const struct rte_eth_txconf tx_conf_default = {
-	.tx_thresh = {
-		.pthresh = TX_PTHRESH,
-		.hthresh = TX_HTHRESH,
-		.wthresh = TX_WTHRESH,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-};
 
 /* empty vmdq configuration structure. Filled in programatically */
 static const struct rte_eth_conf vmdq_conf_default = {
@@ -179,10 +126,10 @@ static const struct rte_eth_conf vmdq_conf_default = {
 
 static unsigned lcore_ids[RTE_MAX_LCORE];
 static uint8_t ports[RTE_MAX_ETHPORTS];
-static unsigned num_ports = 0; /**< The number of ports specified in command line */
+static unsigned num_ports; /**< The number of ports specified in command line */
 
 /* array used for printing out statistics */
-volatile unsigned long rxPackets[ MAX_QUEUES ] = {0};
+volatile unsigned long rxPackets[MAX_QUEUES] = {0};
 
 const uint16_t vlan_tags[] = {
 	0,  1,  2,  3,  4,  5,  6,  7,
@@ -194,6 +141,13 @@ const uint16_t vlan_tags[] = {
 	48, 49, 50, 51, 52, 53, 54, 55,
 	56, 57, 58, 59, 60, 61, 62, 63,
 };
+const uint16_t num_vlans = RTE_DIM(vlan_tags);
+static uint16_t num_pf_queues,  num_vmdq_queues;
+static uint16_t vmdq_pool_base, vmdq_queue_base;
+/* pool mac addr template, pool mac addr is like: 52 54 00 12 port# pool# */
+static struct ether_addr pool_addr_template = {
+	.addr_bytes = {0x52, 0x54, 0x00, 0x12, 0x00, 0x00}
+};
 
 /* ethernet addresses of ports */
 static struct ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
@@ -204,8 +158,11 @@ static struct ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
 #define MAX_POOL_MAP_NUM_1G 32
 #define MAX_POOL_NUM_10G 64
 #define MAX_POOL_NUM_1G 8
-/* Builds up the correct configuration for vmdq based on the vlan tags array
- * given above, and determine the queue number and pool map number according to valid pool number */
+/*
+ * Builds up the correct configuration for vmdq based on the vlan tags array
+ * given above, and determine the queue number and pool map number according to
+ * valid pool number
+ */
 static inline int
 get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 {
@@ -213,65 +170,18 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 	unsigned i;
 
 	conf.nb_queue_pools = (enum rte_eth_nb_pools)num_pools;
+	conf.nb_pool_maps = num_pools;
 	conf.enable_default_pool = 0;
 	conf.default_pool = 0; /* set explicit value, even if not used */
-	switch (num_pools) {
-	/* For 10G NIC like 82599, 128 is valid for queue number */
-	case MAX_POOL_NUM_10G:
-		num_queues = MAX_QUEUE_NUM_10G;
-		conf.nb_pool_maps = MAX_POOL_MAP_NUM_10G;
-		break;
-	/* For 1G NIC like i350, 82580 and 82576, 8 is valid for queue number */
-	case MAX_POOL_NUM_1G:
-		num_queues = MAX_QUEUE_NUM_1G;
-		conf.nb_pool_maps = MAX_POOL_MAP_NUM_1G;
-		break;
-	default:
-		return -1;
-	}
 
-	for (i = 0; i < conf.nb_pool_maps; i++){
-		conf.pool_map[i].vlan_id = vlan_tags[ i ];
+	for (i = 0; i < conf.nb_pool_maps; i++) {
+		conf.pool_map[i].vlan_id = vlan_tags[i];
 		conf.pool_map[i].pools = (1UL << (i % num_pools));
 	}
 
 	(void)(rte_memcpy(eth_conf, &vmdq_conf_default, sizeof(*eth_conf)));
 	(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_rx_conf, &conf,
 		   sizeof(eth_conf->rx_adv_conf.vmdq_rx_conf)));
-	return 0;
-}
-
-/*
- * Validate the pool number accrording to the max pool number gotten form dev_info
- * If the pool number is invalid, give the error message and return -1
- */
-static inline int
-validate_num_pools(uint32_t max_nb_pools)
-{
-	if (num_pools > max_nb_pools) {
-		printf("invalid number of pools\n");
-		return -1;
-	}
-
-	switch (max_nb_pools) {
-	/* For 10G NIC like 82599, 64 is valid for pool number */
-	case MAX_POOL_NUM_10G:
-		if (num_pools != MAX_POOL_NUM_10G) {
-			printf("invalid number of pools\n");
-			return -1;
-		}
-		break;
-	/* For 1G NIC like i350, 82580 and 82576, 8 is valid for pool number */
-	case MAX_POOL_NUM_1G:
-		if (num_pools != MAX_POOL_NUM_1G) {
-			printf("invalid number of pools\n");
-			return -1;
-		}
-		break;
-	default:
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -283,49 +193,96 @@ static inline int
 port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf *rxconf;
 	struct rte_eth_conf port_conf;
-	uint16_t rxRings, txRings = (uint16_t)rte_lcore_count();
+	uint16_t rxRings, txRings;
 	const uint16_t rxRingSize = RTE_TEST_RX_DESC_DEFAULT, txRingSize = RTE_TEST_TX_DESC_DEFAULT;
 	int retval;
 	uint16_t q;
+	uint16_t queues_per_pool;
 	uint32_t max_nb_pools;
 
-	/* The max pool number from dev_info will be used to validate the pool number specified in cmd line */
-	rte_eth_dev_info_get (port, &dev_info);
+	/*
+	 * The max pool number from dev_info will be used to validate the pool
+	 * number specified in cmd line
+	 */
+	rte_eth_dev_info_get(port, &dev_info);
 	max_nb_pools = (uint32_t)dev_info.max_vmdq_pools;
-	retval = validate_num_pools(max_nb_pools);
+	/*
+	 * We allow to process part of VMDQ pools specified by num_pools in
+	 * command line.
+	 */
+	if (num_pools > max_nb_pools) {
+		printf("num_pools %d >max_nb_pools %d\n",
+			num_pools, max_nb_pools);
+		return -1;
+	}
+	retval = get_eth_conf(&port_conf, max_nb_pools);
 	if (retval < 0)
 		return retval;
 
-	retval = get_eth_conf(&port_conf, num_pools);
-	if (retval < 0)
-		return retval;
+	/*
+	 * NIC queues are divided into pf queues and vmdq queues.
+	 */
+	/* There is assumption here all ports have the same configuration! */
+	num_pf_queues = dev_info.max_rx_queues - dev_info.vmdq_queue_num;
+	queues_per_pool = dev_info.vmdq_queue_num / dev_info.max_vmdq_pools;
+	num_vmdq_queues = num_pools * queues_per_pool;
+	num_queues = num_pf_queues + num_vmdq_queues;
+	vmdq_queue_base = dev_info.vmdq_queue_base;
+	vmdq_pool_base  = dev_info.vmdq_pool_base;
 
-	if (port >= rte_eth_dev_count()) return -1;
+	printf("pf queue num: %u, configured vmdq pool num: %u,"
+		" each vmdq pool has %u queues\n",
+		num_pf_queues, num_pools, queues_per_pool);
+	printf("vmdq queue base: %d pool base %d\n",
+		vmdq_queue_base, vmdq_pool_base);
+	if (port >= rte_eth_dev_count())
+		return -1;
 
-	rxRings = (uint16_t)num_queues,
+	/*
+	 * Though in this example, we only receive packets from the first queue
+	 * of each pool and send packets through first rte_lcore_count() tx
+	 * queues of vmdq queues, all queues including pf queues are setup.
+	 * This is because VMDQ queues doesn't always start from zero, and the
+	 * PMD layer doesn't support selectively initialising part of rx/tx
+	 * queues.
+	 */
+	rxRings = (uint16_t)dev_info.max_rx_queues;
+	txRings = (uint16_t)dev_info.max_tx_queues;
 	retval = rte_eth_dev_configure(port, rxRings, txRings, &port_conf);
 	if (retval != 0)
 		return retval;
 
-	for (q = 0; q < rxRings; q ++) {
+	rte_eth_dev_info_get(port, &dev_info);
+	rxconf = &dev_info.default_rxconf;
+	rxconf->rx_drop_en = 1;
+	for (q = 0; q < rxRings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, rxRingSize,
-						rte_eth_dev_socket_id(port), &rx_conf_default,
-						mbuf_pool);
-		if (retval < 0)
+					rte_eth_dev_socket_id(port),
+					rxconf,
+					mbuf_pool);
+		if (retval < 0) {
+			printf("initialise rx queue %d failed\n", q);
 			return retval;
+		}
 	}
 
-	for (q = 0; q < txRings; q ++) {
+	for (q = 0; q < txRings; q++) {
 		retval = rte_eth_tx_queue_setup(port, q, txRingSize,
-						rte_eth_dev_socket_id(port), &tx_conf_default);
-		if (retval < 0)
+					rte_eth_dev_socket_id(port),
+					NULL);
+		if (retval < 0) {
+			printf("initialise tx queue %d failed\n", q);
 			return retval;
+		}
 	}
 
 	retval  = rte_eth_dev_start(port);
-	if (retval < 0)
+	if (retval < 0) {
+		printf("port %d start failed\n", port);
 		return retval;
+	}
 
 	rte_eth_macaddr_get(port, &vmdq_ports_eth_addr[port]);
 	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
@@ -337,6 +294,29 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 			vmdq_ports_eth_addr[port].addr_bytes[3],
 			vmdq_ports_eth_addr[port].addr_bytes[4],
 			vmdq_ports_eth_addr[port].addr_bytes[5]);
+
+	/*
+	 * Set mac for each pool.
+	 * There is no default mac for the pools in i40.
+	 * Removes this after i40e fixes this issue.
+	 */
+	for (q = 0; q < num_pools; q++) {
+		struct ether_addr mac;
+		mac = pool_addr_template;
+		mac.addr_bytes[4] = port;
+		mac.addr_bytes[5] = q;
+		printf("Port %u vmdq pool %u set mac %02x:%02x:%02x:%02x:%02x:%02x\n",
+			port, q,
+			mac.addr_bytes[0], mac.addr_bytes[1],
+			mac.addr_bytes[2], mac.addr_bytes[3],
+			mac.addr_bytes[4], mac.addr_bytes[5]);
+		retval = rte_eth_dev_mac_addr_add(port, &mac,
+				q + vmdq_pool_base);
+		if (retval) {
+			printf("mac addr add failed at pool %d\n", q);
+			return retval;
+		}
+	}
 
 	return 0;
 }
@@ -352,6 +332,11 @@ vmdq_parse_num_pools(const char *q_arg)
 	n = strtol(q_arg, &end, 10);
 	if ((q_arg[0] == '\0') || (end == NULL) || (*end != '\0'))
 		return -1;
+
+	if (num_pools > num_vlans) {
+		printf("num_pools %d > num_vlans %d\n", num_pools, num_vlans);
+		return -1;
+	}
 
 	num_pools = n;
 
@@ -399,7 +384,8 @@ vmdq_parse_args(int argc, char **argv)
 	};
 
 	/* Parse command line */
-	while ((opt = getopt_long(argc, argv, "p:",long_option,&option_index)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "p:", long_option,
+		&option_index)) != EOF) {
 		switch (opt) {
 		/* portmask */
 		case 'p':
@@ -411,7 +397,7 @@ vmdq_parse_args(int argc, char **argv)
 			}
 			break;
 		case 0:
-			if (vmdq_parse_num_pools(optarg) == -1){
+			if (vmdq_parse_num_pools(optarg) == -1) {
 				printf("invalid number of pools\n");
 				vmdq_usage(prgname);
 				return -1;
@@ -424,14 +410,14 @@ vmdq_parse_args(int argc, char **argv)
 		}
 	}
 
-	for(i = 0; i < RTE_MAX_ETHPORTS; i++) {
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (enabled_port_mask & (1 << i))
 			ports[num_ports++] = (uint8_t)i;
 	}
 
 	if (num_ports < 2 || num_ports % 2) {
 		printf("Current enabled port number is %u,"
-			"but it should be even and at least 2\n",num_ports);
+			"but it should be even and at least 2\n", num_ports);
 		return -1;
 	}
 
@@ -454,36 +440,34 @@ update_mac_address(struct rte_mbuf *m, unsigned dst_port)
 	ether_addr_copy(&vmdq_ports_eth_addr[dst_port], &eth->s_addr);
 }
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
 /* When we receive a HUP signal, print out our stats */
 static void
 sighup_handler(int signum)
 {
 	unsigned q;
-	for (q = 0; q < num_queues; q ++) {
+	for (q = 0; q < num_queues; q++) {
 		if (q % (num_queues/num_pools) == 0)
 			printf("\nPool %u: ", q/(num_queues/num_pools));
-		printf("%lu ", rxPackets[ q ]);
+		printf("%lu ", rxPackets[q]);
 	}
 	printf("\nFinished handling signal %d\n", signum);
 }
-#endif
 
 /*
  * Main thread that does the work, reading from INPUT_PORT
  * and writing to OUTPUT_PORT
  */
 static int
-lcore_main(__attribute__((__unused__)) void* dummy)
+lcore_main(__attribute__((__unused__)) void *dummy)
 {
 	const uint16_t lcore_id = (uint16_t)rte_lcore_id();
 	const uint16_t num_cores = (uint16_t)rte_lcore_count();
 	uint16_t core_id = 0;
 	uint16_t startQueue, endQueue;
 	uint16_t q, i, p;
-	const uint16_t remainder = (uint16_t)(num_queues % num_cores);
+	const uint16_t remainder = (uint16_t)(num_vmdq_queues % num_cores);
 
-	for (i = 0; i < num_cores; i ++)
+	for (i = 0; i < num_cores; i++)
 		if (lcore_ids[i] == lcore_id) {
 			core_id = i;
 			break;
@@ -491,23 +475,33 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 
 	if (remainder != 0) {
 		if (core_id < remainder) {
-			startQueue = (uint16_t)(core_id * (num_queues/num_cores + 1));
-			endQueue = (uint16_t)(startQueue + (num_queues/num_cores) + 1);
+			startQueue = (uint16_t)(core_id *
+					(num_vmdq_queues / num_cores + 1));
+			endQueue = (uint16_t)(startQueue +
+					(num_vmdq_queues / num_cores) + 1);
 		} else {
-			startQueue = (uint16_t)(core_id * (num_queues/num_cores) + remainder);
-			endQueue = (uint16_t)(startQueue + (num_queues/num_cores));
+			startQueue = (uint16_t)(core_id *
+					(num_vmdq_queues / num_cores) +
+					remainder);
+			endQueue = (uint16_t)(startQueue +
+					(num_vmdq_queues / num_cores));
 		}
 	} else {
-		startQueue = (uint16_t)(core_id * (num_queues/num_cores));
-		endQueue = (uint16_t)(startQueue + (num_queues/num_cores));
+		startQueue = (uint16_t)(core_id *
+				(num_vmdq_queues / num_cores));
+		endQueue = (uint16_t)(startQueue +
+				(num_vmdq_queues / num_cores));
 	}
 
+	/* vmdq queue idx doesn't always start from zero.*/
+	startQueue += vmdq_queue_base;
+	endQueue   += vmdq_queue_base;
 	printf("core %u(lcore %u) reading queues %i-%i\n", (unsigned)core_id,
 		(unsigned)lcore_id, startQueue, endQueue - 1);
 
 	if (startQueue == endQueue) {
 		printf("lcore %u has nothing to do\n", lcore_id);
-		return (0);
+		return 0;
 	}
 
 	for (;;) {
@@ -516,8 +510,8 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 
 		for (p = 0; p < num_ports; p++) {
 			const uint8_t sport = ports[p];
-			const uint8_t dport = ports[p ^ 1]; /* 0 <-> 1, 2 <-> 3 etc */
-
+			/* 0 <-> 1, 2 <-> 3 etc */
+			const uint8_t dport = ports[p ^ 1];
 			if ((sport == INVALID_PORT_ID) || (dport == INVALID_PORT_ID))
 				continue;
 
@@ -534,7 +528,9 @@ lcore_main(__attribute__((__unused__)) void* dummy)
 					update_mac_address(buf[i], dport);
 
 				const uint16_t txCount = rte_eth_tx_burst(dport,
-					core_id, buf, rxCount);
+					vmdq_queue_base + core_id,
+					buf,
+					rxCount);
 
 				if (txCount != rxCount) {
 					for (i = txCount; i < rxCount; i++)
@@ -560,12 +556,12 @@ static unsigned check_ports_num(unsigned nb_ports)
 		num_ports = nb_ports;
 	}
 
-	for (portid = 0; portid < num_ports; portid ++) {
+	for (portid = 0; portid < num_ports; portid++) {
 		if (ports[portid] >= nb_ports) {
 			printf("\nSpecified port ID(%u) exceeds max system port ID(%u)\n",
 				ports[portid], (nb_ports - 1));
 			ports[portid] = INVALID_PORT_ID;
-			valid_num_ports --;
+			valid_num_ports--;
 		}
 	}
 	return valid_num_ports;
@@ -573,7 +569,7 @@ static unsigned check_ports_num(unsigned nb_ports)
 
 /* Main function, does initialisation and calls the per-lcore functions */
 int
-MAIN(int argc, char *argv[])
+main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
 	unsigned lcore_id, core_id = 0;
@@ -581,9 +577,7 @@ MAIN(int argc, char *argv[])
 	unsigned nb_ports, valid_num_ports;
 	uint8_t portid;
 
-#ifndef RTE_EXEC_ENV_BAREMETAL
 	signal(SIGHUP, sighup_handler);
-#endif
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -597,15 +591,12 @@ MAIN(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid VMDQ argument\n");
 
-	if (rte_eal_pci_probe() != 0)
-		rte_exit(EXIT_FAILURE, "Error with NIC driver initialization\n");
-
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
 		if (rte_lcore_is_enabled(lcore_id))
-			lcore_ids[core_id ++] = lcore_id;
+			lcore_ids[core_id++] = lcore_id;
 
 	if (rte_lcore_count() > RTE_MAX_LCORE)
-		rte_exit(EXIT_FAILURE,"Not enough cores\n");
+		rte_exit(EXIT_FAILURE, "Not enough cores\n");
 
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports > RTE_MAX_ETHPORTS)

@@ -165,6 +165,7 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 	DEBUGFUNC("ixgbe_device_supports_autoneg_fc");
 
 	switch (hw->phy.media_type) {
+	case ixgbe_media_type_fiber_qsfp:
 	case ixgbe_media_type_fiber:
 		hw->mac.ops.check_link(hw, &speed, &link_up, false);
 		/* if link is down, assume supported */
@@ -183,6 +184,7 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 		case IXGBE_DEV_ID_82599_T3_LOM:
 		case IXGBE_DEV_ID_X540T:
 		case IXGBE_DEV_ID_X540T1:
+		case IXGBE_DEV_ID_X550T:
 			supported = true;
 			break;
 		default:
@@ -213,10 +215,7 @@ STATIC s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_setup_fc");
 
-	/*
-	 * Validate the requested mode.  Strict IEEE mode does not allow
-	 * ixgbe_fc_rx_pause because it will cause us to fail at UNH.
-	 */
+	/* Validate the requested mode */
 	if (hw->fc.strict_ieee && hw->fc.requested_mode == ixgbe_fc_rx_pause) {
 		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
 			   "ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
@@ -244,6 +243,7 @@ STATIC s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
 			goto out;
 
 		/* only backplane uses autoc so fall though */
+	case ixgbe_media_type_fiber_qsfp:
 	case ixgbe_media_type_fiber:
 		reg = IXGBE_READ_REG(hw, IXGBE_PCS1GANA);
 
@@ -564,7 +564,7 @@ s32 ixgbe_clear_hw_cntrs_generic(struct ixgbe_hw *hw)
 		}
 	}
 
-	if (hw->mac.type == ixgbe_mac_X540) {
+	if (hw->mac.type == ixgbe_mac_X550 || hw->mac.type == ixgbe_mac_X540) {
 		if (hw->phy.id == 0)
 			ixgbe_identify_phy(hw);
 		hw->phy.ops.read_reg(hw, IXGBE_PCRC8ECL,
@@ -1060,7 +1060,7 @@ s32 ixgbe_stop_adapter_generic(struct ixgbe_hw *hw)
 	hw->adapter_stopped = true;
 
 	/* Disable the receive unit */
-	IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, 0);
+	ixgbe_disable_rx(hw);
 
 	/* Clear interrupt mask to stop interrupts from being generated */
 	IXGBE_WRITE_REG(hw, IXGBE_EIMC, IXGBE_IRQ_CLEAR_MASK);
@@ -2096,8 +2096,10 @@ STATIC void ixgbe_release_eeprom(struct ixgbe_hw *hw)
 /**
  *  ixgbe_calc_eeprom_checksum_generic - Calculates and returns the checksum
  *  @hw: pointer to hardware structure
+ *
+ *  Returns a negative error code on error, or the 16-bit checksum
  **/
-u16 ixgbe_calc_eeprom_checksum_generic(struct ixgbe_hw *hw)
+s32 ixgbe_calc_eeprom_checksum_generic(struct ixgbe_hw *hw)
 {
 	u16 i;
 	u16 j;
@@ -2110,33 +2112,44 @@ u16 ixgbe_calc_eeprom_checksum_generic(struct ixgbe_hw *hw)
 
 	/* Include 0x0-0x3F in the checksum */
 	for (i = 0; i < IXGBE_EEPROM_CHECKSUM; i++) {
-		if (hw->eeprom.ops.read(hw, i, &word) != IXGBE_SUCCESS) {
+		if (hw->eeprom.ops.read(hw, i, &word)) {
 			DEBUGOUT("EEPROM read failed\n");
-			break;
+			return IXGBE_ERR_EEPROM;
 		}
 		checksum += word;
 	}
 
 	/* Include all data from pointers except for the fw pointer */
 	for (i = IXGBE_PCIE_ANALOG_PTR; i < IXGBE_FW_PTR; i++) {
-		hw->eeprom.ops.read(hw, i, &pointer);
+		if (hw->eeprom.ops.read(hw, i, &pointer)) {
+			DEBUGOUT("EEPROM read failed\n");
+			return IXGBE_ERR_EEPROM;
+		}
 
-		/* Make sure the pointer seems valid */
-		if (pointer != 0xFFFF && pointer != 0) {
-			hw->eeprom.ops.read(hw, pointer, &length);
+		/* If the pointer seems invalid */
+		if (pointer == 0xFFFF || pointer == 0)
+			continue;
 
-			if (length != 0xFFFF && length != 0) {
-				for (j = pointer+1; j <= pointer+length; j++) {
-					hw->eeprom.ops.read(hw, j, &word);
-					checksum += word;
-				}
+		if (hw->eeprom.ops.read(hw, pointer, &length)) {
+			DEBUGOUT("EEPROM read failed\n");
+			return IXGBE_ERR_EEPROM;
+		}
+
+		if (length == 0xFFFF || length == 0)
+			continue;
+
+		for (j = pointer + 1; j <= pointer + length; j++) {
+			if (hw->eeprom.ops.read(hw, j, &word)) {
+				DEBUGOUT("EEPROM read failed\n");
+				return IXGBE_ERR_EEPROM;
 			}
+			checksum += word;
 		}
 	}
 
 	checksum = (u16)IXGBE_EEPROM_SUM - checksum;
 
-	return checksum;
+	return (s32)checksum;
 }
 
 /**
@@ -2156,31 +2169,37 @@ s32 ixgbe_validate_eeprom_checksum_generic(struct ixgbe_hw *hw,
 
 	DEBUGFUNC("ixgbe_validate_eeprom_checksum_generic");
 
-	/*
-	 * Read the first word from the EEPROM. If this times out or fails, do
+	/* Read the first word from the EEPROM. If this times out or fails, do
 	 * not continue or we could be in for a very long wait while every
 	 * EEPROM read fails
 	 */
 	status = hw->eeprom.ops.read(hw, 0, &checksum);
-
-	if (status == IXGBE_SUCCESS) {
-		checksum = hw->eeprom.ops.calc_checksum(hw);
-
-		hw->eeprom.ops.read(hw, IXGBE_EEPROM_CHECKSUM, &read_checksum);
-
-		/*
-		 * Verify read checksum from EEPROM is the same as
-		 * calculated checksum
-		 */
-		if (read_checksum != checksum)
-			status = IXGBE_ERR_EEPROM_CHECKSUM;
-
-		/* If the user cares, return the calculated checksum */
-		if (checksum_val)
-			*checksum_val = checksum;
-	} else {
+	if (status) {
 		DEBUGOUT("EEPROM read failed\n");
+		return status;
 	}
+
+	status = hw->eeprom.ops.calc_checksum(hw);
+	if (status < 0)
+		return status;
+
+	checksum = (u16)(status & 0xffff);
+
+	status = hw->eeprom.ops.read(hw, IXGBE_EEPROM_CHECKSUM, &read_checksum);
+	if (status) {
+		DEBUGOUT("EEPROM read failed\n");
+		return status;
+	}
+
+	/* Verify read checksum from EEPROM is the same as
+	 * calculated checksum
+	 */
+	if (read_checksum != checksum)
+		status = IXGBE_ERR_EEPROM_CHECKSUM;
+
+	/* If the user cares, return the calculated checksum */
+	if (checksum_val)
+		*checksum_val = checksum;
 
 	return status;
 }
@@ -2196,20 +2215,23 @@ s32 ixgbe_update_eeprom_checksum_generic(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_update_eeprom_checksum_generic");
 
-	/*
-	 * Read the first word from the EEPROM. If this times out or fails, do
+	/* Read the first word from the EEPROM. If this times out or fails, do
 	 * not continue or we could be in for a very long wait while every
 	 * EEPROM read fails
 	 */
 	status = hw->eeprom.ops.read(hw, 0, &checksum);
-
-	if (status == IXGBE_SUCCESS) {
-		checksum = hw->eeprom.ops.calc_checksum(hw);
-		status = hw->eeprom.ops.write(hw, IXGBE_EEPROM_CHECKSUM,
-					      checksum);
-	} else {
+	if (status) {
 		DEBUGOUT("EEPROM read failed\n");
+		return status;
 	}
+
+	status = hw->eeprom.ops.calc_checksum(hw);
+	if (status < 0)
+		return status;
+
+	checksum = (u16)(status & 0xffff);
+
+	status = hw->eeprom.ops.write(hw, IXGBE_EEPROM_CHECKSUM, checksum);
 
 	return status;
 }
@@ -3001,6 +3023,7 @@ void ixgbe_fc_autoneg(struct ixgbe_hw *hw)
 
 	switch (hw->phy.media_type) {
 	/* Autoneg flow control on fiber adapters */
+	case ixgbe_media_type_fiber_qsfp:
 	case ixgbe_media_type_fiber:
 		if (speed == IXGBE_LINK_SPEED_1GB_FULL)
 			ret_val = ixgbe_fc_autoneg_fiber(hw);
@@ -3150,7 +3173,7 @@ out:
  *  Acquires the SWFW semaphore through the GSSR register for the specified
  *  function (CSR, PHY0, PHY1, EEPROM, Flash)
  **/
-s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u16 mask)
+s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u32 mask)
 {
 	u32 gssr = 0;
 	u32 swmask = mask;
@@ -3197,7 +3220,7 @@ s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u16 mask)
  *  Releases the SWFW semaphore through the GSSR register for the specified
  *  function (CSR, PHY0, PHY1, EEPROM, Flash)
  **/
-void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u16 mask)
+void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u32 mask)
 {
 	u32 gssr;
 	u32 swmask = mask;
@@ -3545,6 +3568,8 @@ u16 ixgbe_get_pcie_msix_count_generic(struct ixgbe_hw *hw)
 		break;
 	case ixgbe_mac_82599EB:
 	case ixgbe_mac_X540:
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
 		pcie_offset = IXGBE_PCIE_MSIX_82599_CAPS;
 		max_msix_count = IXGBE_MAX_MSIX_VECTORS_82599;
 		break;
@@ -4058,8 +4083,13 @@ s32 ixgbe_check_mac_link_generic(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 	}
 
 	if ((links_reg & IXGBE_LINKS_SPEED_82599) ==
-	    IXGBE_LINKS_SPEED_10G_82599)
+	    IXGBE_LINKS_SPEED_10G_82599) {
 		*speed = IXGBE_LINK_SPEED_10GB_FULL;
+		if (hw->mac.type > ixgbe_mac_X550) {
+			if (links_reg & IXGBE_LINKS_SPEED_NON_STD)
+				*speed = IXGBE_LINK_SPEED_2_5GB_FULL;
+		}
+	}
 	else if ((links_reg & IXGBE_LINKS_SPEED_82599) ==
 		 IXGBE_LINKS_SPEED_1G_82599)
 		*speed = IXGBE_LINK_SPEED_1GB_FULL;
@@ -4225,7 +4255,7 @@ void ixgbe_set_mac_anti_spoofing(struct ixgbe_hw *hw, bool enable, int pf)
  *  ixgbe_set_vlan_anti_spoofing - Enable/Disable VLAN anti-spoofing
  *  @hw: pointer to hardware structure
  *  @enable: enable or disable switch for VLAN anti-spoofing
- *  @pf: Virtual Function pool - VF Pool to set for VLAN anti-spoofing
+ *  @vf: Virtual Function pool - VF Pool to set for VLAN anti-spoofing
  *
  **/
 void ixgbe_set_vlan_anti_spoofing(struct ixgbe_hw *hw, bool enable, int vf)
@@ -4319,41 +4349,50 @@ u8 ixgbe_calculate_checksum(u8 *buffer, u32 length)
  *  @buffer: contains the command to write and where the return status will
  *   be placed
  *  @length: length of buffer, must be multiple of 4 bytes
+ *  @return_data: read and return data from the buffer (true) or not (false)
+ *   Needed because FW structures are big endian and decoding of
+ *   these fields can be 8 bit or 16 bit based on command. Decoding
+ *   is not easily understood without making a table of commands.
+ *   So we will leave this up to the caller to read back the data
+ *   in these cases.
  *
  *  Communicates with the manageability block.  On success return IXGBE_SUCCESS
  *  else return IXGBE_ERR_HOST_INTERFACE_COMMAND.
  **/
 s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
-				 u32 length)
+				 u32 length, bool return_data)
 {
-	u32 hicr, i, bi;
+	u32 hicr, i, bi, fwsts;
 	u32 hdr_size = sizeof(struct ixgbe_hic_hdr);
-	u8 buf_len, dword_len;
-
-	s32 ret_val = IXGBE_SUCCESS;
+	u16 buf_len;
+	u8 dword_len;
 
 	DEBUGFUNC("ixgbe_host_interface_command");
 
-	if (length == 0 || length & 0x3 ||
-	    length > IXGBE_HI_MAX_BLOCK_BYTE_LENGTH) {
-		DEBUGOUT("Buffer length failure.\n");
-		ret_val = IXGBE_ERR_HOST_INTERFACE_COMMAND;
-		goto out;
+	if (length == 0 || length > IXGBE_HI_MAX_BLOCK_BYTE_LENGTH) {
+		DEBUGOUT1("Buffer length failure buffersize=%d.\n", length);
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
+	/* Set bit 9 of FWSTS clearing FW reset indication */
+	fwsts = IXGBE_READ_REG(hw, IXGBE_FWSTS);
+	IXGBE_WRITE_REG(hw, IXGBE_FWSTS, fwsts | IXGBE_FWSTS_FWRI);
 
 	/* Check that the host interface is enabled. */
 	hicr = IXGBE_READ_REG(hw, IXGBE_HICR);
 	if ((hicr & IXGBE_HICR_EN) == 0) {
 		DEBUGOUT("IXGBE_HOST_EN bit disabled.\n");
-		ret_val = IXGBE_ERR_HOST_INTERFACE_COMMAND;
-		goto out;
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
-	/* Calculate length in DWORDs */
+	/* Calculate length in DWORDs. We must be DWORD aligned */
+	if ((length % (sizeof(u32))) != 0) {
+		DEBUGOUT("Buffer length failure, not aligned to dword");
+		return IXGBE_ERR_INVALID_ARGUMENT;
+	}
+
 	dword_len = length >> 2;
 
-	/*
-	 * The device driver writes the relevant command block
+	/* The device driver writes the relevant command block
 	 * into the ram area.
 	 */
 	for (i = 0; i < dword_len; i++)
@@ -4370,13 +4409,16 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 		msec_delay(1);
 	}
 
-	/* Check command successful completion. */
+	/* Check command completion */
 	if (i == IXGBE_HI_COMMAND_TIMEOUT ||
-	    (!(IXGBE_READ_REG(hw, IXGBE_HICR) & IXGBE_HICR_SV))) {
-		DEBUGOUT("Command has failed with no status valid.\n");
-		ret_val = IXGBE_ERR_HOST_INTERFACE_COMMAND;
-		goto out;
+	    !(IXGBE_READ_REG(hw, IXGBE_HICR) & IXGBE_HICR_SV)) {
+		ERROR_REPORT1(IXGBE_ERROR_CAUTION,
+			     "Command has failed with no status valid.\n");
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
+
+	if (!return_data)
+		return 0;
 
 	/* Calculate length in DWORDs */
 	dword_len = hdr_size >> 2;
@@ -4390,25 +4432,23 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 	/* If there is any thing in data position pull it in */
 	buf_len = ((struct ixgbe_hic_hdr *)buffer)->buf_len;
 	if (buf_len == 0)
-		goto out;
+		return 0;
 
-	if (length < (buf_len + hdr_size)) {
+	if (length < buf_len + hdr_size) {
 		DEBUGOUT("Buffer not large enough for reply message.\n");
-		ret_val = IXGBE_ERR_HOST_INTERFACE_COMMAND;
-		goto out;
+		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
 	/* Calculate length in DWORDs, add 3 for odd lengths */
 	dword_len = (buf_len + 3) >> 2;
 
-	/* Pull in the rest of the buffer (bi is where we left off)*/
+	/* Pull in the rest of the buffer (bi is where we left off) */
 	for (; bi <= dword_len; bi++) {
 		buffer[bi] = IXGBE_READ_REG_ARRAY(hw, IXGBE_FLEX_MNG, bi);
 		IXGBE_LE32_TO_CPUS(&buffer[bi]);
 	}
 
-out:
-	return ret_val;
+	return 0;
 }
 
 /**
@@ -4455,7 +4495,7 @@ s32 ixgbe_set_fw_drv_ver_generic(struct ixgbe_hw *hw, u8 maj, u8 min,
 
 	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
 		ret_val = ixgbe_host_interface_command(hw, (u32 *)&fw_cmd,
-						       sizeof(fw_cmd));
+						       sizeof(fw_cmd), true);
 		if (ret_val != IXGBE_SUCCESS)
 			continue;
 
@@ -4573,6 +4613,175 @@ void ixgbe_clear_tx_pending(struct ixgbe_hw *hw)
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 }
 
+STATIC const u8 ixgbe_emc_temp_data[4] = {
+	IXGBE_EMC_INTERNAL_DATA,
+	IXGBE_EMC_DIODE1_DATA,
+	IXGBE_EMC_DIODE2_DATA,
+	IXGBE_EMC_DIODE3_DATA
+};
+STATIC const u8 ixgbe_emc_therm_limit[4] = {
+	IXGBE_EMC_INTERNAL_THERM_LIMIT,
+	IXGBE_EMC_DIODE1_THERM_LIMIT,
+	IXGBE_EMC_DIODE2_THERM_LIMIT,
+	IXGBE_EMC_DIODE3_THERM_LIMIT
+};
+
+/**
+ *  ixgbe_get_thermal_sensor_data - Gathers thermal sensor data
+ *  @hw: pointer to hardware structure
+ *  @data: pointer to the thermal sensor data structure
+ *
+ *  Returns the thermal sensor data structure
+ **/
+s32 ixgbe_get_thermal_sensor_data_generic(struct ixgbe_hw *hw)
+{
+	s32 status = IXGBE_SUCCESS;
+	u16 ets_offset;
+	u16 ets_cfg;
+	u16 ets_sensor;
+	u8  num_sensors;
+	u8  sensor_index;
+	u8  sensor_location;
+	u8  i;
+	struct ixgbe_thermal_sensor_data *data = &hw->mac.thermal_sensor_data;
+
+	DEBUGFUNC("ixgbe_get_thermal_sensor_data_generic");
+
+	/* Only support thermal sensors attached to 82599 physical port 0 */
+	if ((hw->mac.type != ixgbe_mac_82599EB) ||
+	    (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)) {
+		status = IXGBE_NOT_IMPLEMENTED;
+		goto out;
+	}
+
+	status = hw->eeprom.ops.read(hw, IXGBE_ETS_CFG, &ets_offset);
+	if (status)
+		goto out;
+
+	if ((ets_offset == 0x0000) || (ets_offset == 0xFFFF)) {
+		status = IXGBE_NOT_IMPLEMENTED;
+		goto out;
+	}
+
+	status = hw->eeprom.ops.read(hw, ets_offset, &ets_cfg);
+	if (status)
+		goto out;
+
+	if (((ets_cfg & IXGBE_ETS_TYPE_MASK) >> IXGBE_ETS_TYPE_SHIFT)
+		!= IXGBE_ETS_TYPE_EMC) {
+		status = IXGBE_NOT_IMPLEMENTED;
+		goto out;
+	}
+
+	num_sensors = (ets_cfg & IXGBE_ETS_NUM_SENSORS_MASK);
+	if (num_sensors > IXGBE_MAX_SENSORS)
+		num_sensors = IXGBE_MAX_SENSORS;
+
+	for (i = 0; i < num_sensors; i++) {
+		status = hw->eeprom.ops.read(hw, (ets_offset + 1 + i),
+					     &ets_sensor);
+		if (status)
+			goto out;
+
+		sensor_index = ((ets_sensor & IXGBE_ETS_DATA_INDEX_MASK) >>
+				IXGBE_ETS_DATA_INDEX_SHIFT);
+		sensor_location = ((ets_sensor & IXGBE_ETS_DATA_LOC_MASK) >>
+				   IXGBE_ETS_DATA_LOC_SHIFT);
+
+		if (sensor_location != 0) {
+			status = hw->phy.ops.read_i2c_byte(hw,
+					ixgbe_emc_temp_data[sensor_index],
+					IXGBE_I2C_THERMAL_SENSOR_ADDR,
+					&data->sensor[i].temp);
+			if (status)
+				goto out;
+		}
+	}
+out:
+	return status;
+}
+
+/**
+ *  ixgbe_init_thermal_sensor_thresh_generic - Inits thermal sensor thresholds
+ *  @hw: pointer to hardware structure
+ *
+ *  Inits the thermal sensor thresholds according to the NVM map
+ *  and save off the threshold and location values into mac.thermal_sensor_data
+ **/
+s32 ixgbe_init_thermal_sensor_thresh_generic(struct ixgbe_hw *hw)
+{
+	s32 status = IXGBE_SUCCESS;
+	u16 offset;
+	u16 ets_offset;
+	u16 ets_cfg;
+	u16 ets_sensor;
+	u8  low_thresh_delta;
+	u8  num_sensors;
+	u8  sensor_index;
+	u8  sensor_location;
+	u8  therm_limit;
+	u8  i;
+	struct ixgbe_thermal_sensor_data *data = &hw->mac.thermal_sensor_data;
+
+	DEBUGFUNC("ixgbe_init_thermal_sensor_thresh_generic");
+
+	memset(data, 0, sizeof(struct ixgbe_thermal_sensor_data));
+
+	/* Only support thermal sensors attached to 82599 physical port 0 */
+	if ((hw->mac.type != ixgbe_mac_82599EB) ||
+	    (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1))
+		return IXGBE_NOT_IMPLEMENTED;
+
+	offset = IXGBE_ETS_CFG;
+	if (hw->eeprom.ops.read(hw, offset, &ets_offset))
+		goto eeprom_err;
+	if ((ets_offset == 0x0000) || (ets_offset == 0xFFFF))
+		return IXGBE_NOT_IMPLEMENTED;
+
+	offset = ets_offset;
+	if (hw->eeprom.ops.read(hw, offset, &ets_cfg))
+		goto eeprom_err;
+	if (((ets_cfg & IXGBE_ETS_TYPE_MASK) >> IXGBE_ETS_TYPE_SHIFT)
+		!= IXGBE_ETS_TYPE_EMC)
+		return IXGBE_NOT_IMPLEMENTED;
+
+	low_thresh_delta = ((ets_cfg & IXGBE_ETS_LTHRES_DELTA_MASK) >>
+			     IXGBE_ETS_LTHRES_DELTA_SHIFT);
+	num_sensors = (ets_cfg & IXGBE_ETS_NUM_SENSORS_MASK);
+
+	for (i = 0; i < num_sensors; i++) {
+		offset = ets_offset + 1 + i;
+		if (hw->eeprom.ops.read(hw, offset, &ets_sensor)) {
+			ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+				      "eeprom read at offset %d failed",
+				      offset);
+			continue;
+		}
+		sensor_index = ((ets_sensor & IXGBE_ETS_DATA_INDEX_MASK) >>
+				IXGBE_ETS_DATA_INDEX_SHIFT);
+		sensor_location = ((ets_sensor & IXGBE_ETS_DATA_LOC_MASK) >>
+				   IXGBE_ETS_DATA_LOC_SHIFT);
+		therm_limit = ets_sensor & IXGBE_ETS_DATA_HTHRESH_MASK;
+
+		hw->phy.ops.write_i2c_byte(hw,
+			ixgbe_emc_therm_limit[sensor_index],
+			IXGBE_I2C_THERMAL_SENSOR_ADDR, therm_limit);
+
+		if ((i < IXGBE_MAX_SENSORS) && (sensor_location != 0)) {
+			data->sensor[i].location = sensor_location;
+			data->sensor[i].caution_thresh = therm_limit;
+			data->sensor[i].max_op_thresh = therm_limit -
+							low_thresh_delta;
+		}
+	}
+	return status;
+
+eeprom_err:
+	ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+		      "eeprom read at offset %d failed", offset);
+	return IXGBE_NOT_IMPLEMENTED;
+}
+
 
 /**
  * ixgbe_dcb_get_rtrup2tc_generic - read rtrup2tc reg
@@ -4630,4 +4839,31 @@ void ixgbe_enable_rx_generic(struct ixgbe_hw *hw)
 			hw->mac.set_lben = false;
 		}
 	}
+}
+
+/**
+ * ixgbe_mng_enabled - Is the manageability engine enabled?
+ * @hw: pointer to hardware structure
+ *
+ * Returns true if the manageability engine is enabled.
+ **/
+bool ixgbe_mng_enabled(struct ixgbe_hw *hw)
+{
+	u32 fwsm, manc, factps;
+
+	fwsm = IXGBE_READ_REG(hw, IXGBE_FWSM);
+	if ((fwsm & IXGBE_FWSM_MODE_MASK) != IXGBE_FWSM_FW_MODE_PT)
+		return false;
+
+	manc = IXGBE_READ_REG(hw, IXGBE_MANC);
+	if (!(manc & IXGBE_MANC_RCV_TCO_EN))
+		return false;
+
+	if (hw->mac.type <= ixgbe_mac_X540) {
+		factps = IXGBE_READ_REG(hw, IXGBE_FACTPS);
+		if (factps & IXGBE_FACTPS_MNGCG)
+			return false;
+	}
+
+	return true;
 }

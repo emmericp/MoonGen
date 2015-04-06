@@ -34,12 +34,6 @@
 #ifndef _TESTPMD_H_
 #define _TESTPMD_H_
 
-/* icc on baremetal gives us troubles with function named 'main' */
-#ifdef RTE_EXEC_ENV_BAREMETAL
-#define main _main
-int main(int argc, char **argv);
-#endif
-
 #define RTE_PORT_ALL            (~(portid_t)0x0)
 
 #define RTE_TEST_RX_DESC_MAX    2048
@@ -60,15 +54,15 @@ int main(int argc, char **argv);
  * The maximum number of segments per packet is used when creating
  * scattered transmit packets composed of a list of mbufs.
  */
-#define RTE_MAX_SEGS_PER_PKT 255 /**< pkt.nb_segs is a 8-bit unsigned char. */
+#define RTE_MAX_SEGS_PER_PKT 255 /**< nb_segs is a 8-bit unsigned char. */
 
 #define MAX_PKT_BURST 512
 #define DEF_PKT_BURST 32
 
 #define DEF_MBUF_CACHE 250
 
-#define CACHE_LINE_SIZE_ROUNDUP(size) \
-	(CACHE_LINE_SIZE * ((size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE))
+#define RTE_CACHE_LINE_SIZE_ROUNDUP(size) \
+	(RTE_CACHE_LINE_SIZE * ((size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE))
 
 #define NUMA_NO_CONFIG 0xFF
 #define UMA_NO_CONFIG  0xFF
@@ -123,16 +117,27 @@ struct fwd_stream {
 #endif
 };
 
+/** Offload IP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_IP_CKSUM          0x0001
+/** Offload UDP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_UDP_CKSUM         0x0002
+/** Offload TCP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_TCP_CKSUM         0x0004
+/** Offload SCTP checksum in csum forward engine */
+#define TESTPMD_TX_OFFLOAD_SCTP_CKSUM        0x0008
+/** Offload outer IP checksum in csum forward engine for recognized tunnels */
+#define TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM    0x0010
+/** Parse tunnel in csum forward engine. If set, dissect tunnel headers
+ * of rx packets. If not set, treat inner headers as payload. */
+#define TESTPMD_TX_OFFLOAD_PARSE_TUNNEL      0x0020
+/** Insert VLAN header in forward engine */
+#define TESTPMD_TX_OFFLOAD_INSERT_VLAN       0x0040
+
 /**
  * The data structure associated with each port.
- * tx_ol_flags is slightly different from ol_flags of rte_mbuf.
- *   Bit  0: Insert IP checksum
- *   Bit  1: Insert UDP checksum
- *   Bit  2: Insert TCP checksum
- *   Bit  3: Insert SCTP checksum
- *   Bit 11: Insert VLAN Label
  */
 struct rte_port {
+	uint8_t                 enabled;    /**< Port enabled or not */
 	struct rte_eth_dev_info dev_info;   /**< PCI info + driver name */
 	struct rte_eth_conf     dev_conf;   /**< Port configuration. */
 	struct ether_addr       eth_addr;   /**< Port ethernet address */
@@ -141,7 +146,8 @@ struct rte_port {
 	struct fwd_stream       *rx_stream; /**< Port RX stream, if unique */
 	struct fwd_stream       *tx_stream; /**< Port TX stream, if unique */
 	unsigned int            socket_id;  /**< For NUMA support */
-	uint16_t                tx_ol_flags;/**< Offload Flags of TX packets. */
+	uint16_t                tx_ol_flags;/**< TX Offload Flags (TESTPMD_TX_OFFLOAD...). */
+	uint16_t                tso_segsz;  /**< MSS for segmentation offload. */
 	uint16_t                tx_vlan_id; /**< Tag Id. in TX VLAN packets. */
 	void                    *fwd_ctx;   /**< Forwarding mode context */
 	uint64_t                rx_bad_ip_csum; /**< rx pkts with bad ip checksum  */
@@ -156,6 +162,14 @@ struct rte_port {
 	struct rte_eth_rxconf   rx_conf;    /**< rx configuration */
 	struct rte_eth_txconf   tx_conf;    /**< tx configuration */
 };
+
+extern portid_t __rte_unused
+find_next_port(portid_t p, struct rte_port *ports, int size);
+
+#define FOREACH_PORT(p, ports) \
+	for (p = find_next_port(0, ports, RTE_MAX_ETHPORTS); \
+	    p < RTE_MAX_ETHPORTS; \
+	    p = find_next_port(p + 1, ports, RTE_MAX_ETHPORTS))
 
 /**
  * The data structure associated with each forwarding logical core.
@@ -337,11 +351,11 @@ extern queueid_t nb_txq;
 extern uint16_t nb_rxd;
 extern uint16_t nb_txd;
 
-extern uint16_t rx_free_thresh;
-extern uint8_t rx_drop_en;
-extern uint16_t tx_free_thresh;
-extern uint16_t tx_rs_thresh;
-extern uint32_t txq_flags;
+extern int16_t rx_free_thresh;
+extern int8_t rx_drop_en;
+extern int16_t tx_free_thresh;
+extern int16_t tx_rs_thresh;
+extern int32_t txq_flags;
 
 extern uint8_t dcb_config;
 extern uint8_t dcb_test;
@@ -362,8 +376,12 @@ extern uint8_t  tx_pkt_nb_segs; /**< Number of segments in TX packets */
 
 extern uint16_t nb_pkt_per_burst;
 extern uint16_t mb_mempool_cache;
-extern struct rte_eth_thresh rx_thresh;
-extern struct rte_eth_thresh tx_thresh;
+extern int8_t rx_pthresh;
+extern int8_t rx_hthresh;
+extern int8_t rx_wthresh;
+extern int8_t tx_pthresh;
+extern int8_t tx_hthresh;
+extern int8_t tx_wthresh;
 
 extern struct fwd_config cur_fwd_config;
 extern struct fwd_engine *cur_fwd_eng;
@@ -444,10 +462,15 @@ port_pci_reg_write(struct rte_port *port, uint32_t reg_off, uint32_t reg_v)
 	port_pci_reg_write(&ports[(pt_id)], (reg_off), (reg_value))
 
 /* Prototypes */
+unsigned int parse_item_list(char* str, const char* item_name,
+			unsigned int max_items,
+			unsigned int *parsed_items, int check_unique_values);
 void launch_args_parse(int argc, char** argv);
 void prompt(void);
 void nic_stats_display(portid_t port_id);
 void nic_stats_clear(portid_t port_id);
+void nic_xstats_display(portid_t port_id);
+void nic_xstats_clear(portid_t port_id);
 void nic_stats_mapping_display(portid_t port_id);
 void port_infos_display(portid_t port_id);
 void fwd_lcores_config_display(void);
@@ -455,7 +478,7 @@ void fwd_config_display(void);
 void rxtx_config_display(void);
 void fwd_config_setup(void);
 void set_def_fwd_config(void);
-void reconfig(portid_t new_port_id);
+void reconfig(portid_t new_port_id, unsigned socket_id);
 int init_fwd_streams(void);
 
 void port_mtu_set(portid_t port_id, uint16_t mtu);
@@ -485,7 +508,7 @@ void rx_vlan_strip_set_on_queue(portid_t port_id, uint16_t queue_id, int on);
 
 void rx_vlan_filter_set(portid_t port_id, int on);
 void rx_vlan_all_filter_set(portid_t port_id, int on);
-void rx_vft_set(portid_t port_id, uint16_t vlan_id, int on);
+int rx_vft_set(portid_t port_id, uint16_t vlan_id, int on);
 void vlan_extend_set(portid_t port_id, int on);
 void vlan_tpid_set(portid_t port_id, uint16_t tp_id);
 void tx_vlan_set(portid_t port_id, uint16_t vlan_id);
@@ -493,8 +516,6 @@ void tx_vlan_reset(portid_t port_id);
 void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 
 void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
-
-void tx_cksum_set(portid_t port_id, uint8_t cksum_mask);
 
 void set_verbose_level(uint16_t vb_level);
 void set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs);
@@ -510,28 +531,19 @@ int init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf);
 int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);
+void attach_port(char *identifier);
+void detach_port(uint8_t port_id);
 int all_ports_stopped(void);
 int port_is_started(portid_t port_id);
 void pmd_test_exit(void);
-
-void fdir_add_signature_filter(portid_t port_id, uint8_t queue_id,
-			       struct rte_fdir_filter *fdir_filter);
-void fdir_update_signature_filter(portid_t port_id, uint8_t queue_id,
-				  struct rte_fdir_filter *fdir_filter);
-void fdir_remove_signature_filter(portid_t port_id,
-				  struct rte_fdir_filter *fdir_filter);
 void fdir_get_infos(portid_t port_id);
-void fdir_add_perfect_filter(portid_t port_id, uint16_t soft_id,
-			     uint8_t queue_id, uint8_t drop,
-			     struct rte_fdir_filter *fdir_filter);
-void fdir_update_perfect_filter(portid_t port_id, uint16_t soft_id,
-				uint8_t queue_id, uint8_t drop,
-				struct rte_fdir_filter *fdir_filter);
-void fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
-				struct rte_fdir_filter *fdir_filter);
-void fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks);
-
-void port_rss_reta_info(portid_t port_id, struct rte_eth_rss_reta *reta_conf);
+void fdir_set_flex_mask(portid_t port_id,
+			   struct rte_eth_fdir_flex_mask *cfg);
+void fdir_set_flex_payload(portid_t port_id,
+			   struct rte_eth_flex_payload_cfg *cfg);
+void port_rss_reta_info(portid_t port_id,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t nb_entries);
 
 void set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on);
 void set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id,
@@ -547,10 +559,14 @@ void get_syn_filter(uint8_t port_id);
 void get_ethertype_filter(uint8_t port_id, uint16_t index);
 void get_2tuple_filter(uint8_t port_id, uint16_t index);
 void get_5tuple_filter(uint8_t port_id, uint16_t index);
-void get_flex_filter(uint8_t port_id, uint16_t index);
-int port_id_is_invalid(portid_t port_id);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
 int tx_queue_id_is_invalid(queueid_t txq_id);
+
+enum print_warning {
+	ENABLED_WARN = 0,
+	DISABLED_WARN
+};
+int port_id_is_invalid(portid_t port_id, enum print_warning warning);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the
@@ -560,7 +576,7 @@ int tx_queue_id_is_invalid(queueid_t txq_id);
 #define RTE_BE_TO_CPU_16(be_16_v)  rte_be_to_cpu_16((be_16_v))
 #define RTE_CPU_TO_BE_16(cpu_16_v) rte_cpu_to_be_16((cpu_16_v))
 #else
-#ifdef __big_endian__
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 #define RTE_BE_TO_CPU_16(be_16_v)  (be_16_v)
 #define RTE_CPU_TO_BE_16(cpu_16_v) (cpu_16_v)
 #else

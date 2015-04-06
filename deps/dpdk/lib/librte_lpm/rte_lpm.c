@@ -42,10 +42,9 @@
 #include <rte_log.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
-#include <rte_memory.h>        /* for definition of CACHE_LINE_SIZE */
+#include <rte_memory.h>        /* for definition of RTE_CACHE_LINE_SIZE */
 #include <rte_malloc.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
@@ -57,6 +56,11 @@
 #include "rte_lpm.h"
 
 TAILQ_HEAD(rte_lpm_list, rte_tailq_entry);
+
+static struct rte_tailq_elem rte_lpm_tailq = {
+	.name = "RTE_LPM",
+};
+EAL_REGISTER_TAILQ(rte_lpm_tailq)
 
 #define MAX_DEPTH_TBL24 24
 
@@ -122,12 +126,7 @@ rte_lpm_find_existing(const char *name)
 	struct rte_tailq_entry *te;
 	struct rte_lpm_list *lpm_list;
 
-	/* check that we have an initialised tail queue */
-	if ((lpm_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM,
-			rte_lpm_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm_tailq.head, rte_lpm_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, lpm_list, next) {
@@ -158,12 +157,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 	uint32_t mem_size;
 	struct rte_lpm_list *lpm_list;
 
-	/* check that we have an initialised tail queue */
-	if ((lpm_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM,
-			rte_lpm_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm_tailq.head, rte_lpm_list);
 
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl24_entry) != 2);
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl8_entry) != 2);
@@ -199,7 +193,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 
 	/* Allocate memory to store the LPM data structures. */
 	lpm = (struct rte_lpm *)rte_zmalloc_socket(mem_name, mem_size,
-			CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE, socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
 		rte_free(te);
@@ -233,12 +227,7 @@ rte_lpm_free(struct rte_lpm *lpm)
 	if (lpm == NULL)
 		return;
 
-	/* check that we have an initialised tail queue */
-	if ((lpm_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm_tailq.head, rte_lpm_list);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
@@ -298,6 +287,9 @@ rule_add(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 				return rule_index;
 			}
 		}
+
+		if (rule_index == lpm->max_rules)
+			return -ENOSPC;
 	} else {
 		/* Calculate the position in which the rule will be stored. */
 		rule_index = 0;
@@ -382,8 +374,8 @@ rule_find(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth)
 			return (rule_index);
 	}
 
-	/* If rule is not found return -E_RTE_NO_TAILQ. */
-	return -E_RTE_NO_TAILQ;
+	/* If rule is not found return -EINVAL. */
+	return -EINVAL;
 }
 
 /*
@@ -967,10 +959,10 @@ rte_lpm_delete(struct rte_lpm *lpm, uint32_t ip, uint8_t depth)
 
 	/*
 	 * Check if rule_to_delete_index was found. If no rule was found the
-	 * function rule_find returns -E_RTE_NO_TAILQ.
+	 * function rule_find returns -EINVAL.
 	 */
 	if (rule_to_delete_index < 0)
-		return -E_RTE_NO_TAILQ;
+		return -EINVAL;
 
 	/* Delete the rule from the rule table. */
 	rule_delete(lpm, rule_to_delete_index, depth);

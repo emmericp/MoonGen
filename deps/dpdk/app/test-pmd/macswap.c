@@ -51,7 +51,6 @@
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -85,6 +84,7 @@ pkt_burst_mac_swap(struct fwd_stream *fs)
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t i;
+	uint64_t ol_flags = 0;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
 	uint64_t end_tsc;
@@ -108,19 +108,21 @@ pkt_burst_mac_swap(struct fwd_stream *fs)
 #endif
 	fs->rx_packets += nb_rx;
 	txp = &ports[fs->tx_port];
+	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_VLAN)
+		ol_flags = PKT_TX_VLAN_PKT;
 	for (i = 0; i < nb_rx; i++) {
 		mb = pkts_burst[i];
-		eth_hdr = (struct ether_hdr *) mb->pkt.data;
+		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 
 		/* Swap dest and src mac addresses. */
 		ether_addr_copy(&eth_hdr->d_addr, &addr);
 		ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
 		ether_addr_copy(&addr, &eth_hdr->s_addr);
 
-		mb->ol_flags = txp->tx_ol_flags;
-		mb->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
-		mb->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
-		mb->pkt.vlan_macip.f.vlan_tci = txp->tx_vlan_id;
+		mb->ol_flags = ol_flags;
+		mb->l2_len = sizeof(struct ether_hdr);
+		mb->l3_len = sizeof(struct ipv4_hdr);
+		mb->vlan_tci = txp->tx_vlan_id;
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
 	fs->tx_packets += nb_tx;

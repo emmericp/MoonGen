@@ -36,8 +36,13 @@ LIB = librte_power.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -fno-strict-aliasing
 
+EXPORT_MAP := rte_power_version.map
+
+LIBABIVER := 1
+
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_POWER) := rte_power.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) := rte_power.c rte_power_acpi_cpufreq.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) += rte_power_kvm_vm.c guest_channel.c
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_POWER)-include := rte_power.h

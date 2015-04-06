@@ -58,7 +58,6 @@
 #include <rte_launch.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
@@ -106,7 +105,10 @@ struct uio_resource {
 
 TAILQ_HEAD(uio_res_list, uio_resource);
 
-static struct uio_res_list *uio_res_list = NULL;
+static struct rte_tailq_elem rte_uio_tailq = {
+	.name = "UIO_RESOURCE_LIST",
+};
+EAL_REGISTER_TAILQ(rte_uio_tailq)
 
 /* unbind kernel driver for this device */
 static int
@@ -161,6 +163,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 {
         size_t i;
         struct uio_resource *uio_res;
+	struct uio_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
 
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
@@ -183,7 +186,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	}
 
 	RTE_LOG(ERR, EAL, "Cannot find resource for device\n");
-	return -1;
+	return 1;
 }
 
 /* map the PCI resource of a PCI device in virtual memory */
@@ -198,6 +201,7 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	uint64_t pagesz;
 	struct rte_pci_addr *loc = &dev->addr;
 	struct uio_resource *uio_res;
+	struct uio_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, uio_res_list);
 	struct uio_map *maps;
 
 	dev->intr_handle.fd = -1;
@@ -269,20 +273,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 
 	return (0);
 }
-
-/* Compare two PCI device addresses. */
-static int
-pci_addr_comparison(struct rte_pci_addr *addr, struct rte_pci_addr *addr2)
-{
-	uint64_t dev_addr = (addr->domain << 24) + (addr->bus << 16) + (addr->devid << 8) + addr->function;
-	uint64_t dev_addr2 = (addr2->domain << 24) + (addr2->bus << 16) + (addr2->devid << 8) + addr2->function;
-
-	if (dev_addr > dev_addr2)
-		return 1;
-	else
-		return 0;
-}
-
 
 /* Scan one pci sysfs entry, and fill the devices list from it. */
 static int
@@ -356,12 +346,22 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	}
 	else {
 		struct rte_pci_device *dev2 = NULL;
+		int ret;
 
 		TAILQ_FOREACH(dev2, &pci_device_list, next) {
-			if (pci_addr_comparison(&dev->addr, &dev2->addr))
+			ret = rte_eal_compare_pci_addr(&dev->addr, &dev2->addr);
+			if (ret > 0)
 				continue;
-			else {
+			else if (ret < 0) {
 				TAILQ_INSERT_BEFORE(dev2, dev, next);
+				return 0;
+			} else { /* already registered */
+				dev2->kdrv = dev->kdrv;
+				dev2->max_vfs = dev->max_vfs;
+				memmove(dev2->mem_resource,
+					dev->mem_resource,
+					sizeof(dev->mem_resource));
+				free(dev);
 				return 0;
 			}
 		}
@@ -382,7 +382,7 @@ skipdev:
 static int
 pci_scan(void)
 {
-	int fd = -1;
+	int fd;
 	unsigned dev_count = 0;
 	struct pci_conf matches[16];
 	struct pci_conf_io conf_io = {
@@ -496,7 +496,6 @@ rte_eal_pci_init(void)
 {
 	TAILQ_INIT(&pci_driver_list);
 	TAILQ_INIT(&pci_device_list);
-	uio_res_list = RTE_TAILQ_RESERVE_BY_IDX(RTE_TAILQ_PCI, uio_res_list);
 
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)

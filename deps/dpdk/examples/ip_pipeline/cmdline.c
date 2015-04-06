@@ -345,7 +345,7 @@ cmd_link_enable_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	req->type = APP_MSG_REQ_RX_PORT_ENABLE;
 	req->rx_up.port = params->port;
 
@@ -358,7 +358,7 @@ cmd_link_enable_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	/* Check response */
 	if (resp->result != 0)
 		printf("Request LINK_UP failed (%u)\n", resp->result);
@@ -433,7 +433,7 @@ cmd_link_disable_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	req->type = APP_MSG_REQ_RX_PORT_DISABLE;
 	req->rx_down.port = params->port;
 
@@ -446,7 +446,7 @@ cmd_link_disable_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 
 	/* Check response */
 	if (resp->result != 0)
@@ -543,7 +543,7 @@ cmd_arp_add_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	req->type = APP_MSG_REQ_ARP_ADD;
 	req->arp_add.out_iface = rule.arp.key.out_iface;
 	req->arp_add.nh_ip = rule.arp.key.nh_ip;
@@ -558,7 +558,7 @@ cmd_arp_add_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 
 	/* Check response */
 	if (resp->result != 0)
@@ -568,7 +568,7 @@ cmd_arp_add_parsed(
 			struct app_rule *new_rule = (struct app_rule *)
 				rte_zmalloc_socket("CLI",
 				sizeof(struct app_rule),
-				CACHE_LINE_SIZE,
+				RTE_CACHE_LINE_SIZE,
 				rte_socket_id());
 
 			if (new_rule == NULL)
@@ -672,7 +672,7 @@ cmd_arp_del_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	req->type = APP_MSG_REQ_ARP_DEL;
 	req->arp_del.out_iface = rule.arp.key.out_iface;
 	req->arp_del.nh_ip = rule.arp.key.nh_ip;
@@ -686,7 +686,7 @@ cmd_arp_del_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 
 	/* Check response */
 	if (resp->result != 0)
@@ -834,7 +834,7 @@ cmd_route_add_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	req->type = APP_MSG_REQ_RT_ADD;
 	req->routing_add.ip = rule.routing.key.ip;
 	req->routing_add.depth = rule.routing.key.depth;
@@ -850,7 +850,7 @@ cmd_route_add_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 
 	/* Check response */
 	if (resp->result != 0)
@@ -860,7 +860,7 @@ cmd_route_add_parsed(
 			struct app_rule *new_rule = (struct app_rule *)
 				rte_zmalloc_socket("CLI",
 				sizeof(struct app_rule),
-				CACHE_LINE_SIZE,
+				RTE_CACHE_LINE_SIZE,
 				rte_socket_id());
 
 			if (new_rule == NULL)
@@ -972,7 +972,7 @@ cmd_route_del_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	req->type = APP_MSG_REQ_RT_DEL;
 	req->routing_del.ip = rule.routing.key.ip;
 	req->routing_del.depth = rule.routing.key.depth;
@@ -986,7 +986,7 @@ cmd_route_del_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 
 	/* Check response */
 	if (resp->result != 0)
@@ -1093,7 +1093,7 @@ cmd_firewall_add_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_firewall_add_result *params = parsed_result;
-	struct app_rule rule, *old_rule;
+	struct app_rule rule, *old_rule, *new_rule = NULL;
 	struct rte_mbuf *msg;
 	struct app_msg_req *req;
 	struct app_msg_resp *resp;
@@ -1148,8 +1148,20 @@ cmd_firewall_add_parsed(
 	if (msg == NULL)
 		rte_panic("Unable to allocate new message\n");
 
+	/* if we need a new rule structure, allocate it before we go further */
+	if (old_rule == NULL) {
+		new_rule = rte_zmalloc_socket("CLI", sizeof(struct app_rule),
+				RTE_CACHE_LINE_SIZE, rte_socket_id());
+		if (new_rule == NULL) {
+			printf("Cannot allocate memory for new rule\n");
+			rte_ctrlmbuf_free(msg);
+			return;
+		}
+	}
+
+
 	/* Fill request message */
-	req = (struct app_msg_req *) msg->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data(msg);
 	req->type = APP_MSG_REQ_FW_ADD;
 	req->firewall_add.add_params.priority = rule.firewall.priority;
 	req->firewall_add.add_params.field_value[1].value.u32 =
@@ -1183,19 +1195,13 @@ cmd_firewall_add_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, (void **) &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) msg->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data(msg);
 
 	/* Check response */
 	if (resp->result != 0)
 		printf("Request FIREWALL_ADD failed (%u)\n", resp->result);
 	else {
 		if (old_rule == NULL) {
-			struct app_rule *new_rule = (struct app_rule *)
-				rte_zmalloc_socket("CLI",
-				sizeof(struct app_rule),
-				CACHE_LINE_SIZE,
-				rte_socket_id());
-
 			memcpy(new_rule, &rule, sizeof(rule));
 			TAILQ_INSERT_TAIL(&firewall_table, new_rule, entries);
 			n_firewall_rules++;
@@ -1347,7 +1353,7 @@ cmd_firewall_del_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) msg->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data(msg);
 	memset(&req->firewall_del, 0, sizeof(req->firewall_del));
 	req->type = APP_MSG_REQ_FW_DEL;
 	req->firewall_del.delete_params.field_value[1].value.u32 =
@@ -1380,7 +1386,7 @@ cmd_firewall_del_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, (void **) &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) msg->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data(msg);
 
 	/* Check response */
 	if (resp->result != 0)
@@ -1525,7 +1531,7 @@ cmd_flow_add_all_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	memset(req, 0, sizeof(struct app_msg_req));
 
 	req->type = APP_MSG_REQ_FC_ADD_ALL;
@@ -1539,7 +1545,7 @@ cmd_flow_add_all_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 
 	/* Check response */
 	if (resp->result != 0)
@@ -1641,7 +1647,7 @@ cmd_flow_add_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	memset(req, 0, sizeof(struct app_msg_req));
 
 	req->type = APP_MSG_REQ_FC_ADD;
@@ -1663,7 +1669,7 @@ cmd_flow_add_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 
 	/* Check response */
 	if (resp->result != 0)
@@ -1673,7 +1679,7 @@ cmd_flow_add_parsed(
 			struct app_rule *new_rule = (struct app_rule *)
 				rte_zmalloc_socket("CLI",
 				sizeof(struct app_rule),
-				CACHE_LINE_SIZE,
+				RTE_CACHE_LINE_SIZE,
 				rte_socket_id());
 
 			if (new_rule == NULL)
@@ -1790,7 +1796,7 @@ cmd_flow_del_parsed(
 		rte_panic("Unable to allocate new message\n");
 
 	/* Fill request message */
-	req = (struct app_msg_req *) ((struct rte_mbuf *)msg)->ctrl.data;
+	req = (struct app_msg_req *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 	memset(req, 0, sizeof(struct app_msg_req));
 
 	req->type = APP_MSG_REQ_FC_DEL;
@@ -1811,7 +1817,7 @@ cmd_flow_del_parsed(
 	do {
 		status = rte_ring_sc_dequeue(ring_resp, &msg);
 	} while (status != 0);
-	resp = (struct app_msg_resp *) ((struct rte_mbuf *)msg)->ctrl.data;
+	resp = (struct app_msg_resp *)rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 
 	/* Check response */
 	if (resp->result != 0)

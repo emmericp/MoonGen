@@ -101,6 +101,8 @@ extern "C" {
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 
+#define RTE_TAILQ_RING_NAME "RTE_RING"
+
 enum rte_ring_queue_behavior {
 	RTE_RING_QUEUE_FIXED = 0, /* Enq/Deq a fixed number of items from a ring */
 	RTE_RING_QUEUE_VARIABLE   /* Enq/Deq as many items a possible from ring */
@@ -126,6 +128,11 @@ struct rte_ring_debug_stats {
 
 #define RTE_RING_NAMESIZE 32 /**< The maximum length of a ring name. */
 #define RTE_RING_MZ_PREFIX "RG_"
+
+#ifndef RTE_RING_PAUSE_REP_COUNT
+#define RTE_RING_PAUSE_REP_COUNT 0 /**< Yield after pause num of times, no yield
+                                    *   if RTE_RING_PAUSE_REP not defined. */
+#endif
 
 /**
  * An RTE ring structure.
@@ -188,10 +195,12 @@ struct rte_ring {
  *   The number to add to the object-oriented statistics.
  */
 #ifdef RTE_LIBRTE_RING_DEBUG
-#define __RING_STAT_ADD(r, name, n) do {		\
-		unsigned __lcore_id = rte_lcore_id();	\
-		r->stats[__lcore_id].name##_objs += n;	\
-		r->stats[__lcore_id].name##_bulk += 1;	\
+#define __RING_STAT_ADD(r, name, n) do {                        \
+		unsigned __lcore_id = rte_lcore_id();           \
+		if (__lcore_id < RTE_MAX_LCORE) {               \
+			r->stats[__lcore_id].name##_objs += n;  \
+			r->stats[__lcore_id].name##_bulk += 1;  \
+		}                                               \
 	} while(0)
 #else
 #define __RING_STAT_ADD(r, name, n) do {} while(0)
@@ -284,7 +293,6 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
  *    rte_errno set appropriately. Possible errno values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the ring list
  *    - EINVAL - count provided is not a power of 2
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists
@@ -408,7 +416,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	uint32_t cons_tail, free_entries;
 	const unsigned max = n;
 	int success;
-	unsigned i;
+	unsigned i, rep = 0;
 	uint32_t mask = r->prod.mask;
 	int ret;
 
@@ -466,9 +474,18 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	 * If there are other enqueues in progress that preceded us,
 	 * we need to wait for them to complete
 	 */
-	while (unlikely(r->prod.tail != prod_head))
+	while (unlikely(r->prod.tail != prod_head)) {
 		rte_pause();
 
+		/* Set RTE_RING_PAUSE_REP_COUNT to avoid spin too long waiting
+		 * for other thread finish. It gives pre-empted thread a chance
+		 * to proceed and finish with ring dequeue operation. */
+		if (RTE_RING_PAUSE_REP_COUNT &&
+		    ++rep == RTE_RING_PAUSE_REP_COUNT) {
+			rep = 0;
+			sched_yield();
+		}
+	}
 	r->prod.tail = prod_next;
 	return ret;
 }
@@ -587,7 +604,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	uint32_t cons_next, entries;
 	const unsigned max = n;
 	int success;
-	unsigned i;
+	unsigned i, rep = 0;
 	uint32_t mask = r->prod.mask;
 
 	/* move cons.head atomically */
@@ -632,9 +649,18 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	 * If there are other dequeues in progress that preceded us,
 	 * we need to wait for them to complete
 	 */
-	while (unlikely(r->cons.tail != cons_head))
+	while (unlikely(r->cons.tail != cons_head)) {
 		rte_pause();
 
+		/* Set RTE_RING_PAUSE_REP_COUNT to avoid spin too long waiting
+		 * for other thread finish. It gives pre-empted thread a chance
+		 * to proceed and finish with ring dequeue operation. */
+		if (RTE_RING_PAUSE_REP_COUNT &&
+		    ++rep == RTE_RING_PAUSE_REP_COUNT) {
+			rep = 0;
+			sched_yield();
+		}
+	}
 	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;
 
@@ -1087,7 +1113,7 @@ struct rte_ring *rte_ring_lookup(const char *name);
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
@@ -1106,7 +1132,7 @@ rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned n)
 {
@@ -1129,7 +1155,7 @@ rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 		      unsigned n)
 {
@@ -1156,7 +1182,7 @@ rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_mc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE);
@@ -1176,7 +1202,7 @@ rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	return __rte_ring_sc_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE);
@@ -1196,9 +1222,9 @@ rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
  * @param n
  *   The number of objects to dequeue from the ring to the obj_table.
  * @return
- *   - Number of objects dequeued, or a negative error code on error
+ *   - Number of objects dequeued
  */
-static inline int __attribute__((always_inline))
+static inline unsigned __attribute__((always_inline))
 rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
 	if (r->cons.sc_dequeue)

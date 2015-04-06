@@ -36,6 +36,7 @@
 
 #include <rte_common.h>
 #include <rte_mbuf.h>
+#include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_byteorder.h>
 #include <rte_log.h>
@@ -96,7 +97,7 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 	/* Memory allocation */
 	nht_size = RTE_TABLE_LPM_MAX_NEXT_HOPS * entry_size;
 	total_size = sizeof(struct rte_table_lpm) + nht_size;
-	lpm = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE,
+	lpm = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE,
 		socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, TABLE,
@@ -185,7 +186,7 @@ rte_table_lpm_entry_add(
 	struct rte_table_lpm_key *ip_prefix = (struct rte_table_lpm_key *) key;
 	uint32_t nht_pos, nht_pos0_valid;
 	int status;
-	uint8_t nht_pos0;
+	uint8_t nht_pos0 = 0;
 
 	/* Check input parameters */
 	if (lpm == NULL) {

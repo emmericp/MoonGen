@@ -56,7 +56,7 @@ else
 #
 # CFLAGS for gcc
 #
-ifneq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 3 && echo 1), 1)
+ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 endif
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
@@ -65,6 +65,10 @@ CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
 endif
 
 VPATH += $(RTE_SDK)/lib/librte_pmd_vmxnet3/vmxnet3
+
+EXPORT_MAP := rte_pmd_vmxnet3_version.map
+
+LIBABIVER := 1
 
 #
 # all source are stored in SRCS-y

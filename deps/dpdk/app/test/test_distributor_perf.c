@@ -73,7 +73,7 @@ static void
 time_cache_line_switch(void)
 {
 	/* allocate a full cache line for data, we use only first byte of it */
-	uint64_t data[CACHE_LINE_SIZE*3 / sizeof(uint64_t)];
+	uint64_t data[RTE_CACHE_LINE_SIZE*3 / sizeof(uint64_t)];
 
 	unsigned i, slaveid = rte_get_next_lcore(rte_lcore_id(), 0, 0);
 	volatile uint64_t *pdata = &data[0];
@@ -159,7 +159,7 @@ perf_test(struct rte_distributor *d, struct rte_mempool *p)
 	}
 	/* ensure we have different hash value for each pkt */
 	for (i = 0; i < BURST; i++)
-		bufs[i]->pkt.hash.rss = i;
+		bufs[i]->hash.usr = i;
 
 	start = rte_rdtsc();
 	for (i = 0; i < (1<<ITER_POWER); i++)
@@ -198,7 +198,7 @@ quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 
 	quit = 1;
 	for (i = 0; i < num_workers; i++)
-		bufs[i]->pkt.hash.rss = i << 1;
+		bufs[i]->hash.usr = i << 1;
 	rte_distributor_process(d, bufs, num_workers);
 
 	rte_mempool_put_bulk(p, (void *)bufs, num_workers);

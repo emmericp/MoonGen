@@ -45,7 +45,6 @@
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_memcpy.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
@@ -78,6 +77,11 @@ enum valid_flag {
 };
 
 TAILQ_HEAD(rte_lpm6_list, rte_tailq_entry);
+
+static struct rte_tailq_elem rte_lpm6_tailq = {
+	.name = "RTE_LPM6",
+};
+EAL_REGISTER_TAILQ(rte_lpm6_tailq)
 
 /** Tbl entry structure. It is the same for both tbl24 and tbl8 */
 struct rte_lpm6_tbl_entry {
@@ -151,12 +155,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	uint64_t mem_size, rules_size;
 	struct rte_lpm6_list *lpm_list;
 
-	/* Check that we have an initialised tail queue */
-	if ((lpm_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM6, rte_lpm6_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm6_tailq.head, rte_lpm6_list);
 
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm6_tbl_entry) != sizeof(uint32_t));
 
@@ -195,7 +194,7 @@ rte_lpm6_create(const char *name, int socket_id,
 
 	/* Allocate memory to store the LPM data structures. */
 	lpm = (struct rte_lpm6 *)rte_zmalloc_socket(mem_name, (size_t)mem_size,
-			CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
@@ -204,7 +203,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	}
 
 	lpm->rules_tbl = (struct rte_lpm6_rule *)rte_zmalloc_socket(NULL,
-			(size_t)rules_size, CACHE_LINE_SIZE, socket_id);
+			(size_t)rules_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm->rules_tbl == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
@@ -238,12 +237,7 @@ rte_lpm6_find_existing(const char *name)
 	struct rte_tailq_entry *te;
 	struct rte_lpm6_list *lpm_list;
 
-	/* Check that we have an initialised tail queue */
-	if ((lpm_list = RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM6,
-			rte_lpm6_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return NULL;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm6_tailq.head, rte_lpm6_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, lpm_list, next) {
@@ -274,12 +268,7 @@ rte_lpm6_free(struct rte_lpm6 *lpm)
 	if (lpm == NULL)
 		return;
 
-	/* check that we have an initialised tail queue */
-	if ((lpm_list =
-	     RTE_TAILQ_LOOKUP_BY_IDX(RTE_TAILQ_LPM, rte_lpm6_list)) == NULL) {
-		rte_errno = E_RTE_NO_TAILQ;
-		return;
-	}
+	lpm_list = RTE_TAILQ_CAST(rte_lpm6_tailq.head, rte_lpm6_list);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 

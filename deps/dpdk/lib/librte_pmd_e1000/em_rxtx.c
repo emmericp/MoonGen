@@ -51,7 +51,6 @@
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -85,13 +84,12 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 	struct rte_mbuf *m;
 
 	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, RTE_MBUF_PKT, 0);
+	__rte_mbuf_sanity_check_raw(m, 0);
 	return (m);
 }
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb)             \
-	(uint64_t) ((mb)->buf_physaddr +       \
-	(uint64_t) ((char *)((mb)->pkt.data) - (char *)(mb)->buf_addr))
+	(uint64_t) ((mb)->buf_physaddr + (mb)->data_off)
 
 #define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
 	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
@@ -144,13 +142,34 @@ enum {
 	EM_CTX_NUM  = 1, /**< CTX NUM */
 };
 
+/** Offload features */
+union em_vlan_macip {
+	uint32_t data;
+	struct {
+		uint16_t l3_len:9; /**< L3 (IP) Header Length. */
+		uint16_t l2_len:7; /**< L2 (MAC) Header Length. */
+		uint16_t vlan_tci;
+		/**< VLAN Tag Control Identifier (CPU order). */
+	} f;
+};
+
+/*
+ * Compare mask for vlan_macip_len.data,
+ * should be in sync with em_vlan_macip.f layout.
+ * */
+#define TX_VLAN_CMP_MASK        0xFFFF0000  /**< VLAN length - 16-bits. */
+#define TX_MAC_LEN_CMP_MASK     0x0000FE00  /**< MAC length - 7-bits. */
+#define TX_IP_LEN_CMP_MASK      0x000001FF  /**< IP  length - 9-bits. */
+/** MAC+IP  length. */
+#define TX_MACIP_LEN_CMP_MASK   (TX_MAC_LEN_CMP_MASK | TX_IP_LEN_CMP_MASK)
+
 /**
  * Structure to check if new context need be built
  */
 struct em_ctx_info {
-	uint16_t flags;               /**< ol_flags related to context build. */
-	uint32_t cmp_mask;            /**< compare mask */
-	union rte_vlan_macip hdrlen;  /**< L2 and L3 header lenghts */
+	uint64_t flags;              /**< ol_flags related to context build. */
+	uint32_t cmp_mask;           /**< compare mask */
+	union em_vlan_macip hdrlen;  /**< L2 and L3 header lenghts */
 };
 
 /**
@@ -218,8 +237,8 @@ struct em_tx_queue {
 static inline void
 em_set_xmit_ctx(struct em_tx_queue* txq,
 		volatile struct e1000_context_desc *ctx_txd,
-		uint16_t flags,
-		union rte_vlan_macip hdrlen)
+		uint64_t flags,
+		union em_vlan_macip hdrlen)
 {
 	uint32_t cmp_mask, cmd_len;
 	uint16_t ipcse, l2len;
@@ -284,8 +303,8 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
  * or create a new context descriptor.
  */
 static inline uint32_t
-what_ctx_update(struct em_tx_queue *txq, uint16_t flags,
-		union rte_vlan_macip hdrlen)
+what_ctx_update(struct em_tx_queue *txq, uint64_t flags,
+		union em_vlan_macip hdrlen)
 {
 	/* If match with the current context */
 	if (likely (txq->ctx_cache.flags == flags &&
@@ -319,8 +338,7 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 	{
 		PMD_TX_FREE_LOG(DEBUG,
 				"TX descriptor %4u is not done"
-				"(port=%d queue=%d)",
-				desc_to_clean_to,
+				"(port=%d queue=%d)", desc_to_clean_to,
 				txq->port_id, txq->queue_id);
 		/* Failed to clean any descriptors, better luck next time */
 		return -(1);
@@ -336,9 +354,9 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 
 	PMD_TX_FREE_LOG(DEBUG,
 			"Cleaning %4u TX descriptors: %4u to %4u "
-			"(port=%d queue=%d)",
-			nb_tx_to_clean, last_desc_cleaned, desc_to_clean_to,
-			txq->port_id, txq->queue_id);
+			"(port=%d queue=%d)", nb_tx_to_clean,
+			last_desc_cleaned, desc_to_clean_to, txq->port_id,
+			txq->queue_id);
 
 	/*
 	 * The last descriptor to clean is done, so that means all the
@@ -357,7 +375,7 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 }
 
 static inline uint32_t
-tx_desc_cksum_flags_to_upper(uint16_t ol_flags)
+tx_desc_cksum_flags_to_upper(uint64_t ol_flags)
 {
 	static const uint32_t l4_olinfo[2] = {0, E1000_TXD_POPTS_TXSM << 8};
 	static const uint32_t l3_olinfo[2] = {0, E1000_TXD_POPTS_IXSM << 8};
@@ -383,15 +401,15 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t popts_spec;
 	uint32_t cmd_type_len;
 	uint16_t slen;
-	uint16_t ol_flags;
+	uint64_t ol_flags;
 	uint16_t tx_id;
 	uint16_t tx_last;
 	uint16_t nb_tx;
 	uint16_t nb_used;
-	uint16_t tx_ol_req;
+	uint64_t tx_ol_req;
 	uint32_t ctx;
 	uint32_t new_ctx;
-	union rte_vlan_macip hdrlen;
+	union em_vlan_macip hdrlen;
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -418,10 +436,11 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		ol_flags = tx_pkt->ol_flags;
 
 		/* If hardware offload required */
-		tx_ol_req = (uint16_t)(ol_flags & (PKT_TX_IP_CKSUM |
-							PKT_TX_L4_MASK));
+		tx_ol_req = (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK));
 		if (tx_ol_req) {
-			hdrlen = tx_pkt->pkt.vlan_macip;
+			hdrlen.f.vlan_tci = tx_pkt->vlan_tci;
+			hdrlen.f.l2_len = tx_pkt->l2_len;
+			hdrlen.f.l3_len = tx_pkt->l3_len;
 			/* If new context to be built or reuse the exist ctx. */
 			ctx = what_ctx_update(txq, tx_ol_req, hdrlen);
 
@@ -434,7 +453,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * This will always be the number of segments + the number of
 		 * Context descriptors required to transmit the packet
 		 */
-		nb_used = (uint16_t)(tx_pkt->pkt.nb_segs + new_ctx);
+		nb_used = (uint16_t)(tx_pkt->nb_segs + new_ctx);
 
 		/*
 		 * The number of descriptors that must be allocated for a
@@ -451,12 +470,12 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_last = (uint16_t) (tx_last - txq->nb_tx_desc);
 
 		PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u pktlen=%u"
-			" tx_first=%u tx_last=%u\n",
-			(unsigned) txq->port_id,
-			(unsigned) txq->queue_id,
-			(unsigned) tx_pkt->pkt.pkt_len,
-			(unsigned) tx_id,
-			(unsigned) tx_last);
+			   " tx_first=%u tx_last=%u",
+			   (unsigned) txq->port_id,
+			   (unsigned) txq->queue_id,
+			   (unsigned) tx_pkt->pkt_len,
+			   (unsigned) tx_id,
+			   (unsigned) tx_last);
 
 		/*
 		 * Make sure there are enough TX descriptors available to
@@ -464,8 +483,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * nb_used better be less than or equal to txq->tx_rs_thresh
 		 */
 		while (unlikely (nb_used > txq->nb_tx_free)) {
-			PMD_TX_FREE_LOG(DEBUG,
-					"Not enough free TX descriptors "
+			PMD_TX_FREE_LOG(DEBUG, "Not enough free TX descriptors "
 					"nb_used=%4u nb_free=%4u "
 					"(port=%d queue=%d)",
 					nb_used, txq->nb_tx_free,
@@ -516,8 +534,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Set VLAN Tag offload fields. */
 		if (ol_flags & PKT_TX_VLAN_PKT) {
 			cmd_type_len |= E1000_TXD_CMD_VLE;
-			popts_spec = tx_pkt->pkt.vlan_macip.f.vlan_tci <<
-				E1000_TXD_VLAN_SHIFT;
+			popts_spec = tx_pkt->vlan_tci << E1000_TXD_VLAN_SHIFT;
 		}
 
 		if (tx_ol_req) {
@@ -566,7 +583,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/*
 			 * Set up Transmit Data Descriptor.
 			 */
-			slen = m_seg->pkt.data_len;
+			slen = m_seg->data_len;
 			buf_dma_addr = RTE_MBUF_DATA_DMA_ADDR(m_seg);
 
 			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
@@ -576,7 +593,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			txe->last_id = tx_last;
 			tx_id = txe->next_id;
 			txe = txn;
-			m_seg = m_seg->pkt.next;
+			m_seg = m_seg->next;
 		} while (m_seg != NULL);
 
 		/*
@@ -589,8 +606,8 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Set RS bit only on threshold packets' last descriptor */
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
 			PMD_TX_FREE_LOG(DEBUG,
-					"Setting RS bit on TXD id="
-					"%4u (port=%d queue=%d)",
+					"Setting RS bit on TXD id=%4u "
+					"(port=%d queue=%d)",
 					tx_last, txq->port_id, txq->queue_id);
 
 			cmd_type_len |= E1000_TXD_CMD_RS;
@@ -621,22 +638,21 @@ end_of_tx:
  *
  **********************************************************************/
 
-static inline uint16_t
+static inline uint64_t
 rx_desc_status_to_pkt_flags(uint32_t rx_status)
 {
-	uint16_t pkt_flags;
+	uint64_t pkt_flags;
 
 	/* Check if VLAN present */
-	pkt_flags = (uint16_t)((rx_status & E1000_RXD_STAT_VP) ?
-						PKT_RX_VLAN_PKT : 0);
+	pkt_flags = ((rx_status & E1000_RXD_STAT_VP) ?  PKT_RX_VLAN_PKT : 0);
 
 	return pkt_flags;
 }
 
-static inline uint16_t
+static inline uint64_t
 rx_desc_error_to_pkt_flags(uint32_t rx_error)
 {
-	uint16_t pkt_flags = 0;
+	uint64_t pkt_flags = 0;
 
 	if (rx_error & E1000_RXD_ERR_IPE)
 		pkt_flags |= PKT_RX_IP_CKSUM_BAD;
@@ -712,18 +728,18 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * to happen by sending specific "back-pressure" flow control
 		 * frames to its peer(s).
 		 */
-		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			"status=0x%x pkt_len=%u\n",
-			(unsigned) rxq->port_id, (unsigned) rxq->queue_id,
-			(unsigned) rx_id, (unsigned) status,
-			(unsigned) rte_le_to_cpu_16(rxd.length));
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+			   "status=0x%x pkt_len=%u",
+			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
+			   (unsigned) rx_id, (unsigned) status,
+			   (unsigned) rte_le_to_cpu_16(rxd.length));
 
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				"queue_id=%u\n",
-				(unsigned) rxq->port_id,
-				(unsigned) rxq->queue_id);
+				   "queue_id=%u",
+				   (unsigned) rxq->port_id,
+				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
 		}
@@ -771,20 +787,20 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.length) -
 				rxq->crc_len);
-		rxm->pkt.data = (char*) rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
-		rte_packet_prefetch(rxm->pkt.data);
-		rxm->pkt.nb_segs = 1;
-		rxm->pkt.next = NULL;
-		rxm->pkt.pkt_len = pkt_len;
-		rxm->pkt.data_len = pkt_len;
-		rxm->pkt.in_port = rxq->port_id;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_packet_prefetch((char *)rxm->buf_addr + rxm->data_off);
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = pkt_len;
+		rxm->data_len = pkt_len;
+		rxm->port = rxq->port_id;
 
 		rxm->ol_flags = rx_desc_status_to_pkt_flags(status);
-		rxm->ol_flags = (uint16_t)(rxm->ol_flags |
-				rx_desc_error_to_pkt_flags(rxd.errors));
+		rxm->ol_flags = rxm->ol_flags |
+				rx_desc_error_to_pkt_flags(rxd.errors);
 
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->pkt.vlan_macip.f.vlan_tci = rte_le_to_cpu_16(rxd.special);
+		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -806,10 +822,10 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			"nb_hold=%u nb_rx=%u\n",
-			(unsigned) rxq->port_id, (unsigned) rxq->queue_id,
-			(unsigned) rx_id, (unsigned) nb_hold,
-			(unsigned) nb_rx);
+			   "nb_hold=%u nb_rx=%u",
+			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
+			   (unsigned) rx_id, (unsigned) nb_hold,
+			   (unsigned) nb_rx);
 		rx_id = (uint16_t) ((rx_id == 0) ?
 			(rxq->nb_rx_desc - 1) : (rx_id - 1));
 		E1000_PCI_REG_WRITE(rxq->rdt_reg_addr, rx_id);
@@ -892,17 +908,17 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * to happen by sending specific "back-pressure" flow control
 		 * frames to its peer(s).
 		 */
-		PMD_RX_LOG(DEBUG, "\nport_id=%u queue_id=%u rx_id=%u "
-			"status=0x%x data_len=%u\n",
-			(unsigned) rxq->port_id, (unsigned) rxq->queue_id,
-			(unsigned) rx_id, (unsigned) status,
-			(unsigned) rte_le_to_cpu_16(rxd.length));
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+			   "status=0x%x data_len=%u",
+			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
+			   (unsigned) rx_id, (unsigned) status,
+			   (unsigned) rte_le_to_cpu_16(rxd.length));
 
 		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-				"queue_id=%u\n", (unsigned) rxq->port_id,
-				(unsigned) rxq->queue_id);
+				   "queue_id=%u", (unsigned) rxq->port_id,
+				   (unsigned) rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			break;
 		}
@@ -940,8 +956,8 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * Set data length & data buffer address of mbuf.
 		 */
 		data_len = rte_le_to_cpu_16(rxd.length);
-		rxm->pkt.data_len = data_len;
-		rxm->pkt.data = (char*) rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
+		rxm->data_len = data_len;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 
 		/*
 		 * If this is the first buffer of the received packet,
@@ -953,12 +969,12 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		if (first_seg == NULL) {
 			first_seg = rxm;
-			first_seg->pkt.pkt_len = data_len;
-			first_seg->pkt.nb_segs = 1;
+			first_seg->pkt_len = data_len;
+			first_seg->nb_segs = 1;
 		} else {
-			first_seg->pkt.pkt_len += data_len;
-			first_seg->pkt.nb_segs++;
-			last_seg->pkt.next = rxm;
+			first_seg->pkt_len += data_len;
+			first_seg->nb_segs++;
+			last_seg->next = rxm;
 		}
 
 		/*
@@ -981,18 +997,18 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *     mbuf, subtract the length of that CRC part from the
 		 *     data length of the previous mbuf.
 		 */
-		rxm->pkt.next = NULL;
+		rxm->next = NULL;
 		if (unlikely(rxq->crc_len > 0)) {
-			first_seg->pkt.pkt_len -= ETHER_CRC_LEN;
+			first_seg->pkt_len -= ETHER_CRC_LEN;
 			if (data_len <= ETHER_CRC_LEN) {
 				rte_pktmbuf_free_seg(rxm);
-				first_seg->pkt.nb_segs--;
-				last_seg->pkt.data_len = (uint16_t)
-					(last_seg->pkt.data_len -
+				first_seg->nb_segs--;
+				last_seg->data_len = (uint16_t)
+					(last_seg->data_len -
 					 (ETHER_CRC_LEN - data_len));
-				last_seg->pkt.next = NULL;
+				last_seg->next = NULL;
 			} else
-				rxm->pkt.data_len =
+				rxm->data_len =
 					(uint16_t) (data_len - ETHER_CRC_LEN);
 		}
 
@@ -1003,17 +1019,18 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *      - IP checksum flag,
 		 *      - error flags.
 		 */
-		first_seg->pkt.in_port = rxq->port_id;
+		first_seg->port = rxq->port_id;
 
 		first_seg->ol_flags = rx_desc_status_to_pkt_flags(status);
-		first_seg->ol_flags = (uint16_t)(first_seg->ol_flags |
-					rx_desc_error_to_pkt_flags(rxd.errors));
+		first_seg->ol_flags = first_seg->ol_flags |
+					rx_desc_error_to_pkt_flags(rxd.errors);
 
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->pkt.vlan_macip.f.vlan_tci = rte_le_to_cpu_16(rxd.special);
+		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/* Prefetch data of first segment, if configured to do so. */
-		rte_packet_prefetch(first_seg->pkt.data);
+		rte_packet_prefetch((char *)first_seg->buf_addr +
+			first_seg->data_off);
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -1050,10 +1067,10 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			"nb_hold=%u nb_rx=%u\n",
-			(unsigned) rxq->port_id, (unsigned) rxq->queue_id,
-			(unsigned) rx_id, (unsigned) nb_hold,
-			(unsigned) nb_rx);
+			   "nb_hold=%u nb_rx=%u",
+			   (unsigned) rxq->port_id, (unsigned) rxq->queue_id,
+			   (unsigned) rx_id, (unsigned) nb_hold,
+			   (unsigned) nb_rx);
 		rx_id = (uint16_t) ((rx_id == 0) ?
 			(rxq->nb_rx_desc - 1) : (rx_id - 1));
 		E1000_PCI_REG_WRITE(rxq->rdt_reg_addr, rx_id);
@@ -1102,7 +1119,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 
 #ifdef RTE_LIBRTE_XEN_DOM0
 	return rte_memzone_reserve_bounded(z_name, ring_size,
-			socket_id, 0, CACHE_LINE_SIZE, RTE_PGSIZE_2M);
+			socket_id, 0, RTE_CACHE_LINE_SIZE, RTE_PGSIZE_2M);
 #else
 	return rte_memzone_reserve(z_name, ring_size, socket_id, 0);
 #endif
@@ -1211,18 +1228,21 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 					DEFAULT_TX_RS_THRESH);
 
 	if (tx_free_thresh >= (nb_desc - 3)) {
-		RTE_LOG(ERR, PMD, "tx_free_thresh must be less than the "
-			"number of TX descriptors minus 3. (tx_free_thresh=%u "
-			"port=%d queue=%d)\n", (unsigned int)tx_free_thresh,
-				(int)dev->data->port_id, (int)queue_idx);
+		PMD_INIT_LOG(ERR, "tx_free_thresh must be less than the "
+			     "number of TX descriptors minus 3. "
+			     "(tx_free_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_free_thresh,
+			     (int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 	if (tx_rs_thresh > tx_free_thresh) {
-		RTE_LOG(ERR, PMD, "tx_rs_thresh must be less than or equal to "
-			"tx_free_thresh. (tx_free_thresh=%u tx_rs_thresh=%u "
-			"port=%d queue=%d)\n", (unsigned int)tx_free_thresh,
-			(unsigned int)tx_rs_thresh, (int)dev->data->port_id,
-							(int)queue_idx);
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be less than or equal to "
+			     "tx_free_thresh. (tx_free_thresh=%u "
+			     "tx_rs_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_free_thresh,
+			     (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id,
+			     (int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -1233,10 +1253,10 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	 * accumulates WTHRESH descriptors.
 	 */
 	if (tx_conf->tx_thresh.wthresh != 0 && tx_rs_thresh != 1) {
-		RTE_LOG(ERR, PMD, "TX WTHRESH must be set to 0 if "
-			"tx_rs_thresh is greater than 1. (tx_rs_thresh=%u "
-			"port=%d queue=%d)\n", (unsigned int)tx_rs_thresh,
-				(int)dev->data->port_id, (int)queue_idx);
+		PMD_INIT_LOG(ERR, "TX WTHRESH must be set to 0 if "
+			     "tx_rs_thresh is greater than 1. (tx_rs_thresh=%u "
+			     "port=%d queue=%d)", (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -1258,13 +1278,13 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the tx queue data structure. */
 	if ((txq = rte_zmalloc("ethdev TX queue", sizeof(*txq),
-			CACHE_LINE_SIZE)) == NULL)
+			RTE_CACHE_LINE_SIZE)) == NULL)
 		return (-ENOMEM);
 
 	/* Allocate software ring */
 	if ((txq->sw_ring = rte_zmalloc("txq->sw_ring",
 			sizeof(txq->sw_ring[0]) * nb_desc,
-			CACHE_LINE_SIZE)) == NULL) {
+			RTE_CACHE_LINE_SIZE)) == NULL) {
 		em_tx_queue_release(txq);
 		return (-ENOMEM);
 	}
@@ -1286,8 +1306,8 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 #endif
 	txq->tx_ring = (struct e1000_data_desc *) tz->addr;
 
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
-		txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
+		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
 
 	em_reset_tx_queue(txq);
 
@@ -1366,7 +1386,8 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	 * EM devices don't support drop_en functionality
 	 */
 	if (rx_conf->rx_drop_en) {
-		RTE_LOG(ERR, PMD, "drop_en functionality not supported by device\n");
+		PMD_INIT_LOG(ERR, "drop_en functionality not supported by "
+			     "device");
 		return (-EINVAL);
 	}
 
@@ -1384,13 +1405,13 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the RX queue data structure. */
 	if ((rxq = rte_zmalloc("ethdev RX queue", sizeof(*rxq),
-			CACHE_LINE_SIZE)) == NULL)
+			RTE_CACHE_LINE_SIZE)) == NULL)
 		return (-ENOMEM);
 
 	/* Allocate software ring. */
 	if ((rxq->sw_ring = rte_zmalloc("rxq->sw_ring",
 			sizeof (rxq->sw_ring[0]) * nb_desc,
-			CACHE_LINE_SIZE)) == NULL) {
+			RTE_CACHE_LINE_SIZE)) == NULL) {
 		em_rx_queue_release(rxq);
 		return (-ENOMEM);
 	}
@@ -1415,8 +1436,8 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 #endif
 	rxq->rx_ring = (struct e1000_rx_desc *) rz->addr;
 
-	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64"\n",
-		rxq->sw_ring, rxq->rx_ring, rxq->rx_ring_phys_addr);
+	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
+		     rxq->sw_ring, rxq->rx_ring, rxq->rx_ring_phys_addr);
 
 	dev->data->rx_queues[queue_idx] = rxq;
 	em_reset_rx_queue(rxq);
@@ -1433,7 +1454,7 @@ eth_em_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	uint32_t desc = 0;
 
 	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		PMD_RX_LOG(DEBUG,"Invalid RX queue_id=%d\n", rx_queue_id);
+		PMD_RX_LOG(DEBUG, "Invalid RX queue_id=%d", rx_queue_id);
 		return 0;
 	}
 
@@ -1579,7 +1600,7 @@ em_alloc_rx_queue_mbufs(struct em_rx_queue *rxq)
 
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed "
-				"queue_id=%hu\n", rxq->queue_id);
+				     "queue_id=%hu", rxq->queue_id);
 			return (-ENOMEM);
 		}
 
@@ -1708,6 +1729,8 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		 */
 		if (dev->data->dev_conf.rxmode.jumbo_frame ||
 				rctl_bsize < ETHER_MAX_LEN) {
+			if (!dev->data->scattered_rx)
+				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->rx_pkt_burst =
 				(eth_rx_burst_t)eth_em_recv_scattered_pkts;
 			dev->data->scattered_rx = 1;
@@ -1715,6 +1738,8 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.enable_scatter) {
+		if (!dev->data->scattered_rx)
+			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 		dev->rx_pkt_burst = eth_em_recv_scattered_pkts;
 		dev->data->scattered_rx = 1;
 	}

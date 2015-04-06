@@ -47,6 +47,11 @@ extern"C" {
 #define RTE_ACL_DFA_MAX		UINT8_MAX
 #define RTE_ACL_DFA_SIZE	(UINT8_MAX + 1)
 
+#define	RTE_ACL_DFA_GR64_SIZE	64
+#define	RTE_ACL_DFA_GR64_NUM	(RTE_ACL_DFA_SIZE / RTE_ACL_DFA_GR64_SIZE)
+#define	RTE_ACL_DFA_GR64_BIT	\
+	(CHAR_BIT * sizeof(uint32_t) / RTE_ACL_DFA_GR64_NUM)
+
 typedef int bits_t;
 
 #define	RTE_ACL_BIT_SET_SIZE	((UINT8_MAX + 1) / (sizeof(bits_t) * CHAR_BIT))
@@ -57,11 +62,48 @@ struct rte_acl_bitset {
 
 #define	RTE_ACL_NODE_DFA	(0 << RTE_ACL_TYPE_SHIFT)
 #define	RTE_ACL_NODE_SINGLE	(1U << RTE_ACL_TYPE_SHIFT)
-#define	RTE_ACL_NODE_QEXACT	(2U << RTE_ACL_TYPE_SHIFT)
 #define	RTE_ACL_NODE_QRANGE	(3U << RTE_ACL_TYPE_SHIFT)
 #define	RTE_ACL_NODE_MATCH	(4U << RTE_ACL_TYPE_SHIFT)
 #define	RTE_ACL_NODE_TYPE	(7U << RTE_ACL_TYPE_SHIFT)
 #define	RTE_ACL_NODE_UNDEFINED	UINT32_MAX
+
+/*
+ * ACL RT structure is a set of multibit tries (with stride == 8)
+ * represented by an array of transitions. The next position is calculated
+ * based on the current position and the input byte.
+ * Each transition is 64 bit value with the following format:
+ * | node_type_specific : 32 | node_type : 3 | node_addr : 29 |
+ * For all node types except RTE_ACL_NODE_MATCH, node_addr is an index
+ * to the start of the node in the transtions array.
+ * Few different node types are used:
+ * RTE_ACL_NODE_MATCH:
+ * node_addr value is and index into an array that contains the return value
+ * and its priority for each category.
+ * Upper 32 bits of the transition value are not used for that node type.
+ * RTE_ACL_NODE_QRANGE:
+ * that node consist of up to 5 transitions.
+ * Upper 32 bits are interpreted as 4 signed character values which
+ * are ordered from smallest(INT8_MIN) to largest (INT8_MAX).
+ * These values define 5 ranges:
+ * INT8_MIN <= range[0]  <= ((int8_t *)&transition)[4]
+ * ((int8_t *)&transition)[4] < range[1] <= ((int8_t *)&transition)[5]
+ * ((int8_t *)&transition)[5] < range[2] <= ((int8_t *)&transition)[6]
+ * ((int8_t *)&transition)[6] < range[3] <= ((int8_t *)&transition)[7]
+ * ((int8_t *)&transition)[7] < range[4] <= INT8_MAX
+ * So for input byte value within range[i] i-th transition within that node
+ * will be used.
+ * RTE_ACL_NODE_SINGLE:
+ * always transitions to the same node regardless of the input value.
+ * RTE_ACL_NODE_DFA:
+ * that node consits of up to 256 transitions.
+ * In attempt to conserve space all transitions are divided into 4 consecutive
+ * groups, by 64 transitions per group:
+ * group64[i] contains transitions[i * 64, .. i * 64 + 63].
+ * Upper 32 bits are interpreted as 4 unsigned character values one per group,
+ * which contain index to the start of the given group within the node.
+ * So to calculate transition index within the node for given input byte value:
+ * input_byte - ((uint8_t *)&transition)[4 + input_byte / 64].
+ */
 
 /*
  * Structure of a node is a set of ptrs and each ptr has a bit map
@@ -100,8 +142,11 @@ struct rte_acl_node {
 	/* number of ranges (transitions w/ consecutive bits) */
 	int32_t                 id;
 	struct rte_acl_match_results *mrt; /* only valid when match_flag != 0 */
-	char                         transitions[RTE_ACL_QUAD_SIZE];
-	/* boundaries for ranged node */
+	union {
+		char            transitions[RTE_ACL_QUAD_SIZE];
+		/* boundaries for ranged node */
+		uint8_t         dfa_gr64[RTE_ACL_DFA_GR64_NUM];
+	};
 	struct rte_acl_node     *next;
 	/* free list link or pointer to duplicate node during merge */
 	struct rte_acl_node     *prev;
@@ -138,7 +183,6 @@ enum {
 struct rte_acl_trie {
 	uint32_t        type;
 	uint32_t        count;
-	int32_t         smallest;  /* smallest rule in this trie */
 	uint32_t        root_index;
 	const uint32_t *data_index;
 	uint32_t        num_data_indexes;
@@ -173,7 +217,7 @@ struct rte_acl_ctx {
 
 int rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
-	uint32_t num_categories, uint32_t data_index_sz, int match_num);
+	uint32_t num_categories, uint32_t data_index_sz, size_t max_size);
 
 typedef int (*rte_acl_classify_t)
 (const struct rte_acl_ctx *, const uint8_t **, uint32_t *, uint32_t, uint32_t);
@@ -187,6 +231,10 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 int
 rte_acl_classify_sse(const struct rte_acl_ctx *ctx, const uint8_t **data,
+	uint32_t *results, uint32_t num, uint32_t categories);
+
+int
+rte_acl_classify_avx2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories);
 
 #ifdef __cplusplus

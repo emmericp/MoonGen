@@ -424,7 +424,6 @@ enum i40e_status_code i40e_create_lan_hmc_object(struct i40e_hw *hw,
 			default:
 				ret_code = I40E_ERR_INVALID_SD_TYPE;
 				goto exit;
-				break;
 			}
 		}
 	}
@@ -509,7 +508,6 @@ try_type_paged:
 		DEBUGOUT1("i40e_configure_lan_hmc: Unknown SD type: %d\n",
 			  ret_code);
 		goto configure_lan_hmc_out;
-		break;
 	}
 
 	/* Configure and program the FPM registers so objects can be created */
@@ -803,9 +801,10 @@ static void i40e_write_word(u8 *hmc_bits,
 			    struct i40e_context_ele *ce_info,
 			    u8 *src)
 {
-	u16 src_word, dest_word, mask;
+	u16 src_word, mask;
 	u8 *from, *dest;
 	u16 shift_width;
+	__le16 dest_word;
 
 	/* copy from the next struct field */
 	from = src + ce_info->offset;
@@ -846,9 +845,10 @@ static void i40e_write_dword(u8 *hmc_bits,
 			     struct i40e_context_ele *ce_info,
 			     u8 *src)
 {
-	u32 src_dword, dest_dword, mask;
+	u32 src_dword, mask;
 	u8 *from, *dest;
 	u16 shift_width;
+	__le32 dest_dword;
 
 	/* copy from the next struct field */
 	from = src + ce_info->offset;
@@ -897,9 +897,10 @@ static void i40e_write_qword(u8 *hmc_bits,
 			     struct i40e_context_ele *ce_info,
 			     u8 *src)
 {
-	u64 src_qword, dest_qword, mask;
+	u64 src_qword, mask;
 	u8 *from, *dest;
 	u16 shift_width;
+	__le64 dest_qword;
 
 	/* copy from the next struct field */
 	from = src + ce_info->offset;
@@ -914,7 +915,7 @@ static void i40e_write_qword(u8 *hmc_bits,
 	if (ce_info->width < 64)
 		mask = ((u64)1 << ce_info->width) - 1;
 	else
-		mask = 0xFFFFFFFFFFFFFFFF;
+		mask = 0xFFFFFFFFFFFFFFFFUL;
 
 	/* don't swizzle the bits until after the mask because the mask bits
 	 * will be in a different bit position on big endian machines
@@ -985,9 +986,10 @@ static void i40e_read_word(u8 *hmc_bits,
 			   struct i40e_context_ele *ce_info,
 			   u8 *dest)
 {
-	u16 src_word, dest_word, mask;
+	u16 dest_word, mask;
 	u8 *src, *target;
 	u16 shift_width;
+	__le16 src_word;
 
 	/* prepare the bits and mask */
 	shift_width = ce_info->lsb % 8;
@@ -1028,9 +1030,10 @@ static void i40e_read_dword(u8 *hmc_bits,
 			    struct i40e_context_ele *ce_info,
 			    u8 *dest)
 {
-	u32 src_dword, dest_dword, mask;
+	u32 dest_dword, mask;
 	u8 *src, *target;
 	u16 shift_width;
+	__le32 src_dword;
 
 	/* prepare the bits and mask */
 	shift_width = ce_info->lsb % 8;
@@ -1080,9 +1083,10 @@ static void i40e_read_qword(u8 *hmc_bits,
 			    struct i40e_context_ele *ce_info,
 			    u8 *dest)
 {
-	u64 src_qword, dest_qword, mask;
+	u64 dest_qword, mask;
 	u8 *src, *target;
 	u16 shift_width;
+	__le64 src_qword;
 
 	/* prepare the bits and mask */
 	shift_width = ce_info->lsb % 8;
@@ -1094,7 +1098,7 @@ static void i40e_read_qword(u8 *hmc_bits,
 	if (ce_info->width < 64)
 		mask = ((u64)1 << ce_info->width) - 1;
 	else
-		mask = 0xFFFFFFFFFFFFFFFF;
+		mask = 0xFFFFFFFFFFFFFFFFUL;
 
 	/* shift to correct alignment */
 	mask <<= shift_width;
@@ -1411,206 +1415,3 @@ enum i40e_status_code i40e_set_lan_rx_queue_context(struct i40e_hw *hw,
 	return i40e_set_hmc_context(context_bytes,
 				    i40e_hmc_rxq_ce_info, (u8 *)s);
 }
-#ifdef PREBOOT_SUPPORT
-
-/* Definitions for PFM bypass registers */
-
-/* Each context sub-line consists of 128 bits (16 bytes) of data*/
-#define SUB_LINE_LENGTH          0x10
-
-#define LANCTXCTL_WR             0x1
-#define LANCTXCTL_INVALIDATE     0x2
-#define LANCTXCTL_QUEUE_TYPE_TX  0x1
-#define LANCTXCTL_QUEUE_TYPE_RX  0x0
-
-#define LANCTXSTAT_DELAY         100
-
-/**
- * i40e_write_queue_context_directly
- * @hw: the hardware struct
- * @queue: the absolute queue number
- * @context_bytes: data to write as a queue context
- * @hmc_type: queue type
- *
- * Write the HMC context for the queue using direct queue context programming
- **/
-static enum i40e_status_code i40e_write_queue_context_directly(struct i40e_hw *hw,
-					u16 queue, u8 *context_bytes,
-					enum i40e_hmc_lan_rsrc_type hmc_type)
-{
-	u32 length = 0;
-	u32 queue_type = 0;
-	u32 sub_line = 0;
-	u32 i = 0;
-	u32 cnt = 0;
-	u32 *ptr = NULL;
-	enum i40e_status_code ret_code = I40E_SUCCESS;
-
-	switch (hmc_type) {
-	case I40E_HMC_LAN_RX:
-		length = I40E_HMC_OBJ_SIZE_RXQ;
-		queue_type = LANCTXCTL_QUEUE_TYPE_RX;
-		break;
-	case I40E_HMC_LAN_TX:
-		length = I40E_HMC_OBJ_SIZE_TXQ;
-		queue_type = LANCTXCTL_QUEUE_TYPE_TX;
-		break;
-	default:
-		return I40E_NOT_SUPPORTED;
-	}
-
-	ptr = (u32 *)context_bytes;
-
-	for (sub_line = 0; sub_line < (length / SUB_LINE_LENGTH); sub_line++) {
-		u32 reg;
-
-		for (i = 0; i < 4; i++)
-			wr32(hw, I40E_PFCM_LANCTXDATA(i), *ptr++);
-		reg = (LANCTXCTL_WR << I40E_PFCM_LANCTXCTL_OP_CODE_SHIFT) |
-		      (queue_type << I40E_PFCM_LANCTXCTL_QUEUE_TYPE_SHIFT) |
-		      (sub_line << I40E_PFCM_LANCTXCTL_SUB_LINE_SHIFT) |
-		      (queue << I40E_PFCM_LANCTXCTL_QUEUE_NUM_SHIFT);
-		wr32(hw, I40E_PFCM_LANCTXCTL, reg);
-
-		cnt = 0;
-		while (cnt++ <= LANCTXSTAT_DELAY) {
-			reg = rd32(hw, I40E_PFCM_LANCTXSTAT);
-			if (reg)
-				break;
-			i40e_usec_delay(1);
-		};
-
-		if ((reg & I40E_PFCM_LANCTXSTAT_CTX_DONE_MASK) == 0) {
-			ret_code = I40E_ERR_CONFIG;
-			break;
-		}
-	}
-	return ret_code;
-}
-
-/**
- * i40e_invalidate_queue_context_directly
- * @hw: the hardware struct
- * @queue: the absolute queue number
- * @hmc_type: queue type
- *
- * Clear the HMC context for the queue using direct queue context programming
- **/
-static enum i40e_status_code i40e_invalidate_queue_context_directly(struct i40e_hw *hw,
-					u16 queue,
-					enum i40e_hmc_lan_rsrc_type hmc_type)
-{
-	u8 queue_type = 0;
-	u32 reg = 0;
-	u32 cnt = 0;
-	enum i40e_status_code ret_code = I40E_SUCCESS;
-
-	switch (hmc_type) {
-	case I40E_HMC_LAN_RX:
-		queue_type = LANCTXCTL_QUEUE_TYPE_RX;
-		break;
-	case I40E_HMC_LAN_TX:
-		queue_type = LANCTXCTL_QUEUE_TYPE_TX;
-		break;
-	default:
-		return I40E_NOT_SUPPORTED;
-	}
-	reg = (LANCTXCTL_INVALIDATE << I40E_PFCM_LANCTXCTL_OP_CODE_SHIFT) |
-	      (queue_type << I40E_PFCM_LANCTXCTL_QUEUE_TYPE_SHIFT) |
-	      (queue << I40E_PFCM_LANCTXCTL_QUEUE_NUM_SHIFT);
-	wr32(hw, I40E_PFCM_LANCTXCTL, reg);
-	while (cnt++ <= LANCTXSTAT_DELAY) {
-		reg = rd32(hw, I40E_PFCM_LANCTXSTAT);
-		if (reg)
-			break;
-		i40e_usec_delay(1);
-	};
-
-	if (reg != I40E_PFCM_LANCTXSTAT_CTX_DONE_MASK)
-		ret_code = I40E_ERR_CONFIG;
-
-	return ret_code;
-}
-
-/**
- * i40e_clear_lan_tx_queue_context_directly
- * @hw: the hardware struct
- * @queue: the absolute queue number
- *
- * Clear the HMC context for the Tx queue using direct queue context programming
- **/
-enum i40e_status_code i40e_clear_lan_tx_queue_context_directly(
-				struct i40e_hw *hw, u16 queue)
-{
-	return i40e_invalidate_queue_context_directly(hw, queue,
-						      I40E_HMC_LAN_TX);
-}
-
-/**
- * i40e_set_lan_tx_queue_context_directly
- * @hw: the hardware struct
- * @queue: the absolute queue number
- * @s: the struct to be filled
- *
- * Prepare and set the HMC context for the Tx queue
- * using direct queue context programming
- **/
-enum i40e_status_code i40e_set_lan_tx_queue_context_directly(struct i40e_hw *hw,
-				u16 queue, struct i40e_hmc_obj_txq *s)
-{
-	enum i40e_status_code status;
-	u8 context_bytes[I40E_HMC_OBJ_SIZE_TXQ];
-
-	/* Zero out context bytes */
-	i40e_memset(context_bytes, 0, I40E_HMC_OBJ_SIZE_TXQ, I40E_DMA_MEM);
-
-	status = i40e_set_hmc_context(context_bytes, i40e_hmc_txq_ce_info,
-				      (u8 *)s);
-	if (status)
-		return status;
-
-	return i40e_write_queue_context_directly(hw, queue, context_bytes,
-						 I40E_HMC_LAN_TX);
-}
-
-/**
- * i40e_clear_lan_rx_queue_context_directly
- * @hw: the hardware struct
- * @queue: the absolute queue number
- *
- * Clear the HMC context for the Rx queue using direct queue context programming
- **/
-enum i40e_status_code i40e_clear_lan_rx_queue_context_directly(struct i40e_hw *hw,
-				u16 queue)
-{
-	return i40e_invalidate_queue_context_directly(hw, queue,
-						      I40E_HMC_LAN_RX);
-}
-
-/**
- * i40e_set_lan_rx_queue_context_directly
- * @hw: the hardware struct
- * @queue: the queue we care about
- * @s: the struct to be filled
- *
- * Prepare and set the HMC context for the Rx queue
- * using direct queue context programming
- **/
-enum i40e_status_code i40e_set_lan_rx_queue_context_directly(struct i40e_hw *hw,
-				u16 queue, struct i40e_hmc_obj_rxq *s)
-{
-	enum i40e_status_code status;
-	u8 context_bytes[I40E_HMC_OBJ_SIZE_RXQ];
-
-	/* Zero out context bytes */
-	i40e_memset(context_bytes, 0, I40E_HMC_OBJ_SIZE_RXQ, I40E_DMA_MEM);
-
-	status = i40e_set_hmc_context(context_bytes, i40e_hmc_rxq_ce_info,
-				     (u8 *)s);
-	if (status)
-		return status;
-
-	return i40e_write_queue_context_directly(hw, queue, context_bytes,
-						 I40E_HMC_LAN_RX);
-}
-#endif /* PREBOOT_SUPPORT */

@@ -38,7 +38,6 @@
 
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_launch.h>
 #include <rte_per_lcore.h>
@@ -50,7 +49,7 @@
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 
-#define MIN_DATA_SIZE (CACHE_LINE_SIZE)
+#define MIN_DATA_SIZE (RTE_CACHE_LINE_SIZE)
 
 /*
  * initialise a general malloc_elem header structure
@@ -91,7 +90,7 @@ elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align)
 {
 	const uintptr_t end_pt = (uintptr_t)elem +
 			elem->size - MALLOC_ELEM_TRAILER_LEN;
-	const uintptr_t new_data_start = rte_align_floor_int((end_pt - size),align);
+	const uintptr_t new_data_start = RTE_ALIGN_FLOOR((end_pt - size), align);
 	const uintptr_t new_elem_start = new_data_start - MALLOC_ELEM_HEADER_LEN;
 
 	/* if the new start point is before the exist start, it won't fit */
@@ -308,7 +307,7 @@ malloc_elem_resize(struct malloc_elem *elem, size_t size)
 	if (elem->size - new_size >= MIN_DATA_SIZE + MALLOC_ELEM_OVERHEAD){
 		/* now we have a big block together. Lets cut it down a bit, by splitting */
 		struct malloc_elem *split_pt = RTE_PTR_ADD(elem, new_size);
-		split_pt = RTE_PTR_ALIGN_CEIL(split_pt, CACHE_LINE_SIZE);
+		split_pt = RTE_PTR_ALIGN_CEIL(split_pt, RTE_CACHE_LINE_SIZE);
 		split_elem(elem, split_pt);
 		malloc_elem_free_list_insert(split_pt);
 	}

@@ -41,11 +41,16 @@
  * Implementation of IP packet fragmentation and reassembly.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
+#include <rte_memory.h>
 #include <rte_ip.h>
 #include <rte_byteorder.h>
 
@@ -204,7 +209,6 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 		struct rte_mempool *pool_direct,
 		struct rte_mempool *pool_indirect);
 
-
 /*
  * This function implements reassembly of fragmented IPv6 packets.
  * Incoming mbuf should have its l2_len/l3_len fields setup correctly.
@@ -345,5 +349,9 @@ void rte_ip_frag_free_death_row(struct rte_ip_frag_death_row *dr,
  */
 void
 rte_ip_frag_table_statistics_dump(FILE * f, const struct rte_ip_frag_tbl *tbl);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_IP_FRAG_H_ */

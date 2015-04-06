@@ -39,6 +39,10 @@ LIB = librte_pmd_ixgbe.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_pmd_ixgbe_version.map
+
+LIBABIVER := 1
+
 ifeq ($(CC), icc)
 #
 # CFLAGS for icc
@@ -56,14 +60,25 @@ else
 #
 # CFLAGS for gcc
 #
-ifneq ($(shell test $(GCC_MAJOR_VERSION) -le 4 -a $(GCC_MINOR_VERSION) -le 3 && echo 1), 1)
+ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
+CFLAGS_ixgbe_common.o += -Wno-unused-but-set-variable
+CFLAGS_ixgbe_x550.o += -Wno-unused-but-set-variable
 endif
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
 
-ifeq ($(shell test $(GCC_MAJOR_VERSION) -ge 4 -a $(GCC_MINOR_VERSION) -ge 6 && echo 1), 1)
-CFLAGS_ixgbe_common.o += -Wno-unused-but-set-variable
+ifeq ($(shell test $(GCC_VERSION) -ge 46 && echo 1), 1)
+CFLAGS_ixgbe_x550.o += -Wno-maybe-uninitialized
+endif
+
+ifeq ($(shell test $(GCC_VERSION) -ge 50 && echo 1), 1)
+CFLAGS_ixgbe_common.o += -Wno-logical-not-parentheses
+endif
+
+ifeq ($(shell test $(GCC_VERSION) -le 46 && echo 1), 1)
+CFLAGS_ixgbe_x550.o += -Wno-uninitialized
+CFLAGS_ixgbe_phy.o += -Wno-uninitialized
 endif
 endif
 
@@ -83,6 +98,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_common.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_82598.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_82599.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_x540.c
+SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_x550.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_phy.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_api.c
 SRCS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe_vf.c
@@ -106,5 +122,9 @@ endif
 DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_mempool lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += lib/librte_net lib/librte_malloc
+
+ifeq ($(CONFIG_RTE_IXGBE_INC_VECTOR)$(CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC),yn)
+$(error The ixgbe vpmd depends on Rx bulk alloc)
+endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

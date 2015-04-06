@@ -46,7 +46,6 @@
 #include <rte_memzone.h>
 #include <rte_launch.h>
 #include <rte_cycles.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -1259,7 +1258,7 @@ test_ring_basic_ex(void)
 	struct rte_ring * rp;
 	void **obj = NULL;
 
-	obj = (void **)rte_zmalloc("test_ring_basic_ex_malloc", (RING_SIZE * sizeof(void *)), 0);
+	obj = rte_calloc("test_ring_basic_ex_malloc", RING_SIZE, sizeof(void *), 0);
 	if (obj == NULL) {
 		printf("test_ring_basic_ex fail to rte_malloc\n");
 		goto fail_test;

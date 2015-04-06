@@ -83,7 +83,8 @@ struct i40e_asq_cmd_details {
 /* ARQ event information */
 struct i40e_arq_event_info {
 	struct i40e_aq_desc desc;
-	u16 msg_size;
+	u16 msg_len;
+	u16 buf_len;
 	u8 *msg_buf;
 };
 
@@ -110,7 +111,6 @@ struct i40e_adminq_info {
 	enum i40e_admin_queue_err asq_last_status;
 	enum i40e_admin_queue_err arq_last_status;
 };
-#ifdef I40E_NVMUPD_SUPPORT
 
 /**
  * i40e_aq_rc_to_posix - convert errors to user-land codes
@@ -146,7 +146,6 @@ STATIC inline int i40e_aq_rc_to_posix(u16 aq_rc)
 
 	return aq_to_posix[aq_rc];
 }
-#endif
 
 /* general information */
 #define I40E_AQ_LARGE_BUF		512

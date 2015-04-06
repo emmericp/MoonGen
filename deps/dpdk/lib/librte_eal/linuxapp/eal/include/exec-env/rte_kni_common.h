@@ -68,6 +68,10 @@
  */
 #define RTE_KNI_NAMESIZE 32
 
+#ifndef RTE_CACHE_LINE_SIZE
+#define RTE_CACHE_LINE_SIZE 64       /**< Cache line size. */
+#endif
+
 /*
  * Request id.
  */
@@ -108,16 +112,20 @@ struct rte_kni_fifo {
  * Padding is necessary to assure the offsets of these fields
  */
 struct rte_kni_mbuf {
-	void *pool;
-	void *buf_addr;
-	char pad0[14];
-	uint16_t ol_flags;      /**< Offload features. */
-	void *next;
-	void *data;             /**< Start address of data in segment buffer. */
-	uint16_t data_len;      /**< Amount of data in segment buffer. */
+	void *buf_addr __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));
+	char pad0[10];
+	uint16_t data_off;      /**< Start address of data in segment buffer. */
+	char pad1[4];
+	uint64_t ol_flags;      /**< Offload features. */
 	char pad2[2];
-	uint16_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
-} __attribute__((__aligned__(64)));
+	uint16_t data_len;      /**< Amount of data in segment buffer. */
+	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
+
+	/* fields on second cache line */
+	char pad3[8] __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));
+	void *pool;
+	void *next;
+};
 
 /*
  * Struct used to create a KNI device. Passed to the kernel in IOCTL call

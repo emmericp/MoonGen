@@ -34,6 +34,7 @@
 
 #include <rte_ether.h>
 #include <rte_ip_frag.h>
+#include <rte_memory.h>
 
 #include "rte_port_frag.h"
 
@@ -93,7 +94,7 @@ rte_port_ring_reader_ipv4_frag_create(void *params, int socket_id)
 	}
 
 	/* Memory allocation */
-	port = rte_zmalloc_socket("PORT", sizeof(*port), CACHE_LINE_SIZE,
+	port = rte_zmalloc_socket("PORT", sizeof(*port), RTE_CACHE_LINE_SIZE,
 		socket_id);
 	if (port == NULL) {
 		RTE_LOG(ERR, PORT, "%s: port is NULL\n", __func__);
@@ -159,7 +160,7 @@ rte_port_ring_reader_ipv4_frag_rx(void *port,
 		p->n_pkts--;
 
 		/* If not jumbo, pass current packet to output */
-		if (pkt->pkt.pkt_len <= IPV4_MTU_DEFAULT) {
+		if (pkt->pkt_len <= IPV4_MTU_DEFAULT) {
 			pkts[n_pkts_out++] = pkt;
 
 			n_pkts_to_provide = n_pkts - n_pkts_out;

@@ -75,6 +75,39 @@ extern "C" {
 /**< Broadcast (Mode 3).
  * In this mode all transmitted packets will be transmitted on all available
  * active slaves of the bonded. */
+#define BONDING_MODE_8023AD				(4)
+/**< 802.3AD (Mode 4).
+ *
+ * This mode provides auto negotiation/configuration
+ * of peers and well as link status changes monitoring using out of band
+ * LACP (link aggregation control protocol) messages. For further details of
+ * LACP specification see the IEEE 802.3ad/802.1AX standards. It is also
+ * described here
+ * https://www.kernel.org/doc/Documentation/networking/bonding.txt.
+ *
+ * Important Usage Notes:
+ * - for LACP mode to work the rx/tx burst functions must be invoked
+ * at least once every 100ms, otherwise the out-of-band LACP messages will not
+ * be handled with the expected latency and this may cause the link status to be
+ * incorrectly marked as down or failure to correctly negotiate with peers.
+ * - For optimal performance during initial handshaking the array of mbufs provided
+ * to rx_burst should be at least 2 times the slave count size.
+ *
+ */
+#define BONDING_MODE_TLB	(5)
+/**< Adaptive TLB (Mode 5)
+ * This mode provides an adaptive transmit load balancing. It dynamically
+ * changes the transmitting slave, according to the computed load. Statistics
+ * are collected in 100ms intervals and scheduled every 10ms */
+#define BONDING_MODE_ALB	(6)
+/**< Adaptive Load Balancing (Mode 6)
+ * This mode includes adaptive TLB and receive load balancing (RLB). In RLB the
+ * bonding driver intercepts ARP replies send by local system and overwrites its
+ * source MAC address, so that different peers send data to the server on
+ * different slave interfaces. When local system sends ARP request, it saves IP
+ * information from it. When ARP reply from that peer is received, its MAC is
+ * stored, one of slave MACs assigned and ARP reply send to that peer.
+ */
 
 /* Balance Mode Transmit Policies */
 #define BALANCE_XMIT_POLICY_LAYER2		(0)
@@ -247,6 +280,84 @@ rte_eth_bond_xmit_policy_set(uint8_t bonded_port_id, uint8_t policy);
  */
 int
 rte_eth_bond_xmit_policy_get(uint8_t bonded_port_id);
+
+/**
+ * Set the link monitoring frequency (in ms) for monitoring the link status of
+ * slave devices
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ * @param internal_ms		Monitoring interval in milliseconds
+ *
+ * @return
+ *	0 on success, negative value otherwise.
+ */
+
+int
+rte_eth_bond_link_monitoring_set(uint8_t bonded_port_id, uint32_t internal_ms);
+
+/**
+ * Get the current link monitoring frequency (in ms) for monitoring of the link
+ * status of slave devices
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ *
+ * @return
+ *	Monitoring interval on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_monitoring_get(uint8_t bonded_port_id);
+
+
+/**
+ * Set the period in milliseconds for delaying the disabling of a bonded link
+ * when the link down status has been detected
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ * @param delay_ms			Delay period in milliseconds.
+ *
+ * @return
+ *  0 on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_down_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms);
+
+/**
+ * Get the period in milliseconds set for delaying the disabling of a bonded
+ * link when the link down status has been detected
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ *
+ * @return
+ *  Delay period on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_down_prop_delay_get(uint8_t bonded_port_id);
+
+/**
+ * Set the period in milliseconds for delaying the enabling of a bonded link
+ * when the link up status has been detected
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ * @param delay_ms			Delay period in milliseconds.
+ *
+ * @return
+ *  0 on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_up_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms);
+
+/**
+ * Get the period in milliseconds set for delaying the enabling of a bonded
+ * link when the link up status has been detected
+ *
+ * @param bonded_port_id	Port ID of bonded device.
+ *
+ * @return
+ *  Delay period on success, negative value otherwise.
+ */
+int
+rte_eth_bond_link_up_prop_delay_get(uint8_t bonded_port_id);
+
 
 #ifdef __cplusplus
 }

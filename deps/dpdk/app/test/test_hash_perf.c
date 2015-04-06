@@ -46,7 +46,6 @@
 #include <rte_random.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
@@ -56,10 +55,7 @@
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
 #include <rte_jhash.h>
-
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
-#endif
 
 /* Types of hash table performance test that can be performed */
 enum hash_test_t {
@@ -97,11 +93,7 @@ struct tbl_perf_test_params {
  */
 #define HASHTEST_ITERATIONS 1000000
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 static rte_hash_function hashtest_funcs[] = {rte_jhash, rte_hash_crc};
-#else
-static rte_hash_function hashtest_funcs[] = {rte_jhash};
-#endif
 static uint32_t hashtest_initvals[] = {0};
 static uint32_t hashtest_key_lens[] = {2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 31, 32, 33, 63, 64};
 /******************************************************************************/
@@ -243,7 +235,6 @@ struct tbl_perf_test_params tbl_perf_params[] =
 {       LOOKUP,  ITERATIONS,  1048576,           4,      64,    rte_jhash,   0},
 {       LOOKUP,  ITERATIONS,  1048576,           8,      64,    rte_jhash,   0},
 {       LOOKUP,  ITERATIONS,  1048576,          16,      64,    rte_jhash,   0},
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 /* Small table, add */
 /*  Test type | Iterations | Entries | BucketSize | KeyLen |    HashFunc | InitVal */
 { ADD_ON_EMPTY,        1024,     1024,           1,      16, rte_hash_crc,   0},
@@ -376,7 +367,6 @@ struct tbl_perf_test_params tbl_perf_params[] =
 {       LOOKUP,  ITERATIONS,  1048576,           4,      64, rte_hash_crc,   0},
 {       LOOKUP,  ITERATIONS,  1048576,           8,      64, rte_hash_crc,   0},
 {       LOOKUP,  ITERATIONS,  1048576,          16,      64, rte_hash_crc,   0},
-#endif
 };
 
 /******************************************************************************/
@@ -397,6 +387,7 @@ struct tbl_perf_test_params tbl_perf_params[] =
 	if (cond) {							\
 		printf("ERROR line %d: " str "\n", __LINE__, ##__VA_ARGS__); \
 		if (handle) rte_fbk_hash_free(handle);			\
+		if (keys) rte_free(keys);				\
 		return -1;						\
 	}								\
 } while(0)
@@ -422,10 +413,8 @@ static const char *get_hash_name(rte_hash_function f)
 	if (f == rte_jhash)
 		return "jhash";
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 	if (f == rte_hash_crc)
 		return "rte_hash_crc";
-#endif
 
 	return "UnknownHash";
 }
@@ -458,13 +447,13 @@ run_single_tbl_perf_test(const struct rte_hash *h, hash_operation func,
 
 	/* Initialise */
 	num_buckets = params->entries / params->bucket_entries;
-	key = (uint8_t *) rte_zmalloc("hash key",
-			params->key_len * sizeof(uint8_t), 16);
+	key = rte_zmalloc("hash key",
+			  params->key_len * sizeof(uint8_t), 16);
 	if (key == NULL)
 		return -1;
 
-	bucket_occupancies = (uint32_t *) rte_zmalloc("bucket occupancies",
-			num_buckets * sizeof(uint32_t), 16);
+	bucket_occupancies = rte_calloc("bucket occupancies",
+					num_buckets, sizeof(uint32_t), 16);
 	if (bucket_occupancies == NULL) {
 		rte_free(key);
 		return -1;
@@ -697,8 +686,8 @@ fbk_hash_perf_test(void)
 		.entries_per_bucket = 4,
 		.socket_id = rte_socket_id(),
 	};
-	struct rte_fbk_hash_table *handle;
-	uint32_t keys[ENTRIES] = {0};
+	struct rte_fbk_hash_table *handle = NULL;
+	uint32_t *keys = NULL;
 	unsigned indexes[TEST_SIZE];
 	uint64_t lookup_time = 0;
 	unsigned added = 0;
@@ -707,6 +696,10 @@ fbk_hash_perf_test(void)
 
 	handle = rte_fbk_hash_create(&params);
 	RETURN_IF_ERROR_FBK(handle == NULL, "fbk hash creation failed");
+
+	keys = rte_zmalloc(NULL, ENTRIES * sizeof(*keys), 0);
+	RETURN_IF_ERROR_FBK(keys == NULL,
+		"fbk hash: memory allocation for key store failed");
 
 	/* Generate random keys and values. */
 	for (i = 0; i < ENTRIES; i++) {

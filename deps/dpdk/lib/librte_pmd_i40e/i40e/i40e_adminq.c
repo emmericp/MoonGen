@@ -690,9 +690,6 @@ u16 i40e_clean_asq(struct i40e_hw *hw)
 
 	desc = I40E_ADMINQ_DESC(*asq, ntc);
 	details = I40E_ADMINQ_DETAILS(*asq, ntc);
-#ifdef DMA_SYNC_SUPPORT
-	I40E_DMA_SYNC(&hw->aq.asq.desc_buf, I40E_SYNC_FORKERNEL);
-#endif /* DMA_SYNC_SUPPORT */
 	while (rd32(hw, hw->aq.asq.head) != ntc) {
 		i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE,
 			   "%s: ntc %d head %d.\n", __FUNCTION__, ntc,
@@ -866,17 +863,12 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 				CPU_TO_LE32(I40E_HI_DWORD(dma_buff->pa));
 		desc_on_ring->params.external.addr_low =
 				CPU_TO_LE32(I40E_LO_DWORD(dma_buff->pa));
-#ifdef DMA_SYNC_SUPPORT
-		I40E_DMA_SYNC(dma_buff, I40E_SYNC_FORDEVICE);
-#endif /* DMA_SYNC_SUPPORT */
 	}
 
-#ifdef DMA_SYNC_SUPPORT
-	I40E_DMA_SYNC(&hw->aq.asq.desc_buf, I40E_SYNC_FORDEVICE);
-#endif /* DMA_SYNC_SUPPORT */
 	/* bump the tail */
 	i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE, "AQTX: desc and buffer:\n");
-	i40e_debug_aq(hw, I40E_DEBUG_AQ_COMMAND, (void *)desc_on_ring, buff);
+	i40e_debug_aq(hw, I40E_DEBUG_AQ_COMMAND, (void *)desc_on_ring,
+		      buff, buff_size);
 	(hw->aq.asq.next_to_use)++;
 	if (hw->aq.asq.next_to_use == hw->aq.asq.count)
 		hw->aq.asq.next_to_use = 0;
@@ -888,7 +880,6 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 	 */
 	if (!details->async && !details->postpone) {
 		u32 total_delay = 0;
-		u32 delay_len = 1;
 
 		do {
 			/* AQ designers suggest use of head for better
@@ -897,16 +888,13 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 			if (i40e_asq_done(hw))
 				break;
 			/* ugh! delay while spin_lock */
-			i40e_msec_delay(delay_len);
-			total_delay += delay_len;
+			i40e_msec_delay(1);
+			total_delay++;
 		} while (total_delay < hw->aq.asq_cmd_timeout);
 	}
 
 	/* if ready, copy the desc back to temp */
 	if (i40e_asq_done(hw)) {
-#ifdef DMA_SYNC_SUPPORT
-		I40E_DMA_SYNC(&hw->aq.asq.desc_buf, I40E_SYNC_FORKERNEL);
-#endif /* DMA_SYNC_SUPPORT */
 		i40e_memcpy(desc, desc_on_ring, sizeof(struct i40e_aq_desc),
 			    I40E_DMA_TO_NONDMA);
 		if (buff != NULL)
@@ -930,11 +918,9 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 		hw->aq.asq_last_status = (enum i40e_admin_queue_err)retval;
 	}
 
-	if (LE16_TO_CPU(desc->datalen) == buff_size) {
-		i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE,
-			   "AQTX: desc and buffer writeback:\n");
-		i40e_debug_aq(hw, I40E_DEBUG_AQ_COMMAND, (void *)desc, buff);
-	}
+	i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE,
+		   "AQTX: desc and buffer writeback:\n");
+	i40e_debug_aq(hw, I40E_DEBUG_AQ_COMMAND, (void *)desc, buff, buff_size);
 
 	/* update the error if time out occurred */
 	if ((!cmd_completed) &&
@@ -995,9 +981,6 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	u16 datalen;
 	u16 flags;
 	u16 ntu;
-#ifdef DMA_SYNC_SUPPORT
-	I40E_DMA_SYNC(&hw->aq.arq.desc_buf, I40E_SYNC_FORKERNEL);
-#endif /* DMA_SYNC_SUPPORT */
 
 	/* take the lock before we start messing with the ring */
 	i40e_acquire_spinlock(&hw->aq.arq_spinlock);
@@ -1016,9 +999,6 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	/* now clean the next descriptor */
 	desc = I40E_ADMINQ_DESC(hw->aq.arq, ntc);
 	desc_idx = ntc;
-#ifdef DMA_SYNC_SUPPORT
-	I40E_DMA_SYNC(&hw->aq.arq.r.arq_bi[desc_idx], I40E_SYNC_FORKERNEL);
-#endif /* DMA_SYNC_SUPPORT */
 
 	flags = LE16_TO_CPU(desc->flags);
 	if (flags & I40E_AQ_FLAG_ERR) {
@@ -1029,19 +1009,20 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 			   I40E_DEBUG_AQ_MESSAGE,
 			   "AQRX: Event received with error 0x%X.\n",
 			   hw->aq.arq_last_status);
-	} else {
-		i40e_memcpy(&e->desc, desc, sizeof(struct i40e_aq_desc),
-			    I40E_DMA_TO_NONDMA);
-		datalen = LE16_TO_CPU(desc->datalen);
-		e->msg_size = min(datalen, e->msg_size);
-		if (e->msg_buf != NULL && (e->msg_size != 0))
-			i40e_memcpy(e->msg_buf,
-				    hw->aq.arq.r.arq_bi[desc_idx].va,
-				    e->msg_size, I40E_DMA_TO_NONDMA);
 	}
 
+	i40e_memcpy(&e->desc, desc, sizeof(struct i40e_aq_desc),
+		    I40E_DMA_TO_NONDMA);
+	datalen = LE16_TO_CPU(desc->datalen);
+	e->msg_len = min(datalen, e->buf_len);
+	if (e->msg_buf != NULL && (e->msg_len != 0))
+		i40e_memcpy(e->msg_buf,
+			    hw->aq.arq.r.arq_bi[desc_idx].va,
+			    e->msg_len, I40E_DMA_TO_NONDMA);
+
 	i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE, "AQRX: desc and buffer:\n");
-	i40e_debug_aq(hw, I40E_DEBUG_AQ_COMMAND, (void *)desc, e->msg_buf);
+	i40e_debug_aq(hw, I40E_DEBUG_AQ_COMMAND, (void *)desc, e->msg_buf,
+		      hw->aq.arq_buf_size);
 
 	/* Restore the original datalen and buffer address in the desc,
 	 * FW updates datalen to indicate the event message

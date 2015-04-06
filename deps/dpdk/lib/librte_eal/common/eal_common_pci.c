@@ -74,7 +74,6 @@
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
@@ -93,7 +92,7 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 		if (devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI &&
 			devargs->type != RTE_DEVTYPE_WHITELISTED_PCI)
 			continue;
-		if (!memcmp(&dev->addr, &devargs->pci.addr, sizeof(dev->addr)))
+		if (!rte_eal_compare_pci_addr(&dev->addr, &devargs->pci.addr))
 			return devargs;
 	}
 	return NULL;
@@ -103,16 +102,15 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
  * If vendor/device ID match, call the devinit() function of all
  * registered driver for the given device. Return -1 if initialization
  * failed, return 1 if no driver is found for this device.
- * For drivers with the RTE_PCI_DRV_MULTIPLE flag enabled, register
- * the same device multiple times until failure to do so.
- * It is required for non-Intel NIC drivers provided by third-parties such
- * as 6WIND.
  */
 static int
 pci_probe_all_drivers(struct rte_pci_device *dev)
 {
 	struct rte_pci_driver *dr = NULL;
-	int rc;
+	int rc = 0;
+
+	if (dev == NULL)
+		return -1;
 
 	TAILQ_FOREACH(dr, &pci_driver_list, next) {
 		rc = rte_eal_pci_probe_one_driver(dr, dev);
@@ -122,16 +120,103 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 		if (rc > 0)
 			/* positive value means driver not found */
 			continue;
-		/* initialize subsequent driver instances for this device */
-		if ((dr->drv_flags & RTE_PCI_DRV_MULTIPLE) &&
-			(dev->devargs == NULL ||
-				dev->devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI))
-			while (rte_eal_pci_probe_one_driver(dr, dev) == 0)
-				;
 		return 0;
 	}
 	return 1;
 }
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+/*
+ * If vendor/device ID match, call the devuninit() function of all
+ * registered driver for the given device. Return -1 if initialization
+ * failed, return 1 if no driver is found for this device.
+ */
+static int
+pci_close_all_drivers(struct rte_pci_device *dev)
+{
+	struct rte_pci_driver *dr = NULL;
+	int rc = 0;
+
+	if (dev == NULL)
+		return -1;
+
+	TAILQ_FOREACH(dr, &pci_driver_list, next) {
+		rc = rte_eal_pci_close_one_driver(dr, dev);
+		if (rc < 0)
+			/* negative value is an error */
+			return -1;
+		if (rc > 0)
+			/* positive value means driver not found */
+			continue;
+		return 0;
+	}
+	return 1;
+}
+
+/*
+ * Find the pci device specified by pci address, then invoke probe function of
+ * the driver of the devive.
+ */
+int
+rte_eal_pci_probe_one(struct rte_pci_addr *addr)
+{
+	struct rte_pci_device *dev = NULL;
+	int ret = 0;
+
+	if (addr == NULL)
+		return -1;
+
+	TAILQ_FOREACH(dev, &pci_device_list, next) {
+		if (rte_eal_compare_pci_addr(&dev->addr, addr))
+			continue;
+
+		ret = pci_probe_all_drivers(dev);
+		if (ret < 0)
+			goto err_return;
+		return 0;
+	}
+	return -1;
+
+err_return:
+	RTE_LOG(WARNING, EAL, "Requested device " PCI_PRI_FMT
+			" cannot be used\n", dev->addr.domain, dev->addr.bus,
+			dev->addr.devid, dev->addr.function);
+	return -1;
+}
+
+/*
+ * Find the pci device specified by pci address, then invoke close function of
+ * the driver of the devive.
+ */
+int
+rte_eal_pci_close_one(struct rte_pci_addr *addr)
+{
+	struct rte_pci_device *dev = NULL;
+	int ret = 0;
+
+	if (addr == NULL)
+		return -1;
+
+	TAILQ_FOREACH(dev, &pci_device_list, next) {
+		if (rte_eal_compare_pci_addr(&dev->addr, addr))
+			continue;
+
+		ret = pci_close_all_drivers(dev);
+		if (ret < 0)
+			goto err_return;
+
+		TAILQ_REMOVE(&pci_device_list, dev, next);
+		return 0;
+	}
+	return -1;
+
+err_return:
+	RTE_LOG(WARNING, EAL, "Requested device " PCI_PRI_FMT
+			" cannot be used\n", dev->addr.domain, dev->addr.bus,
+			dev->addr.devid, dev->addr.function);
+	return -1;
+}
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /*
  * Scan the content of the PCI bus, and call the devinit() function for
@@ -150,9 +235,6 @@ rte_eal_pci_probe(void)
 		probe_all = 1;
 
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
-		/* check if device has already been initialized */
-		if (dev->driver != NULL)
-			continue;
 
 		/* set devargs in PCI structure */
 		devargs = pci_devargs_lookup(dev);

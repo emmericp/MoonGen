@@ -54,7 +54,6 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -125,36 +124,6 @@ struct kni_port_params {
 
 static struct kni_port_params *kni_port_params_array[RTE_MAX_ETHPORTS];
 
-/* RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-/* RX ring configuration */
-static const struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-		.pthresh = 8,   /* Ring prefetch threshold */
-		.hthresh = 8,   /* Ring host threshold */
-		.wthresh = 4,   /* Ring writeback threshold */
-	},
-	.rx_free_thresh = 0,    /* Immediately free RX descriptors */
-};
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-/* TX ring configuration */
-static const struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-		.pthresh = 36,  /* Ring prefetch threshold */
-		.hthresh = 0,   /* Ring host threshold */
-		.wthresh = 0,   /* Ring writeback threshold */
-	},
-	.tx_free_thresh = 0,    /* Use PMD default values */
-	.tx_rs_thresh = 0,      /* Use PMD default values */
-};
 
 /* Options for configuring ethernet port */
 static struct rte_eth_conf port_conf = {
@@ -492,8 +461,8 @@ parse_config(const char *arg)
 			goto fail;
 		}
 		kni_port_params_array[port_id] =
-			(struct kni_port_params*)rte_zmalloc("KNI_port_params",
-			sizeof(struct kni_port_params), CACHE_LINE_SIZE);
+			rte_zmalloc("KNI_port_params",
+				    sizeof(struct kni_port_params), RTE_CACHE_LINE_SIZE);
 		kni_port_params_array[port_id]->port_id = port_id;
 		kni_port_params_array[port_id]->lcore_rx =
 					(uint8_t)int_fld[i++];
@@ -616,6 +585,25 @@ parse_args(int argc, char **argv)
 	return ret;
 }
 
+/* Initialize KNI subsystem */
+static void
+init_kni(void)
+{
+	unsigned int num_of_kni_ports = 0, i;
+	struct kni_port_params **params = kni_port_params_array;
+
+	/* Calculate the maximum number of KNI interfaces that will be used */
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (kni_port_params_array[i]) {
+			num_of_kni_ports += (params[i]->nb_lcore_k ?
+				params[i]->nb_lcore_k : 1);
+		}
+	}
+
+	/* Invoke rte KNI init to preallocate the ports */
+	rte_kni_init(num_of_kni_ports);
+}
+
 /* Initialise a single port on an Ethernet device */
 static void
 init_port(uint8_t port)
@@ -631,13 +619,13 @@ init_port(uint8_t port)
 		            (unsigned)port, ret);
 
 	ret = rte_eth_rx_queue_setup(port, 0, NB_RXD,
-		rte_eth_dev_socket_id(port), &rx_conf, pktmbuf_pool);
+		rte_eth_dev_socket_id(port), NULL, pktmbuf_pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Could not setup up RX queue for "
 				"port%u (%d)\n", (unsigned)port, ret);
 
 	ret = rte_eth_tx_queue_setup(port, 0, NB_TXD,
-		rte_eth_dev_socket_id(port), &tx_conf);
+		rte_eth_dev_socket_id(port), NULL);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Could not setup up TX queue for "
 				"port%u (%d)\n", (unsigned)port, ret);
@@ -889,23 +877,19 @@ main(int argc, char** argv)
 		return -1;
 	}
 
-	/* Scan PCI bus for recognised devices */
-	ret = rte_eal_pci_probe();
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Could not probe PCI (%d)\n", ret);
-
 	/* Get number of ports found in scan */
 	nb_sys_ports = rte_eth_dev_count();
 	if (nb_sys_ports == 0)
-		rte_exit(EXIT_FAILURE, "No supported Ethernet devices found - "
-			"check that CONFIG_RTE_LIBRTE_IGB_PMD=y and/or "
-			"CONFIG_RTE_LIBRTE_IXGBE_PMD=y in the config file\n");
+		rte_exit(EXIT_FAILURE, "No supported Ethernet device found\n");
 
 	/* Check if the configured port ID is valid */
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
 		if (kni_port_params_array[i] && i >= nb_sys_ports)
 			rte_exit(EXIT_FAILURE, "Configured invalid "
 						"port ID %u\n", i);
+
+	/* Initialize KNI subsystem */
+	init_kni();
 
 	/* Initialise each port */
 	for (port = 0; port < nb_sys_ports; port++) {

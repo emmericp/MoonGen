@@ -45,9 +45,12 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include <rte_memcpy.h>
 #include <rte_random.h>
+#include <rte_mbuf.h>
+#include <rte_byteorder.h>
 
 #define ETHER_ADDR_LEN  6 /**< Length of Ethernet address. */
 #define ETHER_TYPE_LEN  2 /**< Length of Ethernet type field. */
@@ -266,6 +269,30 @@ static inline void ether_addr_copy(const struct ether_addr *ea_from,
 #endif
 }
 
+#define ETHER_ADDR_FMT_SIZE         18
+/**
+ * Format 48bits Ethernet address in pattern xx:xx:xx:xx:xx:xx.
+ *
+ * @param buf
+ *   A pointer to buffer contains the formatted MAC address.
+ * @param size
+ *   The format buffer size.
+ * @param ea_to
+ *   A pointer to a ether_addr structure.
+ */
+static inline void
+ether_format_addr(char *buf, uint16_t size,
+		  const struct ether_addr *eth_addr)
+{
+	snprintf(buf, size, "%02X:%02X:%02X:%02X:%02X:%02X",
+		 eth_addr->addr_bytes[0],
+		 eth_addr->addr_bytes[1],
+		 eth_addr->addr_bytes[2],
+		 eth_addr->addr_bytes[3],
+		 eth_addr->addr_bytes[4],
+		 eth_addr->addr_bytes[5]);
+}
+
 /**
  * Ethernet header: Contains the destination address, source address
  * and frame type.
@@ -286,6 +313,16 @@ struct vlan_hdr {
 	uint16_t eth_proto;/**< Ethernet type of encapsulated frame. */
 } __attribute__((__packed__));
 
+/**
+ * VXLAN protocol header.
+ * Contains the 8-bit flag, 24-bit VXLAN Network Identifier and
+ * Reserved fields (24 bits and 8 bits)
+ */
+struct vxlan_hdr {
+	uint32_t vx_flags; /**< flag (8) + Reserved (24). */
+	uint32_t vx_vni;   /**< VNI (24) + Reserved (8). */
+} __attribute__((__packed__));
+
 /* Ethernet frame types */
 #define ETHER_TYPE_IPv4 0x0800 /**< IPv4 Protocol. */
 #define ETHER_TYPE_IPv6 0x86DD /**< IPv6 Protocol. */
@@ -293,6 +330,84 @@ struct vlan_hdr {
 #define ETHER_TYPE_RARP 0x8035 /**< Reverse Arp Protocol. */
 #define ETHER_TYPE_VLAN 0x8100 /**< IEEE 802.1Q VLAN tagging. */
 #define ETHER_TYPE_1588 0x88F7 /**< IEEE 802.1AS 1588 Precise Time Protocol. */
+#define ETHER_TYPE_SLOW 0x8809 /**< Slow protocols (LACP and Marker). */
+#define ETHER_TYPE_TEB  0x6558 /**< Transparent Ethernet Bridging. */
+
+#define ETHER_VXLAN_HLEN (sizeof(struct udp_hdr) + sizeof(struct vxlan_hdr))
+/**< VXLAN tunnel header length. */
+
+/**
+ * Extract VLAN tag information into mbuf
+ *
+ * Software version of VLAN stripping
+ *
+ * @param m
+ *   The packet mbuf.
+ * @return
+ *   - 0: Success
+ *   - 1: not a vlan packet
+ */
+static inline int rte_vlan_strip(struct rte_mbuf *m)
+{
+	struct ether_hdr *eh
+		 = rte_pktmbuf_mtod(m, struct ether_hdr *);
+
+	if (eh->ether_type != rte_cpu_to_be_16(ETHER_TYPE_VLAN))
+		return -1;
+
+	struct vlan_hdr *vh = (struct vlan_hdr *)(eh + 1);
+	m->ol_flags |= PKT_RX_VLAN_PKT;
+	m->vlan_tci = rte_be_to_cpu_16(vh->vlan_tci);
+
+	/* Copy ether header over rather than moving whole packet */
+	memmove(rte_pktmbuf_adj(m, sizeof(struct vlan_hdr)),
+		eh, 2 * ETHER_ADDR_LEN);
+
+	return 0;
+}
+
+/**
+ * Insert VLAN tag into mbuf.
+ *
+ * Software version of VLAN unstripping
+ *
+ * @param m
+ *   The packet mbuf.
+ * @return
+ *   - 0: On success
+ *   -EPERM: mbuf is is shared overwriting would be unsafe
+ *   -ENOSPC: not enough headroom in mbuf
+ */
+static inline int rte_vlan_insert(struct rte_mbuf **m)
+{
+	struct ether_hdr *oh, *nh;
+	struct vlan_hdr *vh;
+
+	/* Can't insert header if mbuf is shared */
+	if (rte_mbuf_refcnt_read(*m) > 1) {
+		struct rte_mbuf *copy;
+
+		copy = rte_pktmbuf_clone(*m, (*m)->pool);
+		if (unlikely(copy == NULL))
+			return -ENOMEM;
+		rte_pktmbuf_free(*m);
+		*m = copy;
+	}
+
+	oh = rte_pktmbuf_mtod(*m, struct ether_hdr *);
+	nh = (struct ether_hdr *)
+		rte_pktmbuf_prepend(*m, sizeof(struct vlan_hdr));
+	if (nh == NULL)
+		return -ENOSPC;
+
+	memmove(nh, oh, 2 * ETHER_ADDR_LEN);
+	nh->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+
+	vh = (struct vlan_hdr *) (nh + 1);
+	vh->vlan_tci = rte_cpu_to_be_16((*m)->vlan_tci);
+
+	return 0;
+}
 
 #ifdef __cplusplus
 }

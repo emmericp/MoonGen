@@ -66,7 +66,7 @@ app_pkt_metadata_flush(struct rte_mbuf *pkt)
 	ether_addr_copy(&pkt_meta->nh_arp, &ether_hdr->d_addr);
 	ether_addr_copy(&local_ether_addr, &ether_hdr->s_addr);
 	ether_hdr->ether_type = rte_bswap16(ETHER_TYPE_IPv4);
-	pkt->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+	pkt->l2_len = sizeof(struct ether_hdr);
 }
 
 static int
@@ -234,7 +234,7 @@ app_main_loop_tx(void) {
 
 	for (i = 0; i < APP_MAX_PORTS; i++) {
 		m[i] = rte_malloc_socket(NULL, sizeof(struct app_mbuf_array),
-			CACHE_LINE_SIZE, rte_socket_id());
+			RTE_CACHE_LINE_SIZE, rte_socket_id());
 		if (m[i] == NULL)
 			rte_panic("%s: Cannot allocate buffer space\n",
 				__func__);

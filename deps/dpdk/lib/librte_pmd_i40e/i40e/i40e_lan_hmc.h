@@ -36,7 +36,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 /* forward-declare the HW struct for the compiler */
 struct i40e_hw;
-enum i40e_status_code;
 
 /* HMC element context information */
 
@@ -193,19 +192,6 @@ enum i40e_status_code i40e_clear_lan_rx_queue_context(struct i40e_hw *hw,
 enum i40e_status_code i40e_set_lan_rx_queue_context(struct i40e_hw *hw,
 						    u16 queue,
 						    struct i40e_hmc_obj_rxq *s);
-#ifdef PREBOOT_SUPPORT
-
-enum i40e_status_code i40e_clear_lan_tx_queue_context_directly(struct i40e_hw *hw,
-						    u16 queue);
-enum i40e_status_code i40e_set_lan_tx_queue_context_directly(struct i40e_hw *hw,
-						    u16 queue,
-						    struct i40e_hmc_obj_txq *s);
-enum i40e_status_code i40e_clear_lan_rx_queue_context_directly(struct i40e_hw *hw,
-						    u16 queue);
-enum i40e_status_code i40e_set_lan_rx_queue_context_directly(struct i40e_hw *hw,
-						    u16 queue,
-						    struct i40e_hmc_obj_rxq *s);
-#endif
 enum i40e_status_code i40e_create_lan_hmc_object(struct i40e_hw *hw,
 				struct i40e_hmc_lan_create_obj_info *info);
 enum i40e_status_code i40e_delete_lan_hmc_object(struct i40e_hw *hw,

@@ -39,17 +39,24 @@ LIB = librte_pmd_bond.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_eth_bond_version.map
+
+LIBABIVER := 1
+
 #
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_api.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_pmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_args.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_8023ad.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_alb.c
 
 #
 # Export include files
 #
 SYMLINK-y-include += rte_eth_bond.h
+SYMLINK-y-include += rte_eth_bond_8023ad.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_mbuf

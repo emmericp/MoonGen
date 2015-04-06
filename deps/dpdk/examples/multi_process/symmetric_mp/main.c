@@ -58,7 +58,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -89,36 +88,6 @@
 #define PARAM_PROC_ID "proc-id"
 #define PARAM_NUM_PROCS "num-procs"
 
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-/* Default configuration for rx and tx thresholds etc. */
-static const struct rte_eth_rxconf rx_conf_default = {
-	.rx_thresh = {
-		.pthresh = 8,
-		.hthresh = 8,
-		.wthresh = 4,
-	},
-};
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-static const struct rte_eth_txconf tx_conf_default = {
-	.tx_thresh = {
-		.pthresh = 36,
-		.hthresh = 0,
-		.wthresh = 0,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-};
-
 /* for each lcore, record the elements of the ports array to use */
 struct lcore_ports{
 	unsigned start_port;
@@ -131,7 +100,7 @@ struct port_stats{
 	unsigned rx;
 	unsigned tx;
 	unsigned drop;
-} __attribute__((aligned(CACHE_LINE_SIZE / 2)));
+} __attribute__((aligned(RTE_CACHE_LINE_SIZE / 2)));
 
 static int proc_id = -1;
 static unsigned num_procs = 0;
@@ -259,6 +228,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 			}
 	};
 	const uint16_t rx_rings = num_queues, tx_rings = num_queues;
+	struct rte_eth_dev_info info;
 	int retval;
 	uint16_t q;
 
@@ -271,13 +241,17 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 	printf("# Initialising port %u... ", (unsigned)port);
 	fflush(stdout);
 
+	rte_eth_dev_info_get(port, &info);
+	info.default_rxconf.rx_drop_en = 1;
+
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval < 0)
 		return retval;
 
 	for (q = 0; q < rx_rings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, RX_RING_SIZE,
-				rte_eth_dev_socket_id(port), &rx_conf_default,
+				rte_eth_dev_socket_id(port),
+				&info.default_rxconf,
 				mbuf_pool);
 		if (retval < 0)
 			return retval;
@@ -285,7 +259,8 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 
 	for (q = 0; q < tx_rings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, TX_RING_SIZE,
-				rte_eth_dev_socket_id(port), &tx_conf_default);
+				rte_eth_dev_socket_id(port),
+				NULL);
 		if (retval < 0)
 			return retval;
 	}
@@ -461,16 +436,14 @@ main(int argc, char **argv)
 	argc -= ret;
 	argv += ret;
 
-	/* probe to determine the NIC devices available */
-	proc_type = rte_eal_process_type();
-	if (rte_eal_pci_probe() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
+	/* determine the NIC devices available */
 	if (rte_eth_dev_count() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
 	/* parse application arguments (those after the EAL ones) */
 	smp_parse_args(argc, argv);
 
+	proc_type = rte_eal_process_type();
 	mp = (proc_type == RTE_PROC_SECONDARY) ?
 			rte_mempool_lookup(_SMP_MBUF_POOL) :
 			rte_mempool_create(_SMP_MBUF_POOL, NB_MBUFS, MBUF_SIZE,

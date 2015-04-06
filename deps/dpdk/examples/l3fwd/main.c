@@ -43,13 +43,12 @@
 #include <getopt.h>
 
 #include <rte_common.h>
-#include <rte_common_vect.h>
+#include <rte_vect.h>
 #include <rte_byteorder.h>
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -72,8 +71,6 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_string_fns.h>
-
-#include "main.h"
 
 #define APP_LOOKUP_EXACT_MATCH          0
 #define APP_LOOKUP_LPM                  1
@@ -136,25 +133,6 @@
 				nb_ports*n_tx_queue*RTE_TEST_TX_DESC_DEFAULT +								\
 				nb_lcores*MEMPOOL_CACHE_SIZE),												\
 				(unsigned)8192)
-
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-#define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
-#define RX_HTHRESH 8 /**< Default values of RX host threshold reg. */
-#define RX_WTHRESH 4 /**< Default values of RX write-back threshold reg. */
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-#define TX_PTHRESH 36 /**< Default values of TX prefetch threshold reg. */
-#define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
-#define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST     32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
@@ -257,31 +235,6 @@ static struct rte_eth_conf port_conf = {
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
-};
-
-static const struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-		.pthresh = RX_PTHRESH,
-		.hthresh = RX_HTHRESH,
-		.wthresh = RX_WTHRESH,
-	},
-	.rx_free_thresh = 32,
-};
-
-static struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-		.pthresh = TX_PTHRESH,
-		.hthresh = TX_HTHRESH,
-		.wthresh = TX_WTHRESH,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
-	.txq_flags = (ETH_TXQ_FLAGS_NOMULTSEGS |
-			ETH_TXQ_FLAGS_NOVLANOFFL |
-			ETH_TXQ_FLAGS_NOXSUMSCTP |
-			ETH_TXQ_FLAGS_NOXSUMUDP |
-			ETH_TXQ_FLAGS_NOXSUMTCP)
-
 };
 
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
@@ -770,9 +723,11 @@ get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, lookup6_struct_t * ipv6_l3fwd
 }
 #endif
 
+static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid,
+	struct lcore_conf *qconf)  __attribute__((unused));
+
 #if ((APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) && \
 	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
-static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qconf);
 
 #define MASK_ALL_PKTS    0xf
 #define EXECLUDE_1ST_PKT 0xe
@@ -809,19 +764,19 @@ simple_ipv4_fwd_4pkts(struct rte_mbuf* m[4], uint8_t portid, struct lcore_conf *
 #ifdef DO_RFC_1812_CHECKS
 	/* Check to make sure the packet is valid (RFC1812) */
 	uint8_t valid_mask = MASK_ALL_PKTS;
-	if (is_valid_ipv4_pkt(ipv4_hdr[0], m[0]->pkt.pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr[0], m[0]->pkt_len) < 0) {
 		rte_pktmbuf_free(m[0]);
 		valid_mask &= EXECLUDE_1ST_PKT;
 	}
-	if (is_valid_ipv4_pkt(ipv4_hdr[1], m[1]->pkt.pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr[1], m[1]->pkt_len) < 0) {
 		rte_pktmbuf_free(m[1]);
 		valid_mask &= EXECLUDE_2ND_PKT;
 	}
-	if (is_valid_ipv4_pkt(ipv4_hdr[2], m[2]->pkt.pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr[2], m[2]->pkt_len) < 0) {
 		rte_pktmbuf_free(m[2]);
 		valid_mask &= EXECLUDE_3RD_PKT;
 	}
-	if (is_valid_ipv4_pkt(ipv4_hdr[3], m[3]->pkt.pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr[3], m[3]->pkt_len) < 0) {
 		rte_pktmbuf_free(m[3]);
 		valid_mask &= EXECLUDE_4TH_PKT;
 	}
@@ -1009,7 +964,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 
 #ifdef DO_RFC_1812_CHECKS
 		/* Check to make sure the packet is valid (RFC1812) */
-		if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt.pkt_len) < 0) {
+		if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt_len) < 0) {
 			rte_pktmbuf_free(m);
 			return;
 		}
@@ -1214,7 +1169,7 @@ processx4_step2(const struct lcore_conf *qconf, __m128i dip, uint32_t flag,
 	if (likely(flag != 0)) {
 		rte_lpm_lookupx4(qconf->ipv4_lookup_struct, dip, dprt, portid);
 	} else {
-		dst.m = dip;
+		dst.x = dip;
 		dprt[0] = get_dst_port(qconf, pkt[0], dst.u32[0], portid);
 		dprt[1] = get_dst_port(qconf, pkt[1], dst.u32[1], portid);
 		dprt[2] = get_dst_port(qconf, pkt[2], dst.u32[2], portid);
@@ -1974,7 +1929,6 @@ parse_args(int argc, char **argv)
 
 				printf("jumbo frame is enabled - disabling simple TX path\n");
 				port_conf.rxmode.jumbo_frame = 1;
-				tx_conf.txq_flags = 0;
 
 				/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */
 				if (0 == getopt_long(argc, argvopt, "", &lenopts, &option_index)) {
@@ -2021,13 +1975,9 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 {
-	printf ("%s%02X:%02X:%02X:%02X:%02X:%02X", name,
-		eth_addr->addr_bytes[0],
-		eth_addr->addr_bytes[1],
-		eth_addr->addr_bytes[2],
-		eth_addr->addr_bytes[3],
-		eth_addr->addr_bytes[4],
-		eth_addr->addr_bytes[5]);
+	char buf[ETHER_ADDR_FMT_SIZE];
+	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	printf("%s%s", name, buf);
 }
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
@@ -2445,9 +2395,11 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	struct lcore_conf *qconf;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf *txconf;
 	int ret;
 	unsigned nb_ports;
 	uint16_t queueid;
@@ -2473,10 +2425,6 @@ MAIN(int argc, char **argv)
 	ret = init_lcore_rx_queues();
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "init_lcore_rx_queues failed\n");
-
-
-	if (rte_eal_pci_probe() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports > RTE_MAX_ETHPORTS)
@@ -2541,8 +2489,13 @@ MAIN(int argc, char **argv)
 
 			printf("txq=%u,%d,%d ", lcore_id, queueid, socketid);
 			fflush(stdout);
+
+			rte_eth_dev_info_get(portid, &dev_info);
+			txconf = &dev_info.default_txconf;
+			if (port_conf.rxmode.jumbo_frame)
+				txconf->txq_flags = 0;
 			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
-						     socketid, &tx_conf);
+						     socketid, txconf);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d, "
 					"port=%d\n", ret, portid);
@@ -2574,7 +2527,9 @@ MAIN(int argc, char **argv)
 			fflush(stdout);
 
 			ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
-				        socketid, &rx_conf, pktmbuf_pool[socketid]);
+					socketid,
+					NULL,
+					pktmbuf_pool[socketid]);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: err=%d,"
 						"port=%d\n", ret, portid);

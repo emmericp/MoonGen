@@ -198,10 +198,12 @@ struct rte_mempool {
  *   Number to add to the object-oriented statistics.
  */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-#define __MEMPOOL_STAT_ADD(mp, name, n) do {			\
-		unsigned __lcore_id = rte_lcore_id();		\
-		mp->stats[__lcore_id].name##_objs += n;		\
-		mp->stats[__lcore_id].name##_bulk += 1;		\
+#define __MEMPOOL_STAT_ADD(mp, name, n) do {                    \
+		unsigned __lcore_id = rte_lcore_id();           \
+		if (__lcore_id < RTE_MAX_LCORE) {               \
+			mp->stats[__lcore_id].name##_objs += n;	\
+			mp->stats[__lcore_id].name##_bulk += 1;	\
+		}                                               \
 	} while(0)
 #else
 #define __MEMPOOL_STAT_ADD(mp, name, n) do {} while(0)
@@ -216,7 +218,7 @@ struct rte_mempool {
  */
 #define	MEMPOOL_HEADER_SIZE(mp, pgn)	(sizeof(*(mp)) + \
 	RTE_ALIGN_CEIL(((pgn) - RTE_DIM((mp)->elt_pa)) * \
-	sizeof ((mp)->elt_pa[0]), CACHE_LINE_SIZE))
+	sizeof ((mp)->elt_pa[0]), RTE_CACHE_LINE_SIZE))
 
 /**
  * Returns TRUE if whole mempool is allocated in one contiguous block of memory.
@@ -313,7 +315,6 @@ static inline void __mempool_write_trailer_cookie(void *obj)
  */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 #ifndef __INTEL_COMPILER
-#pragma GCC push_options
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 static inline void __mempool_check_cookies(const struct rte_mempool *mp,
@@ -343,8 +344,8 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1) {
 				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%"PRIx64"\n",
-					obj, mp, cookie);
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+					obj, (const void *) mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (put)\n");
 			}
 			__mempool_write_header_cookie(obj, 1);
@@ -353,8 +354,8 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
 				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%"PRIx64"\n",
-					obj, mp, cookie);
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+					obj, (const void *) mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (get)\n");
 			}
 			__mempool_write_header_cookie(obj, 0);
@@ -364,8 +365,8 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 			    cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
 				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%"PRIx64"\n",
-					obj, mp, cookie);
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+					obj, (const void *) mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (audit)\n");
 			}
 		}
@@ -373,14 +374,14 @@ static inline void __mempool_check_cookies(const struct rte_mempool *mp,
 		if (cookie != RTE_MEMPOOL_TRAILER_COOKIE) {
 			rte_log_set_history(0);
 			RTE_LOG(CRIT, MEMPOOL,
-				"obj=%p, mempool=%p, cookie=%"PRIx64"\n",
-				obj, mp, cookie);
+				"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+				obj, (const void *) mp, cookie);
 			rte_panic("MEMPOOL: bad trailer cookie\n");
 		}
 	}
 }
 #ifndef __INTEL_COMPILER
-#pragma GCC pop_options
+#pragma GCC diagnostic error "-Wcast-qual"
 #endif
 #else
 #define __mempool_check_cookies(mp, obj_table_const, n, free) do {} while(0)
@@ -523,7 +524,6 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *   with rte_errno set appropriately. Possible rte_errno values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the ring or mempool list
  *    - EINVAL - cache size provided is too large
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists
@@ -624,7 +624,6 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   with rte_errno set appropriately. Possible rte_errno values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the ring or mempool list
  *    - EINVAL - cache size provided is too large
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists
@@ -715,7 +714,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
  *   with rte_errno set appropriately. Possible rte_errno values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - E_RTE_NO_TAILQ - no tailq list could be got for the ring or mempool list
  *    - EINVAL - cache size provided is too large
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists
@@ -768,8 +766,9 @@ __mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 	__MEMPOOL_STAT_ADD(mp, put, n);
 
 #if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
-	/* cache is not enabled or single producer */
-	if (unlikely(cache_size == 0 || is_mp == 0))
+	/* cache is not enabled or single producer or non-EAL thread */
+	if (unlikely(cache_size == 0 || is_mp == 0 ||
+		     lcore_id >= RTE_MAX_LCORE))
 		goto ring_enqueue;
 
 	/* Go straight to ring if put would overflow mem allocated for cache */
@@ -945,9 +944,6 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 		   unsigned n, int is_mc)
 {
 	int ret;
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	unsigned n_orig = n;
-#endif
 #if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	struct rte_mempool_cache *cache;
 	uint32_t index, len;
@@ -956,7 +952,8 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 	uint32_t cache_size = mp->cache_size;
 
 	/* cache is not enabled or single consumer */
-	if (unlikely(cache_size == 0 || is_mc == 0 || n >= cache_size))
+	if (unlikely(cache_size == 0 || is_mc == 0 ||
+		     n >= cache_size || lcore_id >= RTE_MAX_LCORE))
 		goto ring_dequeue;
 
 	cache = &mp->local_cache[lcore_id];
@@ -988,7 +985,7 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 
 	cache->len -= n;
 
-	__MEMPOOL_STAT_ADD(mp, get_success, n_orig);
+	__MEMPOOL_STAT_ADD(mp, get_success, n);
 
 	return 0;
 
@@ -1002,9 +999,9 @@ ring_dequeue:
 		ret = rte_ring_sc_dequeue_bulk(mp->ring, obj_table, n);
 
 	if (ret < 0)
-		__MEMPOOL_STAT_ADD(mp, get_fail, n_orig);
+		__MEMPOOL_STAT_ADD(mp, get_fail, n);
 	else
-		__MEMPOOL_STAT_ADD(mp, get_success, n_orig);
+		__MEMPOOL_STAT_ADD(mp, get_success, n);
 
 	return ret;
 }

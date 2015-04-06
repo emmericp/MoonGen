@@ -67,22 +67,19 @@
 
 #define E1000_IMIR_DSTPORT             0x0000FFFF
 #define E1000_IMIR_PRIORITY            0xE0000000
-#define E1000_IMIR_EXT_SIZE_BP         0x00001000
-#define E1000_IMIR_EXT_CTRL_UGR        0x00002000
-#define E1000_IMIR_EXT_CTRL_ACK        0x00004000
-#define E1000_IMIR_EXT_CTRL_PSH        0x00008000
-#define E1000_IMIR_EXT_CTRL_RST        0x00010000
-#define E1000_IMIR_EXT_CTRL_SYN        0x00020000
-#define E1000_IMIR_EXT_CTRL_FIN        0x00040000
-#define E1000_IMIR_EXT_CTRL_BP         0x00080000
 #define E1000_MAX_TTQF_FILTERS         8
 #define E1000_2TUPLE_MAX_PRI           7
 
-#define E1000_MAX_FLEXIBLE_FILTERS       8
+#define E1000_MAX_FLEX_FILTERS           8
 #define E1000_MAX_FHFT                   4
 #define E1000_MAX_FHFT_EXT               4
+#define E1000_FHFT_SIZE_IN_DWD           64
 #define E1000_MAX_FLEX_FILTER_PRI        7
 #define E1000_MAX_FLEX_FILTER_LEN        128
+#define E1000_MAX_FLEX_FILTER_DWDS \
+	(E1000_MAX_FLEX_FILTER_LEN / sizeof(uint32_t))
+#define E1000_FLEX_FILTERS_MASK_SIZE \
+	(E1000_MAX_FLEX_FILTER_DWDS / 4)
 #define E1000_FHFT_QUEUEING_LEN          0x0000007F
 #define E1000_FHFT_QUEUEING_QUEUE        0x00000700
 #define E1000_FHFT_QUEUEING_PRIO         0x00070000
@@ -96,14 +93,20 @@
 #define E1000_MAX_FTQF_FILTERS           8
 #define E1000_FTQF_PROTOCOL_MASK         0x000000FF
 #define E1000_FTQF_5TUPLE_MASK_SHIFT     28
-#define E1000_FTQF_PROTOCOL_COMP_MASK    0x10000000
-#define E1000_FTQF_SOURCE_ADDR_MASK      0x20000000
-#define E1000_FTQF_DEST_ADDR_MASK        0x40000000
-#define E1000_FTQF_SOURCE_PORT_MASK      0x80000000
-#define E1000_FTQF_VF_MASK_EN            0x00008000
 #define E1000_FTQF_QUEUE_MASK            0x03ff0000
 #define E1000_FTQF_QUEUE_SHIFT           16
 #define E1000_FTQF_QUEUE_ENABLE          0x00000100
+
+#define IGB_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_IPV6_EX | \
+	ETH_RSS_IPV6_TCP_EX | \
+	ETH_RSS_IPV6_UDP_EX)
 
 /* structure for interrupt relative data */
 struct e1000_interrupt {
@@ -131,6 +134,91 @@ struct e1000_vf_info {
 	uint16_t tx_rate;
 };
 
+TAILQ_HEAD(e1000_flex_filter_list, e1000_flex_filter);
+
+struct e1000_flex_filter_info {
+	uint16_t len;
+	uint32_t dwords[E1000_MAX_FLEX_FILTER_DWDS]; /* flex bytes in dword. */
+	/* if mask bit is 1b, do not compare corresponding byte in dwords. */
+	uint8_t mask[E1000_FLEX_FILTERS_MASK_SIZE];
+	uint8_t priority;
+};
+
+/* Flex filter structure */
+struct e1000_flex_filter {
+	TAILQ_ENTRY(e1000_flex_filter) entries;
+	uint16_t index; /* index of flex filter */
+	struct e1000_flex_filter_info filter_info;
+	uint16_t queue; /* rx queue assigned to */
+};
+
+TAILQ_HEAD(e1000_5tuple_filter_list, e1000_5tuple_filter);
+TAILQ_HEAD(e1000_2tuple_filter_list, e1000_2tuple_filter);
+
+struct e1000_5tuple_filter_info {
+	uint32_t dst_ip;
+	uint32_t src_ip;
+	uint16_t dst_port;
+	uint16_t src_port;
+	uint8_t proto;           /* l4 protocol. */
+	/* the packet matched above 5tuple and contain any set bit will hit this filter. */
+	uint8_t tcp_flags;
+	uint8_t priority;        /* seven levels (001b-111b), 111b is highest,
+				      used when more than one filter matches. */
+	uint8_t dst_ip_mask:1,   /* if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1,   /* if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /* if mask is 1b, do not compare src port. */
+		proto_mask:1;    /* if mask is 1b, do not compare protocol. */
+};
+
+struct e1000_2tuple_filter_info {
+	uint16_t dst_port;
+	uint8_t proto;           /* l4 protocol. */
+	/* the packet matched above 2tuple and contain any set bit will hit this filter. */
+	uint8_t tcp_flags;
+	uint8_t priority;        /* seven levels (001b-111b), 111b is highest,
+				      used when more than one filter matches. */
+	uint8_t dst_ip_mask:1,   /* if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1,   /* if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /* if mask is 1b, do not compare src port. */
+		proto_mask:1;    /* if mask is 1b, do not compare protocol. */
+};
+
+/* 5tuple filter structure */
+struct e1000_5tuple_filter {
+	TAILQ_ENTRY(e1000_5tuple_filter) entries;
+	uint16_t index;       /* the index of 5tuple filter */
+	struct e1000_5tuple_filter_info filter_info;
+	uint16_t queue;       /* rx queue assigned to */
+};
+
+/* 2tuple filter structure */
+struct e1000_2tuple_filter {
+	TAILQ_ENTRY(e1000_2tuple_filter) entries;
+	uint16_t index;         /* the index of 2tuple filter */
+	struct e1000_2tuple_filter_info filter_info;
+	uint16_t queue;       /* rx queue assigned to */
+};
+
+/*
+ * Structure to store filters' info.
+ */
+struct e1000_filter_info {
+	uint8_t ethertype_mask; /* Bit mask for every used ethertype filter */
+	/* store used ethertype filters*/
+	uint16_t ethertype_filters[E1000_MAX_ETQF_FILTERS];
+	uint8_t flex_mask;	/* Bit mask for every used flex filter */
+	struct e1000_flex_filter_list flex_list;
+	/* Bit mask for every used 5tuple filter */
+	uint8_t fivetuple_mask;
+	struct e1000_5tuple_filter_list fivetuple_list;
+	/* Bit mask for every used 2tuple filter */
+	uint8_t twotuple_mask;
+	struct e1000_2tuple_filter_list twotuple_list;
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -140,6 +228,7 @@ struct e1000_adapter {
 	struct e1000_interrupt  intr;
 	struct e1000_vfta       shadow_vfta;
 	struct e1000_vf_info    *vfdata;
+	struct e1000_filter_info filter;
 };
 
 #define E1000_DEV_PRIVATE_TO_HW(adapter) \
@@ -156,6 +245,9 @@ struct e1000_adapter {
 
 #define E1000_DEV_PRIVATE_TO_P_VFDATA(adapter) \
         (&((struct e1000_adapter *)adapter)->vfdata)
+
+#define E1000_DEV_PRIVATE_TO_FILTER_INFO(adapter) \
+	(&((struct e1000_adapter *)adapter)->filter)
 
 /*
  * RX/TX IGB function prototypes

@@ -49,7 +49,6 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -76,7 +75,7 @@
 #include "main.h"
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 
@@ -148,17 +147,12 @@ app_lcore_main_loop(__attribute__((unused)) void *arg)
 			rte_exit(EXIT_FAILURE, "ACL not present in build\n");
 #endif
 
-#ifdef RTE_MBUF_SCATTER_GATHER
 		case APP_CORE_IPV4_FRAG:
 			app_main_loop_pipeline_ipv4_frag();
 			return 0;
 		case APP_CORE_IPV4_RAS:
 			app_main_loop_pipeline_ipv4_ras();
 			return 0;
-#else
-			rte_exit(EXIT_FAILURE,
-				"mbuf chaining not present in build\n");
-#endif
 
 		default:
 			rte_panic("%s: Invalid core type for core %u\n",

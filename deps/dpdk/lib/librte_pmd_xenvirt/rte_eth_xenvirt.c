@@ -81,7 +81,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 	struct rte_mbuf *m;
 
 	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, RTE_MBUF_PKT, 0);
+	__rte_mbuf_sanity_check_raw(m, 0);
 
 	return m;
 }
@@ -109,12 +109,12 @@ eth_xenvirt_rx(void *q, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	for (i = 0; i < num ; i ++) {
 		rxm = rx_pkts[i];
 		PMD_RX_LOG(DEBUG, "packet len:%d\n", len[i]);
-		rxm->pkt.next = NULL;
-		rxm->pkt.data = (char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM;
-		rxm->pkt.data_len = (uint16_t)(len[i] - sizeof(struct virtio_net_hdr));
-		rxm->pkt.nb_segs = 1;
-		rxm->pkt.in_port = pi->port_id;
-		rxm->pkt.pkt_len  = (uint32_t)(len[i] - sizeof(struct virtio_net_hdr));
+		rxm->next = NULL;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rxm->data_len = (uint16_t)(len[i] - sizeof(struct virtio_net_hdr));
+		rxm->nb_segs = 1;
+		rxm->port = pi->port_id;
+		rxm->pkt_len  = (uint32_t)(len[i] - sizeof(struct virtio_net_hdr));
 	}
 	/* allocate new mbuf for the used descriptor */
 	while (likely(!virtqueue_full(rxvq))) {
@@ -452,7 +452,7 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 		snprintf(vq_name, sizeof(vq_name), "port%d_rvq",
 				dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
+			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
 		if (vq == NULL) {
 			RTE_LOG(ERR, PMD, "%s: unabled to allocate virtqueue\n", __func__);
 			return NULL;
@@ -462,7 +462,7 @@ virtio_queue_setup(struct rte_eth_dev *dev, int queue_type)
 		snprintf(vq_name, sizeof(vq_name), "port%d_tvq",
 			dev->data->port_id);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra), CACHE_LINE_SIZE);
+			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
 		if (vq == NULL) {
 			RTE_LOG(ERR, PMD, "%s: unabled to allocate virtqueue\n", __func__);
 			return NULL;
@@ -556,7 +556,7 @@ rte_eth_xenvirt_parse_args(struct xenvirt_dict *dict,
 	if (params == NULL)
 		return 0;
 
-	args = rte_zmalloc(NULL, strlen(params) + 1, CACHE_LINE_SIZE);
+	args = rte_zmalloc(NULL, strlen(params) + 1, RTE_CACHE_LINE_SIZE);
 	if (args == NULL) {
 		RTE_LOG(ERR, PMD, "Couldn't parse %s device \n", name);
 		return -1;
@@ -586,8 +586,9 @@ rte_eth_xenvirt_parse_args(struct xenvirt_dict *dict,
 		if (!strncmp(pair[0], RTE_ETH_XENVIRT_MAC_PARAM,
 				sizeof(RTE_ETH_XENVIRT_MAC_PARAM))) {
 			if (cmdline_parse_etheraddr(NULL,
-							pair[1],
-							&dict->addr) < 0) {
+						    pair[1],
+						    &dict->addr,
+						    sizeof(dict->addr)) < 0) {
 				RTE_LOG(ERR, PMD,
 					"Invalid %s device ether address\n",
 					name);
@@ -647,7 +648,7 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 		goto err;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name);
+	eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
 	if (eth_dev == NULL)
 		goto err;
 

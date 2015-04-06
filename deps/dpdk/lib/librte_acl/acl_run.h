@@ -35,12 +35,11 @@
 #define	_ACL_RUN_H_
 
 #include <rte_acl.h>
-#include "acl_vect.h"
 #include "acl.h"
 
+#define MAX_SEARCHES_AVX16	16
 #define MAX_SEARCHES_SSE8	8
 #define MAX_SEARCHES_SSE4	4
-#define MAX_SEARCHES_SSE2	2
 #define MAX_SEARCHES_SCALAR	2
 
 #define GET_NEXT_4BYTES(prm, idx)	\
@@ -256,10 +255,6 @@ acl_match_check(uint64_t transition, int slot,
 
 		/* Fill the slot with the next trie or idle trie */
 		transition = acl_start_next_trie(flows, parms, slot, ctx);
-
-	} else if (transition == ctx->idle) {
-		/* reset indirection table for idle slots */
-		parms[slot].data_index = idle;
 	}
 
 	return transition;

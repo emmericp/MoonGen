@@ -48,7 +48,6 @@
 #include <rte_launch.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -176,6 +175,13 @@ rte_set_log_level(uint32_t level)
 	rte_logs.level = (uint32_t)level;
 }
 
+/* Get global log level */
+uint32_t
+rte_get_log_level(void)
+{
+	return rte_logs.level;
+}
+
 /* Set global log type */
 void
 rte_set_log_type(uint32_t type, int enable)
@@ -186,11 +192,20 @@ rte_set_log_type(uint32_t type, int enable)
 		rte_logs.type &= (~type);
 }
 
+/* Get global log type */
+uint32_t
+rte_get_log_type(void)
+{
+	return rte_logs.type;
+}
+
 /* get the current loglevel for the message beeing processed */
 int rte_log_cur_msg_loglevel(void)
 {
 	unsigned lcore_id;
 	lcore_id = rte_lcore_id();
+	if (lcore_id >= RTE_MAX_LCORE)
+		return rte_get_log_level();
 	return log_cur_msg[lcore_id].loglevel;
 }
 
@@ -199,6 +214,8 @@ int rte_log_cur_msg_logtype(void)
 {
 	unsigned lcore_id;
 	lcore_id = rte_lcore_id();
+	if (lcore_id >= RTE_MAX_LCORE)
+		return rte_get_log_type();
 	return log_cur_msg[lcore_id].logtype;
 }
 
@@ -258,8 +275,10 @@ rte_vlog(__attribute__((unused)) uint32_t level,
 
 	/* save loglevel and logtype in a global per-lcore variable */
 	lcore_id = rte_lcore_id();
-	log_cur_msg[lcore_id].loglevel = level;
-	log_cur_msg[lcore_id].logtype = logtype;
+	if (lcore_id < RTE_MAX_LCORE) {
+		log_cur_msg[lcore_id].loglevel = level;
+		log_cur_msg[lcore_id].logtype = logtype;
+	}
 
 	ret = vfprintf(f, format, ap);
 	fflush(f);

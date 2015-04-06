@@ -39,6 +39,10 @@ LIB = librte_pmd_i40e.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_pmd_i40e_version.map
+
+LIBABIVER := 1
+
 #
 # Add extra flags for base driver files (also known as shared code)
 # to disable warnings
@@ -55,8 +59,7 @@ CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
 CFLAGS_BASE_DRIVER += -Wno-pointer-to-int-cast
 CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 else
-CFLAGS_BASE_DRIVER  = -Wno-unused-but-set-variable
-CFLAGS_BASE_DRIVER += -Wno-sign-compare
+CFLAGS_BASE_DRIVER  = -Wno-sign-compare
 CFLAGS_BASE_DRIVER += -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-unused-parameter
 CFLAGS_BASE_DRIVER += -Wno-strict-aliasing
@@ -65,6 +68,11 @@ CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
 CFLAGS_BASE_DRIVER += -Wno-pointer-to-int-cast
 CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 CFLAGS_BASE_DRIVER += -Wno-format-security
+
+ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
+CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
+endif
+
 CFLAGS_i40e_lan_hmc.o += -Wno-error
 endif
 OBJS_BASE_DRIVER=$(patsubst %.c,%.o,$(notdir $(wildcard $(RTE_SDK)/lib/librte_pmd_i40e/i40e/*.c)))
@@ -87,6 +95,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_ethdev_vf.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_pf.c
+SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_fdir.c
+
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_mempool lib/librte_mbuf

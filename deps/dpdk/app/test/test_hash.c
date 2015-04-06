@@ -45,7 +45,6 @@
 #include <rte_random.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
@@ -55,10 +54,7 @@
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
 #include <rte_jhash.h>
-
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
-#endif
 
 /*******************************************************************************
  * Hash function performance test configuration section. Each performance test
@@ -67,11 +63,7 @@
  * The five arrays below control what tests are performed. Every combination
  * from the array entries is tested.
  */
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 static rte_hash_function hashtest_funcs[] = {rte_jhash, rte_hash_crc};
-#else
-static rte_hash_function hashtest_funcs[] = {rte_jhash};
-#endif
 static uint32_t hashtest_initvals[] = {0};
 static uint32_t hashtest_key_lens[] = {0, 2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 31, 32, 33, 63, 64};
 /******************************************************************************/
@@ -183,6 +175,63 @@ static struct rte_hash_parameters ut_params = {
 	.hash_func_init_val = 0,
 	.socket_id = 0,
 };
+
+#define CRC32_ITERATIONS (1U << 20)
+#define CRC32_DWORDS (1U << 6)
+/*
+ * Test if all CRC32 implementations yield the same hash value
+ */
+static int
+test_crc32_hash_alg_equiv(void)
+{
+	uint32_t hash_val;
+	uint32_t init_val;
+	uint64_t data64[CRC32_DWORDS];
+	unsigned i, j;
+	size_t data_len;
+
+	printf("# CRC32 implementations equivalence test\n");
+	for (i = 0; i < CRC32_ITERATIONS; i++) {
+		/* Randomizing data_len of data set */
+		data_len = (size_t) ((rte_rand() % sizeof(data64)) + 1);
+		init_val = (uint32_t) rte_rand();
+
+		/* Fill the data set */
+		for (j = 0; j < CRC32_DWORDS; j++)
+			data64[j] = rte_rand();
+
+		/* Calculate software CRC32 */
+		rte_hash_crc_set_alg(CRC32_SW);
+		hash_val = rte_hash_crc(data64, data_len, init_val);
+
+		/* Check against 4-byte-operand sse4.2 CRC32 if available */
+		rte_hash_crc_set_alg(CRC32_SSE42);
+		if (hash_val != rte_hash_crc(data64, data_len, init_val)) {
+			printf("Failed checking CRC32_SW against CRC32_SSE42\n");
+			break;
+		}
+
+		/* Check against 8-byte-operand sse4.2 CRC32 if available */
+		rte_hash_crc_set_alg(CRC32_SSE42_x64);
+		if (hash_val != rte_hash_crc(data64, data_len, init_val)) {
+			printf("Failed checking CRC32_SW against CRC32_SSE42_x64\n");
+			break;
+		}
+	}
+
+	/* Resetting to best available algorithm */
+	rte_hash_crc_set_alg(CRC32_SSE42_x64);
+
+	if (i == CRC32_ITERATIONS)
+		return 0;
+
+	printf("Failed test data (hex, %zu bytes total):\n", data_len);
+	for (j = 0; j < data_len; j++)
+		printf("%02X%c", ((uint8_t *)data64)[j],
+				((j+1) % 16 == 0 || j == data_len - 1) ? '\n' : ' ');
+
+	return -1;
+}
 
 /*
  * Test a hash function.
@@ -1362,6 +1411,9 @@ test_hash(void)
 		return -1;
 
 	run_hash_func_tests();
+
+	if (test_crc32_hash_alg_equiv() < 0)
+		return -1;
 
 	return 0;
 }

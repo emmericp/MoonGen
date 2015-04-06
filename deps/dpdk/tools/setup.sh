@@ -169,7 +169,8 @@ load_igb_uio_module()
 
 	/sbin/lsmod | grep -s uio > /dev/null
 	if [ $? -ne 0 ] ; then
-		if [ -f /lib/modules/$(uname -r)/kernel/drivers/uio/uio.ko ] ; then
+		modinfo uio > /dev/null
+		if [ $? -eq 0 ]; then
 			echo "Loading uio module"
 			sudo /sbin/modprobe uio
 		fi
@@ -219,7 +220,7 @@ load_vfio_module()
 
 	# make sure regular users can read /dev/vfio
 	echo "chmod /dev/vfio"
-	sudo /usr/bin/chmod a+x /dev/vfio
+	sudo chmod a+x /dev/vfio
 	if [ $? -ne 0 ] ; then
 		echo "FAIL"
 		quit
@@ -277,7 +278,7 @@ set_vfio_permissions()
 {
 	# make sure regular users can read /dev/vfio
 	echo "chmod /dev/vfio"
-	sudo /usr/bin/chmod a+x /dev/vfio
+	sudo chmod a+x /dev/vfio
 	if [ $? -ne 0 ] ; then
 		echo "FAIL"
 		quit
@@ -286,7 +287,7 @@ set_vfio_permissions()
 
 	# make sure regular user can access everything inside /dev/vfio
 	echo "chmod /dev/vfio/*"
-	sudo /usr/bin/chmod 0666 /dev/vfio/*
+	sudo chmod 0666 /dev/vfio/*
 	if [ $? -ne 0 ] ; then
 		echo "FAIL"
 		quit
@@ -426,16 +427,16 @@ grep_meminfo()
 #
 show_nics()
 {
-	if  /sbin/lsmod  | grep -q igb_uio ; then
+	if  /sbin/lsmod | grep -q -e igb_uio -e vfio_pci; then
 		${RTE_SDK}/tools/dpdk_nic_bind.py --status
 	else
-		echo "# Please load the 'igb_uio' kernel module before querying or "
-		echo "# adjusting NIC device bindings"
+		echo "# Please load the 'igb_uio' or 'vfio-pci' kernel module before "
+		echo "# querying or adjusting NIC device bindings"
 	fi
 }
 
 #
-# Uses dpdk_nic_bind.py to move devices to work with igb_uio
+# Uses dpdk_nic_bind.py to move devices to work with vfio-pci
 #
 bind_nics_to_vfio()
 {
@@ -476,7 +477,7 @@ unbind_nics()
 {
 	${RTE_SDK}/tools/dpdk_nic_bind.py --status
 	echo ""
-	echo -n "Enter PCI address of device to bind to IGB UIO driver: "
+	echo -n "Enter PCI address of device to unbind: "
 	read PCI_PATH
 	echo ""
 	echo -n "Enter name of kernel driver to bind the device to: "
@@ -573,7 +574,7 @@ step5_func()
 	TEXT[1]="Uninstall all targets"
 	FUNC[1]="uninstall_targets"
 
-	TEXT[2]="Unbind NICs from IGB UIO driver"
+	TEXT[2]="Unbind NICs from IGB UIO or VFIO driver"
 	FUNC[2]="unbind_nics"
 
 	TEXT[3]="Remove IGB UIO module"

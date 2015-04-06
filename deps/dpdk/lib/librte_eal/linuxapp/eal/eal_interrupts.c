@@ -50,7 +50,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -361,6 +360,54 @@ vfio_disable_msix(struct rte_intr_handle *intr_handle) {
 }
 #endif
 
+static int
+uio_intr_disable(struct rte_intr_handle *intr_handle)
+{
+	unsigned char command_high;
+
+	/* use UIO config file descriptor for uio_pci_generic */
+	if (pread(intr_handle->uio_cfg_fd, &command_high, 1, 5) != 1) {
+		RTE_LOG(ERR, EAL,
+			"Error reading interrupts status for fd %d\n",
+			intr_handle->uio_cfg_fd);
+		return -1;
+	}
+	/* disable interrupts */
+	command_high |= 0x4;
+	if (pwrite(intr_handle->uio_cfg_fd, &command_high, 1, 5) != 1) {
+		RTE_LOG(ERR, EAL,
+			"Error disabling interrupts for fd %d\n",
+			intr_handle->uio_cfg_fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+uio_intr_enable(struct rte_intr_handle *intr_handle)
+{
+	unsigned char command_high;
+
+	/* use UIO config file descriptor for uio_pci_generic */
+	if (pread(intr_handle->uio_cfg_fd, &command_high, 1, 5) != 1) {
+		RTE_LOG(ERR, EAL,
+			"Error reading interrupts status for fd %d\n",
+			intr_handle->uio_cfg_fd);
+		return -1;
+	}
+	/* enable interrupts */
+	command_high &= ~0x4;
+	if (pwrite(intr_handle->uio_cfg_fd, &command_high, 1, 5) != 1) {
+		RTE_LOG(ERR, EAL,
+			"Error enabling interrupts for fd %d\n",
+			intr_handle->uio_cfg_fd);
+		return -1;
+	}
+
+	return 0;
+}
+
 int
 rte_intr_callback_register(struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb, void *cb_arg)
@@ -500,20 +547,14 @@ rte_intr_callback_unregister(struct rte_intr_handle *intr_handle,
 int
 rte_intr_enable(struct rte_intr_handle *intr_handle)
 {
-	const int value = 1;
-
-	if (!intr_handle || intr_handle->fd < 0)
+	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
 		return -1;
 
 	switch (intr_handle->type){
 	/* write to the uio fd to enable the interrupt */
 	case RTE_INTR_HANDLE_UIO:
-		if (write(intr_handle->fd, &value, sizeof(value)) < 0) {
-			RTE_LOG(ERR, EAL,
-				"Error enabling interrupts for fd %d\n",
-							intr_handle->fd);
+		if (uio_intr_enable(intr_handle))
 			return -1;
-		}
 		break;
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
@@ -546,20 +587,14 @@ rte_intr_enable(struct rte_intr_handle *intr_handle)
 int
 rte_intr_disable(struct rte_intr_handle *intr_handle)
 {
-	const int value = 0;
-
-	if (!intr_handle || intr_handle->fd < 0)
+	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
 		return -1;
 
 	switch (intr_handle->type){
 	/* write to the uio fd to disable the interrupt */
 	case RTE_INTR_HANDLE_UIO:
-		if (write(intr_handle->fd, &value, sizeof(value)) < 0){
-			RTE_LOG(ERR, EAL,
-				"Error disabling interrupts for fd %d\n",
-							intr_handle->fd);
+		if (uio_intr_disable(intr_handle))
 			return -1;
-		}
 		break;
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:

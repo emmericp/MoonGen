@@ -37,7 +37,7 @@
 #   - define EXECENV_ASFLAGS variable (overriden by cmdline)
 #   - may override any previously defined variable
 #
-# examples for RTE_EXEC_ENV: linuxapp, baremetal
+# examples for RTE_EXEC_ENV: linuxapp, bsdapp
 #
 ifeq ($(RTE_BUILD_SHARED_LIB),y)
 EXECENV_CFLAGS  = -pthread -fPIC
@@ -45,7 +45,9 @@ else
 EXECENV_CFLAGS  = -pthread
 endif
 
-EXECENV_LDFLAGS =
+# Workaround lack of DT_NEEDED entry
+EXECENV_LDFLAGS = --no-as-needed
+
 EXECENV_LDLIBS  = -lrt -lm
 EXECENV_ASFLAGS =
 

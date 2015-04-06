@@ -49,7 +49,6 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -75,7 +74,7 @@
 #include "main.h"
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	uint32_t lcore;
 	int ret;

@@ -49,7 +49,6 @@
 
 #include <rte_common.h>
 #include <rte_memory.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_malloc.h>
 #include <rte_string_fns.h>
@@ -77,7 +76,7 @@ struct grant_node_item {
 } __attribute__((packed));
 
 int cmdline_parse_etheraddr(void *tk, const char *srcbuf,
-			    void *res);
+	void *res, unsigned ressize);
 
 /* Map grant ref refid at addr_ori*/
 static void *
@@ -248,8 +247,8 @@ parse_gntnode(int dom_id, char *path)
 		goto err;
 	}
 
-	gntnode = (struct xen_gntnode *)calloc(1, sizeof(struct xen_gntnode));
-	gnt = (struct xen_gnt *)calloc(gref_num, sizeof(struct xen_gnt));
+	gntnode = calloc(1, sizeof(struct xen_gntnode));
+	gnt = calloc(gref_num, sizeof(struct xen_gnt));
 	if (gnt == NULL || gntnode == NULL)
 		goto err;
 
@@ -676,7 +675,8 @@ xen_parse_etheraddr(struct xen_vring *vring)
 	if ((buf = xen_read_node(path, &len)) == NULL)
 		goto out;
 
-	if (cmdline_parse_etheraddr(NULL, buf, &vring->addr) < 0)
+	if (cmdline_parse_etheraddr(NULL, buf, &vring->addr,
+			sizeof(vring->addr)) < 0)
 		goto out;
 	ret = 0;
 out:

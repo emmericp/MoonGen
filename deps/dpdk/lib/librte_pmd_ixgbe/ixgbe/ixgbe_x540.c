@@ -475,8 +475,10 @@ s32 ixgbe_write_eewr_buffer_X540(struct ixgbe_hw *hw,
  *  be used internally by function which utilize ixgbe_acquire_swfw_sync_X540.
  *
  *  @hw: pointer to hardware structure
+ *
+ *  Returns a negative error code on error, or the 16-bit checksum
  **/
-u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
+s32 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 {
 	u16 i, j;
 	u16 checksum = 0;
@@ -486,8 +488,7 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 	u16 checksum_last_word = IXGBE_EEPROM_CHECKSUM;
 	u16 ptr_start = IXGBE_PCIE_ANALOG_PTR;
 
-	/*
-	 * Do not use hw->eeprom.ops.read because we do not want to take
+	/* Do not use hw->eeprom.ops.read because we do not want to take
 	 * the synchronization semaphores here. Instead use
 	 * ixgbe_read_eerd_generic
 	 */
@@ -496,25 +497,24 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 
 	/* Include 0x0-0x3F in the checksum */
 	for (i = 0; i <= checksum_last_word; i++) {
-		if (ixgbe_read_eerd_generic(hw, i, &word) != IXGBE_SUCCESS) {
+		if (ixgbe_read_eerd_generic(hw, i, &word)) {
 			DEBUGOUT("EEPROM read failed\n");
-			break;
+			return IXGBE_ERR_EEPROM;
 		}
 		if (i != IXGBE_EEPROM_CHECKSUM)
 			checksum += word;
 	}
 
-	/*
-	 * Include all data from pointers 0x3, 0x6-0xE.  This excludes the
+	/* Include all data from pointers 0x3, 0x6-0xE.  This excludes the
 	 * FW, PHY module, and PCIe Expansion/Option ROM pointers.
 	 */
 	for (i = ptr_start; i < IXGBE_FW_PTR; i++) {
 		if (i == IXGBE_PHY_PTR || i == IXGBE_OPTION_ROM_PTR)
 			continue;
 
-		if (ixgbe_read_eerd_generic(hw, i, &pointer) != IXGBE_SUCCESS) {
+		if (ixgbe_read_eerd_generic(hw, i, &pointer)) {
 			DEBUGOUT("EEPROM read failed\n");
-			break;
+			return IXGBE_ERR_EEPROM;
 		}
 
 		/* Skip pointer section if the pointer is invalid. */
@@ -522,10 +522,9 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 		    pointer >= hw->eeprom.word_size)
 			continue;
 
-		if (ixgbe_read_eerd_generic(hw, pointer, &length) !=
-		    IXGBE_SUCCESS) {
+		if (ixgbe_read_eerd_generic(hw, pointer, &length)) {
 			DEBUGOUT("EEPROM read failed\n");
-			break;
+			return IXGBE_ERR_EEPROM;
 		}
 
 		/* Skip pointer section if length is invalid. */
@@ -533,11 +532,10 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 		    (pointer + length) >= hw->eeprom.word_size)
 			continue;
 
-		for (j = pointer+1; j <= pointer+length; j++) {
-			if (ixgbe_read_eerd_generic(hw, j, &word) !=
-			    IXGBE_SUCCESS) {
+		for (j = pointer + 1; j <= pointer + length; j++) {
+			if (ixgbe_read_eerd_generic(hw, j, &word)) {
 				DEBUGOUT("EEPROM read failed\n");
-				break;
+				return IXGBE_ERR_EEPROM;
 			}
 			checksum += word;
 		}
@@ -545,7 +543,7 @@ u16 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 
 	checksum = (u16)IXGBE_EEPROM_SUM - checksum;
 
-	return checksum;
+	return (s32)checksum;
 }
 
 /**
@@ -565,48 +563,49 @@ s32 ixgbe_validate_eeprom_checksum_X540(struct ixgbe_hw *hw,
 
 	DEBUGFUNC("ixgbe_validate_eeprom_checksum_X540");
 
-	/*
-	 * Read the first word from the EEPROM. If this times out or fails, do
+	/* Read the first word from the EEPROM. If this times out or fails, do
 	 * not continue or we could be in for a very long wait while every
 	 * EEPROM read fails
 	 */
 	status = hw->eeprom.ops.read(hw, 0, &checksum);
-
-	if (status != IXGBE_SUCCESS) {
+	if (status) {
 		DEBUGOUT("EEPROM read failed\n");
+		return status;
+	}
+
+	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_EEP_SM))
+		return IXGBE_ERR_SWFW_SYNC;
+
+	status = hw->eeprom.ops.calc_checksum(hw);
+	if (status < 0)
 		goto out;
+
+	checksum = (u16)(status & 0xffff);
+
+	/* Do not use hw->eeprom.ops.read because we do not want to take
+	 * the synchronization semaphores twice here.
+	 */
+	status = ixgbe_read_eerd_generic(hw, IXGBE_EEPROM_CHECKSUM,
+					 &read_checksum);
+	if (status)
+		goto out;
+
+	/* Verify read checksum from EEPROM is the same as
+	 * calculated checksum
+	 */
+	if (read_checksum != checksum) {
+		ERROR_REPORT1(IXGBE_ERROR_INVALID_STATE,
+			     "Invalid EEPROM checksum");
+		status = IXGBE_ERR_EEPROM_CHECKSUM;
 	}
 
-	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_EEP_SM) ==
-	    IXGBE_SUCCESS) {
-		checksum = hw->eeprom.ops.calc_checksum(hw);
-
-		/*
-		 * Do not use hw->eeprom.ops.read because we do not want to take
-		 * the synchronization semaphores twice here.
-		*/
-		ixgbe_read_eerd_generic(hw, IXGBE_EEPROM_CHECKSUM,
-					&read_checksum);
-
-		/*
-		 * Verify read checksum from EEPROM is the same as
-		 * calculated checksum
-		 */
-		if (read_checksum != checksum) {
-			status = IXGBE_ERR_EEPROM_CHECKSUM;
-			ERROR_REPORT1(IXGBE_ERROR_INVALID_STATE,
-				     "Invalid EEPROM checksum");
-		}
-
-		/* If the user cares, return the calculated checksum */
-		if (checksum_val)
-			*checksum_val = checksum;
-		hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
-	} else {
-		status = IXGBE_ERR_SWFW_SYNC;
-	}
+	/* If the user cares, return the calculated checksum */
+	if (checksum_val)
+		*checksum_val = checksum;
 
 out:
+	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
+
 	return status;
 }
 
@@ -625,35 +624,36 @@ s32 ixgbe_update_eeprom_checksum_X540(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_update_eeprom_checksum_X540");
 
-	/*
-	 * Read the first word from the EEPROM. If this times out or fails, do
+	/* Read the first word from the EEPROM. If this times out or fails, do
 	 * not continue or we could be in for a very long wait while every
 	 * EEPROM read fails
 	 */
 	status = hw->eeprom.ops.read(hw, 0, &checksum);
-
-	if (status != IXGBE_SUCCESS) {
+	if (status) {
 		DEBUGOUT("EEPROM read failed\n");
 		return status;
 	}
 
-	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_EEP_SM) ==
-	    IXGBE_SUCCESS) {
-		checksum = hw->eeprom.ops.calc_checksum(hw);
+	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_EEP_SM))
+		return IXGBE_ERR_SWFW_SYNC;
 
-		/*
-		 * Do not use hw->eeprom.ops.write because we do not want to
-		 * take the synchronization semaphores twice here.
-		 */
-		status = ixgbe_write_eewr_generic(hw, IXGBE_EEPROM_CHECKSUM,
-						  checksum);
+	status = hw->eeprom.ops.calc_checksum(hw);
+	if (status < 0)
+		goto out;
 
-		if (status == IXGBE_SUCCESS)
-			status = ixgbe_update_flash_X540(hw);
-		hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
-	} else {
-		status = IXGBE_ERR_SWFW_SYNC;
-	}
+	checksum = (u16)(status & 0xffff);
+
+	/* Do not use hw->eeprom.ops.write because we do not want to
+	 * take the synchronization semaphores twice here.
+	 */
+	status = ixgbe_write_eewr_generic(hw, IXGBE_EEPROM_CHECKSUM, checksum);
+	if (status)
+		goto out;
+
+	status = ixgbe_update_flash_X540(hw);
+
+out:
+	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_EEP_SM);
 
 	return status;
 }
@@ -726,7 +726,7 @@ STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
 			status = IXGBE_SUCCESS;
 			break;
 		}
-		usec_delay(5);
+		msec_delay(5);
 	}
 
 	if (i == IXGBE_FLUDONE_ATTEMPTS)
@@ -737,6 +737,26 @@ STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_set_mux - Set mux for port 1 access with CS4227
+ * @hw: pointer to hardware structure
+ * @state: set mux if 1, clear if 0
+ */
+STATIC void ixgbe_set_mux(struct ixgbe_hw *hw, u8 state)
+{
+	u32 esdp;
+
+	if (!hw->phy.lan_id)
+		return;
+	esdp = IXGBE_READ_REG(hw, IXGBE_ESDP);
+	if (state)
+		esdp |= IXGBE_ESDP_SDP1;
+	else
+		esdp &= ~IXGBE_ESDP_SDP1;
+	IXGBE_WRITE_REG(hw, IXGBE_ESDP, esdp);
+	IXGBE_WRITE_FLUSH(hw);
+}
+
+/**
  *  ixgbe_acquire_swfw_sync_X540 - Acquire SWFW semaphore
  *  @hw: pointer to hardware structure
  *  @mask: Mask to specify which semaphore to acquire
@@ -744,34 +764,33 @@ STATIC s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
  *  Acquires the SWFW semaphore thought the SW_FW_SYNC register for
  *  the specified function (CSR, PHY0, PHY1, NVM, Flash)
  **/
-s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
+s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 {
-	u32 swfw_sync;
-	u32 swmask = mask;
-	u32 fwmask = mask << 5;
-	u32 hwmask = 0;
+	u32 swmask = mask & IXGBE_GSSR_NVM_PHY_MASK;
+	u32 fwmask = swmask << 5;
+	u32 swi2c_mask = mask & IXGBE_GSSR_I2C_MASK;
 	u32 timeout = 200;
+	u32 hwmask = 0;
+	u32 swfw_sync;
 	u32 i;
-	s32 ret_val = IXGBE_SUCCESS;
 
 	DEBUGFUNC("ixgbe_acquire_swfw_sync_X540");
 
-	if (swmask == IXGBE_GSSR_EEP_SM)
-		hwmask = IXGBE_GSSR_FLASH_SM;
+	if (swmask & IXGBE_GSSR_EEP_SM)
+		hwmask |= IXGBE_GSSR_FLASH_SM;
 
 	/* SW only mask doesn't have FW bit pair */
-	if (swmask == IXGBE_GSSR_SW_MNG_SM)
-		fwmask = 0;
+	if (mask & IXGBE_GSSR_SW_MNG_SM)
+		swmask |= IXGBE_GSSR_SW_MNG_SM;
 
+	swmask |= swi2c_mask;
+	fwmask |= swi2c_mask << 2;
 	for (i = 0; i < timeout; i++) {
-		/*
-		 * SW NVM semaphore bit is used for access to all
+		/* SW NVM semaphore bit is used for access to all
 		 * SW_FW_SYNC bits (not just NVM)
 		 */
-		if (ixgbe_get_swfw_sync_semaphore(hw)) {
-			ret_val = IXGBE_ERR_SWFW_SYNC;
-			goto out;
-		}
+		if (ixgbe_get_swfw_sync_semaphore(hw))
+			return IXGBE_ERR_SWFW_SYNC;
 
 		swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
 		if (!(swfw_sync & (fwmask | swmask | hwmask))) {
@@ -779,24 +798,23 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 			IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swfw_sync);
 			ixgbe_release_swfw_sync_semaphore(hw);
 			msec_delay(5);
-			goto out;
-		} else {
-			/*
-			 * Firmware currently using resource (fwmask), hardware
-			 * currently using resource (hwmask), or other software
-			 * thread currently using resource (swmask)
-			 */
-			ixgbe_release_swfw_sync_semaphore(hw);
-			msec_delay(5);
+			if (swi2c_mask)
+				ixgbe_set_mux(hw, 1);
+			return IXGBE_SUCCESS;
 		}
+		/* Firmware currently using resource (fwmask), hardware
+		 * currently using resource (hwmask), or other software
+		 * thread currently using resource (swmask)
+		 */
+		ixgbe_release_swfw_sync_semaphore(hw);
+		msec_delay(5);
 	}
 
 	/* Failed to get SW only semaphore */
 	if (swmask == IXGBE_GSSR_SW_MNG_SM) {
-		ret_val = IXGBE_ERR_SWFW_SYNC;
 		ERROR_REPORT1(IXGBE_ERROR_POLLING,
 			     "Failed to get SW only semaphore");
-		goto out;
+		return IXGBE_ERR_SWFW_SYNC;
 	}
 
 	/* If the resource is not released by the FW/HW the SW can assume that
@@ -804,32 +822,36 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 	 * of the requested resource(s) while ignoring the corresponding FW/HW
 	 * bits in the SW_FW_SYNC register.
 	 */
+	if (ixgbe_get_swfw_sync_semaphore(hw))
+		return IXGBE_ERR_SWFW_SYNC;
 	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
 	if (swfw_sync & (fwmask | hwmask)) {
-		if (ixgbe_get_swfw_sync_semaphore(hw)) {
-			ret_val = IXGBE_ERR_SWFW_SYNC;
-			goto out;
-		}
-
 		swfw_sync |= swmask;
 		IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swfw_sync);
 		ixgbe_release_swfw_sync_semaphore(hw);
 		msec_delay(5);
+		if (swi2c_mask)
+			ixgbe_set_mux(hw, 1);
+		return IXGBE_SUCCESS;
 	}
 	/* If the resource is not released by other SW the SW can assume that
 	 * the other SW malfunctions. In that case the SW should clear all SW
 	 * flags that it does not own and then repeat the whole process once
 	 * again.
 	 */
-	else if (swfw_sync & swmask) {
-		ixgbe_release_swfw_sync_X540(hw, IXGBE_GSSR_EEP_SM |
-			IXGBE_GSSR_PHY0_SM | IXGBE_GSSR_PHY1_SM |
-			IXGBE_GSSR_MAC_CSR_SM);
-		ret_val = IXGBE_ERR_SWFW_SYNC;
-	}
+	if (swfw_sync & swmask) {
+		u32 rmask = IXGBE_GSSR_EEP_SM | IXGBE_GSSR_PHY0_SM |
+			    IXGBE_GSSR_PHY1_SM | IXGBE_GSSR_MAC_CSR_SM;
 
-out:
-	return ret_val;
+		if (swi2c_mask)
+			rmask |= IXGBE_GSSR_I2C_MASK;
+		ixgbe_release_swfw_sync_X540(hw, rmask);
+		ixgbe_release_swfw_sync_semaphore(hw);
+		return IXGBE_ERR_SWFW_SYNC;
+	}
+	ixgbe_release_swfw_sync_semaphore(hw);
+
+	return IXGBE_ERR_SWFW_SYNC;
 }
 
 /**
@@ -840,13 +862,17 @@ out:
  *  Releases the SWFW semaphore through the SW_FW_SYNC register
  *  for the specified function (CSR, PHY0, PHY1, EVM, Flash)
  **/
-void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
+void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 {
+	u32 swmask = mask & (IXGBE_GSSR_NVM_PHY_MASK | IXGBE_GSSR_SW_MNG_SM);
 	u32 swfw_sync;
-	u32 swmask = mask;
 
 	DEBUGFUNC("ixgbe_release_swfw_sync_X540");
 
+	if (mask & IXGBE_GSSR_I2C_MASK) {
+		swmask |= mask & IXGBE_GSSR_I2C_MASK;
+		ixgbe_set_mux(hw, 0);
+	}
 	ixgbe_get_swfw_sync_semaphore(hw);
 
 	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
@@ -858,7 +884,7 @@ void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u16 mask)
 }
 
 /**
- *  ixgbe_get_nvm_semaphore - Get hardware semaphore
+ *  ixgbe_get_swfw_sync_semaphore - Get hardware semaphore
  *  @hw: pointer to hardware structure
  *
  *  Sets the hardware semaphores so SW/FW can gain control of shared resources
@@ -916,7 +942,7 @@ STATIC s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
 }
 
 /**
- *  ixgbe_release_nvm_semaphore - Release hardware semaphore
+ *  ixgbe_release_swfw_sync_semaphore - Release hardware semaphore
  *  @hw: pointer to hardware structure
  *
  *  This function clears hardware semaphore bits.

@@ -93,16 +93,19 @@ extern struct pci_device_list pci_device_list; /**< Global list of PCI devices. 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
-#define PCI_PRI_FMT "%.4"PRIx16":%.2"PRIx8":%.2"PRIx8".%"PRIx8
+#define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
 
 /** Short formatting string, without domain, for PCI device: Ex: 00:01.0 */
-#define PCI_SHORT_PRI_FMT "%.2"PRIx8":%.2"PRIx8".%"PRIx8
+#define PCI_SHORT_PRI_FMT "%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
 
 /** Nb. of values in PCI device identifier format string. */
 #define PCI_FMT_NVAL 4
 
 /** Nb. of values in PCI resource format. */
 #define PCI_RESOURCE_FMT_NVAL 3
+
+/** IO resource type: memory address space */
+#define IORESOURCE_MEM        0x00000200
 
 /**
  * A structure describing a PCI resource.
@@ -114,7 +117,7 @@ struct rte_pci_resource {
 };
 
 /** Maximum number of PCI resources. */
-#define PCI_MAX_RESOURCE 7
+#define PCI_MAX_RESOURCE 6
 
 /**
  * A structure describing an ID for a PCI driver. Each driver provides a
@@ -139,6 +142,13 @@ struct rte_pci_addr {
 
 struct rte_devargs;
 
+enum rte_kernel_driver {
+	RTE_KDRV_UNKNOWN = 0,
+	RTE_KDRV_IGB_UIO,
+	RTE_KDRV_VFIO,
+	RTE_KDRV_UIO_GENERIC,
+};
+
 /**
  * A structure describing a PCI device.
  */
@@ -148,10 +158,11 @@ struct rte_pci_device {
 	struct rte_pci_id id;                   /**< PCI ID. */
 	struct rte_pci_resource mem_resource[PCI_MAX_RESOURCE];   /**< PCI Memory Resource */
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
-	const struct rte_pci_driver *driver;    /**< Associated driver */
+	struct rte_pci_driver *driver;          /**< Associated driver */
 	uint16_t max_vfs;                       /**< sriov enable if not zero */
 	int numa_node;                          /**< NUMA node connection */
 	struct rte_devargs *devargs;            /**< Device user arguments */
+	enum rte_kernel_driver kdrv;            /**< Kernel driver passthrough */
 };
 
 /** Any PCI device identifier (vendor, device, ...) */
@@ -181,24 +192,32 @@ struct rte_pci_driver;
 typedef int (pci_devinit_t)(struct rte_pci_driver *, struct rte_pci_device *);
 
 /**
+ * Uninitialisation function for the driver called during hotplugging.
+ */
+typedef int (pci_devuninit_t)(struct rte_pci_device *);
+
+/**
  * A structure describing a PCI driver.
  */
 struct rte_pci_driver {
 	TAILQ_ENTRY(rte_pci_driver) next;       /**< Next in list. */
 	const char *name;                       /**< Driver name. */
 	pci_devinit_t *devinit;                 /**< Device init. function. */
+	pci_devuninit_t *devuninit;             /**< Device uninit function. */
 	struct rte_pci_id *id_table;            /**< ID table, NULL terminated. */
 	uint32_t drv_flags;                     /**< Flags contolling handling of device. */
 };
 
 /** Device needs PCI BAR mapping (done with either IGB_UIO or VFIO) */
 #define RTE_PCI_DRV_NEED_MAPPING 0x0001
-/** Device driver must be registered several times until failure */
-#define RTE_PCI_DRV_MULTIPLE 0x0002
+/** Device driver must be registered several times until failure - deprecated */
+#pragma GCC poison RTE_PCI_DRV_MULTIPLE
 /** Device needs to be unbound even if no module is provided */
 #define RTE_PCI_DRV_FORCE_UNBIND 0x0004
 /** Device driver supports link state interrupt */
 #define RTE_PCI_DRV_INTR_LSC	0x0008
+/** Device driver supports detaching capability */
+#define RTE_PCI_DRV_DETACHABLE	0x0010
 
 /**< Internal use only - Macro used by pci addr parsing functions **/
 #define GET_PCIADDR_FIELD(in, fd, lim, dlm)                   \
@@ -259,6 +278,49 @@ eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
 }
 #undef GET_PCIADDR_FIELD
 
+/* Compare two PCI device addresses. */
+/**
+ * Utility function to compare two PCI device addresses.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to compare
+ * @param addr2
+ *	The PCI Bus-Device-Function address to compare
+ * @return
+ *	0 on equal PCI address.
+ *	Positive on addr is greater than addr2.
+ *	Negative on addr is less than addr2, or error.
+ */
+static inline int
+rte_eal_compare_pci_addr(struct rte_pci_addr *addr, struct rte_pci_addr *addr2)
+{
+	uint64_t dev_addr, dev_addr2;
+
+	if ((addr == NULL) || (addr2 == NULL))
+		return -1;
+
+	dev_addr = (addr->domain << 24) | (addr->bus << 16) |
+				(addr->devid << 8) | addr->function;
+	dev_addr2 = (addr2->domain << 24) | (addr2->bus << 16) |
+				(addr2->devid << 8) | addr2->function;
+
+	if (dev_addr > dev_addr2)
+		return 1;
+	else if (dev_addr < dev_addr2)
+		return -1;
+	else
+		return 0;
+}
+
+/**
+ * Scan the content of the PCI bus, and the devices in the devices
+ * list
+ *
+ * @return
+ *  0 on success, negative on error
+ */
+int rte_eal_pci_scan(void);
+
 /**
  * Probe the PCI bus for registered drivers.
  *
@@ -271,6 +333,38 @@ eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
  *   - Negative on error.
  */
 int rte_eal_pci_probe(void);
+
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+/**
+ * Probe the single PCI device.
+ *
+ * Scan the content of the PCI bus, and find the pci device specified by pci
+ * address, then call the probe() function for registered driver that has a
+ * matching entry in its id_table for discovered device.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to probe.
+ * @return
+ *   - 0 on success.
+ *   - Negative on error.
+ */
+int rte_eal_pci_probe_one(struct rte_pci_addr *addr);
+
+/**
+ * Close the single PCI device.
+ *
+ * Scan the content of the PCI bus, and find the pci device specified by pci
+ * address, then call the close() function for registered driver that has a
+ * matching entry in its id_table for discovered device.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to close.
+ * @return
+ *   - 0 on success.
+ *   - Negative on error.
+ */
+int rte_eal_pci_close_one(struct rte_pci_addr *addr);
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */
 
 /**
  * Dump the content of the PCI bus.

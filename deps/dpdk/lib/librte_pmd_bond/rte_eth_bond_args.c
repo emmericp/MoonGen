@@ -118,7 +118,7 @@ parse_port_id(const char *port_str)
 	}
 
 	if (port_id < 0 || port_id > RTE_MAX_ETHPORTS) {
-		RTE_LOG(ERR, PMD, "Invalid slave port value (%s) specified.\n",
+		RTE_BOND_LOG(ERR, "Slave port specified (%s) outside expected range",
 				port_str);
 		return -1;
 	}
@@ -138,9 +138,10 @@ bond_ethdev_parse_slave_port_kvarg(const char *key __rte_unused,
 
 	if (strcmp(key, PMD_BOND_SLAVE_PORT_KVARG) == 0) {
 		int port_id = parse_port_id(value);
-		if (port_id < 0)
+		if (port_id < 0) {
+			RTE_BOND_LOG(ERR, "Invalid slave port value (%s) specified", value);
 			return -1;
-		else
+		} else
 			slave_ports->slaves[slave_ports->slave_count++] =
 					(uint8_t)port_id;
 	}
@@ -170,8 +171,12 @@ bond_ethdev_parse_slave_mode_kvarg(const char *key __rte_unused,
 	case BONDING_MODE_ACTIVE_BACKUP:
 	case BONDING_MODE_BALANCE:
 	case BONDING_MODE_BROADCAST:
+	case BONDING_MODE_8023AD:
+	case BONDING_MODE_TLB:
+	case BONDING_MODE_ALB:
 		return 0;
 	default:
+		RTE_BOND_LOG(ERR, "Invalid slave mode value (%s) specified", value);
 		return -1;
 	}
 }
@@ -248,5 +253,26 @@ bond_ethdev_parse_bond_mac_addr_kvarg(const char *key __rte_unused,
 		return -1;
 
 	/* Parse MAC */
-	return cmdline_parse_etheraddr(NULL, value, extra_args);
+	return cmdline_parse_etheraddr(NULL, value, extra_args,
+		sizeof(struct ether_addr));
+}
+
+int
+bond_ethdev_parse_time_ms_kvarg(const char *key __rte_unused,
+		const char *value, void *extra_args)
+{
+	uint32_t time_ms;
+	char *endptr;
+
+	if (value == NULL || extra_args == NULL)
+		return -1;
+
+	errno = 0;
+	time_ms = (uint32_t)strtol(value, &endptr, 10);
+	if (*endptr != 0 || errno != 0)
+		return -1;
+
+	*(uint32_t *)extra_args = time_ms;
+
+	return 0;
 }

@@ -58,7 +58,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -145,10 +144,6 @@ usage(char* progname)
 	       "(N: none  or match (default) or always).\n");
 	printf("  --pkt-filter-size=N: set Flow Director mode "
 	       "(N: 64K (default mode) or 128K or 256K).\n");
-	printf("  --pkt-filter-flexbytes-offset=N: set flexbytes-offset. "
-	       "The offset is defined in word units counted from the "
-	       "first byte of the destination Ethernet MAC address. "
-	       "0 <= N <= 32.\n");
 	printf("  --pkt-filter-drop-queue=N: set drop-queue. "
 	       "In perfect mode, when you add a rule with queue = -1 "
 	       "the packet will be enqueued into the rx drop-queue. "
@@ -157,6 +152,9 @@ usage(char* progname)
 	printf("  --crc-strip: enable CRC stripping by hardware.\n");
 	printf("  --enable-rx-cksum: enable rx hardware checksum offload.\n");
 	printf("  --disable-hw-vlan: disable hardware vlan.\n");
+	printf("  --disable-hw-vlan-filter: disable hardware vlan filter.\n");
+	printf("  --disable-hw-vlan-strip: disable hardware vlan strip.\n");
+	printf("  --disable-hw-vlan-extend: disable hardware vlan extend.\n");
 	printf("  --enable-drop-en: enable per queue packet drop.\n");
 	printf("  --disable-rss: disable rss.\n");
 	printf("  --port-topology=N: set port topology (N: paired (default) or "
@@ -171,20 +169,14 @@ usage(char* progname)
 	printf("  --txd=N: set the number of descriptors in TX rings to N.\n");
 	printf("  --burst=N: set the number of packets per burst to N.\n");
 	printf("  --mbcache=N: set the cache of mbuf memory pool to N.\n");
-	printf("  --rxpt=N: set prefetch threshold register of RX rings to N "
-	       "(0 <= N <= 16).\n");
-	printf("  --rxht=N: set the host threshold register of RX rings to N "
-	       "(0 <= N <= 16).\n");
+	printf("  --rxpt=N: set prefetch threshold register of RX rings to N.\n");
+	printf("  --rxht=N: set the host threshold register of RX rings to N.\n");
 	printf("  --rxfreet=N: set the free threshold of RX descriptors to N "
 	       "(0 <= N < value of rxd).\n");
-	printf("  --rxwt=N: set the write-back threshold register of RX rings "
-	       "to N (0 <= N <= 16).\n");
-	printf("  --txpt=N: set the prefetch threshold register of TX rings "
-	       "to N (0 <= N <= 16).\n");
-	printf("  --txht=N: set the nhost threshold register of TX rings to N "
-	       "(0 <= N <= 16).\n");
-	printf("  --txwt=N: set the write-back threshold register of TX rings "
-	       "to N (0 <= N <= 16).\n");
+	printf("  --rxwt=N: set the write-back threshold register of RX rings to N.\n");
+	printf("  --txpt=N: set the prefetch threshold register of TX rings to N.\n");
+	printf("  --txht=N: set the nhost threshold register of TX rings to N.\n");
+	printf("  --txwt=N: set the write-back threshold register of TX rings to N.\n");
 	printf("  --txfreet=N: set the transmit free threshold of TX rings to N "
 	       "(0 <= N <= value of txd).\n");
 	printf("  --txrst=N: set the transmit RS bit threshold of TX rings to N "
@@ -223,7 +215,8 @@ init_peer_eth_addrs(char *config_filename)
 		if (fgets(buf, sizeof(buf), config_file) == NULL)
 			break;
 
-		if (cmdline_parse_etheraddr(NULL, buf, &peer_eth_addrs[i]) < 0 ){
+		if (cmdline_parse_etheraddr(NULL, buf, &peer_eth_addrs[i],
+				sizeof(peer_eth_addrs[i])) < 0) {
 			printf("Bad MAC address format on line %d\n", i+1);
 			fclose(config_file);
 			return -1;
@@ -375,6 +368,7 @@ parse_portnuma_config(const char *q_arg)
 	};
 	unsigned long int_fld[_NUM_FLD];
 	char *str_fld[_NUM_FLD];
+	portid_t pid;
 
 	/* reset from value set at definition */
 	while ((p = strchr(p0,'(')) != NULL) {
@@ -396,8 +390,11 @@ parse_portnuma_config(const char *q_arg)
 				return -1;
 		}
 		port_id = (uint8_t)int_fld[FLD_PORT];
-		if (port_id >= nb_ports) {
-			printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+			printf("Valid port range is [0");
+			FOREACH_PORT(pid, ports)
+				printf(", %d", pid);
+			printf("]\n");
 			return -1;
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
@@ -428,6 +425,7 @@ parse_ringnuma_config(const char *q_arg)
 	};
 	unsigned long int_fld[_NUM_FLD];
 	char *str_fld[_NUM_FLD];
+	portid_t pid;
 	#define RX_RING_ONLY 0x1
 	#define TX_RING_ONLY 0x2
 	#define RXTX_RING    0x3
@@ -452,8 +450,11 @@ parse_ringnuma_config(const char *q_arg)
 				return -1;
 		}
 		port_id = (uint8_t)int_fld[FLD_PORT];
-		if (port_id >= nb_ports) {
-			printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+			printf("Valid port range is [0");
+			FOREACH_PORT(pid, ports)
+				printf(", %d", pid);
+			printf("]\n");
 			return -1;
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
@@ -490,52 +491,6 @@ parse_ringnuma_config(const char *q_arg)
 	return 0;
 }
 
-static unsigned int
-parse_item_list(char* str, unsigned int max_items, unsigned int *parsed_items)
-{
-	unsigned int nb_item;
-	unsigned int value;
-	unsigned int i;
-	int value_ok;
-	char c;
-
-	/*
-	 * First parse all items in the list and store their value.
-	 */
-	value = 0;
-	nb_item = 0;
-	value_ok = 0;
-	for (i = 0; i < strlen(str); i++) {
-		c = str[i];
-		if ((c >= '0') && (c <= '9')) {
-			value = (unsigned int) (value * 10 + (c - '0'));
-			value_ok = 1;
-			continue;
-		}
-		if (c != ',') {
-			printf("character %c is not a decimal digit\n", c);
-			return (0);
-		}
-		if (! value_ok) {
-			printf("No valid value before comma\n");
-			return (0);
-		}
-		if (nb_item < max_items) {
-			parsed_items[nb_item] = value;
-			value_ok = 0;
-			value = 0;
-		}
-		nb_item++;
-	}
-
-	if (nb_item >= max_items)
-		rte_exit(EXIT_FAILURE, "too many txpkt segments!\n");
-
-	parsed_items[nb_item++] = value;
-
-	return (nb_item);
-}
-
 void
 launch_args_parse(int argc, char** argv)
 {
@@ -568,11 +523,13 @@ launch_args_parse(int argc, char** argv)
 		{ "pkt-filter-mode",            1, 0, 0 },
 		{ "pkt-filter-report-hash",     1, 0, 0 },
 		{ "pkt-filter-size",            1, 0, 0 },
-		{ "pkt-filter-flexbytes-offset",1, 0, 0 },
 		{ "pkt-filter-drop-queue",      1, 0, 0 },
 		{ "crc-strip",                  0, 0, 0 },
 		{ "enable-rx-cksum",            0, 0, 0 },
 		{ "disable-hw-vlan",            0, 0, 0 },
+		{ "disable-hw-vlan-filter",     0, 0, 0 },
+		{ "disable-hw-vlan-strip",      0, 0, 0 },
+		{ "disable-hw-vlan-extend",     0, 0, 0 },
 		{ "enable-drop-en",            0, 0, 0 },
 		{ "disable-rss",                0, 0, 0 },
 		{ "port-topology",              1, 0, 0 },
@@ -658,7 +615,8 @@ launch_args_parse(int argc, char** argv)
 						 "eth-peer: port %d >= RTE_MAX_ETHPORTS(%d)\n",
 						 n, RTE_MAX_ETHPORTS);
 
-				if (cmdline_parse_etheraddr(NULL, port_end, &peer_addr) < 0 )
+				if (cmdline_parse_etheraddr(NULL, port_end,
+						&peer_addr, sizeof(peer_addr)) < 0)
 					rte_exit(EXIT_FAILURE,
 						 "Invalid ethernet address: %s\n",
 						 port_end);
@@ -674,8 +632,7 @@ launch_args_parse(int argc, char** argv)
 					nb_fwd_ports = (uint8_t) n;
 				else
 					rte_exit(EXIT_FAILURE,
-						 "nb-ports should be > 0 and <= %d\n",
-						 nb_ports);
+						 "Invalid port %d\n", n);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "nb-cores")) {
 				n = atoi(optarg);
@@ -791,17 +748,6 @@ launch_args_parse(int argc, char** argv)
 						 optarg);
 			}
 			if (!strcmp(lgopts[opt_idx].name,
-				    "pkt-filter-flexbytes-offset")) {
-				n = atoi(optarg);
-				if ( n >= 0 && n <= (int) 32)
-					fdir_conf.flexbytes_offset =
-						(uint8_t) n;
-				else
-					rte_exit(EXIT_FAILURE,
-						 "flexbytes %d invalid - must"
-						 "be  >= 0 && <= 32\n", n);
-			}
-			if (!strcmp(lgopts[opt_idx].name,
 				    "pkt-filter-drop-queue")) {
 				n = atoi(optarg);
 				if (n >= 0)
@@ -821,6 +767,18 @@ launch_args_parse(int argc, char** argv)
 				rx_mode.hw_vlan_strip  = 0;
 				rx_mode.hw_vlan_extend = 0;
 			}
+
+			if (!strcmp(lgopts[opt_idx].name,
+					"disable-hw-vlan-filter"))
+				rx_mode.hw_vlan_filter = 0;
+
+			if (!strcmp(lgopts[opt_idx].name,
+					"disable-hw-vlan-strip"))
+				rx_mode.hw_vlan_strip  = 0;
+
+			if (!strcmp(lgopts[opt_idx].name,
+					"disable-hw-vlan-extend"))
+				rx_mode.hw_vlan_extend = 0;
 
 			if (!strcmp(lgopts[opt_idx].name, "enable-drop-en"))
 				rx_drop_en = 1;
@@ -863,20 +821,6 @@ launch_args_parse(int argc, char** argv)
 						  " >= 1 && <= %d\n", n,
 						  (int) MAX_QUEUE_ID);
 			}
-			if (!strcmp(lgopts[opt_idx].name, "rxd")) {
-				n = atoi(optarg);
-				if (n > 0)
-					nb_rxd = (uint16_t) n;
-				else
-					rte_exit(EXIT_FAILURE, "rxd must be > 0\n");
-			}
-			if (!strcmp(lgopts[opt_idx].name, "txd")) {
-				n = atoi(optarg);
-				if (n > 0)
-					nb_txd = (uint16_t) n;
-				else
-					rte_exit(EXIT_FAILURE, "txd must be in > 0\n");
-			}
 			if (!strcmp(lgopts[opt_idx].name, "burst")) {
 				n = atoi(optarg);
 				if ((n >= 1) && (n <= MAX_PKT_BURST))
@@ -896,38 +840,17 @@ launch_args_parse(int argc, char** argv)
 						 "mbcache must be >= 0 and <= %d\n",
 						 RTE_MEMPOOL_CACHE_MAX_SIZE);
 			}
-			if (!strcmp(lgopts[opt_idx].name, "txpt")) {
-				n = atoi(optarg);
-				if (n >= 0)
-					tx_thresh.pthresh = (uint8_t)n;
-				else
-					rte_exit(EXIT_FAILURE, "txpt must be >= 0\n");
-			}
-			if (!strcmp(lgopts[opt_idx].name, "txht")) {
-				n = atoi(optarg);
-				if (n >= 0)
-					tx_thresh.hthresh = (uint8_t)n;
-				else
-					rte_exit(EXIT_FAILURE, "txht must be >= 0\n");
-			}
-			if (!strcmp(lgopts[opt_idx].name, "txwt")) {
-				n = atoi(optarg);
-				if (n >= 0)
-					tx_thresh.wthresh = (uint8_t)n;
-				else
-					rte_exit(EXIT_FAILURE, "txwt must be >= 0\n");
-			}
 			if (!strcmp(lgopts[opt_idx].name, "txfreet")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_free_thresh = (uint16_t)n;
+					tx_free_thresh = (int16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txfreet must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txrst")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_rs_thresh = (uint16_t)n;
+					tx_rs_thresh = (int16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txrst must be >= 0\n");
 			}
@@ -935,31 +858,10 @@ launch_args_parse(int argc, char** argv)
 				char *end = NULL;
 				n = strtoul(optarg, &end, 16);
 				if (n >= 0)
-					txq_flags = (uint32_t)n;
+					txq_flags = (int32_t)n;
 				else
 					rte_exit(EXIT_FAILURE,
 						 "txqflags must be >= 0\n");
-			}
-			if (!strcmp(lgopts[opt_idx].name, "rxpt")) {
-				n = atoi(optarg);
-				if (n >= 0)
-					rx_thresh.pthresh = (uint8_t)n;
-				else
-					rte_exit(EXIT_FAILURE, "rxpt must be >= 0\n");
-			}
-			if (!strcmp(lgopts[opt_idx].name, "rxht")) {
-				n = atoi(optarg);
-				if (n >= 0)
-					rx_thresh.hthresh = (uint8_t)n;
-				else
-					rte_exit(EXIT_FAILURE, "rxht must be >= 0\n");
-			}
-			if (!strcmp(lgopts[opt_idx].name, "rxwt")) {
-				n = atoi(optarg);
-				if (n >= 0)
-					rx_thresh.wthresh = (uint8_t)n;
-				else
-					rte_exit(EXIT_FAILURE, "rxwt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxd")) {
 				n = atoi(optarg);
@@ -986,49 +888,49 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "txpt")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_thresh.pthresh = (uint8_t)n;
+					tx_pthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txpt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txht")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_thresh.hthresh = (uint8_t)n;
+					tx_hthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txht must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txwt")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					tx_thresh.wthresh = (uint8_t)n;
+					tx_wthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txwt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxpt")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					rx_thresh.pthresh = (uint8_t)n;
+					rx_pthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxpt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxht")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					rx_thresh.hthresh = (uint8_t)n;
+					rx_hthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxht must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxwt")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					rx_thresh.wthresh = (uint8_t)n;
+					rx_wthresh = (int8_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxwt must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxfreet")) {
 				n = atoi(optarg);
 				if (n >= 0)
-					rx_free_thresh = (uint16_t)n;
+					rx_free_thresh = (int16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "rxfreet must be >= 0\n");
 			}
@@ -1048,7 +950,8 @@ launch_args_parse(int argc, char** argv)
 				unsigned seg_lengths[RTE_MAX_SEGS_PER_PKT];
 				unsigned int nb_segs;
 
-				nb_segs = parse_item_list(optarg, RTE_MAX_SEGS_PER_PKT, seg_lengths);
+				nb_segs = parse_item_list(optarg, "txpkt segments",
+						RTE_MAX_SEGS_PER_PKT, seg_lengths, 0);
 				if (nb_segs > 0)
 					set_tx_pkt_segments(seg_lengths, nb_segs);
 				else

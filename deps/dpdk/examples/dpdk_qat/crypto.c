@@ -45,7 +45,6 @@
 #include <rte_debug.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_ether.h>
 #include <rte_malloc.h>
 #include <rte_launch.h>
@@ -183,7 +182,7 @@ struct glob_keys g_crypto_hash_keys = {
  *
  */
 #define PACKET_DATA_START_PHYS(p) \
-		((p)->buf_physaddr + ((char *)p->pkt.data - (char *)p->buf_addr))
+		((p)->buf_physaddr + (p)->data_off)
 
 /*
  * A fixed offset to where the crypto is to be performed, which is the first
@@ -339,7 +338,7 @@ get_crypto_instance_on_core(CpaInstanceHandle *pInstanceHandle,
 	}
 
 	pLocalInstanceHandles = rte_malloc("pLocalInstanceHandles",
-			sizeof(CpaInstanceHandle) * numInstances, CACHE_LINE_SIZE);
+			sizeof(CpaInstanceHandle) * numInstances, RTE_CACHE_LINE_SIZE);
 
 	if (NULL == pLocalInstanceHandles) {
 		return CPA_STATUS_FAIL;
@@ -773,7 +772,7 @@ enum crypto_result
 crypto_encrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 {
 	CpaCySymDpOpData *opData =
-			(CpaCySymDpOpData *) ((char *) (rte_buff->pkt.data)
+			(CpaCySymDpOpData *) (rte_pktmbuf_mtod(rte_buff, char *)
 					+ CRYPTO_OFFSET_TO_OPDATA);
 	uint32_t lcore_id;
 
@@ -785,7 +784,7 @@ crypto_encrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 	bzero(opData, sizeof(CpaCySymDpOpData));
 
 	opData->srcBuffer = opData->dstBuffer = PACKET_DATA_START_PHYS(rte_buff);
-	opData->srcBufferLen = opData->dstBufferLen = rte_buff->pkt.data_len;
+	opData->srcBufferLen = opData->dstBufferLen = rte_buff->data_len;
 	opData->sessionCtx = qaCoreConf[lcore_id].encryptSessionHandleTbl[c][h];
 	opData->thisPhys = PACKET_DATA_START_PHYS(rte_buff)
 			+ CRYPTO_OFFSET_TO_OPDATA;
@@ -805,7 +804,7 @@ crypto_encrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 			opData->ivLenInBytes = IV_LENGTH_8_BYTES;
 
 		opData->cryptoStartSrcOffsetInBytes = CRYPTO_START_OFFSET;
-		opData->messageLenToCipherInBytes = rte_buff->pkt.data_len
+		opData->messageLenToCipherInBytes = rte_buff->data_len
 				- CRYPTO_START_OFFSET;
 		/*
 		 * Work around for padding, message length has to be a multiple of
@@ -818,7 +817,7 @@ crypto_encrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 	if (NO_HASH != h) {
 
 		opData->hashStartSrcOffsetInBytes = HASH_START_OFFSET;
-		opData->messageLenToHashInBytes = rte_buff->pkt.data_len
+		opData->messageLenToHashInBytes = rte_buff->data_len
 				- HASH_START_OFFSET;
 		/*
 		 * Work around for padding, message length has to be a multiple of block
@@ -831,7 +830,7 @@ crypto_encrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 		 * Assumption: Ok ignore the passed digest pointer and place HMAC at end
 		 * of packet.
 		 */
-		opData->digestResult = rte_buff->buf_physaddr + rte_buff->pkt.data_len;
+		opData->digestResult = rte_buff->buf_physaddr + rte_buff->data_len;
 	}
 
 	if (CPA_STATUS_SUCCESS != enqueueOp(opData, lcore_id)) {
@@ -848,7 +847,7 @@ enum crypto_result
 crypto_decrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 {
 
-	CpaCySymDpOpData *opData = (void*) (((char *) rte_buff->pkt.data)
+	CpaCySymDpOpData *opData = (void*) (rte_pktmbuf_mtod(rte_buff, char *)
 			+ CRYPTO_OFFSET_TO_OPDATA);
 	uint32_t lcore_id;
 
@@ -860,7 +859,7 @@ crypto_decrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 	bzero(opData, sizeof(CpaCySymDpOpData));
 
 	opData->dstBuffer = opData->srcBuffer = PACKET_DATA_START_PHYS(rte_buff);
-	opData->dstBufferLen = opData->srcBufferLen = rte_buff->pkt.data_len;
+	opData->dstBufferLen = opData->srcBufferLen = rte_buff->data_len;
 	opData->thisPhys = PACKET_DATA_START_PHYS(rte_buff)
 			+ CRYPTO_OFFSET_TO_OPDATA;
 	opData->sessionCtx = qaCoreConf[lcore_id].decryptSessionHandleTbl[c][h];
@@ -880,7 +879,7 @@ crypto_decrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 			opData->ivLenInBytes = IV_LENGTH_8_BYTES;
 
 		opData->cryptoStartSrcOffsetInBytes = CRYPTO_START_OFFSET;
-		opData->messageLenToCipherInBytes = rte_buff->pkt.data_len
+		opData->messageLenToCipherInBytes = rte_buff->data_len
 				- CRYPTO_START_OFFSET;
 
 		/*
@@ -892,7 +891,7 @@ crypto_decrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 	}
 	if (NO_HASH != h) {
 		opData->hashStartSrcOffsetInBytes = HASH_START_OFFSET;
-		opData->messageLenToHashInBytes = rte_buff->pkt.data_len
+		opData->messageLenToHashInBytes = rte_buff->data_len
 				- HASH_START_OFFSET;
 		/*
 		 * Work around for padding, message length has to be a multiple of block
@@ -900,7 +899,7 @@ crypto_decrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 		 */
 		opData->messageLenToHashInBytes -= opData->messageLenToHashInBytes
 				% HASH_BLOCK_DEFAULT_SIZE;
-		opData->digestResult = rte_buff->buf_physaddr + rte_buff->pkt.data_len;
+		opData->digestResult = rte_buff->buf_physaddr + rte_buff->data_len;
 	}
 
 	if (CPA_STATUS_SUCCESS != enqueueOp(opData, lcore_id)) {

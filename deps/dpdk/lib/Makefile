@@ -31,7 +31,7 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBC) += libc
+DIRS-y += librte_compat
 DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_MALLOC) += librte_malloc
 DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
@@ -44,17 +44,24 @@ DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
 DIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += librte_pmd_e1000
 DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += librte_pmd_ixgbe
 DIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += librte_pmd_i40e
+DIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += librte_pmd_fm10k
+DIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += librte_pmd_mlx4
+DIRS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += librte_pmd_enic
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += librte_pmd_bond
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += librte_pmd_ring
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += librte_pmd_pcap
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += librte_pmd_af_packet
 DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += librte_pmd_virtio
 DIRS-$(CONFIG_RTE_LIBRTE_VMXNET3_PMD) += librte_pmd_vmxnet3
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += librte_pmd_xenvirt
+DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += librte_vhost
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL) += librte_pmd_null
 DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
 DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
 DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl
 DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
 DIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += librte_ip_frag
+DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += librte_jobstats
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += librte_power
 DIRS-$(CONFIG_RTE_LIBRTE_METER) += librte_meter
 DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += librte_sched
@@ -63,6 +70,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += librte_distributor
 DIRS-$(CONFIG_RTE_LIBRTE_PORT) += librte_port
 DIRS-$(CONFIG_RTE_LIBRTE_TABLE) += librte_table
 DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += librte_pipeline
+DIRS-$(CONFIG_RTE_LIBRTE_REORDER) += librte_reorder
 
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni

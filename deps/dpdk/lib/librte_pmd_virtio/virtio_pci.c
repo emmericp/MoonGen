@@ -35,6 +35,8 @@
 #include "virtio_pci.h"
 #include "virtio_logs.h"
 
+static uint8_t vtpci_get_status(struct virtio_hw *);
+
 void
 vtpci_read_dev_config(struct virtio_hw *hw, uint64_t offset,
 		void *dst, int length)
@@ -113,7 +115,7 @@ vtpci_reinit_complete(struct virtio_hw *hw)
 	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER_OK);
 }
 
-uint8_t
+static uint8_t
 vtpci_get_status(struct virtio_hw *hw)
 {
 	return VIRTIO_READ_REG_1(hw, VIRTIO_PCI_STATUS);
@@ -126,4 +128,20 @@ vtpci_set_status(struct virtio_hw *hw, uint8_t status)
 		status = (uint8_t)(status | vtpci_get_status(hw));
 
 	VIRTIO_WRITE_REG_1(hw, VIRTIO_PCI_STATUS, status);
+}
+
+uint8_t
+vtpci_isr(struct virtio_hw *hw)
+{
+
+	return VIRTIO_READ_REG_1(hw, VIRTIO_PCI_ISR);
+}
+
+
+/* Enable one vector (0) for Link State Intrerrupt */
+uint16_t
+vtpci_irq_config(struct virtio_hw *hw, uint16_t vec)
+{
+	VIRTIO_WRITE_REG_2(hw, VIRTIO_MSI_CONFIG_VECTOR, vec);
+	return VIRTIO_READ_REG_2(hw, VIRTIO_MSI_CONFIG_VECTOR);
 }

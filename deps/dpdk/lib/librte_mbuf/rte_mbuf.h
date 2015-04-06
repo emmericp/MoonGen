@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright 2014 6WIND S.A.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -43,22 +44,18 @@
  * buffers. The message buffers are stored in a mempool, using the
  * RTE mempool library.
  *
- * This library provide an API to allocate/free mbufs, manipulate
- * control message buffer (ctrlmbuf), which are generic message
- * buffers, and packet buffers (pktmbuf), which are used to carry
- * network packets.
+ * This library provide an API to allocate/free packet mbufs, which are
+ * used to carry network packets.
  *
  * To understand the concepts of packet buffers or mbufs, you
  * should read "TCP/IP Illustrated, Volume 2: The Implementation,
  * Addison-Wesley, 1995, ISBN 0-201-63354-X from Richard Stevens"
  * http://www.kohala.com/start/tcpipiv2.html
- *
- * The main modification of this implementation is the use of mbuf for
- * transports other than packets. mbufs can have other types.
  */
 
 #include <stdint.h>
 #include <rte_mempool.h>
+#include <rte_memory.h>
 #include <rte_atomic.h>
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
@@ -67,126 +64,181 @@
 extern "C" {
 #endif
 
-/**
- * A control message buffer.
- */
-struct rte_ctrlmbuf {
-	void *data;        /**< Pointer to data. */
-	uint32_t data_len; /**< Length of data. */
-};
-
+/* deprecated options */
+#pragma GCC poison RTE_MBUF_SCATTER_GATHER
+#pragma GCC poison RTE_MBUF_REFCNT
 
 /*
  * Packet Offload Features Flags. It also carry packet type information.
  * Critical resources. Both rx/tx shared these bits. Be cautious on any change
+ *
+ * - RX flags start at bit position zero, and get added to the left of previous
+ *   flags.
+ * - The most-significant 8 bits are reserved for generic mbuf flags
+ * - TX flags therefore start at bit position 55 (i.e. 63-8), and new flags get
+ *   added to the right of the previously defined flags
+ *
+ * Keep these flags synchronized with rte_get_rx_ol_flag_name() and
+ * rte_get_tx_ol_flag_name().
  */
-#define PKT_RX_VLAN_PKT      0x0001 /**< RX packet is a 802.1q VLAN packet. */
-#define PKT_RX_RSS_HASH      0x0002 /**< RX packet with RSS hash result. */
-#define PKT_RX_FDIR          0x0004 /**< RX packet with FDIR infos. */
-#define PKT_RX_L4_CKSUM_BAD  0x0008 /**< L4 cksum of RX pkt. is not OK. */
-#define PKT_RX_IP_CKSUM_BAD  0x0010 /**< IP cksum of RX pkt. is not OK. */
-#define PKT_RX_EIP_CKSUM_BAD 0x0000 /**< External IP header checksum error. */
-#define PKT_RX_OVERSIZE      0x0000 /**< Num of desc of an RX pkt oversize. */
-#define PKT_RX_HBUF_OVERFLOW 0x0000 /**< Header buffer overflow. */
-#define PKT_RX_RECIP_ERR     0x0000 /**< Hardware processing error. */
-#define PKT_RX_MAC_ERR       0x0000 /**< MAC error. */
-#define PKT_RX_IPV4_HDR      0x0020 /**< RX packet with IPv4 header. */
-#define PKT_RX_IPV4_HDR_EXT  0x0040 /**< RX packet with extended IPv4 header. */
-#define PKT_RX_IPV6_HDR      0x0080 /**< RX packet with IPv6 header. */
-#define PKT_RX_IPV6_HDR_EXT  0x0100 /**< RX packet with extended IPv6 header. */
-#define PKT_RX_IEEE1588_PTP  0x0200 /**< RX IEEE1588 L2 Ethernet PT Packet. */
-#define PKT_RX_IEEE1588_TMST 0x0400 /**< RX IEEE1588 L2/L4 timestamped packet.*/
+#define PKT_RX_VLAN_PKT      (1ULL << 0)  /**< RX packet is a 802.1q VLAN packet. */
+#define PKT_RX_RSS_HASH      (1ULL << 1)  /**< RX packet with RSS hash result. */
+#define PKT_RX_FDIR          (1ULL << 2)  /**< RX packet with FDIR match indicate. */
+#define PKT_RX_L4_CKSUM_BAD  (1ULL << 3)  /**< L4 cksum of RX pkt. is not OK. */
+#define PKT_RX_IP_CKSUM_BAD  (1ULL << 4)  /**< IP cksum of RX pkt. is not OK. */
+#define PKT_RX_EIP_CKSUM_BAD (0ULL << 0)  /**< External IP header checksum error. */
+#define PKT_RX_OVERSIZE      (0ULL << 0)  /**< Num of desc of an RX pkt oversize. */
+#define PKT_RX_HBUF_OVERFLOW (0ULL << 0)  /**< Header buffer overflow. */
+#define PKT_RX_RECIP_ERR     (0ULL << 0)  /**< Hardware processing error. */
+#define PKT_RX_MAC_ERR       (0ULL << 0)  /**< MAC error. */
+#define PKT_RX_IPV4_HDR      (1ULL << 5)  /**< RX packet with IPv4 header. */
+#define PKT_RX_IPV4_HDR_EXT  (1ULL << 6)  /**< RX packet with extended IPv4 header. */
+#define PKT_RX_IPV6_HDR      (1ULL << 7)  /**< RX packet with IPv6 header. */
+#define PKT_RX_IPV6_HDR_EXT  (1ULL << 8)  /**< RX packet with extended IPv6 header. */
+#define PKT_RX_IEEE1588_PTP  (1ULL << 9)  /**< RX IEEE1588 L2 Ethernet PT Packet. */
+#define PKT_RX_IEEE1588_TMST (1ULL << 10) /**< RX IEEE1588 L2/L4 timestamped packet.*/
+#define PKT_RX_TUNNEL_IPV4_HDR (1ULL << 11) /**< RX tunnel packet with IPv4 header.*/
+#define PKT_RX_TUNNEL_IPV6_HDR (1ULL << 12) /**< RX tunnel packet with IPv6 header. */
+#define PKT_RX_FDIR_ID       (1ULL << 13) /**< FD id reported if FDIR match. */
+#define PKT_RX_FDIR_FLX      (1ULL << 14) /**< Flexible bytes reported if FDIR match. */
+/* add new RX flags here */
 
-#define PKT_TX_VLAN_PKT      0x0800 /**< TX packet is a 802.1q VLAN packet. */
-#define PKT_TX_IP_CKSUM      0x1000 /**< IP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_IPV4_CSUM     0x1000 /**< Alias of PKT_TX_IP_CKSUM. */
-#define PKT_TX_NO_CRC_CSUM   0x0001 /**< Disable CRC calculation. Note: overlaps with RX_VLAN_PKT. */
-#define PKT_TX_IPV4          PKT_RX_IPV4_HDR /**< IPv4 with no IP checksum offload. */
-#define PKT_TX_IPV6          PKT_RX_IPV6_HDR /**< IPv6 packet */
-/*
- * Bit 14~13 used for L4 packet type with checksum enabled.
- *     00: Reserved
- *     01: TCP checksum
- *     10: SCTP checksum
- *     11: UDP checksum
- */
-#define PKT_TX_L4_MASK       0x6000 /**< Mask bits for L4 checksum offload request. */
-#define PKT_TX_L4_NO_CKSUM   0x0000 /**< Disable L4 cksum of TX pkt. */
-#define PKT_TX_TCP_CKSUM     0x2000 /**< TCP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_SCTP_CKSUM    0x4000 /**< SCTP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_UDP_CKSUM     0x6000 /**< UDP cksum of TX pkt. computed by NIC. */
-/* Bit 15 */
-#define PKT_TX_IEEE1588_TMST 0x8000 /**< TX IEEE1588 packet to timestamp. */
+/* add new TX flags here */
 
 /**
- * Bit Mask to indicate what bits required for building TX context
+ * TCP segmentation offload. To enable this offload feature for a
+ * packet to be transmitted on hardware supporting TSO:
+ *  - set the PKT_TX_TCP_SEG flag in mbuf->ol_flags (this flag implies
+ *    PKT_TX_TCP_CKSUM)
+ *  - set the flag PKT_TX_IPV4 or PKT_TX_IPV6
+ *  - if it's IPv4, set the PKT_TX_IP_CKSUM flag and write the IP checksum
+ *    to 0 in the packet
+ *  - fill the mbuf offload information: l2_len, l3_len, l4_len, tso_segsz
+ *  - calculate the pseudo header checksum without taking ip_len in account,
+ *    and set it in the TCP header. Refer to rte_ipv4_phdr_cksum() and
+ *    rte_ipv6_phdr_cksum() that can be used as helpers.
  */
-#define PKT_TX_OFFLOAD_MASK (PKT_TX_VLAN_PKT | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)
+#define PKT_TX_TCP_SEG       (1ULL << 50)
 
-/** Offload features */
-union rte_vlan_macip {
-	uint32_t data;
-	struct {
-		uint16_t l3_len:9; /**< L3 (IP) Header Length. */
-		uint16_t l2_len:7; /**< L2 (MAC) Header Length. */
-		uint16_t vlan_tci;
-		/**< VLAN Tag Control Identifier (CPU order). */
-	} f;
-};
-
-/*
- * Compare mask for vlan_macip_len.data,
- * should be in sync with rte_vlan_macip.f layout.
- * */
-#define TX_VLAN_CMP_MASK        0xFFFF0000  /**< VLAN length - 16-bits. */
-#define TX_MAC_LEN_CMP_MASK     0x0000FE00  /**< MAC length - 7-bits. */
-#define TX_IP_LEN_CMP_MASK      0x000001FF  /**< IP  length - 9-bits. */
-/**< MAC+IP  length. */
-#define TX_MACIP_LEN_CMP_MASK   (TX_MAC_LEN_CMP_MASK | TX_IP_LEN_CMP_MASK)
+#define PKT_TX_IEEE1588_TMST (1ULL << 51) /**< TX IEEE1588 packet to timestamp. */
 
 /**
- * A packet message buffer.
+ * Bits 52+53 used for L4 packet type with checksum enabled: 00: Reserved,
+ * 01: TCP checksum, 10: SCTP checksum, 11: UDP checksum. To use hardware
+ * L4 checksum offload, the user needs to:
+ *  - fill l2_len and l3_len in mbuf
+ *  - set the flags PKT_TX_TCP_CKSUM, PKT_TX_SCTP_CKSUM or PKT_TX_UDP_CKSUM
+ *  - set the flag PKT_TX_IPV4 or PKT_TX_IPV6
+ *  - calculate the pseudo header checksum and set it in the L4 header (only
+ *    for TCP or UDP). See rte_ipv4_phdr_cksum() and rte_ipv6_phdr_cksum().
+ *    For SCTP, set the crc field to 0.
  */
-struct rte_pktmbuf {
-	/* valid for any segment */
-	struct rte_mbuf *next;  /**< Next segment of scattered packet. */
-	void* data;             /**< Start address of data in segment buffer. */
-	uint16_t data_len;      /**< Amount of data in segment buffer. */
-
-	/* these fields are valid for first segment only */
-	uint8_t nb_segs;        /**< Number of segments. */
-	uint8_t in_port;        /**< Input port. */
-	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
-
-	/* offload features */
-	union rte_vlan_macip vlan_macip;
-	union {
-		uint32_t rss;       /**< RSS hash result if RSS enabled */
-		struct {
-			uint16_t hash;
-			uint16_t id;
-		} fdir;             /**< Filter identifier if FDIR enabled */
-		uint32_t sched;     /**< Hierarchical scheduler */
-	} hash;                 /**< hash information */
-};
+#define PKT_TX_L4_NO_CKSUM   (0ULL << 52) /**< Disable L4 cksum of TX pkt. */
+#define PKT_TX_TCP_CKSUM     (1ULL << 52) /**< TCP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_SCTP_CKSUM    (2ULL << 52) /**< SCTP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_UDP_CKSUM     (3ULL << 52) /**< UDP cksum of TX pkt. computed by NIC. */
+#define PKT_TX_L4_MASK       (3ULL << 52) /**< Mask for L4 cksum offload request. */
 
 /**
- * This enum indicates the mbuf type.
+ * Offload the IP checksum in the hardware. The flag PKT_TX_IPV4 should
+ * also be set by the application, although a PMD will only check
+ * PKT_TX_IP_CKSUM.
+ *  - set the IP checksum field in the packet to 0
+ *  - fill the mbuf offload information: l2_len, l3_len
  */
-enum rte_mbuf_type {
-	RTE_MBUF_CTRL,  /**< Control mbuf. */
-	RTE_MBUF_PKT,   /**< Packet mbuf. */
-};
+#define PKT_TX_IP_CKSUM      (1ULL << 54)
 
 /**
- * The generic rte_mbuf, containing a packet mbuf or a control mbuf.
+ * Packet is IPv4. This flag must be set when using any offload feature
+ * (TSO, L3 or L4 checksum) to tell the NIC that the packet is an IPv4
+ * packet. If the packet is a tunneled packet, this flag is related to
+ * the inner headers.
+ */
+#define PKT_TX_IPV4          (1ULL << 55)
+
+/**
+ * Packet is IPv6. This flag must be set when using an offload feature
+ * (TSO or L4 checksum) to tell the NIC that the packet is an IPv6
+ * packet. If the packet is a tunneled packet, this flag is related to
+ * the inner headers.
+ */
+#define PKT_TX_IPV6          (1ULL << 56)
+
+#define PKT_TX_VLAN_PKT      (1ULL << 57) /**< TX packet is a 802.1q VLAN packet. */
+
+/**
+ * Offload the IP checksum of an external header in the hardware. The
+ * flag PKT_TX_OUTER_IPV4 should also be set by the application, alto ugh
+ * a PMD will only check PKT_TX_IP_CKSUM.  The IP checksum field in the
+ * packet must be set to 0.
+ *  - set the outer IP checksum field in the packet to 0
+ *  - fill the mbuf offload information: outer_l2_len, outer_l3_len
+ */
+#define PKT_TX_OUTER_IP_CKSUM   (1ULL << 58)
+
+/**
+ * Packet outer header is IPv4. This flag must be set when using any
+ * outer offload feature (L3 or L4 checksum) to tell the NIC that the
+ * outer header of the tunneled packet is an IPv4 packet.
+ */
+#define PKT_TX_OUTER_IPV4   (1ULL << 59)
+
+/**
+ * Packet outer header is IPv6. This flag must be set when using any
+ * outer offload feature (L4 checksum) to tell the NIC that the outer
+ * header of the tunneled packet is an IPv6 packet.
+ */
+#define PKT_TX_OUTER_IPV6    (1ULL << 60)
+
+#define IND_ATTACHED_MBUF    (1ULL << 62) /**< Indirect attached mbuf */
+
+/* Use final bit of flags to indicate a control mbuf */
+#define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
+
+/**
+ * Get the name of a RX offload flag
+ *
+ * @param mask
+ *   The mask describing the flag.
+ * @return
+ *   The name of this flag, or NULL if it's not a valid RX flag.
+ */
+const char *rte_get_rx_ol_flag_name(uint64_t mask);
+
+/**
+ * Get the name of a TX offload flag
+ *
+ * @param mask
+ *   The mask describing the flag. Usually only one bit must be set.
+ *   Several bits can be given if they belong to the same mask.
+ *   Ex: PKT_TX_L4_MASK.
+ * @return
+ *   The name of this flag, or NULL if it's not a valid TX flag.
+ */
+const char *rte_get_tx_ol_flag_name(uint64_t mask);
+
+/* define a set of marker types that can be used to refer to set points in the
+ * mbuf */
+typedef void    *MARKER[0];   /**< generic marker for a point in a structure */
+typedef uint8_t  MARKER8[0];  /**< generic marker with 1B alignment */
+typedef uint64_t MARKER64[0]; /**< marker that allows us to overwrite 8 bytes
+                               * with a single assignment */
+
+/**
+ * The generic rte_mbuf, containing a packet mbuf.
  */
 struct rte_mbuf {
-	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
+	MARKER cacheline0;
+
 	void *buf_addr;           /**< Virtual address of segment buffer. */
 	phys_addr_t buf_physaddr; /**< Physical address of segment buffer. */
+
 	uint16_t buf_len;         /**< Length of segment buffer. */
-#ifdef RTE_MBUF_SCATTER_GATHER
+
+	/* next 6 bytes are initialised on RX descriptor rearm */
+	MARKER8 rearm_data;
+	uint16_t data_off;
+
 	/**
 	 * 16-bit Reference counter.
 	 * It should only be accessed using the following functions:
@@ -196,46 +248,77 @@ struct rte_mbuf {
 	 * config option.
 	 */
 	union {
-		rte_atomic16_t refcnt_atomic;   /**< Atomically accessed refcnt */
-		uint16_t refcnt;                /**< Non-atomically accessed refcnt */
+		rte_atomic16_t refcnt_atomic; /**< Atomically accessed refcnt */
+		uint16_t refcnt;              /**< Non-atomically accessed refcnt */
 	};
-#else
-	uint16_t refcnt_reserved;     /**< Do not use this field */
-#endif
-	uint8_t type;                 /**< Type of mbuf. */
-	uint8_t reserved;             /**< Unused field. Required for padding. */
-	uint16_t ol_flags;            /**< Offload features. */
+	uint8_t nb_segs;          /**< Number of segments. */
+	uint8_t port;             /**< Input port. */
+
+	uint64_t ol_flags;        /**< Offload features. */
+
+	/* remaining bytes are set on RX when pulling packet from descriptor */
+	MARKER rx_descriptor_fields1;
+
+	/**
+	 * The packet type, which is used to indicate ordinary packet and also
+	 * tunneled packet format, i.e. each number is represented a type of
+	 * packet.
+	 */
+	uint16_t packet_type;
+
+	uint16_t data_len;        /**< Amount of data in segment buffer. */
+	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
+	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
+	uint16_t reserved;
+	union {
+		uint32_t rss;     /**< RSS hash result if RSS enabled */
+		struct {
+			union {
+				struct {
+					uint16_t hash;
+					uint16_t id;
+				};
+				uint32_t lo;
+				/**< Second 4 flexible bytes */
+			};
+			uint32_t hi;
+			/**< First 4 flexible bytes or FD ID, dependent on
+			     PKT_RX_FDIR_* flag in ol_flags. */
+		} fdir;           /**< Filter identifier if FDIR enabled */
+		uint32_t sched;   /**< Hierarchical scheduler */
+		uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
+	} hash;                   /**< hash information */
+
+	uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
+
+	/* second cache line - fields only used in slow path or on TX */
+	MARKER cacheline1 __rte_cache_aligned;
 
 	union {
-		struct rte_ctrlmbuf ctrl;
-		struct rte_pktmbuf pkt;
+		void *userdata;   /**< Can be used for external metadata */
+		uint64_t udata64; /**< Allow 8-byte userdata on 32-bit */
 	};
 
+	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
+	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
+
+	/* fields to support TX offloads */
 	union {
-		uint8_t metadata[0];
-		uint16_t metadata16[0];
-		uint32_t metadata32[0];
-		uint64_t metadata64[0];
+		uint64_t tx_offload;       /**< combined for easy fetch */
+		struct {
+			uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+			uint64_t l3_len:9; /**< L3 (IP) Header Length. */
+			uint64_t l4_len:8; /**< L4 (TCP/UDP) Header Length. */
+			uint64_t tso_segsz:16; /**< TCP TSO segment size */
+
+			/* fields for TX offloading of tunnels */
+			uint64_t outer_l3_len:9; /**< Outer L3 (IP) Hdr Length. */
+			uint64_t outer_l2_len:7; /**< Outer L2 (MAC) Hdr Length. */
+
+			/* uint64_t unused:8; */
+		};
 	};
 } __rte_cache_aligned;
-
-#define RTE_MBUF_METADATA_UINT8(mbuf, offset)              \
-	(mbuf->metadata[offset])
-#define RTE_MBUF_METADATA_UINT16(mbuf, offset)             \
-	(mbuf->metadata16[offset/sizeof(uint16_t)])
-#define RTE_MBUF_METADATA_UINT32(mbuf, offset)             \
-	(mbuf->metadata32[offset/sizeof(uint32_t)])
-#define RTE_MBUF_METADATA_UINT64(mbuf, offset)             \
-	(mbuf->metadata64[offset/sizeof(uint64_t)])
-
-#define RTE_MBUF_METADATA_UINT8_PTR(mbuf, offset)          \
-	(&mbuf->metadata[offset])
-#define RTE_MBUF_METADATA_UINT16_PTR(mbuf, offset)         \
-	(&mbuf->metadata16[offset/sizeof(uint16_t)])
-#define RTE_MBUF_METADATA_UINT32_PTR(mbuf, offset)         \
-	(&mbuf->metadata32[offset/sizeof(uint32_t)])
-#define RTE_MBUF_METADATA_UINT64_PTR(mbuf, offset)         \
-	(&mbuf->metadata64[offset/sizeof(uint64_t)])
 
 /**
  * Given the buf_addr returns the pointer to corresponding mbuf.
@@ -251,13 +334,12 @@ struct rte_mbuf {
 /**
  * Returns TRUE if given mbuf is indirect, or FALSE otherwise.
  */
-#define RTE_MBUF_INDIRECT(mb)   (RTE_MBUF_FROM_BADDR((mb)->buf_addr) != (mb))
+#define RTE_MBUF_INDIRECT(mb)   ((mb)->ol_flags & IND_ATTACHED_MBUF)
 
 /**
  * Returns TRUE if given mbuf is direct, or FALSE otherwise.
  */
-#define RTE_MBUF_DIRECT(mb)     (RTE_MBUF_FROM_BADDR((mb)->buf_addr) == (mb))
-
+#define RTE_MBUF_DIRECT(mb)     (!RTE_MBUF_INDIRECT(mb))
 
 /**
  * Private data in case of pktmbuf pool.
@@ -272,12 +354,12 @@ struct rte_pktmbuf_pool_private {
 #ifdef RTE_LIBRTE_MBUF_DEBUG
 
 /**  check mbuf type in debug mode */
-#define __rte_mbuf_sanity_check(m, t, is_h) rte_mbuf_sanity_check(m, t, is_h)
+#define __rte_mbuf_sanity_check(m, is_h) rte_mbuf_sanity_check(m, is_h)
 
 /**  check mbuf type in debug mode if mbuf pointer is not null */
-#define __rte_mbuf_sanity_check_raw(m, t, is_h)	do {       \
+#define __rte_mbuf_sanity_check_raw(m, is_h)	do {       \
 	if ((m) != NULL)                                   \
-		rte_mbuf_sanity_check(m, t, is_h);          \
+		rte_mbuf_sanity_check(m, is_h);          \
 } while (0)
 
 /**  MBUF asserts in debug mode */
@@ -289,17 +371,16 @@ if (!(exp)) {                                                        \
 #else /*  RTE_LIBRTE_MBUF_DEBUG */
 
 /**  check mbuf type in debug mode */
-#define __rte_mbuf_sanity_check(m, t, is_h) do { } while(0)
+#define __rte_mbuf_sanity_check(m, is_h) do { } while (0)
 
 /**  check mbuf type in debug mode if mbuf pointer is not null */
-#define __rte_mbuf_sanity_check_raw(m, t, is_h) do { } while(0)
+#define __rte_mbuf_sanity_check_raw(m, is_h) do { } while (0)
 
 /**  MBUF asserts in debug mode */
-#define RTE_MBUF_ASSERT(exp)                do { } while(0)
+#define RTE_MBUF_ASSERT(exp)                do { } while (0)
 
 #endif /*  RTE_LIBRTE_MBUF_DEBUG */
 
-#ifdef RTE_MBUF_SCATTER_GATHER
 #ifdef RTE_MBUF_REFCNT_ATOMIC
 
 /**
@@ -381,15 +462,6 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 		rte_prefetch0(m);               \
 } while (0)
 
-#else /* ! RTE_MBUF_SCATTER_GATHER */
-
-/** Mbuf prefetch */
-#define RTE_MBUF_PREFETCH_TO_FREE(m) do { } while(0)
-
-#define rte_mbuf_refcnt_set(m,v) do { } while(0)
-
-#endif /* RTE_MBUF_SCATTER_GATHER */
-
 
 /**
  * Sanity checks on an mbuf.
@@ -399,20 +471,17 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
  *
  * @param m
  *   The mbuf to be checked.
- * @param t
- *   The expected type of the mbuf.
  * @param is_header
  *   True if the mbuf is a packet header, false if it is a sub-segment
  *   of a packet (in this case, some fields like nb_segs are not checked)
  */
 void
-rte_mbuf_sanity_check(const struct rte_mbuf *m, enum rte_mbuf_type t,
-		      int is_header);
+rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
 
 /**
  * @internal Allocate a new mbuf from mempool *mp*.
  * The use of that function is reserved for RTE internal needs.
- * Please use either rte_ctrlmbuf_alloc() or rte_pktmbuf_alloc().
+ * Please use rte_pktmbuf_alloc().
  *
  * @param mp
  *   The mempool from which mbuf is allocated.
@@ -427,17 +496,15 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	if (rte_mempool_get(mp, &mb) < 0)
 		return NULL;
 	m = (struct rte_mbuf *)mb;
-#ifdef RTE_MBUF_SCATTER_GATHER
 	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
 	rte_mbuf_refcnt_set(m, 1);
-#endif /* RTE_MBUF_SCATTER_GATHER */
 	return (m);
 }
 
 /**
  * @internal Put mbuf back into its original mempool.
  * The use of that function is reserved for RTE internal needs.
- * Please use either rte_ctrlmbuf_free() or rte_pktmbuf_free().
+ * Please use rte_pktmbuf_free().
  *
  * @param m
  *   The mbuf to be freed.
@@ -445,9 +512,7 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 static inline void __attribute__((always_inline))
 __rte_mbuf_raw_free(struct rte_mbuf *m)
 {
-#ifdef RTE_MBUF_SCATTER_GATHER
 	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
-#endif /* RTE_MBUF_SCATTER_GATHER */
 	rte_mempool_put(m->pool, m);
 }
 
@@ -473,7 +538,7 @@ __rte_mbuf_raw_free(struct rte_mbuf *m)
  *   The index of the mbuf in the pool table.
  */
 void rte_ctrlmbuf_init(struct rte_mempool *mp, void *opaque_arg,
-		       void *m, unsigned i);
+		void *m, unsigned i);
 
 /**
  * Allocate a new mbuf (type is ctrl) from mempool *mp*.
@@ -487,16 +552,7 @@ void rte_ctrlmbuf_init(struct rte_mempool *mp, void *opaque_arg,
  *   - The pointer to the new mbuf on success.
  *   - NULL if allocation failed.
  */
-static inline struct rte_mbuf *rte_ctrlmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-	if ((m = __rte_mbuf_raw_alloc(mp)) != NULL) {
-		m->ctrl.data = m->buf_addr;
-		m->ctrl.data_len = 0;
-		__rte_mbuf_sanity_check(m, RTE_MBUF_CTRL, 0);
-	}
-	return (m);
-}
+#define rte_ctrlmbuf_alloc(mp) rte_pktmbuf_alloc(mp)
 
 /**
  * Free a control mbuf back into its original mempool.
@@ -504,14 +560,7 @@ static inline struct rte_mbuf *rte_ctrlmbuf_alloc(struct rte_mempool *mp)
  * @param m
  *   The control mbuf to be freed.
  */
-static inline void rte_ctrlmbuf_free(struct rte_mbuf *m)
-{
-	__rte_mbuf_sanity_check(m, RTE_MBUF_CTRL, 0);
-#ifdef RTE_MBUF_SCATTER_GATHER
-	if (rte_mbuf_refcnt_update(m, -1) == 0)
-#endif /* RTE_MBUF_SCATTER_GATHER */
-		__rte_mbuf_raw_free(m);
-}
+#define rte_ctrlmbuf_free(m) rte_pktmbuf_free(m)
 
 /**
  * A macro that returns the pointer to the carried data.
@@ -521,7 +570,7 @@ static inline void rte_ctrlmbuf_free(struct rte_mbuf *m)
  * @param m
  *   The control mbuf.
  */
-#define rte_ctrlmbuf_data(m) ((m)->ctrl.data)
+#define rte_ctrlmbuf_data(m) ((char *)((m)->buf_addr) + (m)->data_off)
 
 /**
  * A macro that returns the length of the carried data.
@@ -531,15 +580,30 @@ static inline void rte_ctrlmbuf_free(struct rte_mbuf *m)
  * @param m
  *   The control mbuf.
  */
-#define rte_ctrlmbuf_len(m) ((m)->ctrl.data_len)
+#define rte_ctrlmbuf_len(m) rte_pktmbuf_data_len(m)
+
+/**
+ * Tests if an mbuf is a control mbuf
+ *
+ * @param m
+ *   The mbuf to be tested
+ * @return
+ *   - True (1) if the mbuf is a control mbuf
+ *   - False(0) otherwise
+ */
+static inline int
+rte_is_ctrlmbuf(struct rte_mbuf *m)
+{
+	return (!!(m->ol_flags & CTRL_MBUF_FLAG));
+}
 
 /* Operations on pkt mbuf */
 
 /**
  * The packet mbuf constructor.
  *
- * This function initializes some fields in the mbuf structure that are not
- * modified by the user once created (mbuf type, origin pool, buffer start
+ * This function initializes some fields in the mbuf structure that are
+ * not modified by the user once created (origin pool, buffer start
  * address, and so on). This function is given as a callback function to
  * rte_mempool_create() at pool creation time.
  *
@@ -586,25 +650,24 @@ void rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg);
  */
 static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 {
-	uint32_t buf_ofs;
-
-	m->pkt.next = NULL;
-	m->pkt.pkt_len = 0;
-	m->pkt.vlan_macip.data = 0;
-	m->pkt.nb_segs = 1;
-	m->pkt.in_port = 0xff;
+	m->next = NULL;
+	m->pkt_len = 0;
+	m->tx_offload = 0;
+	m->vlan_tci = 0;
+	m->nb_segs = 1;
+	m->port = 0xff;
 
 	m->ol_flags = 0;
-	buf_ofs = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
+	m->packet_type = 0;
+	m->data_off = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
 			RTE_PKTMBUF_HEADROOM : m->buf_len;
-	m->pkt.data = (char*) m->buf_addr + buf_ofs;
 
-	m->pkt.data_len = 0;
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	m->data_len = 0;
+	__rte_mbuf_sanity_check(m, 1);
 }
 
 /**
- * Allocate a new mbuf (type is pkt) from a mempool.
+ * Allocate a new mbuf from a mempool.
  *
  * This new mbuf contains one segment, which has a length of 0. The pointer
  * to data is initialized to have some bytes of headroom in the buffer
@@ -623,8 +686,6 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
 		rte_pktmbuf_reset(m);
 	return (m);
 }
-
-#ifdef RTE_MBUF_SCATTER_GATHER
 
 /**
  * Attach packet mbuf to another packet mbuf.
@@ -653,15 +714,22 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *md)
 	mi->buf_addr = md->buf_addr;
 	mi->buf_len = md->buf_len;
 
-	mi->pkt = md->pkt;
+	mi->next = md->next;
+	mi->data_off = md->data_off;
+	mi->data_len = md->data_len;
+	mi->port = md->port;
+	mi->vlan_tci = md->vlan_tci;
+	mi->tx_offload = md->tx_offload;
+	mi->hash = md->hash;
 
-	mi->pkt.next = NULL;
-	mi->pkt.pkt_len = mi->pkt.data_len;
-	mi->pkt.nb_segs = 1;
-	mi->ol_flags = md->ol_flags;
+	mi->next = NULL;
+	mi->pkt_len = mi->data_len;
+	mi->nb_segs = 1;
+	mi->ol_flags = md->ol_flags | IND_ATTACHED_MBUF;
+	mi->packet_type = md->packet_type;
 
-	__rte_mbuf_sanity_check(mi, RTE_MBUF_PKT, 1);
-	__rte_mbuf_sanity_check(md, RTE_MBUF_PKT, 0);
+	__rte_mbuf_sanity_check(mi, 1);
+	__rte_mbuf_sanity_check(md, 0);
 }
 
 /**
@@ -678,32 +746,37 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 {
 	const struct rte_mempool *mp = m->pool;
 	void *buf = RTE_MBUF_TO_BADDR(m);
-	uint32_t buf_ofs;
 	uint32_t buf_len = mp->elt_size - sizeof(*m);
 	m->buf_physaddr = rte_mempool_virt2phy(mp, m) + sizeof (*m);
 
 	m->buf_addr = buf;
 	m->buf_len = (uint16_t)buf_len;
 
-	buf_ofs = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
+	m->data_off = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
 			RTE_PKTMBUF_HEADROOM : m->buf_len;
-	m->pkt.data = (char*) m->buf_addr + buf_ofs;
 
-	m->pkt.data_len = 0;
+	m->data_len = 0;
+
+	m->ol_flags = 0;
 }
-
-#endif /* RTE_MBUF_SCATTER_GATHER */
-
 
 static inline struct rte_mbuf* __attribute__((always_inline))
 __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 0);
+	__rte_mbuf_sanity_check(m, 0);
 
-#ifdef RTE_MBUF_SCATTER_GATHER
+	/*
+	 * Check to see if this is the last reference to the mbuf.
+	 * Note: the double check here is deliberate. If the ref_cnt is "atomic"
+	 * the call to "refcnt_update" is a very expensive operation, so we
+	 * don't want to call it in the case where we know we are the holder
+	 * of the last reference to this mbuf i.e. ref_cnt == 1.
+	 * If however, ref_cnt != 1, it's still possible that we may still be
+	 * the final decrementer of the count, so we need to check that
+	 * result also, to make sure the mbuf is freed properly.
+	 */
 	if (likely (rte_mbuf_refcnt_read(m) == 1) ||
 			likely (rte_mbuf_refcnt_update(m, -1) == 0)) {
-		struct rte_mbuf *md = RTE_MBUF_FROM_BADDR(m->buf_addr);
 
 		rte_mbuf_refcnt_set(m, 0);
 
@@ -711,17 +784,15 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 		 *  - detach mbuf
 		 *  - free attached mbuf segment
 		 */
-		if (unlikely (md != m)) {
+		if (RTE_MBUF_INDIRECT(m)) {
+			struct rte_mbuf *md = RTE_MBUF_FROM_BADDR(m->buf_addr);
 			rte_pktmbuf_detach(m);
 			if (rte_mbuf_refcnt_update(md, -1) == 0)
 				__rte_mbuf_raw_free(md);
 		}
-#endif
 		return(m);
-#ifdef RTE_MBUF_SCATTER_GATHER
 	}
 	return (NULL);
-#endif
 }
 
 /**
@@ -736,8 +807,10 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 static inline void __attribute__((always_inline))
 rte_pktmbuf_free_seg(struct rte_mbuf *m)
 {
-	if (likely(NULL != (m = __rte_pktmbuf_prefree_seg(m))))
+	if (likely(NULL != (m = __rte_pktmbuf_prefree_seg(m)))) {
+		m->next = NULL;
 		__rte_mbuf_raw_free(m);
+	}
 }
 
 /**
@@ -753,16 +826,14 @@ static inline void rte_pktmbuf_free(struct rte_mbuf *m)
 {
 	struct rte_mbuf *m_next;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	while (m != NULL) {
-		m_next = m->pkt.next;
+		m_next = m->next;
 		rte_pktmbuf_free_seg(m);
 		m = m_next;
 	}
 }
-
-#ifdef RTE_MBUF_SCATTER_GATHER
 
 /**
  * Creates a "clone" of the given packet mbuf.
@@ -792,21 +863,21 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
 		return (NULL);
 
 	mi = mc;
-	prev = &mi->pkt.next;
-	pktlen = md->pkt.pkt_len;
+	prev = &mi->next;
+	pktlen = md->pkt_len;
 	nseg = 0;
 
 	do {
 		nseg++;
 		rte_pktmbuf_attach(mi, md);
 		*prev = mi;
-		prev = &mi->pkt.next;
-	} while ((md = md->pkt.next) != NULL &&
+		prev = &mi->next;
+	} while ((md = md->next) != NULL &&
 	    (mi = rte_pktmbuf_alloc(mp)) != NULL);
 
 	*prev = NULL;
-	mc->pkt.nb_segs = nseg;
-	mc->pkt.pkt_len = pktlen;
+	mc->nb_segs = nseg;
+	mc->pkt_len = pktlen;
 
 	/* Allocation of new indirect segment failed */
 	if (unlikely (mi == NULL)) {
@@ -814,7 +885,7 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
 		return (NULL);
 	}
 
-	__rte_mbuf_sanity_check(mc, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(mc, 1);
 	return (mc);
 }
 
@@ -831,14 +902,12 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
  */
 static inline void rte_pktmbuf_refcnt_update(struct rte_mbuf *m, int16_t v)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	do {
 		rte_mbuf_refcnt_update(m, v);
-	} while ((m = m->pkt.next) != NULL);
+	} while ((m = m->next) != NULL);
 }
-
-#endif /* RTE_MBUF_SCATTER_GATHER */
 
 /**
  * Get the headroom in a packet mbuf.
@@ -850,8 +919,8 @@ static inline void rte_pktmbuf_refcnt_update(struct rte_mbuf *m, int16_t v)
  */
 static inline uint16_t rte_pktmbuf_headroom(const struct rte_mbuf *m)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
-	return (uint16_t) ((char*) m->pkt.data - (char*) m->buf_addr);
+	__rte_mbuf_sanity_check(m, 1);
+	return m->data_off;
 }
 
 /**
@@ -864,9 +933,9 @@ static inline uint16_t rte_pktmbuf_headroom(const struct rte_mbuf *m)
  */
 static inline uint16_t rte_pktmbuf_tailroom(const struct rte_mbuf *m)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 	return (uint16_t)(m->buf_len - rte_pktmbuf_headroom(m) -
-			  m->pkt.data_len);
+			  m->data_len);
 }
 
 /**
@@ -881,9 +950,9 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 {
 	struct rte_mbuf *m2 = (struct rte_mbuf *)m;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
-	while (m2->pkt.next != NULL)
-		m2 = m2->pkt.next;
+	__rte_mbuf_sanity_check(m, 1);
+	while (m2->next != NULL)
+		m2 = m2->next;
 	return m2;
 }
 
@@ -899,7 +968,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
  * @param t
  *   The type to cast the result into.
  */
-#define rte_pktmbuf_mtod(m, t) ((t)((m)->pkt.data))
+#define rte_pktmbuf_mtod(m, t) ((t)((char *)(m)->buf_addr + (m)->data_off))
 
 /**
  * A macro that returns the length of the packet.
@@ -909,7 +978,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
  * @param m
  *   The packet mbuf.
  */
-#define rte_pktmbuf_pkt_len(m) ((m)->pkt.pkt_len)
+#define rte_pktmbuf_pkt_len(m) ((m)->pkt_len)
 
 /**
  * A macro that returns the length of the segment.
@@ -919,7 +988,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
  * @param m
  *   The packet mbuf.
  */
-#define rte_pktmbuf_data_len(m) ((m)->pkt.data_len)
+#define rte_pktmbuf_data_len(m) ((m)->data_len)
 
 /**
  * Prepend len bytes to an mbuf data area.
@@ -939,16 +1008,16 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 static inline char *rte_pktmbuf_prepend(struct rte_mbuf *m,
 					uint16_t len)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	if (unlikely(len > rte_pktmbuf_headroom(m)))
 		return NULL;
 
-	m->pkt.data = (char*) m->pkt.data - len;
-	m->pkt.data_len = (uint16_t)(m->pkt.data_len + len);
-	m->pkt.pkt_len  = (m->pkt.pkt_len + len);
+	m->data_off -= len;
+	m->data_len = (uint16_t)(m->data_len + len);
+	m->pkt_len  = (m->pkt_len + len);
 
-	return (char*) m->pkt.data;
+	return (char *)m->buf_addr + m->data_off;
 }
 
 /**
@@ -971,15 +1040,15 @@ static inline char *rte_pktmbuf_append(struct rte_mbuf *m, uint16_t len)
 	void *tail;
 	struct rte_mbuf *m_last;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	m_last = rte_pktmbuf_lastseg(m);
 	if (unlikely(len > rte_pktmbuf_tailroom(m_last)))
 		return NULL;
 
-	tail = (char*) m_last->pkt.data + m_last->pkt.data_len;
-	m_last->pkt.data_len = (uint16_t)(m_last->pkt.data_len + len);
-	m->pkt.pkt_len  = (m->pkt.pkt_len + len);
+	tail = (char *)m_last->buf_addr + m_last->data_off + m_last->data_len;
+	m_last->data_len = (uint16_t)(m_last->data_len + len);
+	m->pkt_len  = (m->pkt_len + len);
 	return (char*) tail;
 }
 
@@ -999,15 +1068,15 @@ static inline char *rte_pktmbuf_append(struct rte_mbuf *m, uint16_t len)
  */
 static inline char *rte_pktmbuf_adj(struct rte_mbuf *m, uint16_t len)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
-	if (unlikely(len > m->pkt.data_len))
+	if (unlikely(len > m->data_len))
 		return NULL;
 
-	m->pkt.data_len = (uint16_t)(m->pkt.data_len - len);
-	m->pkt.data = ((char*) m->pkt.data + len);
-	m->pkt.pkt_len  = (m->pkt.pkt_len - len);
-	return (char*) m->pkt.data;
+	m->data_len = (uint16_t)(m->data_len - len);
+	m->data_off += len;
+	m->pkt_len  = (m->pkt_len - len);
+	return (char *)m->buf_addr + m->data_off;
 }
 
 /**
@@ -1028,14 +1097,14 @@ static inline int rte_pktmbuf_trim(struct rte_mbuf *m, uint16_t len)
 {
 	struct rte_mbuf *m_last;
 
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
+	__rte_mbuf_sanity_check(m, 1);
 
 	m_last = rte_pktmbuf_lastseg(m);
-	if (unlikely(len > m_last->pkt.data_len))
+	if (unlikely(len > m_last->data_len))
 		return -1;
 
-	m_last->pkt.data_len = (uint16_t)(m_last->pkt.data_len - len);
-	m->pkt.pkt_len  = (m->pkt.pkt_len - len);
+	m_last->data_len = (uint16_t)(m_last->data_len - len);
+	m->pkt_len  = (m->pkt_len - len);
 	return 0;
 }
 
@@ -1050,8 +1119,8 @@ static inline int rte_pktmbuf_trim(struct rte_mbuf *m, uint16_t len)
  */
 static inline int rte_pktmbuf_is_contiguous(const struct rte_mbuf *m)
 {
-	__rte_mbuf_sanity_check(m, RTE_MBUF_PKT, 1);
-	return !!(m->pkt.nb_segs == 1);
+	__rte_mbuf_sanity_check(m, 1);
+	return !!(m->nb_segs == 1);
 }
 
 /**

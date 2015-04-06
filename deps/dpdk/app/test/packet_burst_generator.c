@@ -54,18 +54,18 @@ copy_buf_to_pkt_segs(void *buf, unsigned len, struct rte_mbuf *pkt,
 	unsigned copy_len;
 
 	seg = pkt;
-	while (offset >= seg->pkt.data_len) {
-		offset -= seg->pkt.data_len;
-		seg = seg->pkt.next;
+	while (offset >= seg->data_len) {
+		offset -= seg->data_len;
+		seg = seg->next;
 	}
-	copy_len = seg->pkt.data_len - offset;
-	seg_buf = ((char *) seg->pkt.data + offset);
+	copy_len = seg->data_len - offset;
+	seg_buf = rte_pktmbuf_mtod(seg, char *) + offset;
 	while (len > copy_len) {
 		rte_memcpy(seg_buf, buf, (size_t) copy_len);
 		len -= copy_len;
 		buf = ((char *) buf + copy_len);
-		seg = seg->pkt.next;
-		seg_buf = seg->pkt.data;
+		seg = seg->next;
+		seg_buf = rte_pktmbuf_mtod(seg, void *);
 	}
 	rte_memcpy(seg_buf, buf, (size_t) len);
 }
@@ -73,17 +73,17 @@ copy_buf_to_pkt_segs(void *buf, unsigned len, struct rte_mbuf *pkt,
 static inline void
 copy_buf_to_pkt(void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 {
-	if (offset + len <= pkt->pkt.data_len) {
-		rte_memcpy(((char *) pkt->pkt.data + offset), buf, (size_t) len);
+	if (offset + len <= pkt->data_len) {
+		rte_memcpy(rte_pktmbuf_mtod(pkt, char *) + offset, buf, (size_t) len);
 		return;
 	}
 	copy_buf_to_pkt_segs(buf, len, pkt, offset);
 }
 
-
 void
 initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint8_t vlan_enabled, uint16_t van_id)
+		struct ether_addr *dst_mac, uint16_t ether_type,
+		uint8_t vlan_enabled, uint16_t van_id)
 {
 	ether_addr_copy(dst_mac, &eth_hdr->d_addr);
 	ether_addr_copy(src_mac, &eth_hdr->s_addr);
@@ -94,12 +94,27 @@ initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
 
 		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
 
-		vhdr->eth_proto =  rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		vhdr->eth_proto =  rte_cpu_to_be_16(ether_type);
 		vhdr->vlan_tci = van_id;
 	} else {
-		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+		eth_hdr->ether_type = rte_cpu_to_be_16(ether_type);
 	}
+}
 
+void
+initialize_arp_header(struct arp_hdr *arp_hdr, struct ether_addr *src_mac,
+		struct ether_addr *dst_mac, uint32_t src_ip, uint32_t dst_ip,
+		uint32_t opcode)
+{
+	arp_hdr->arp_hrd = rte_cpu_to_be_16(ARP_HRD_ETHER);
+	arp_hdr->arp_pro = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	arp_hdr->arp_hln = ETHER_ADDR_LEN;
+	arp_hdr->arp_pln = sizeof(uint32_t);
+	arp_hdr->arp_op = rte_cpu_to_be_16(opcode);
+	ether_addr_copy(src_mac, &arp_hdr->arp_data.arp_sha);
+	arp_hdr->arp_data.arp_sip = src_ip;
+	ether_addr_copy(dst_mac, &arp_hdr->arp_data.arp_tha);
+	arp_hdr->arp_data.arp_tip = dst_ip;
 }
 
 uint16_t
@@ -190,20 +205,12 @@ initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
  */
 #define RTE_MAX_SEGS_PER_PKT 255 /**< pkt.nb_segs is a 8-bit unsigned char. */
 
-#define TXONLY_DEF_PACKET_LEN 64
-#define TXONLY_DEF_PACKET_LEN_128 128
-
-uint16_t tx_pkt_length = TXONLY_DEF_PACKET_LEN;
-uint16_t tx_pkt_seg_lengths[RTE_MAX_SEGS_PER_PKT] = {
-		TXONLY_DEF_PACKET_LEN_128,
-};
-
-uint8_t  tx_pkt_nb_segs = 1;
 
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
 		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
-		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst)
+		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst,
+		uint8_t pkt_len, uint8_t nb_pkt_segs)
 {
 	int i, nb_pkt = 0;
 	size_t eth_hdr_size;
@@ -220,19 +227,19 @@ nomore_mbuf:
 			break;
 		}
 
-		pkt->pkt.data_len = tx_pkt_seg_lengths[0];
+		pkt->data_len = pkt_len;
 		pkt_seg = pkt;
-		for (i = 1; i < tx_pkt_nb_segs; i++) {
-			pkt_seg->pkt.next = rte_pktmbuf_alloc(mp);
-			if (pkt_seg->pkt.next == NULL) {
-				pkt->pkt.nb_segs = i;
+		for (i = 1; i < nb_pkt_segs; i++) {
+			pkt_seg->next = rte_pktmbuf_alloc(mp);
+			if (pkt_seg->next == NULL) {
+				pkt->nb_segs = i;
 				rte_pktmbuf_free(pkt);
 				goto nomore_mbuf;
 			}
-			pkt_seg = pkt_seg->pkt.next;
-			pkt_seg->pkt.data_len = tx_pkt_seg_lengths[i];
+			pkt_seg = pkt_seg->next;
+			pkt_seg->data_len = pkt_len;
 		}
-		pkt_seg->pkt.next = NULL; /* Last segment of packet. */
+		pkt_seg->next = NULL; /* Last segment of packet. */
 
 		/*
 		 * Copy headers in first packet segment(s).
@@ -258,21 +265,21 @@ nomore_mbuf:
 		 * Complete first mbuf of packet and append it to the
 		 * burst of packets to be transmitted.
 		 */
-		pkt->pkt.nb_segs = tx_pkt_nb_segs;
-		pkt->pkt.pkt_len = tx_pkt_length;
-		pkt->pkt.vlan_macip.f.l2_len = eth_hdr_size;
+		pkt->nb_segs = nb_pkt_segs;
+		pkt->pkt_len = pkt_len;
+		pkt->l2_len = eth_hdr_size;
 
 		if (ipv4) {
-			pkt->pkt.vlan_macip.f.vlan_tci  = ETHER_TYPE_IPv4;
-			pkt->pkt.vlan_macip.f.l3_len = sizeof(struct ipv4_hdr);
+			pkt->vlan_tci  = ETHER_TYPE_IPv4;
+			pkt->l3_len = sizeof(struct ipv4_hdr);
 
 			if (vlan_enabled)
 				pkt->ol_flags = PKT_RX_IPV4_HDR | PKT_RX_VLAN_PKT;
 			else
 				pkt->ol_flags = PKT_RX_IPV4_HDR;
 		} else {
-			pkt->pkt.vlan_macip.f.vlan_tci  = ETHER_TYPE_IPv6;
-			pkt->pkt.vlan_macip.f.l3_len = sizeof(struct ipv6_hdr);
+			pkt->vlan_tci  = ETHER_TYPE_IPv6;
+			pkt->l3_len = sizeof(struct ipv6_hdr);
 
 			if (vlan_enabled)
 				pkt->ol_flags = PKT_RX_IPV6_HDR | PKT_RX_VLAN_PKT;

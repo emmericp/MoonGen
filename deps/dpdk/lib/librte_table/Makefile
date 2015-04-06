@@ -39,6 +39,10 @@ LIB = librte_table.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_table_version.map
+
+LIBABIVER := 1
+
 #
 # all source are stored in SRCS-y
 #

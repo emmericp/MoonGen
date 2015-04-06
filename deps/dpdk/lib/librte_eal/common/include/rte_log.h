@@ -106,8 +106,7 @@ extern FILE *eal_default_log_stream;
  *
  * This can be done at any time. The f argument represents the stream
  * to be used to send the logs. If f is NULL, the default output is
- * used, which is the serial line in case of bare metal, or directly
- * sent to syslog in case of linux application.
+ * used (stderr).
  *
  * @param f
  *   Pointer to the stream.
@@ -130,6 +129,11 @@ int rte_openlog_stream(FILE *f);
 void rte_set_log_level(uint32_t level);
 
 /**
+ * Get the global log level.
+ */
+uint32_t rte_get_log_level(void);
+
+/**
  * Enable or disable the log type.
  *
  * @param type
@@ -138,6 +142,11 @@ void rte_set_log_level(uint32_t level);
  *   True for enable; false for disable.
  */
 void rte_set_log_type(uint32_t type, int enable);
+
+/**
+ * Get the global log type.
+ */
+uint32_t rte_get_log_type(void);
 
 /**
  * Get the current loglevel for the message being processed.

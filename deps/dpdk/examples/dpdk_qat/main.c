@@ -47,7 +47,6 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -69,30 +68,10 @@
 #include <rte_ip.h>
 #include <rte_string_fns.h>
 
-#include "main.h"
 #include "crypto.h"
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   (32 * 1024)
-
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-#define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
-#define RX_HTHRESH 8 /**< Default values of RX host threshold reg. */
-#define RX_WTHRESH 4 /**< Default values of RX write-back threshold reg. */
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-#define TX_PTHRESH 36 /**< Default values of TX prefetch threshold reg. */
-#define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
-#define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
@@ -176,24 +155,6 @@ static struct rte_eth_conf port_conf = {
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
-};
-
-static const struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-		.pthresh = RX_PTHRESH,
-		.hthresh = RX_HTHRESH,
-		.wthresh = RX_WTHRESH,
-	},
-};
-
-static const struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-		.pthresh = TX_PTHRESH,
-		.hthresh = TX_HTHRESH,
-		.wthresh = TX_WTHRESH,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
 };
 
 static struct rte_mempool * pktmbuf_pool[RTE_MAX_NUMA_NODES];
@@ -384,7 +345,7 @@ main_loop(__attribute__((unused)) void *dummy)
 			}
 		}
 
-		port = dst_ports[pkt->pkt.in_port];
+		port = dst_ports[pkt->port];
 
 		/* Transmit the packet */
 		nic_tx_send_packet(pkt, (uint8_t)port);
@@ -629,13 +590,9 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 {
-	printf ("%s%02X:%02X:%02X:%02X:%02X:%02X", name,
-		eth_addr->addr_bytes[0],
-		eth_addr->addr_bytes[1],
-		eth_addr->addr_bytes[2],
-		eth_addr->addr_bytes[3],
-		eth_addr->addr_bytes[4],
-		eth_addr->addr_bytes[5]);
+	char buf[ETHER_ADDR_FMT_SIZE];
+	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	printf("%s%s", name, buf);
 }
 
 static int
@@ -672,7 +629,7 @@ init_mem(void)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	struct lcore_conf *qconf;
 	struct rte_eth_link link;
@@ -695,9 +652,6 @@ MAIN(int argc, char **argv)
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		return -1;
-
-	if (rte_eal_pci_probe() < 0)
-		rte_panic("Cannot probe PCI\n");
 
 	if (check_lcore_params() < 0)
 		rte_panic("check_lcore_params failed\n");
@@ -785,7 +739,8 @@ MAIN(int argc, char **argv)
 			printf("txq=%u,%d,%d ", lcoreid, queueid, socketid);
 			fflush(stdout);
 			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
-						     socketid, &tx_conf);
+					socketid,
+					NULL);
 			if (ret < 0)
 				rte_panic("rte_eth_tx_queue_setup: err=%d, "
 					"port=%d\n", ret, portid);
@@ -810,7 +765,9 @@ MAIN(int argc, char **argv)
 			fflush(stdout);
 
 			ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
-				        socketid, &rx_conf, pktmbuf_pool[socketid]);
+					socketid,
+					NULL,
+					pktmbuf_pool[socketid]);
 			if (ret < 0)
 				rte_panic("rte_eth_rx_queue_setup: err=%d,"
 						"port=%d\n", ret, portid);

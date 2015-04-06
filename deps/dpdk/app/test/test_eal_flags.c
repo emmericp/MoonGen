@@ -52,6 +52,11 @@
 
 #include "process.h"
 
+#ifdef RTE_LIBRTE_XEN_DOM0
+#define DEFAULT_MEM_SIZE "30"
+#else
+#define DEFAULT_MEM_SIZE "18"
+#endif
 #define mp_flag "--proc-type=secondary"
 #define no_hpet "--no-hpet"
 #define no_huge "--no-huge"
@@ -395,18 +400,26 @@ test_invalid_b_flag(void)
 static int
 test_invalid_vdev_flag(void)
 {
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point, and we also need to
+	 * run another primary process here */
+	const char * prefix = no_shconf;
+#else
+	const char * prefix = "--file-prefix=vdev";
+#endif
+
 	/* Test with invalid vdev option */
-	const char *vdevinval[] = {prgname, "--file-prefix=vdev","-n", "1",
+	const char *vdevinval[] = {prgname, prefix, "-n", "1",
 				"-c", "1", vdev, "eth_dummy"};
 
 	/* Test with valid vdev option */
-	const char *vdevval1[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	const char *vdevval1[] = {prgname, prefix, "-n", "1",
 	"-c", "1", vdev, "eth_ring0"};
 
-	const char *vdevval2[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	const char *vdevval2[] = {prgname, prefix, "-n", "1",
 	"-c", "1", vdev, "eth_ring0,args=test"};
 
-	const char *vdevval3[] = {prgname, "--file-prefix=vdev", "-n", "1",
+	const char *vdevval3[] = {prgname, prefix, "-n", "1",
 	"-c", "1", vdev, "eth_ring0,nodeaction=r1:0:CREATE"};
 
 	if (launch_proc(vdevinval) == 0) {
@@ -479,7 +492,7 @@ test_invalid_r_flag(void)
 }
 
 /*
- * Test that the app doesn't run without the coremask flag. In all cases
+ * Test that the app doesn't run without the coremask/corelist flags. In all cases
  * should give an error and fail to run
  */
 static int
@@ -499,21 +512,157 @@ test_missing_c_flag(void)
 
 	/* -c flag but no coremask value */
 	const char *argv1[] = { prgname, prefix, mp_flag, "-n", "3", "-c"};
-	/* No -c flag at all */
+	/* No -c, -l or --lcores flag at all */
 	const char *argv2[] = { prgname, prefix, mp_flag, "-n", "3"};
 	/* bad coremask value */
-	const char *argv3[] = { prgname, prefix, mp_flag, "-n", "3", "-c", "error" };
+	const char *argv3[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-c", "error" };
 	/* sanity check of tests - valid coremask value */
-	const char *argv4[] = { prgname, prefix, mp_flag, "-n", "3", "-c", "1" };
+	const char *argv4[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-c", "1" };
+	/* -l flag but no corelist value */
+	const char *argv5[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l"};
+	const char *argv6[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l", " " };
+	/* bad corelist values */
+	const char *argv7[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l", "error" };
+	const char *argv8[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l", "1-" };
+	const char *argv9[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l", "1," };
+	const char *argv10[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "-l", "1#2" };
+	/* sanity check test - valid corelist value */
+	const char *argv11[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "-l", "1-2,3" };
+
+	/* --lcores flag but no lcores value */
+	const char *argv12[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores" };
+	const char *argv13[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", " " };
+	/* bad lcores value */
+	const char *argv14[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "1-3-5" };
+	const char *argv15[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "0-1,,2" };
+	const char *argv16[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "0-,1" };
+	const char *argv17[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "(0-,2-4)" };
+	const char *argv18[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "(-1,2)" };
+	const char *argv19[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "(2-4)@(2-4-6)" };
+	const char *argv20[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "(a,2)" };
+	const char *argv21[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "1-3@(1,3)" };
+	const char *argv22[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "3@((1,3)" };
+	const char *argv23[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "(4-7)=(1,3)" };
+	const char *argv24[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores", "[4-7]@(1,3)" };
+	/* sanity check of tests - valid lcores value */
+	const char *argv25[] = { prgname, prefix, mp_flag,
+				 "-n", "3", "--lcores",
+				 "0-1,2@(5-7),(3-5)@(0,2),(0,6),7"};
 
 	if (launch_proc(argv1) == 0
 			|| launch_proc(argv2) == 0
 			|| launch_proc(argv3) == 0) {
-		printf("Error - process ran without error when missing -c flag\n");
+		printf("Error - "
+		       "process ran without error when missing -c flag\n");
 		return -1;
 	}
 	if (launch_proc(argv4) != 0) {
-		printf("Error - process did not run ok with valid coremask value\n");
+		printf("Error - "
+		       "process did not run ok with valid coremask value\n");
+		return -1;
+	}
+
+	/* start -l test */
+	if (launch_proc(argv5) == 0
+			|| launch_proc(argv6) == 0
+			|| launch_proc(argv7) == 0
+			|| launch_proc(argv8) == 0
+			|| launch_proc(argv9) == 0
+			|| launch_proc(argv10) == 0) {
+		printf("Error - "
+		       "process ran without error with invalid -l flag\n");
+		return -1;
+	}
+	if (launch_proc(argv11) != 0) {
+		printf("Error - "
+		       "process did not run ok with valid corelist value\n");
+		return -1;
+	}
+
+	/* start --lcores tests */
+	if (launch_proc(argv12) == 0 || launch_proc(argv13) == 0 ||
+	    launch_proc(argv14) == 0 || launch_proc(argv15) == 0 ||
+	    launch_proc(argv16) == 0 || launch_proc(argv17) == 0 ||
+	    launch_proc(argv18) == 0 || launch_proc(argv19) == 0 ||
+	    launch_proc(argv20) == 0 || launch_proc(argv21) == 0 ||
+	    launch_proc(argv21) == 0 || launch_proc(argv22) == 0 ||
+	    launch_proc(argv23) == 0 || launch_proc(argv24) == 0) {
+		printf("Error - "
+		       "process ran without error with invalid --lcore flag\n");
+		return -1;
+	}
+
+	if (launch_proc(argv25) != 0) {
+		printf("Error - "
+		       "process did not run ok with valid corelist value\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Test --master-lcore option with matching coremask
+ */
+static int
+test_master_lcore_flag(void)
+{
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* BSD target doesn't support prefixes at this point */
+	const char *prefix = "";
+#else
+	char prefix[PATH_MAX], tmp[PATH_MAX];
+	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
+		printf("Error - unable to get current prefix!\n");
+		return -1;
+	}
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#endif
+
+	/* --master-lcore flag but no value */
+	const char *argv1[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore"};
+	/* --master-lcore flag with invalid value */
+	const char *argv2[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "-1"};
+	const char *argv3[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "X"};
+	/* master lcore not in coremask */
+	const char *argv4[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "2"};
+	/* valid value */
+	const char *argv5[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "1"};
+	/* valid value set before coremask */
+	const char *argv6[] = { prgname, prefix, mp_flag, "-n", "1", "--master-lcore", "1", "-c", "3"};
+
+	if (launch_proc(argv1) == 0
+			|| launch_proc(argv2) == 0
+			|| launch_proc(argv3) == 0
+			|| launch_proc(argv4) == 0) {
+		printf("Error - process ran without error with wrong --master-lcore\n");
+		return -1;
+	}
+	if (launch_proc(argv5) != 0
+			|| launch_proc(argv6) != 0) {
+		printf("Error - process did not run ok with valid --master-lcore\n");
 		return -1;
 	}
 	return 0;
@@ -616,14 +765,15 @@ test_no_huge_flag(void)
 	/* With --no-huge */
 	const char *argv1[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2"};
 	/* With --no-huge and -m */
-	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2", "-m", "2"};
+	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
+			"-m", DEFAULT_MEM_SIZE};
 
 	/* With --no-huge and --socket-mem */
 	const char *argv3[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
-			"--socket-mem=2"};
+			"--socket-mem=" DEFAULT_MEM_SIZE};
 	/* With --no-huge, -m and --socket-mem */
 	const char *argv4[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
-			"-m", "2", "--socket-mem=2"};
+			"-m", DEFAULT_MEM_SIZE, "--socket-mem=" DEFAULT_MEM_SIZE};
 	if (launch_proc(argv1) != 0) {
 		printf("Error - process did not run ok with --no-huge flag\n");
 		return -1;
@@ -789,20 +939,20 @@ test_misc_flags(void)
 	/* With invalid --syslog */
 	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
 	/* With no-sh-conf */
-	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			no_shconf, nosh_prefix };
 
 #ifdef RTE_EXEC_ENV_BSDAPP
 	return 0;
 #endif
 	/* With --huge-dir */
-	const char *argv7[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv7[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", hugepath};
 	/* With empty --huge-dir (should fail) */
-	const char *argv8[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv8[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir"};
 	/* With invalid --huge-dir */
-	const char *argv9[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv9[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", "invalid"};
 	/* Secondary process with invalid --huge-dir (should run as flag has no
 	 * effect on secondary processes) */
@@ -923,15 +1073,15 @@ test_file_prefix(void)
 #endif
 
 	/* this should fail unless the test itself is run with "memtest" prefix */
-	const char *argv0[] = {prgname, mp_flag, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv0[] = {prgname, mp_flag, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=" memtest };
 
 	/* primary process with memtest1 */
-	const char *argv1[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv1[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 				"--file-prefix=" memtest1 };
 
 	/* primary process with memtest2 */
-	const char *argv2[] = {prgname, "-c", "1", "-n", "2", "-m", "2",
+	const char *argv2[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 				"--file-prefix=" memtest2 };
 
 	char prefix[32];
@@ -1025,7 +1175,6 @@ test_file_prefix(void)
 static int
 test_memory_flags(void)
 {
-	const char* mem_size = NULL;
 #ifdef RTE_EXEC_ENV_BSDAPP
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
@@ -1037,20 +1186,14 @@ test_memory_flags(void)
 	}
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
-#ifdef RTE_LIBRTE_XEN_DOM0
-	mem_size = "30";
-#else
-	mem_size = "2";
-#endif
-
 
 	/* valid -m flag and mp flag */
 	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "10",
-			"-n", "2", "-m", mem_size};
+			"-n", "2", "-m", DEFAULT_MEM_SIZE};
 
 	/* valid -m flag */
 	const char *argv1[] = {prgname, "-c", "10", "-n", "2",
-			"--file-prefix=" memtest, "-m", mem_size};
+			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE};
 
 	/* invalid (zero) --socket-mem flag */
 	const char *argv2[] = {prgname, "-c", "10", "-n", "2",
@@ -1078,7 +1221,7 @@ test_memory_flags(void)
 
 	/* valid --socket-mem specified together with -m flag */
 	const char *argv8[] = {prgname, "-c", "10", "-n", "2",
-			"--file-prefix=" memtest, "-m", "2", "--socket-mem=2,2"};
+			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE, "--socket-mem=2,2"};
 
 	/* construct an invalid socket mask with 2 megs on each socket plus
 	 * extra 2 megs on socket that doesn't exist on current system */
@@ -1100,7 +1243,7 @@ test_memory_flags(void)
 
 	/* add one extra socket */
 	for (i = 0; i < num_sockets + 1; i++) {
-		snprintf(buf, sizeof(buf), "%s2", invalid_socket_mem);
+		snprintf(buf, sizeof(buf), "%s%s", invalid_socket_mem, DEFAULT_MEM_SIZE);
 		snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "%s", buf);
 
 		if (num_sockets + 1 - i > 1) {
@@ -1116,7 +1259,7 @@ test_memory_flags(void)
 
 	/* add one extra socket */
 	for (i = 0; i < num_sockets; i++) {
-		snprintf(buf, sizeof(buf), "%s2", valid_socket_mem);
+		snprintf(buf, sizeof(buf), "%s%s", valid_socket_mem, DEFAULT_MEM_SIZE);
 		snprintf(valid_socket_mem, sizeof(valid_socket_mem), "%s", buf);
 
 		if (num_sockets - i > 1) {
@@ -1211,6 +1354,12 @@ test_eal_flags(void)
 	ret = test_missing_c_flag();
 	if (ret < 0) {
 		printf("Error in test_missing_c_flag()\n");
+		return ret;
+	}
+
+	ret = test_master_lcore_flag();
+	if (ret < 0) {
+		printf("Error in test_master_lcore_flag()\n");
 		return ret;
 	}
 

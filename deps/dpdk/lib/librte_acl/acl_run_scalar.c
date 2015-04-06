@@ -94,15 +94,6 @@ resolve_priority_scalar(uint64_t transition, int n,
 	}
 }
 
-/*
- * When processing the transition, rather than using if/else
- * construct, the offset is calculated for DFA and QRANGE and
- * then conditionally added to the address based on node type.
- * This is done to avoid branch mis-predictions. Since the
- * offset is rather simple calculation it is more efficient
- * to do the calculation and do a condition move rather than
- * a conditional branch to determine which calculation to do.
- */
 static inline uint32_t
 scan_forward(uint32_t input, uint32_t max)
 {
@@ -117,18 +108,27 @@ scalar_transition(const uint64_t *trans_table, uint64_t transition,
 
 	/* break transition into component parts */
 	ranges = transition >> (sizeof(index) * CHAR_BIT);
-
-	/* calc address for a QRANGE node */
-	c = input * SCALAR_QRANGE_MULT;
-	a = ranges | SCALAR_QRANGE_MIN;
 	index = transition & ~RTE_ACL_NODE_INDEX;
-	a -= (c & SCALAR_QRANGE_MASK);
-	b = c & SCALAR_QRANGE_MIN;
 	addr = transition ^ index;
-	a &= SCALAR_QRANGE_MIN;
-	a ^= (ranges ^ b) & (a ^ b);
-	x = scan_forward(a, 32) >> 3;
-	addr += (index == RTE_ACL_NODE_DFA) ? input : x;
+
+	if (index != RTE_ACL_NODE_DFA) {
+		/* calc address for a QRANGE/SINGLE node */
+		c = (uint32_t)input * SCALAR_QRANGE_MULT;
+		a = ranges | SCALAR_QRANGE_MIN;
+		a -= (c & SCALAR_QRANGE_MASK);
+		b = c & SCALAR_QRANGE_MIN;
+		a &= SCALAR_QRANGE_MIN;
+		a ^= (ranges ^ b) & (a ^ b);
+		x = scan_forward(a, 32) >> 3;
+	} else {
+		/* calc address for a DFA node */
+		x = ranges >> (input /
+			RTE_ACL_DFA_GR64_SIZE * RTE_ACL_DFA_GR64_BIT);
+		x &= UINT8_MAX;
+		x = input - x;
+	}
+
+	addr += x;
 
 	/* pickup next transition */
 	transition = *(trans_table + addr);
@@ -147,10 +147,6 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	struct completion cmplt[MAX_SEARCHES_SCALAR];
 	struct parms parms[MAX_SEARCHES_SCALAR];
 
-	if (categories != 1 &&
-		((RTE_ACL_RESULTS_MULTIPLIER - 1) & categories) != 0)
-		return -EINVAL;
-
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results, num,
 		categories, ctx->trans_table);
 
@@ -162,31 +158,34 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	transition0 = index_array[0];
 	transition1 = index_array[1];
 
+	while ((transition0 | transition1) & RTE_ACL_NODE_MATCH) {
+		transition0 = acl_match_check(transition0,
+			0, ctx, parms, &flows, resolve_priority_scalar);
+		transition1 = acl_match_check(transition1,
+			1, ctx, parms, &flows, resolve_priority_scalar);
+	}
+
 	while (flows.started > 0) {
 
 		input0 = GET_NEXT_4BYTES(parms, 0);
 		input1 = GET_NEXT_4BYTES(parms, 1);
 
 		for (n = 0; n < 4; n++) {
-			if (likely((transition0 & RTE_ACL_NODE_MATCH) == 0))
-				transition0 = scalar_transition(flows.trans,
-					transition0, (uint8_t)input0);
 
+			transition0 = scalar_transition(flows.trans,
+				transition0, (uint8_t)input0);
 			input0 >>= CHAR_BIT;
 
-			if (likely((transition1 & RTE_ACL_NODE_MATCH) == 0))
-				transition1 = scalar_transition(flows.trans,
-					transition1, (uint8_t)input1);
-
+			transition1 = scalar_transition(flows.trans,
+				transition1, (uint8_t)input1);
 			input1 >>= CHAR_BIT;
-
 		}
-		if ((transition0 | transition1) & RTE_ACL_NODE_MATCH) {
+
+		while ((transition0 | transition1) & RTE_ACL_NODE_MATCH) {
 			transition0 = acl_match_check(transition0,
 				0, ctx, parms, &flows, resolve_priority_scalar);
 			transition1 = acl_match_check(transition1,
 				1, ctx, parms, &flows, resolve_priority_scalar);
-
 		}
 	}
 	return 0;

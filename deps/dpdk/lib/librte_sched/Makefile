@@ -41,6 +41,10 @@ CFLAGS += $(WERROR_FLAGS)
 
 CFLAGS_rte_red.o := -D_GNU_SOURCE
 
+EXPORT_MAP := rte_sched_version.map
+
+LIBABIVER := 1
+
 #
 # all source are stored in SRCS-y
 #

@@ -40,7 +40,6 @@
 
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_launch.h>
@@ -109,7 +108,7 @@ malloc_heap_add_memzone(struct malloc_heap *heap, size_t size, unsigned align)
 	struct malloc_elem *start_elem = (struct malloc_elem *)mz->addr;
 	struct malloc_elem *end_elem = RTE_PTR_ADD(mz->addr,
 			mz_size - MALLOC_ELEM_OVERHEAD);
-	end_elem = RTE_PTR_ALIGN_FLOOR(end_elem, CACHE_LINE_SIZE);
+	end_elem = RTE_PTR_ALIGN_FLOOR(end_elem, RTE_CACHE_LINE_SIZE);
 
 	const unsigned elem_size = (uintptr_t)end_elem - (uintptr_t)start_elem;
 	malloc_elem_init(start_elem, heap, mz, elem_size);
@@ -155,8 +154,8 @@ void *
 malloc_heap_alloc(struct malloc_heap *heap,
 		const char *type __attribute__((unused)), size_t size, unsigned align)
 {
-	size = CACHE_LINE_ROUNDUP(size);
-	align = CACHE_LINE_ROUNDUP(align);
+	size = RTE_CACHE_LINE_ROUNDUP(size);
+	align = RTE_CACHE_LINE_ROUNDUP(align);
 	rte_spinlock_lock(&heap->lock);
 	struct malloc_elem *elem = find_suitable_element(heap, size, align);
 	if (elem == NULL){

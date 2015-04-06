@@ -51,6 +51,14 @@ extern "C" {
 #include <errno.h>
 #include <limits.h>
 
+#ifndef typeof
+#define typeof __typeof__
+#endif
+
+#ifndef asm
+#define asm __asm__
+#endif
+
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**
@@ -85,25 +93,6 @@ extern "C" {
 
 /*********** Macros/static functions for doing alignment ********/
 
-/**
- * Function which rounds an unsigned int down to a given power-of-two value.
- * Takes uintptr_t types as parameters, as this type of operation is most
- * commonly done for pointer alignment. (See also RTE_ALIGN_FLOOR,
- * RTE_ALIGN_CEIL, RTE_ALIGN, RTE_PTR_ALIGN_FLOOR, RTE_PTR_ALIGN_CEL,
- * RTE_PTR_ALIGN macros)
- * @param ptr
- *   The value to be rounded down
- * @param align
- *   The power-of-two of which the result must be a multiple.
- * @return
- *   Function returns a properly aligned value where align is a power-of-two.
- *   If align is not a power-of-two, result will be incorrect.
- */
-static inline uintptr_t
-rte_align_floor_int(uintptr_t ptr, uintptr_t align)
-{
-	return (ptr & ~(align - 1));
-}
 
 /**
  * Macro to align a pointer to a given power-of-two. The resultant
@@ -112,7 +101,7 @@ rte_align_floor_int(uintptr_t ptr, uintptr_t align)
  * must be a power-of-two value.
  */
 #define RTE_PTR_ALIGN_FLOOR(ptr, align) \
-	(typeof(ptr))rte_align_floor_int((uintptr_t)ptr, align)
+	((typeof(ptr))RTE_ALIGN_FLOOR((uintptr_t)ptr, align))
 
 /**
  * Macro to align a value to a given power-of-two. The resultant value
@@ -203,7 +192,7 @@ extern int RTE_BUILD_BUG_ON_detected_error;
 static inline int
 rte_is_power_of_2(uint32_t n)
 {
-	return ((n-1) & n) == 0;
+	return n && !(n & (n - 1));
 }
 
 /**

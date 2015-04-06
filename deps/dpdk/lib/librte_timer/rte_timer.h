@@ -76,7 +76,7 @@ extern "C" {
 #define RTE_TIMER_RUNNING 2 /**< State: timer function is running. */
 #define RTE_TIMER_CONFIG  3 /**< State: timer is being configured. */
 
-#define RTE_TIMER_NO_OWNER -1 /**< Timer has no owner. */
+#define RTE_TIMER_NO_OWNER -2 /**< Timer has no owner. */
 
 /**
  * Timer type: Periodic or single (one-shot).
@@ -115,7 +115,7 @@ struct rte_timer;
 /**
  * Callback function type for timer expiry.
  */
-typedef void (rte_timer_cb_t)(struct rte_timer *, void *);
+typedef void (*rte_timer_cb_t)(struct rte_timer *, void *);
 
 #define MAX_SKIPLIST_DEPTH 10
 
@@ -128,7 +128,7 @@ struct rte_timer
 	struct rte_timer *sl_next[MAX_SKIPLIST_DEPTH];
 	volatile union rte_timer_status status; /**< Status of timer. */
 	uint64_t period;       /**< Period of timer (0 if not periodic). */
-	rte_timer_cb_t *f;     /**< Callback function. */
+	rte_timer_cb_t f;      /**< Callback function. */
 	void *arg;             /**< Argument to callback function. */
 };
 
@@ -310,7 +310,7 @@ int rte_timer_pending(struct rte_timer *tim);
 /**
  * Manage the timer list and execute callback functions.
  *
- * This function must be called periodically from all cores
+ * This function must be called periodically from EAL lcores
  * main_loop(). It browses the list of pending timers and runs all
  * timers that are expired.
  *

@@ -36,6 +36,7 @@
 
 #include <rte_common.h>
 #include <rte_mbuf.h>
+#include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 
@@ -72,11 +73,11 @@ rte_table_array_create(void *params, int socket_id, uint32_t entry_size)
 
 	/* Memory allocation */
 	total_cl_size = (sizeof(struct rte_table_array) +
-			CACHE_LINE_SIZE) / CACHE_LINE_SIZE;
+			RTE_CACHE_LINE_SIZE) / RTE_CACHE_LINE_SIZE;
 	total_cl_size += (p->n_entries * entry_size +
-			CACHE_LINE_SIZE) / CACHE_LINE_SIZE;
-	total_size = total_cl_size * CACHE_LINE_SIZE;
-	t = rte_zmalloc_socket("TABLE", total_size, CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE) / RTE_CACHE_LINE_SIZE;
+	total_size = total_cl_size * RTE_CACHE_LINE_SIZE;
+	t = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (t == NULL) {
 		RTE_LOG(ERR, TABLE,
 			"%s: Cannot allocate %u bytes for array table\n",
@@ -164,6 +165,8 @@ rte_table_array_lookup(
 {
 	struct rte_table_array *t = (struct rte_table_array *) table;
 
+	*lookup_hit_mask = pkts_mask;
+
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
 		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
 		uint32_t i;
@@ -189,8 +192,6 @@ rte_table_array_lookup(
 			pkts_mask &= ~pkt_mask;
 		}
 	}
-
-	*lookup_hit_mask = pkts_mask;
 
 	return 0;
 }

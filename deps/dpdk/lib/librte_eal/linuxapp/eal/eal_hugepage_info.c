@@ -47,7 +47,6 @@
 
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_launch.h>
 #include <rte_per_lcore.h>
@@ -83,8 +82,6 @@ get_num_hugepages(const char *subdir)
 		nr_hp_file = "nr_hugepages";
 	else
 		nr_hp_file = "free_hugepages";
-
-	memset(path, 0, sizeof(path));
 
 	snprintf(path, sizeof(path), "%s/%s/%s",
 			sys_dir_path, subdir, nr_hp_file);
@@ -324,7 +321,7 @@ eal_hugepage_info_init(void)
 				 * later they will be sorted */
 				hpi->num_pages[0] = get_num_hugepages(dirent->d_name);
 
-#ifndef RTE_ARCH_X86_64
+#ifndef RTE_ARCH_64
 				/* for 32-bit systems, limit number of hugepages to 1GB per page size */
 				hpi->num_pages[0] = RTE_MIN(hpi->num_pages[0],
 						RTE_PGSIZE_1G / hpi->hugepage_sz);

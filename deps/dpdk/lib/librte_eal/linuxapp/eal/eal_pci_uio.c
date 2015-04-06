@@ -32,83 +32,59 @@
  */
 
 #include <string.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
+#include <linux/pci_regs.h>
 
 #include <rte_log.h>
 #include <rte_pci.h>
+#include <rte_eal_memconfig.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
-#include <rte_tailq.h>
 
 #include "rte_pci_dev_ids.h"
 #include "eal_filesystem.h"
 #include "eal_pci_init.h"
 
-static int pci_parse_sysfs_value(const char *filename, uint64_t *val);
+void *pci_map_addr = NULL;
 
+static struct rte_tailq_elem rte_uio_tailq = {
+	.name = "UIO_RESOURCE_LIST",
+};
+EAL_REGISTER_TAILQ(rte_uio_tailq)
 
 #define OFF_MAX              ((uint64_t)(off_t)-1)
+
 static int
-pci_uio_get_mappings(const char *devname, struct pci_map maps[], int nb_maps)
+pci_uio_set_bus_master(int dev_fd)
 {
-	int i;
-	char dirname[PATH_MAX];
-	char filename[PATH_MAX];
-	uint64_t offset, size;
+	uint16_t reg;
+	int ret;
 
-	for (i = 0; i != nb_maps; i++) {
-
-		/* check if map directory exists */
-		snprintf(dirname, sizeof(dirname),
-			"%s/maps/map%u", devname, i);
-
-		if (access(dirname, F_OK) != 0)
-			break;
-
-		/* get mapping offset */
-		snprintf(filename, sizeof(filename),
-			"%s/offset", dirname);
-		if (pci_parse_sysfs_value(filename, &offset) < 0) {
-			RTE_LOG(ERR, EAL,
-				"%s(): cannot parse offset of %s\n",
-				__func__, dirname);
-			return -1;
-		}
-
-		/* get mapping size */
-		snprintf(filename, sizeof(filename),
-			"%s/size", dirname);
-		if (pci_parse_sysfs_value(filename, &size) < 0) {
-			RTE_LOG(ERR, EAL,
-				"%s(): cannot parse size of %s\n",
-				__func__, dirname);
-			return -1;
-		}
-
-		/* get mapping physical address */
-		snprintf(filename, sizeof(filename),
-			"%s/addr", dirname);
-		if (pci_parse_sysfs_value(filename, &maps[i].phaddr) < 0) {
-			RTE_LOG(ERR, EAL,
-				"%s(): cannot parse addr of %s\n",
-				__func__, dirname);
-			return -1;
-		}
-
-		if ((offset > OFF_MAX) || (size > SIZE_MAX)) {
-			RTE_LOG(ERR, EAL,
-				"%s(): offset/size exceed system max value\n",
-				__func__);
-			return -1;
-		}
-
-		maps[i].offset = offset;
-		maps[i].size = size;
+	ret = pread(dev_fd, &reg, sizeof(reg), PCI_COMMAND);
+	if (ret != sizeof(reg)) {
+		RTE_LOG(ERR, EAL,
+			"Cannot read command from PCI config space!\n");
+		return -1;
 	}
 
-	return i;
+	/* return if bus mastering is already on */
+	if (reg & PCI_COMMAND_MASTER)
+		return 0;
+
+	reg |= PCI_COMMAND_MASTER;
+
+	ret = pwrite(dev_fd, &reg, sizeof(reg), PCI_COMMAND);
+	if (ret != sizeof(reg)) {
+		RTE_LOG(ERR, EAL,
+			"Cannot write command to PCI config space!\n");
+		return -1;
+	}
+
+	return 0;
 }
 
 static int
@@ -116,30 +92,40 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 {
 	int fd, i;
 	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
-	TAILQ_FOREACH(uio_res, pci_res_list, next) {
+	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
-		if (memcmp(&uio_res->pci_addr, &dev->addr, sizeof(dev->addr)))
+		if (rte_eal_compare_pci_addr(&uio_res->pci_addr, &dev->addr))
 			continue;
 
 		for (i = 0; i != uio_res->nb_maps; i++) {
 			/*
 			 * open devname, to mmap it
 			 */
-			fd = open(uio_res->path, O_RDWR);
+			fd = open(uio_res->maps[i].path, O_RDWR);
 			if (fd < 0) {
 				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-					uio_res->path, strerror(errno));
+					uio_res->maps[i].path, strerror(errno));
 				return -1;
 			}
 
-			if (pci_map_resource(uio_res->maps[i].addr, fd,
-					     (off_t)uio_res->maps[i].offset,
-					     (size_t)uio_res->maps[i].size)
-			    != uio_res->maps[i].addr) {
-				RTE_LOG(ERR, EAL,
-					"Cannot mmap device resource\n");
+			void *mapaddr = pci_map_resource(uio_res->maps[i].addr,
+					fd, (off_t)uio_res->maps[i].offset,
+					(size_t)uio_res->maps[i].size, 0);
+			if (mapaddr != uio_res->maps[i].addr) {
+				if (mapaddr == MAP_FAILED)
+					RTE_LOG(ERR, EAL,
+							"Cannot mmap device resource file %s: %s\n",
+							uio_res->maps[i].path,
+							strerror(errno));
+				else
+					RTE_LOG(ERR, EAL,
+							"Cannot mmap device resource file %s to address: %p\n",
+							uio_res->maps[i].path,
+							uio_res->maps[i].addr);
+
 				close(fd);
 				return -1;
 			}
@@ -173,7 +159,7 @@ pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
 		return -1;
 	}
 
-	ret = fscanf(f, "%d:%d", &major, &minor);
+	ret = fscanf(f, "%u:%u", &major, &minor);
 	if (ret != 2) {
 		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs to get major:minor\n",
 			__func__);
@@ -277,20 +263,20 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 int
 pci_uio_map_resource(struct rte_pci_device *dev)
 {
-	int i, j;
+	int i, map_idx;
 	char dirname[PATH_MAX];
+	char cfgname[PATH_MAX];
 	char devname[PATH_MAX]; /* contains the /dev/uioX */
 	void *mapaddr;
 	int uio_num;
 	uint64_t phaddr;
-	uint64_t offset;
-	uint64_t pagesz;
-	int nb_maps;
 	struct rte_pci_addr *loc = &dev->addr;
 	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 	struct pci_map *maps;
 
 	dev->intr_handle.fd = -1;
+	dev->intr_handle.uio_cfg_fd = -1;
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 
 	/* secondary processes - use already recorded details */
@@ -315,6 +301,21 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	}
 	dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
 
+	snprintf(cfgname, sizeof(cfgname),
+			"/sys/class/uio/uio%u/device/config", uio_num);
+	dev->intr_handle.uio_cfg_fd = open(cfgname, O_RDWR);
+	if (dev->intr_handle.uio_cfg_fd < 0) {
+		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+			cfgname, strerror(errno));
+		return -1;
+	}
+
+	/* set bus master that is not done by uio_pci_generic */
+	if (pci_uio_set_bus_master(dev->intr_handle.uio_cfg_fd)) {
+		RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
+		return -1;
+	}
+
 	/* allocate the mapping details for secondary processes*/
 	uio_res = rte_zmalloc("UIO_RES", sizeof(*uio_res), 0);
 	if (uio_res == NULL) {
@@ -326,106 +327,136 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	snprintf(uio_res->path, sizeof(uio_res->path), "%s", devname);
 	memcpy(&uio_res->pci_addr, &dev->addr, sizeof(uio_res->pci_addr));
 
-	/* collect info about device mappings */
-	nb_maps = pci_uio_get_mappings(dirname, uio_res->maps,
-				       RTE_DIM(uio_res->maps));
-	if (nb_maps < 0) {
-		rte_free(uio_res);
-		return nb_maps;
-	}
-
-	uio_res->nb_maps = nb_maps;
-
 	/* Map all BARs */
-	pagesz = sysconf(_SC_PAGESIZE);
-
 	maps = uio_res->maps;
-	for (i = 0; i != PCI_MAX_RESOURCE; i++) {
+	for (i = 0, map_idx = 0; i != PCI_MAX_RESOURCE; i++) {
 		int fd;
+		int fail = 0;
 
 		/* skip empty BAR */
 		phaddr = dev->mem_resource[i].phys_addr;
 		if (phaddr == 0)
 			continue;
 
-		for (j = 0; j != nb_maps && (phaddr != maps[j].phaddr ||
-				dev->mem_resource[i].len != maps[j].size);
-				j++)
-			;
 
-		/* if matching map is found, then use it */
-		if (j != nb_maps) {
-			int fail = 0;
-			offset = j * pagesz;
+		/* update devname for mmap  */
+		snprintf(devname, sizeof(devname),
+				SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%d",
+				loc->domain, loc->bus, loc->devid, loc->function,
+				i);
 
-			/*
-			 * open devname, to mmap it
-			 */
-			fd = open(devname, O_RDWR);
-			if (fd < 0) {
-				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+		/*
+		 * open resource file, to mmap it
+		 */
+		fd = open(devname, O_RDWR);
+		if (fd < 0) {
+			RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 					devname, strerror(errno));
-				return -1;
-			}
-
-			if (maps[j].addr != NULL)
-				fail = 1;
-			else {
-				mapaddr = pci_map_resource(NULL, fd, (off_t)offset,
-						(size_t)maps[j].size);
-				if (mapaddr == NULL)
-					fail = 1;
-			}
-
-			if (fail) {
-				rte_free(uio_res);
-				close(fd);
-				return -1;
-			}
-			close(fd);
-
-			maps[j].addr = mapaddr;
-			maps[j].offset = offset;
-			dev->mem_resource[i].addr = mapaddr;
+			return -1;
 		}
+
+		/* try mapping somewhere close to the end of hugepages */
+		if (pci_map_addr == NULL)
+			pci_map_addr = pci_find_max_end_va();
+
+		mapaddr = pci_map_resource(pci_map_addr, fd, 0,
+				(size_t)dev->mem_resource[i].len, 0);
+		if (mapaddr == MAP_FAILED)
+			fail = 1;
+
+		pci_map_addr = RTE_PTR_ADD(mapaddr,
+				(size_t)dev->mem_resource[i].len);
+
+		maps[map_idx].path = rte_malloc(NULL, strlen(devname) + 1, 0);
+		if (maps[map_idx].path == NULL)
+			fail = 1;
+
+		if (fail) {
+			rte_free(uio_res);
+			close(fd);
+			return -1;
+		}
+		close(fd);
+
+		maps[map_idx].phaddr = dev->mem_resource[i].phys_addr;
+		maps[map_idx].size = dev->mem_resource[i].len;
+		maps[map_idx].addr = mapaddr;
+		maps[map_idx].offset = 0;
+		strcpy(maps[map_idx].path, devname);
+		map_idx++;
+		dev->mem_resource[i].addr = mapaddr;
 	}
 
-	TAILQ_INSERT_TAIL(pci_res_list, uio_res, next);
+	uio_res->nb_maps = map_idx;
+
+	TAILQ_INSERT_TAIL(uio_res_list, uio_res, next);
 
 	return 0;
 }
 
-/*
- * parse a sysfs file containing one integer value
- * different to the eal version, as it needs to work with 64-bit values
- */
-static int
-pci_parse_sysfs_value(const char *filename, uint64_t *val)
+#ifdef RTE_LIBRTE_EAL_HOTPLUG
+static void
+pci_uio_unmap(struct mapped_pci_resource *uio_res)
 {
-	FILE *f;
-	char buf[BUFSIZ];
-	char *end = NULL;
+	int i;
 
-	f = fopen(filename, "r");
-	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
-				__func__, filename);
-		return -1;
-	}
+	if (uio_res == NULL)
+		return;
 
-	if (fgets(buf, sizeof(buf), f) == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
-				__func__, filename);
-		fclose(f);
-		return -1;
-	}
-	*val = strtoull(buf, &end, 0);
-	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
-		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs value %s\n",
-				__func__, filename);
-		fclose(f);
-		return -1;
-	}
-	fclose(f);
-	return 0;
+	for (i = 0; i != uio_res->nb_maps; i++)
+		pci_unmap_resource(uio_res->maps[i].addr,
+				(size_t)uio_res->maps[i].size);
 }
+
+static struct mapped_pci_resource *
+pci_uio_find_resource(struct rte_pci_device *dev)
+{
+	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
+
+	if (dev == NULL)
+		return NULL;
+
+	TAILQ_FOREACH(uio_res, uio_res_list, next) {
+
+		/* skip this element if it doesn't match our PCI address */
+		if (!rte_eal_compare_pci_addr(&uio_res->pci_addr, &dev->addr))
+			return uio_res;
+	}
+	return NULL;
+}
+
+/* unmap the PCI resource of a PCI device in virtual memory */
+void
+pci_uio_unmap_resource(struct rte_pci_device *dev)
+{
+	struct mapped_pci_resource *uio_res;
+	struct mapped_pci_res_list *uio_res_list = RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
+
+	if (dev == NULL)
+		return;
+
+	/* find an entry for the device */
+	uio_res = pci_uio_find_resource(dev);
+	if (uio_res == NULL)
+		return;
+
+	/* secondary processes - just free maps */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return pci_uio_unmap(uio_res);
+
+	TAILQ_REMOVE(uio_res_list, uio_res, next);
+
+	/* unmap all resources */
+	pci_uio_unmap(uio_res);
+
+	/* free uio resource */
+	rte_free(uio_res);
+
+	/* close fd if in primary process */
+	close(dev->intr_handle.fd);
+
+	dev->intr_handle.fd = -1;
+	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+}
+#endif /* RTE_LIBRTE_EAL_HOTPLUG */

@@ -56,6 +56,7 @@ SRCS-y += test_memzone.c
 
 SRCS-y += test_ring.c
 SRCS-y += test_ring_perf.c
+SRCS-y += test_pmd_perf.c
 
 ifeq ($(CONFIG_RTE_LIBRTE_TABLE),y)
 SRCS-y += test_table.c
@@ -91,13 +92,9 @@ SRCS-y += test_errno.c
 SRCS-y += test_tailq.c
 SRCS-y += test_string_fns.c
 SRCS-y += test_cpuflags.c
-
-ifeq ($(CONFIG_RTE_EXEC_ENV_BAREMETAL),)
 SRCS-y += test_mp_secondary.c
 SRCS-y += test_eal_flags.c
 SRCS-y += test_eal_fs.c
-endif
-
 SRCS-y += test_alarm.c
 SRCS-y += test_interrupts.c
 SRCS-y += test_version.c
@@ -119,30 +116,31 @@ endif
 
 SRCS-$(CONFIG_RTE_LIBRTE_METER) += test_meter.c
 SRCS-$(CONFIG_RTE_LIBRTE_KNI) += test_kni.c
-SRCS-$(CONFIG_RTE_LIBRTE_POWER) += test_power.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) += test_power.c test_power_acpi_cpufreq.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) += test_power_kvm_vm.c
 SRCS-y += test_common.c
 SRCS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += test_ivshmem.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += test_distributor.c
 SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += test_distributor_perf.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_REORDER) += test_reorder.c
+
 SRCS-y += test_devargs.c
 SRCS-y += virtual_pmd.c
 SRCS-y += packet_burst_generator.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += test_link_bonding.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += test_link_bonding_mode4.c
+endif
+
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring.c
 SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-
-# Allow use of deprecated rte_snprintf in test_string_fns.c
-ifeq ($(CC), icc)
-CFLAGS_test_string_fns.o += -Wd1478
-else
-CFLAGS_test_string_fns.o += -Wno-deprecated-declarations
-endif
 
 # Disable warnings of deprecated-declarations in test_kni.c
 ifeq ($(CC), icc)
@@ -152,8 +150,27 @@ CFLAGS_test_kni.o += -Wno-deprecated-declarations
 endif
 CFLAGS += -D_GNU_SOURCE
 
+# Disable VTA for memcpy test
+ifeq ($(CC), gcc)
+ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
+CFLAGS_test_memcpy.o += -fno-var-tracking-assignments
+CFLAGS_test_memcpy_perf.o += -fno-var-tracking-assignments
+endif
+endif
+
 # this application needs libraries first
 DEPDIRS-y += lib
+
+# Link against shared libraries when needed
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)
+ifneq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
+$(error Link bonding tests require CONFIG_RTE_LIBRTE_PMD_RING=y)
+else
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+LDLIBS += -lrte_pmd_ring
+endif
+endif
+endif
 
 include $(RTE_SDK)/mk/rte.app.mk
 

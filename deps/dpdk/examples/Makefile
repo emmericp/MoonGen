@@ -37,7 +37,9 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bond
 DIRS-y += cmdline
+DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += distributor
 ifneq ($(ICP_ROOT),)
 DIRS-y += dpdk_qat
 endif
@@ -45,11 +47,12 @@ DIRS-y += exception_path
 DIRS-y += helloworld
 DIRS-y += ip_pipeline
 DIRS-y += ip_reassembly
-DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ip_fragmentation
-DIRS-$(CONFIG_RTE_MBUF_SCATTER_GATHER) += ipv4_multicast
+DIRS-$(CONFIG_RTE_IP_FRAG) += ip_fragmentation
+DIRS-y += ipv4_multicast
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += kni
 DIRS-y += l2fwd
 DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += l2fwd-ivshmem
+DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += l2fwd-jobstats
 DIRS-y += l3fwd
 DIRS-$(CONFIG_RTE_LIBRTE_ACL) += l3fwd-acl
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += l3fwd-power
@@ -58,13 +61,17 @@ DIRS-y += link_status_interrupt
 DIRS-y += load_balancer
 DIRS-y += multi_process
 DIRS-y += netmap_compat/bridge
+DIRS-$(CONFIG_RTE_LIBRTE_REORDER) += packet_ordering
 DIRS-$(CONFIG_RTE_LIBRTE_METER) += qos_meter
 DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += qos_sched
 DIRS-y += quota_watermark
+DIRS-$(CONFIG_RTE_ETHDEV_RXTX_CALLBACKS) += rxtx_callbacks
+DIRS-y += skeleton
 DIRS-y += timer
-DIRS-y += vhost
+DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost
 DIRS-$(CONFIG_RTE_LIBRTE_XEN_DOM0) += vhost_xen
 DIRS-y += vmdq
 DIRS-y += vmdq_dcb
+DIRS-y += vm_power_manager
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk

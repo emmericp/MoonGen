@@ -98,10 +98,35 @@
 #define IXGBE_5TUPLE_MAX_PRI            7
 #define IXGBE_5TUPLE_MIN_PRI            1
 
+#define IXGBE_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_IPV6_EX | \
+	ETH_RSS_IPV6_TCP_EX | \
+	ETH_RSS_IPV6_UDP_EX)
+
 /*
  * Information about the fdir mode.
  */
+
+struct ixgbe_hw_fdir_mask {
+	uint16_t vlan_tci_mask;
+	uint32_t src_ipv4_mask;
+	uint32_t dst_ipv4_mask;
+	uint16_t src_ipv6_mask;
+	uint16_t dst_ipv6_mask;
+	uint16_t src_port_mask;
+	uint16_t dst_port_mask;
+	uint16_t flex_bytes_mask;
+};
+
 struct ixgbe_hw_fdir_info {
+	struct ixgbe_hw_fdir_mask mask;
+	uint8_t     flex_bytes_offset;
 	uint16_t    collision;
 	uint16_t    free;
 	uint16_t    maxhash;
@@ -159,6 +184,58 @@ struct ixgbe_vf_info {
 	uint16_t tx_rate[IXGBE_MAX_QUEUE_NUM_PER_VF];
 	uint16_t vlan_count;
 	uint8_t spoofchk_enabled;
+	uint8_t api_version;
+};
+
+/*
+ *  Possible l4type of 5tuple filters.
+ */
+enum ixgbe_5tuple_protocol {
+	IXGBE_FILTER_PROTOCOL_TCP = 0,
+	IXGBE_FILTER_PROTOCOL_UDP,
+	IXGBE_FILTER_PROTOCOL_SCTP,
+	IXGBE_FILTER_PROTOCOL_NONE,
+};
+
+TAILQ_HEAD(ixgbe_5tuple_filter_list, ixgbe_5tuple_filter);
+
+struct ixgbe_5tuple_filter_info {
+	uint32_t dst_ip;
+	uint32_t src_ip;
+	uint16_t dst_port;
+	uint16_t src_port;
+	enum ixgbe_5tuple_protocol proto;        /* l4 protocol. */
+	uint8_t priority;        /* seven levels (001b-111b), 111b is highest,
+				      used when more than one filter matches. */
+	uint8_t dst_ip_mask:1,   /* if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1,   /* if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /* if mask is 1b, do not compare src port. */
+		proto_mask:1;    /* if mask is 1b, do not compare protocol. */
+};
+
+/* 5tuple filter structure */
+struct ixgbe_5tuple_filter {
+	TAILQ_ENTRY(ixgbe_5tuple_filter) entries;
+	uint16_t index;       /* the index of 5tuple filter */
+	struct ixgbe_5tuple_filter_info filter_info;
+	uint16_t queue;       /* rx queue assigned to */
+};
+
+#define IXGBE_5TUPLE_ARRAY_SIZE \
+	(RTE_ALIGN(IXGBE_MAX_FTQF_FILTERS, (sizeof(uint32_t) * NBBY)) / \
+	 (sizeof(uint32_t) * NBBY))
+
+/*
+ * Structure to store filters' info.
+ */
+struct ixgbe_filter_info {
+	uint8_t ethertype_mask;  /* Bit mask for every used ethertype filter */
+	/* store used ethertype filters*/
+	uint16_t ethertype_filters[IXGBE_MAX_ETQF_FILTERS];
+	/* Bit mask for every used 5tuple filter */
+	uint32_t fivetuple_mask[IXGBE_5TUPLE_ARRAY_SIZE];
+	struct ixgbe_5tuple_filter_list fivetuple_list;
 };
 
 /*
@@ -179,16 +256,7 @@ struct ixgbe_adapter {
 #ifdef RTE_NIC_BYPASS
 	struct ixgbe_bypass_info    bps;
 #endif /* RTE_NIC_BYPASS */
-};
-
-/*
- *  Possible l4type of 5tuple filters.
- */
-enum ixgbe_5tuple_protocol {
-	IXGBE_FILTER_PROTOCOL_TCP = 0,
-	IXGBE_FILTER_PROTOCOL_UDP,
-	IXGBE_FILTER_PROTOCOL_SCTP,
-	IXGBE_FILTER_PROTOCOL_NONE,
+	struct ixgbe_filter_info    filter;
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
@@ -224,6 +292,9 @@ enum ixgbe_5tuple_protocol {
 #define IXGBE_DEV_PRIVATE_TO_UTA(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->uta_info)
 
+#define IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->filter)
+
 /*
  * RX/TX function prototypes
  */
@@ -251,7 +322,7 @@ int ixgbe_dev_rx_init(struct rte_eth_dev *dev);
 
 void ixgbe_dev_tx_init(struct rte_eth_dev *dev);
 
-void ixgbe_dev_rxtx_start(struct rte_eth_dev *dev);
+int ixgbe_dev_rxtx_start(struct rte_eth_dev *dev);
 
 int ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 
@@ -269,11 +340,6 @@ void ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev);
 
 uint16_t ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
-
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
-uint16_t ixgbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
-		uint16_t nb_pkts);
-#endif
 
 uint16_t ixgbe_recv_scattered_pkts(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
@@ -295,32 +361,6 @@ int ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
  */
 int ixgbe_fdir_configure(struct rte_eth_dev *dev);
 
-int ixgbe_fdir_add_signature_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter, uint8_t queue);
-
-int ixgbe_fdir_update_signature_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter, uint8_t queue);
-
-int ixgbe_fdir_remove_signature_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter);
-
-void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
-		struct rte_eth_fdir *fdir);
-
-int ixgbe_fdir_add_perfect_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter, uint16_t soft_id,
-		uint8_t queue, uint8_t drop);
-
-int ixgbe_fdir_update_perfect_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter,uint16_t soft_id,
-		uint8_t queue, uint8_t drop);
-
-int ixgbe_fdir_remove_perfect_filter(struct rte_eth_dev *dev,
-		struct rte_fdir_filter *fdir_filter, uint16_t soft_id);
-
-int ixgbe_fdir_set_masks(struct rte_eth_dev *dev,
-		struct rte_fdir_masks *fdir_masks);
-
 void ixgbe_configure_dcb(struct rte_eth_dev *dev);
 
 /*
@@ -340,4 +380,8 @@ void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 
 int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
+uint32_t ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
+
+int ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op, void *arg);
 #endif /* _IXGBE_ETHDEV_H_ */

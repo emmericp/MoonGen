@@ -32,7 +32,7 @@
  */
 /*   BSD LICENSE
  *
- *   Copyright(c) 2013 6WIND.
+ *   Copyright 2013-2014 6WIND S.A.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -79,7 +79,6 @@
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -96,16 +95,14 @@
 
 #include "testpmd.h"
 
+static char *flowtype_to_str(uint16_t flow_type);
+
 static void
 print_ethaddr(const char *name, struct ether_addr *eth_addr)
 {
-	printf("%s%02X:%02X:%02X:%02X:%02X:%02X", name,
-	       (unsigned int)eth_addr->addr_bytes[0],
-	       (unsigned int)eth_addr->addr_bytes[1],
-	       (unsigned int)eth_addr->addr_bytes[2],
-	       (unsigned int)eth_addr->addr_bytes[3],
-	       (unsigned int)eth_addr->addr_bytes[4],
-	       (unsigned int)eth_addr->addr_bytes[5]);
+	char buf[ETHER_ADDR_FMT_SIZE];
+	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	printf("%s%s", name, buf);
 }
 
 void
@@ -114,11 +111,15 @@ nic_stats_display(portid_t port_id)
 	struct rte_eth_stats stats;
 	struct rte_port *port = &ports[port_id];
 	uint8_t i;
+	portid_t pid;
 
 	static const char *nic_stats_border = "########################";
 
-	if (port_id >= nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		printf("Valid port range is [0");
+		FOREACH_PORT(pid, ports)
+			printf(", %d", pid);
+		printf("]\n");
 		return;
 	}
 	rte_eth_stats_get(port_id, &stats);
@@ -191,25 +192,68 @@ nic_stats_display(portid_t port_id)
 void
 nic_stats_clear(portid_t port_id)
 {
-	if (port_id >= nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+	portid_t pid;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		printf("Valid port range is [0");
+		FOREACH_PORT(pid, ports)
+			printf(", %d", pid);
+		printf("]\n");
 		return;
 	}
 	rte_eth_stats_reset(port_id);
 	printf("\n  NIC statistics for port %d cleared\n", port_id);
 }
 
+void
+nic_xstats_display(portid_t port_id)
+{
+	struct rte_eth_xstats *xstats;
+	int len, ret, i;
+
+	printf("###### NIC extended statistics for port %-2d\n", port_id);
+
+	len = rte_eth_xstats_get(port_id, NULL, 0);
+	if (len < 0) {
+		printf("Cannot get xstats count\n");
+		return;
+	}
+	xstats = malloc(sizeof(xstats[0]) * len);
+	if (xstats == NULL) {
+		printf("Cannot allocate memory for xstats\n");
+		return;
+	}
+	ret = rte_eth_xstats_get(port_id, xstats, len);
+	if (ret < 0 || ret > len) {
+		printf("Cannot get xstats\n");
+		free(xstats);
+		return;
+	}
+	for (i = 0; i < len; i++)
+		printf("%s: %"PRIu64"\n", xstats[i].name, xstats[i].value);
+	free(xstats);
+}
+
+void
+nic_xstats_clear(portid_t port_id)
+{
+	rte_eth_xstats_reset(port_id);
+}
 
 void
 nic_stats_mapping_display(portid_t port_id)
 {
 	struct rte_port *port = &ports[port_id];
 	uint16_t i;
+	portid_t pid;
 
 	static const char *nic_stats_mapping_border = "########################";
 
-	if (port_id >= nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		printf("Valid port range is [0");
+		FOREACH_PORT(pid, ports)
+			printf(", %d", pid);
+		printf("]\n");
 		return;
 	}
 
@@ -254,12 +298,17 @@ port_infos_display(portid_t port_id)
 	struct rte_port *port;
 	struct ether_addr mac_addr;
 	struct rte_eth_link link;
+	struct rte_eth_dev_info dev_info;
 	int vlan_offload;
 	struct rte_mempool * mp;
 	static const char *info_border = "*********************";
+	portid_t pid;
 
-	if (port_id >= nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		printf("Valid port range is [0");
+		FOREACH_PORT(pid, ports)
+			printf(", %d", pid);
+		printf("]\n");
 		return;
 	}
 	port = &ports[port_id];
@@ -309,14 +358,40 @@ port_infos_display(portid_t port_id)
 		else
 			printf("  qinq(extend) off \n");
 	}
+
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (dev_info.reta_size > 0)
+		printf("Redirection table size: %u\n", dev_info.reta_size);
+	if (!dev_info.flow_type_rss_offloads)
+		printf("No flow type is supported.\n");
+	else {
+		uint16_t i;
+		char *p;
+
+		printf("Supported flow types:\n");
+		for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < RTE_ETH_FLOW_MAX;
+								i++) {
+			if (!(dev_info.flow_type_rss_offloads & (1ULL << i)))
+				continue;
+			p = flowtype_to_str(i);
+			printf("  %s\n", (p ? p : "unknown"));
+		}
+	}
 }
 
 int
-port_id_is_invalid(portid_t port_id)
+port_id_is_invalid(portid_t port_id, enum print_warning warning)
 {
-	if (port_id < nb_ports)
+	if (port_id == (portid_t)RTE_PORT_ALL)
 		return 0;
-	printf("Invalid port %d (must be < nb_ports=%d)\n", port_id, nb_ports);
+
+	if (ports[port_id].enabled)
+		return 0;
+
+	if (warning == ENABLED_WARN)
+		printf("Invalid port %d\n", port_id);
+
 	return 1;
 }
 
@@ -375,7 +450,7 @@ port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_x)
 	uint32_t reg_v;
 
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -394,7 +469,7 @@ port_reg_bit_field_display(portid_t port_id, uint32_t reg_off,
 	uint8_t  l_bit;
 	uint8_t  h_bit;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -421,7 +496,7 @@ port_reg_display(portid_t port_id, uint32_t reg_off)
 {
 	uint32_t reg_v;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -435,7 +510,7 @@ port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,
 {
 	uint32_t reg_v;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -463,7 +538,7 @@ port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
 	uint8_t  l_bit;
 	uint8_t  h_bit;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -497,7 +572,7 @@ port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
 void
 port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
 {
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (port_reg_off_is_invalid(port_id, reg_off))
 		return;
@@ -510,7 +585,7 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	diag = rte_eth_dev_set_mtu(port_id, mtu);
 	if (diag == 0)
@@ -578,8 +653,13 @@ ring_dma_zone_lookup(const char *ring_name, uint8_t port_id, uint16_t q_id)
 union igb_ring_dword {
 	uint64_t dword;
 	struct {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		uint32_t lo;
+		uint32_t hi;
+#else
 		uint32_t hi;
 		uint32_t lo;
+#endif
 	} words;
 };
 
@@ -622,23 +702,29 @@ ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
 		/* 32 bytes RX descriptor, i40e only */
 		struct igb_ring_desc_32_bytes *ring =
 			(struct igb_ring_desc_32_bytes *)ring_mz->addr;
+		ring[desc_id].lo_dword.dword =
+			rte_le_to_cpu_64(ring[desc_id].lo_dword.dword);
+		ring_rxd_display_dword(ring[desc_id].lo_dword);
+		ring[desc_id].hi_dword.dword =
+			rte_le_to_cpu_64(ring[desc_id].hi_dword.dword);
+		ring_rxd_display_dword(ring[desc_id].hi_dword);
+		ring[desc_id].resv1.dword =
+			rte_le_to_cpu_64(ring[desc_id].resv1.dword);
+		ring_rxd_display_dword(ring[desc_id].resv1);
+		ring[desc_id].resv2.dword =
+			rte_le_to_cpu_64(ring[desc_id].resv2.dword);
+		ring_rxd_display_dword(ring[desc_id].resv2);
 
-		ring_rxd_display_dword(rte_le_to_cpu_64(
-				ring[desc_id].lo_dword));
-		ring_rxd_display_dword(rte_le_to_cpu_64(
-				ring[desc_id].hi_dword));
-		ring_rxd_display_dword(rte_le_to_cpu_64(
-				ring[desc_id].resv1));
-		ring_rxd_display_dword(rte_le_to_cpu_64(
-				ring[desc_id].resv2));
 		return;
 	}
 #endif
 	/* 16 bytes RX descriptor */
-	ring_rxd_display_dword(rte_le_to_cpu_64(
-			ring[desc_id].lo_dword));
-	ring_rxd_display_dword(rte_le_to_cpu_64(
-			ring[desc_id].hi_dword));
+	ring[desc_id].lo_dword.dword =
+		rte_le_to_cpu_64(ring[desc_id].lo_dword.dword);
+	ring_rxd_display_dword(ring[desc_id].lo_dword);
+	ring[desc_id].hi_dword.dword =
+		rte_le_to_cpu_64(ring[desc_id].hi_dword.dword);
+	ring_rxd_display_dword(ring[desc_id].hi_dword);
 }
 
 static void
@@ -648,8 +734,8 @@ ring_tx_descriptor_display(const struct rte_memzone *ring_mz, uint16_t desc_id)
 	struct igb_ring_desc_16_bytes txd;
 
 	ring = (struct igb_ring_desc_16_bytes *)ring_mz->addr;
-	txd.lo_dword = rte_le_to_cpu_64(ring[desc_id].lo_dword);
-	txd.hi_dword = rte_le_to_cpu_64(ring[desc_id].hi_dword);
+	txd.lo_dword.dword = rte_le_to_cpu_64(ring[desc_id].lo_dword.dword);
+	txd.hi_dword.dword = rte_le_to_cpu_64(ring[desc_id].hi_dword.dword);
 	printf("    0x%08X - 0x%08X / 0x%08X - 0x%08X\n",
 			(unsigned)txd.lo_dword.words.lo,
 			(unsigned)txd.lo_dword.words.hi,
@@ -662,7 +748,7 @@ rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id)
 {
 	const struct rte_memzone *rx_mz;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (rx_queue_id_is_invalid(rxq_id))
 		return;
@@ -679,7 +765,7 @@ tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id)
 {
 	const struct rte_memzone *tx_mz;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (tx_queue_id_is_invalid(txq_id))
 		return;
@@ -713,51 +799,49 @@ rxtx_config_display(void)
 		printf("  packet len=%u - nb packet segments=%d\n",
 				(unsigned)tx_pkt_length, (int) tx_pkt_nb_segs);
 
+	struct rte_eth_rxconf *rx_conf = &ports[0].rx_conf;
+	struct rte_eth_txconf *tx_conf = &ports[0].tx_conf;
+
 	printf("  nb forwarding cores=%d - nb forwarding ports=%d\n",
 	       nb_fwd_lcores, nb_fwd_ports);
 	printf("  RX queues=%d - RX desc=%d - RX free threshold=%d\n",
-	       nb_rxq, nb_rxd, rx_free_thresh);
+	       nb_rxq, nb_rxd, rx_conf->rx_free_thresh);
 	printf("  RX threshold registers: pthresh=%d hthresh=%d wthresh=%d\n",
-	       rx_thresh.pthresh, rx_thresh.hthresh, rx_thresh.wthresh);
+	       rx_conf->rx_thresh.pthresh, rx_conf->rx_thresh.hthresh,
+	       rx_conf->rx_thresh.wthresh);
 	printf("  TX queues=%d - TX desc=%d - TX free threshold=%d\n",
-	       nb_txq, nb_txd, tx_free_thresh);
+	       nb_txq, nb_txd, tx_conf->tx_free_thresh);
 	printf("  TX threshold registers: pthresh=%d hthresh=%d wthresh=%d\n",
-	       tx_thresh.pthresh, tx_thresh.hthresh, tx_thresh.wthresh);
+	       tx_conf->tx_thresh.pthresh, tx_conf->tx_thresh.hthresh,
+	       tx_conf->tx_thresh.wthresh);
 	printf("  TX RS bit threshold=%d - TXQ flags=0x%"PRIx32"\n",
-	       tx_rs_thresh, txq_flags);
+	       tx_conf->tx_rs_thresh, tx_conf->txq_flags);
 }
 
 void
-port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
+port_rss_reta_info(portid_t port_id,
+		   struct rte_eth_rss_reta_entry64 *reta_conf,
+		   uint16_t nb_entries)
 {
-	uint8_t i,j;
+	uint16_t i, idx, shift;
 	int ret;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	ret = rte_eth_dev_rss_reta_query(port_id, reta_conf);
+	ret = rte_eth_dev_rss_reta_query(port_id, reta_conf, nb_entries);
 	if (ret != 0) {
 		printf("Failed to get RSS RETA info, return code = %d\n", ret);
 		return;
 	}
 
-	if (reta_conf->mask_lo != 0) {
-		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
-			if (reta_conf->mask_lo & (uint64_t)(1ULL << i))
-				printf("RSS RETA configuration: hash index=%d,"
-					"queue=%d\n",i,reta_conf->reta[i]);
-		}
-	}
-
-	if (reta_conf->mask_hi != 0) {
-		for (i = 0; i< ETH_RSS_RETA_NUM_ENTRIES/2; i++) {
-			if(reta_conf->mask_hi & (uint64_t)(1ULL << i)) {
-				j = (uint8_t)(i + ETH_RSS_RETA_NUM_ENTRIES/2);
-				printf("RSS RETA configuration: hash index=%d,"
-					"queue=%d\n",j,reta_conf->reta[j]);
-			}
-		}
+	for (i = 0; i < nb_entries; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (!(reta_conf[idx].mask & (1ULL << shift)))
+			continue;
+		printf("RSS RETA configuration: hash index=%u, queue=%u\n",
+					i, reta_conf[idx].reta[shift]);
 	}
 }
 
@@ -768,13 +852,36 @@ port_rss_reta_info(portid_t port_id,struct rte_eth_rss_reta *reta_conf)
 void
 port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 {
+	struct rss_type_info {
+		char str[32];
+		uint64_t rss_type;
+	};
+	static const struct rss_type_info rss_type_table[] = {
+		{"ipv4", ETH_RSS_IPV4},
+		{"ipv4-frag", ETH_RSS_FRAG_IPV4},
+		{"ipv4-tcp", ETH_RSS_NONFRAG_IPV4_TCP},
+		{"ipv4-udp", ETH_RSS_NONFRAG_IPV4_UDP},
+		{"ipv4-sctp", ETH_RSS_NONFRAG_IPV4_SCTP},
+		{"ipv4-other", ETH_RSS_NONFRAG_IPV4_OTHER},
+		{"ipv6", ETH_RSS_IPV6},
+		{"ipv6-frag", ETH_RSS_FRAG_IPV6},
+		{"ipv6-tcp", ETH_RSS_NONFRAG_IPV6_TCP},
+		{"ipv6-udp", ETH_RSS_NONFRAG_IPV6_UDP},
+		{"ipv6-sctp", ETH_RSS_NONFRAG_IPV6_SCTP},
+		{"ipv6-other", ETH_RSS_NONFRAG_IPV6_OTHER},
+		{"l2-payload", ETH_RSS_L2_PAYLOAD},
+		{"ipv6-ex", ETH_RSS_IPV6_EX},
+		{"ipv6-tcp-ex", ETH_RSS_IPV6_TCP_EX},
+		{"ipv6-udp-ex", ETH_RSS_IPV6_UDP_EX},
+	};
+
 	struct rte_eth_rss_conf rss_conf;
 	uint8_t rss_key[10 * 4];
-	uint16_t rss_hf;
+	uint64_t rss_hf;
 	uint8_t i;
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	/* Get RSS hash key if asked to display it */
 	rss_conf.rss_key = (show_rss_key) ? rss_key : NULL;
@@ -799,24 +906,10 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 		return;
 	}
 	printf("RSS functions:\n ");
-	if (rss_hf & ETH_RSS_IPV4)
-		printf("ip4");
-	if (rss_hf & ETH_RSS_IPV4_TCP)
-		printf(" tcp4");
-	if (rss_hf & ETH_RSS_IPV4_UDP)
-		printf(" udp4");
-	if (rss_hf & ETH_RSS_IPV6)
-		printf(" ip6");
-	if (rss_hf & ETH_RSS_IPV6_EX)
-		printf(" ip6-ex");
-	if (rss_hf & ETH_RSS_IPV6_TCP)
-		printf(" tcp6");
-	if (rss_hf & ETH_RSS_IPV6_TCP_EX)
-		printf(" tcp6-ex");
-	if (rss_hf & ETH_RSS_IPV6_UDP)
-		printf(" udp6");
-	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
-		printf(" udp6-ex");
+	for (i = 0; i < RTE_DIM(rss_type_table); i++) {
+		if (rss_hf & rss_type_table[i].rss_type)
+			printf("%s ", rss_type_table[i].str);
+	}
 	printf("\n");
 	if (!show_rss_key)
 		return;
@@ -1352,12 +1445,8 @@ set_fwd_ports_list(unsigned int *portlist, unsigned int nb_pt)
  again:
 	for (i = 0; i < nb_pt; i++) {
 		port_id = (portid_t) portlist[i];
-		if (port_id >= nb_ports) {
-			printf("Invalid port id %u >= %u\n",
-			       (unsigned int) port_id,
-			       (unsigned int) nb_ports);
+		if (port_id_is_invalid(port_id, ENABLED_WARN))
 			return;
-		}
 		if (record_now)
 			fwd_ports_ids[i] = port_id;
 	}
@@ -1386,7 +1475,7 @@ set_fwd_ports_mask(uint64_t portmask)
 		return;
 	}
 	nb_pt = 0;
-	for (i = 0; i < 64; i++) {
+	for (i = 0; i < (unsigned)RTE_MIN(64, RTE_MAX_ETHPORTS); i++) {
 		if (! ((uint64_t)(1ULL << i) & portmask))
 			continue;
 		portlist[nb_pt++] = i;
@@ -1515,7 +1604,7 @@ vlan_extend_set(portid_t port_id, int on)
 	int diag;
 	int vlan_offload;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
@@ -1537,7 +1626,7 @@ rx_vlan_strip_set(portid_t port_id, int on)
 	int diag;
 	int vlan_offload;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
@@ -1558,7 +1647,7 @@ rx_vlan_strip_set_on_queue(portid_t port_id, uint16_t queue_id, int on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	diag = rte_eth_dev_set_vlan_strip_on_queue(port_id, queue_id, on);
@@ -1573,7 +1662,7 @@ rx_vlan_filter_set(portid_t port_id, int on)
 	int diag;
 	int vlan_offload;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
@@ -1589,21 +1678,22 @@ rx_vlan_filter_set(portid_t port_id, int on)
 	       "diag=%d\n", port_id, on, diag);
 }
 
-void
+int
 rx_vft_set(portid_t port_id, uint16_t vlan_id, int on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
-		return;
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return 1;
 	if (vlan_id_is_invalid(vlan_id))
-		return;
+		return 1;
 	diag = rte_eth_dev_vlan_filter(port_id, vlan_id, on);
 	if (diag == 0)
-		return;
+		return 0;
 	printf("rte_eth_dev_vlan_filter(port_pi=%d, vlan_id=%d, on=%d) failed "
 	       "diag=%d\n",
 	       port_id, vlan_id, on, diag);
+	return -1;
 }
 
 void
@@ -1611,17 +1701,19 @@ rx_vlan_all_filter_set(portid_t port_id, int on)
 {
 	uint16_t vlan_id;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
-	for (vlan_id = 0; vlan_id < 4096; vlan_id++)
-		rx_vft_set(port_id, vlan_id, on);
+	for (vlan_id = 0; vlan_id < 4096; vlan_id++) {
+		if (rx_vft_set(port_id, vlan_id, on))
+			break;
+	}
 }
 
 void
 vlan_tpid_set(portid_t port_id, uint16_t tp_id)
 {
 	int diag;
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	diag = rte_eth_dev_set_vlan_ether_type(port_id, tp_id);
@@ -1636,26 +1728,26 @@ vlan_tpid_set(portid_t port_id, uint16_t tp_id)
 void
 tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 {
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
-	ports[port_id].tx_ol_flags |= PKT_TX_VLAN_PKT;
+	ports[port_id].tx_ol_flags |= TESTPMD_TX_OFFLOAD_INSERT_VLAN;
 	ports[port_id].tx_vlan_id = vlan_id;
 }
 
 void
 tx_vlan_reset(portid_t port_id)
 {
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
-	ports[port_id].tx_ol_flags &= ~PKT_TX_VLAN_PKT;
+	ports[port_id].tx_ol_flags &= ~TESTPMD_TX_OFFLOAD_INSERT_VLAN;
 }
 
 void
 tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on)
 {
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	rte_eth_dev_set_vlan_pvid(port_id, vlan_id, on);
@@ -1667,7 +1759,7 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 	uint16_t i;
 	uint8_t existing_mapping_found = 0;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	if (is_rx ? (rx_queue_id_is_invalid(queue_id)) : (tx_queue_id_is_invalid(queue_id)))
@@ -1713,166 +1805,245 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 	}
 }
 
-void
-tx_cksum_set(portid_t port_id, uint8_t cksum_mask)
+static inline void
+print_fdir_mask(struct rte_eth_fdir_masks *mask)
 {
-	uint16_t tx_ol_flags;
-	if (port_id_is_invalid(port_id))
-		return;
-	/* Clear last 4 bits and then set L3/4 checksum mask again */
-	tx_ol_flags = (uint16_t) (ports[port_id].tx_ol_flags & 0xFFF0);
-	ports[port_id].tx_ol_flags = (uint16_t) ((cksum_mask & 0xf) | tx_ol_flags);
+	printf("\n    vlan_tci: 0x%04x, src_ipv4: 0x%08x, dst_ipv4: 0x%08x,"
+		      " src_port: 0x%04x, dst_port: 0x%04x",
+		mask->vlan_tci_mask, mask->ipv4_mask.src_ip,
+		mask->ipv4_mask.dst_ip,
+		mask->src_port_mask, mask->dst_port_mask);
+
+	printf("\n    src_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x,"
+		     " dst_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x",
+		mask->ipv6_mask.src_ip[0], mask->ipv6_mask.src_ip[1],
+		mask->ipv6_mask.src_ip[2], mask->ipv6_mask.src_ip[3],
+		mask->ipv6_mask.dst_ip[0], mask->ipv6_mask.dst_ip[1],
+		mask->ipv6_mask.dst_ip[2], mask->ipv6_mask.dst_ip[3]);
+	printf("\n");
 }
 
-void
-fdir_add_signature_filter(portid_t port_id, uint8_t queue_id,
-			  struct rte_fdir_filter *fdir_filter)
+static inline void
+print_fdir_flex_payload(struct rte_eth_fdir_flex_conf *flex_conf, uint32_t num)
 {
-	int diag;
+	struct rte_eth_flex_payload_cfg *cfg;
+	uint32_t i, j;
 
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_add_signature_filter(port_id, fdir_filter,
-						     queue_id);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_add_signature_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
+	for (i = 0; i < flex_conf->nb_payloads; i++) {
+		cfg = &flex_conf->flex_set[i];
+		if (cfg->type == RTE_ETH_RAW_PAYLOAD)
+			printf("\n    RAW:  ");
+		else if (cfg->type == RTE_ETH_L2_PAYLOAD)
+			printf("\n    L2_PAYLOAD:  ");
+		else if (cfg->type == RTE_ETH_L3_PAYLOAD)
+			printf("\n    L3_PAYLOAD:  ");
+		else if (cfg->type == RTE_ETH_L4_PAYLOAD)
+			printf("\n    L4_PAYLOAD:  ");
+		else
+			printf("\n    UNKNOWN PAYLOAD(%u):  ", cfg->type);
+		for (j = 0; j < num; j++)
+			printf("  %-5u", cfg->src_offset[j]);
+	}
+	printf("\n");
 }
 
-void
-fdir_update_signature_filter(portid_t port_id, uint8_t queue_id,
-			     struct rte_fdir_filter *fdir_filter)
+static char *
+flowtype_to_str(uint16_t flow_type)
 {
-	int diag;
+	struct flow_type_info {
+		char str[32];
+		uint16_t ftype;
+	};
 
-	if (port_id_is_invalid(port_id))
-		return;
+	uint8_t i;
+	static struct flow_type_info flowtype_str_table[] = {
+		{"raw", RTE_ETH_FLOW_RAW},
+		{"ipv4", RTE_ETH_FLOW_IPV4},
+		{"ipv4-frag", RTE_ETH_FLOW_FRAG_IPV4},
+		{"ipv4-tcp", RTE_ETH_FLOW_NONFRAG_IPV4_TCP},
+		{"ipv4-udp", RTE_ETH_FLOW_NONFRAG_IPV4_UDP},
+		{"ipv4-sctp", RTE_ETH_FLOW_NONFRAG_IPV4_SCTP},
+		{"ipv4-other", RTE_ETH_FLOW_NONFRAG_IPV4_OTHER},
+		{"ipv6", RTE_ETH_FLOW_IPV6},
+		{"ipv6-frag", RTE_ETH_FLOW_FRAG_IPV6},
+		{"ipv6-tcp", RTE_ETH_FLOW_NONFRAG_IPV6_TCP},
+		{"ipv6-udp", RTE_ETH_FLOW_NONFRAG_IPV6_UDP},
+		{"ipv6-sctp", RTE_ETH_FLOW_NONFRAG_IPV6_SCTP},
+		{"ipv6-other", RTE_ETH_FLOW_NONFRAG_IPV6_OTHER},
+		{"l2_payload", RTE_ETH_FLOW_L2_PAYLOAD},
+	};
 
-	diag = rte_eth_dev_fdir_update_signature_filter(port_id, fdir_filter,
-							queue_id);
-	if (diag == 0)
-		return;
+	for (i = 0; i < RTE_DIM(flowtype_str_table); i++) {
+		if (flowtype_str_table[i].ftype == flow_type)
+			return flowtype_str_table[i].str;
+	}
 
-	printf("rte_eth_dev_fdir_update_signature_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
+	return NULL;
 }
 
-void
-fdir_remove_signature_filter(portid_t port_id,
-			     struct rte_fdir_filter *fdir_filter)
+static inline void
+print_fdir_flex_mask(struct rte_eth_fdir_flex_conf *flex_conf, uint32_t num)
 {
-	int diag;
+	struct rte_eth_fdir_flex_mask *mask;
+	uint32_t i, j;
+	char *p;
 
-	if (port_id_is_invalid(port_id))
-		return;
+	for (i = 0; i < flex_conf->nb_flexmasks; i++) {
+		mask = &flex_conf->flex_mask[i];
+		p = flowtype_to_str(mask->flow_type);
+		printf("\n    %s:\t", p ? p : "unknown");
+		for (j = 0; j < num; j++)
+			printf(" %02x", mask->mask[j]);
+	}
+	printf("\n");
+}
 
-	diag = rte_eth_dev_fdir_remove_signature_filter(port_id, fdir_filter);
-	if (diag == 0)
-		return;
+static inline void
+print_fdir_flow_type(uint32_t flow_types_mask)
+{
+	int i;
+	char *p;
 
-	printf("rte_eth_dev_fdir_add_signature_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-
+	for (i = RTE_ETH_FLOW_UNKNOWN; i < RTE_ETH_FLOW_MAX; i++) {
+		if (!(flow_types_mask & (1 << i)))
+			continue;
+		p = flowtype_to_str(i);
+		if (p)
+			printf(" %s", p);
+		else
+			printf(" unknown");
+	}
+	printf("\n");
 }
 
 void
 fdir_get_infos(portid_t port_id)
 {
-	struct rte_eth_fdir fdir_infos;
+	struct rte_eth_fdir_stats fdir_stat;
+	struct rte_eth_fdir_info fdir_info;
+	int ret;
 
 	static const char *fdir_stats_border = "########################";
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
+	ret = rte_eth_dev_filter_supported(port_id, RTE_ETH_FILTER_FDIR);
+	if (ret < 0) {
+		printf("\n FDIR is not supported on port %-2d\n",
+			port_id);
+		return;
+	}
 
-	rte_eth_dev_fdir_get_infos(port_id, &fdir_infos);
-
+	memset(&fdir_info, 0, sizeof(fdir_info));
+	rte_eth_dev_filter_ctrl(port_id, RTE_ETH_FILTER_FDIR,
+			       RTE_ETH_FILTER_INFO, &fdir_info);
+	memset(&fdir_stat, 0, sizeof(fdir_stat));
+	rte_eth_dev_filter_ctrl(port_id, RTE_ETH_FILTER_FDIR,
+			       RTE_ETH_FILTER_STATS, &fdir_stat);
 	printf("\n  %s FDIR infos for port %-2d     %s\n",
 	       fdir_stats_border, port_id, fdir_stats_border);
-
-	printf("  collision: %-10"PRIu64"  free:     %"PRIu64"\n"
-	       "  maxhash:   %-10"PRIu64"  maxlen:   %"PRIu64"\n"
-	       "  add:       %-10"PRIu64"  remove:   %"PRIu64"\n"
-	       "  f_add:     %-10"PRIu64"  f_remove: %"PRIu64"\n",
-	       (uint64_t)(fdir_infos.collision), (uint64_t)(fdir_infos.free),
-	       (uint64_t)(fdir_infos.maxhash), (uint64_t)(fdir_infos.maxlen),
-	       fdir_infos.add, fdir_infos.remove,
-	       fdir_infos.f_add, fdir_infos.f_remove);
+	printf("  MODE: ");
+	if (fdir_info.mode == RTE_FDIR_MODE_PERFECT)
+		printf("  PERFECT\n");
+	else if (fdir_info.mode == RTE_FDIR_MODE_SIGNATURE)
+		printf("  SIGNATURE\n");
+	else
+		printf("  DISABLE\n");
+	printf("  SUPPORTED FLOW TYPE: ");
+	print_fdir_flow_type(fdir_info.flow_types_mask[0]);
+	printf("  FLEX PAYLOAD INFO:\n");
+	printf("  max_len:       %-10"PRIu32"  payload_limit: %-10"PRIu32"\n"
+	       "  payload_unit:  %-10"PRIu32"  payload_seg:   %-10"PRIu32"\n"
+	       "  bitmask_unit:  %-10"PRIu32"  bitmask_num:   %-10"PRIu32"\n",
+		fdir_info.max_flexpayload, fdir_info.flex_payload_limit,
+		fdir_info.flex_payload_unit,
+		fdir_info.max_flex_payload_segment_num,
+		fdir_info.flex_bitmask_unit, fdir_info.max_flex_bitmask_num);
+	printf("  MASK: ");
+	print_fdir_mask(&fdir_info.mask);
+	if (fdir_info.flex_conf.nb_payloads > 0) {
+		printf("  FLEX PAYLOAD SRC OFFSET:");
+		print_fdir_flex_payload(&fdir_info.flex_conf, fdir_info.max_flexpayload);
+	}
+	if (fdir_info.flex_conf.nb_flexmasks > 0) {
+		printf("  FLEX MASK CFG:");
+		print_fdir_flex_mask(&fdir_info.flex_conf, fdir_info.max_flexpayload);
+	}
+	printf("  guarant_count: %-10"PRIu32"  best_count:    %"PRIu32"\n",
+	       fdir_stat.guarant_cnt, fdir_stat.best_cnt);
+	printf("  guarant_space: %-10"PRIu32"  best_space:    %"PRIu32"\n",
+	       fdir_info.guarant_spc, fdir_info.best_spc);
+	printf("  collision:     %-10"PRIu32"  free:          %"PRIu32"\n"
+	       "  maxhash:       %-10"PRIu32"  maxlen:        %"PRIu32"\n"
+	       "  add:	         %-10"PRIu64"  remove:        %"PRIu64"\n"
+	       "  f_add:         %-10"PRIu64"  f_remove:      %"PRIu64"\n",
+	       fdir_stat.collision, fdir_stat.free,
+	       fdir_stat.maxhash, fdir_stat.maxlen,
+	       fdir_stat.add, fdir_stat.remove,
+	       fdir_stat.f_add, fdir_stat.f_remove);
 	printf("  %s############################%s\n",
 	       fdir_stats_border, fdir_stats_border);
 }
 
 void
-fdir_add_perfect_filter(portid_t port_id, uint16_t soft_id, uint8_t queue_id,
-			uint8_t drop, struct rte_fdir_filter *fdir_filter)
+fdir_set_flex_mask(portid_t port_id, struct rte_eth_fdir_flex_mask *cfg)
 {
-	int diag;
+	struct rte_port *port;
+	struct rte_eth_fdir_flex_conf *flex_conf;
+	int i, idx = 0;
 
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_add_perfect_filter(port_id, fdir_filter,
-						   soft_id, queue_id, drop);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_add_perfect_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
+	port = &ports[port_id];
+	flex_conf = &port->dev_conf.fdir_conf.flex_conf;
+	for (i = 0; i < RTE_ETH_FLOW_MAX; i++) {
+		if (cfg->flow_type == flex_conf->flex_mask[i].flow_type) {
+			idx = i;
+			break;
+		}
+	}
+	if (i >= RTE_ETH_FLOW_MAX) {
+		if (flex_conf->nb_flexmasks < RTE_DIM(flex_conf->flex_mask)) {
+			idx = flex_conf->nb_flexmasks;
+			flex_conf->nb_flexmasks++;
+		} else {
+			printf("The flex mask table is full. Can not set flex"
+				" mask for flow_type(%u).", cfg->flow_type);
+			return;
+		}
+	}
+	(void)rte_memcpy(&flex_conf->flex_mask[idx],
+			 cfg,
+			 sizeof(struct rte_eth_fdir_flex_mask));
 }
 
 void
-fdir_update_perfect_filter(portid_t port_id, uint16_t soft_id, uint8_t queue_id,
-			   uint8_t drop, struct rte_fdir_filter *fdir_filter)
+fdir_set_flex_payload(portid_t port_id, struct rte_eth_flex_payload_cfg *cfg)
 {
-	int diag;
+	struct rte_port *port;
+	struct rte_eth_fdir_flex_conf *flex_conf;
+	int i, idx = 0;
 
-	if (port_id_is_invalid(port_id))
-		return;
+	port = &ports[port_id];
+	flex_conf = &port->dev_conf.fdir_conf.flex_conf;
+	for (i = 0; i < RTE_ETH_PAYLOAD_MAX; i++) {
+		if (cfg->type == flex_conf->flex_set[i].type) {
+			idx = i;
+			break;
+		}
+	}
+	if (i >= RTE_ETH_PAYLOAD_MAX) {
+		if (flex_conf->nb_payloads < RTE_DIM(flex_conf->flex_set)) {
+			idx = flex_conf->nb_payloads;
+			flex_conf->nb_payloads++;
+		} else {
+			printf("The flex payload table is full. Can not set"
+				" flex payload for type(%u).", cfg->type);
+			return;
+		}
+	}
+	(void)rte_memcpy(&flex_conf->flex_set[idx],
+			 cfg,
+			 sizeof(struct rte_eth_flex_payload_cfg));
 
-	diag = rte_eth_dev_fdir_update_perfect_filter(port_id, fdir_filter,
-						      soft_id, queue_id, drop);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_update_perfect_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-}
-
-void
-fdir_remove_perfect_filter(portid_t port_id, uint16_t soft_id,
-			   struct rte_fdir_filter *fdir_filter)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_remove_perfect_filter(port_id, fdir_filter,
-						      soft_id);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_fdir_update_perfect_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-}
-
-void
-fdir_set_masks(portid_t port_id, struct rte_fdir_masks *fdir_masks)
-{
-	int diag;
-
-	if (port_id_is_invalid(port_id))
-		return;
-
-	diag = rte_eth_dev_fdir_set_masks(port_id, fdir_masks);
-	if (diag == 0)
-		return;
-
-	printf("rte_eth_dev_set_masks_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
 }
 
 void
@@ -1880,7 +2051,7 @@ set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (is_rx)
 		diag = rte_eth_dev_set_vf_rx(port_id,vf,on);
@@ -1902,7 +2073,7 @@ set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, uint64_t vf_mask, uint8_t on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
@@ -1919,7 +2090,7 @@ set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
 	int diag;
 	struct rte_eth_link link;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return 1;
 	rte_eth_link_get_nowait(port_id, &link);
 	if (rate > link.link_speed) {
@@ -1944,7 +2115,7 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 	if (q_msk == 0)
 		return 0;
 
-	if (port_id_is_invalid(port_id))
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return 1;
 	rte_eth_link_get_nowait(port_id, &link);
 	if (rate > link.link_speed) {
@@ -1958,152 +2129,4 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 	printf("rte_eth_set_vf_rate_limit for port_id=%d failed diag=%d\n",
 		port_id, diag);
 	return diag;
-}
-
-void
-get_ethertype_filter(uint8_t port_id, uint16_t index)
-{
-	struct rte_ethertype_filter filter;
-	int ret = 0;
-	uint16_t rx_queue;
-
-	memset(&filter, 0, sizeof(filter));
-	ret = rte_eth_dev_get_ethertype_filter(port_id, index,
-				&filter, &rx_queue);
-	if (ret < 0) {
-		if (ret == (-ENOENT))
-			printf("filter[%d] is not enabled\n", index);
-		else
-			printf("get ethertype filter fails(%s)\n", strerror(-ret));
-		return;
-	} else {
-		printf("filter[%d]:\n", index);
-		printf("    ethertype:  0x%04x\n",
-			rte_le_to_cpu_32(filter.ethertype));
-		printf("    priority: %s, %d\n",
-			filter.priority_en ? "enable" : "disable",
-			filter.priority);
-		printf("    queue: %d\n", rx_queue);
-	}
-}
-
-void
-get_syn_filter(uint8_t port_id)
-{
-	struct rte_syn_filter filter;
-	int ret = 0;
-	uint16_t rx_queue;
-
-	memset(&filter, 0, sizeof(filter));
-	ret = rte_eth_dev_get_syn_filter(port_id, &filter, &rx_queue);
-
-	if (ret < 0) {
-		if (ret == (-ENOENT))
-			printf("syn filter is not enabled\n");
-		else
-			printf("get syn filter fails(%s)\n", strerror(-ret));
-		return;
-	}
-	printf("syn filter: priority: %s, queue: %d\n",
-		filter.hig_pri ? "high" : "low",
-		rx_queue);
-}
-void
-get_2tuple_filter(uint8_t port_id, uint16_t index)
-{
-	struct rte_2tuple_filter filter;
-	int ret = 0;
-	uint16_t rx_queue;
-
-	memset(&filter, 0, sizeof(filter));
-	ret = rte_eth_dev_get_2tuple_filter(port_id, index,
-				&filter, &rx_queue);
-	if (ret < 0) {
-		if (ret == (-ENOENT))
-			printf("filter[%d] is not enabled\n", index);
-		else
-			printf("get 2tuple filter fails(%s)\n", strerror(-ret));
-		return;
-	} else {
-		printf("filter[%d]:\n", index);
-		printf("    Destination Port:     0x%04x    mask: %d\n",
-			rte_be_to_cpu_16(filter.dst_port),
-			filter.dst_port_mask ? 0 : 1);
-		printf("    protocol:  0x%02x     mask:%d     tcp_flags: 0x%02x\n",
-			filter.protocol, filter.protocol_mask ? 0 : 1,
-			filter.tcp_flags);
-		printf("    priority: %d    queue: %d\n",
-			filter.priority, rx_queue);
-	}
-}
-
-void
-get_5tuple_filter(uint8_t port_id, uint16_t index)
-{
-	struct rte_5tuple_filter filter;
-	int ret = 0;
-	uint16_t rx_queue;
-
-	memset(&filter, 0, sizeof(filter));
-	ret = rte_eth_dev_get_5tuple_filter(port_id, index,
-				&filter, &rx_queue);
-	if (ret < 0) {
-		if (ret == (-ENOENT))
-			printf("filter[%d] is not enabled\n", index);
-		else
-			printf("get 5tuple filter fails(%s)\n", strerror(-ret));
-		return;
-	} else {
-		printf("filter[%d]:\n", index);
-		printf("    Destination IP:  0x%08x    mask: %d\n",
-			(unsigned)rte_be_to_cpu_32(filter.dst_ip),
-			filter.dst_ip_mask ? 0 : 1);
-		printf("    Source IP:       0x%08x    mask: %d\n",
-			(unsigned)rte_be_to_cpu_32(filter.src_ip),
-			filter.src_ip_mask ? 0 : 1);
-		printf("    Destination Port:       0x%04x    mask: %d\n",
-			rte_be_to_cpu_16(filter.dst_port),
-			filter.dst_port_mask ? 0 : 1);
-		printf("    Source Port:       0x%04x    mask: %d\n",
-			rte_be_to_cpu_16(filter.src_port),
-			filter.src_port_mask ? 0 : 1);
-		printf("    protocol:           0x%02x    mask: %d\n",
-			filter.protocol,
-			filter.protocol_mask ? 0 : 1);
-		printf("    priority: %d    flags: 0x%02x    queue: %d\n",
-			filter.priority, filter.tcp_flags, rx_queue);
-	}
-}
-void
-get_flex_filter(uint8_t port_id, uint16_t index)
-
-{
-	struct rte_flex_filter filter;
-	int ret = 0;
-	uint16_t rx_queue;
-	int i, j;
-
-	memset(&filter, 0, sizeof(filter));
-	ret = rte_eth_dev_get_flex_filter(port_id, index,
-				&filter, &rx_queue);
-	if (ret < 0) {
-		if (ret == (-ENOENT))
-			printf("filter[%d] is not enabled\n", index);
-		else
-			printf("get flex filter fails(%s)\n", strerror(-ret));
-		return;
-	} else {
-		printf("filter[%d]: ", index);
-		printf("\n    length: %d", filter.len);
-		printf("\n    dword[]: 0x");
-		for (i = 0; i < 32; i++)
-			printf("%08x ", (unsigned)rte_be_to_cpu_32(filter.dwords[i]));
-		printf("\n    mask[]: 0b");
-		for (i = 0; i < 16; i++) {
-			for (j = 0; j < 8; j++)
-				printf("%c", (filter.mask[i] & (1 << j)) ? '1' : '0');
-		}
-		printf("\n    priority: %d    queue: %d\n",
-			filter.priority, rx_queue);
-	}
 }

@@ -11,6 +11,10 @@
 #define pci_cfg_access_unlock pci_unblock_user_cfg_access
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)
+#define HAVE_PTE_MASK_PAGE_IOMAP
+#endif
+
 #ifndef PCI_MSIX_ENTRY_SIZE
 #define PCI_MSIX_ENTRY_SIZE             16
 #define  PCI_MSIX_ENTRY_LOWER_ADDR      0
@@ -21,7 +25,8 @@
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34) && \
-	!defined(CONFIG_PCI_IOV)
+	(!(defined(RHEL_RELEASE_CODE) && \
+	 RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(5, 9)))
 
 static int pci_num_vf(struct pci_dev *dev)
 {
@@ -42,6 +47,14 @@ static int pci_num_vf(struct pci_dev *dev)
 }
 
 #endif /* < 2.6.34 */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39) && \
+	(!(defined(RHEL_RELEASE_CODE) && \
+	   RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6, 4)))
+
+#define kstrtoul strict_strtoul
+
+#endif /* < 2.6.39 */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0) && \
 	(!(defined(RHEL_RELEASE_CODE) && \

@@ -47,7 +47,6 @@
 #include <rte_ethdev.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
@@ -217,8 +216,7 @@ rte_em_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 }
 
 static int
-eth_em_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev)
+eth_em_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
 	struct e1000_hw *hw =
@@ -272,9 +270,9 @@ eth_em_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
 
-	PMD_INIT_LOG(INFO, "port_id %d vendorID=0x%x deviceID=0x%x\n",
-			eth_dev->data->port_id, pci_dev->id.vendor_id,
-			pci_dev->id.device_id);
+	PMD_INIT_LOG(INFO, "port_id %d vendorID=0x%x deviceID=0x%x",
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id);
 
 	rte_intr_callback_register(&(pci_dev->intr_handle),
 		eth_em_interrupt_handler, (void *)eth_dev);
@@ -306,17 +304,17 @@ em_hw_init(struct e1000_hw *hw)
 
 	diag = hw->mac.ops.init_params(hw);
 	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "MAC Initialization Error\n");
+		PMD_INIT_LOG(ERR, "MAC Initialization Error");
 		return diag;
 	}
 	diag = hw->nvm.ops.init_params(hw);
 	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "NVM Initialization Error\n");
+		PMD_INIT_LOG(ERR, "NVM Initialization Error");
 		return diag;
 	}
 	diag = hw->phy.ops.init_params(hw);
 	if (diag != 0) {
-		PMD_INIT_LOG(ERR, "PHY Initialization Error\n");
+		PMD_INIT_LOG(ERR, "PHY Initialization Error");
 		return diag;
 	}
 	(void) e1000_get_bus_info(hw);
@@ -390,11 +388,10 @@ eth_em_configure(struct rte_eth_dev *dev)
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, ">>");
-
+	PMD_INIT_FUNC_TRACE();
 	intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
+	PMD_INIT_FUNC_TRACE();
 
-	PMD_INIT_LOG(DEBUG, "<<");
 	return (0);
 }
 
@@ -453,7 +450,7 @@ eth_em_start(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret, mask;
 
-	PMD_INIT_LOG(DEBUG, ">>");
+	PMD_INIT_FUNC_TRACE();
 
 	eth_em_stop(dev);
 
@@ -573,9 +570,9 @@ eth_em_start(struct rte_eth_dev *dev)
 	return (0);
 
 error_invalid_config:
-	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port "
-				"%u\n", dev->data->dev_conf.link_speed,
-			dev->data->dev_conf.link_duplex, dev->data->port_id);
+	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port %u",
+		     dev->data->dev_conf.link_speed,
+		     dev->data->dev_conf.link_duplex, dev->data->port_id);
 	em_dev_clear_queues(dev);
 	return (-EINVAL);
 }
@@ -1296,20 +1293,16 @@ eth_em_interrupt_action(struct rte_eth_dev *dev)
 	memset(&link, 0, sizeof(link));
 	rte_em_dev_atomic_read_link_status(dev, &link);
 	if (link.link_status) {
-		PMD_INIT_LOG(INFO,
-			" Port %d: Link Up - speed %u Mbps - %s\n",
-			dev->data->port_id, (unsigned)link.link_speed,
-			link.link_duplex == ETH_LINK_FULL_DUPLEX ?
-				"full-duplex" : "half-duplex");
+		PMD_INIT_LOG(INFO, " Port %d: Link Up - speed %u Mbps - %s",
+			     dev->data->port_id, (unsigned)link.link_speed,
+			     link.link_duplex == ETH_LINK_FULL_DUPLEX ?
+			     "full-duplex" : "half-duplex");
 	} else {
-		PMD_INIT_LOG(INFO, " Port %d: Link Down\n",
-					dev->data->port_id);
+		PMD_INIT_LOG(INFO, " Port %d: Link Down", dev->data->port_id);
 	}
 	PMD_INIT_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
-				dev->pci_dev->addr.domain,
-				dev->pci_dev->addr.bus,
-				dev->pci_dev->addr.devid,
-				dev->pci_dev->addr.function);
+		     dev->pci_dev->addr.domain, dev->pci_dev->addr.bus,
+		     dev->pci_dev->addr.devid, dev->pci_dev->addr.function);
 	tctl = E1000_READ_REG(hw, E1000_TCTL);
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	if (link.link_status) {
@@ -1429,14 +1422,14 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (fc_conf->autoneg != hw->mac.autoneg)
 		return -ENOTSUP;
 	rx_buf_size = em_get_rx_buffer_size(hw);
-	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x \n", rx_buf_size);
+	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
 
 	/* At least reserve one Ethernet frame for watermark */
 	max_high_water = rx_buf_size - ETHER_MAX_LEN;
 	if ((fc_conf->high_water > max_high_water) ||
-		(fc_conf->high_water < fc_conf->low_water)) {
-		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value \n");
-		PMD_INIT_LOG(ERR, "high water must <= 0x%x \n", max_high_water);
+	    (fc_conf->high_water < fc_conf->low_water)) {
+		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value");
+		PMD_INIT_LOG(ERR, "high water must <= 0x%x", max_high_water);
 		return (-EINVAL);
 	}
 
@@ -1466,7 +1459,7 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return 0;
 	}
 
-	PMD_INIT_LOG(ERR, "e1000_setup_link_generic = 0x%x \n", err);
+	PMD_INIT_LOG(ERR, "e1000_setup_link_generic = 0x%x", err);
 	return (-EIO);
 }
 

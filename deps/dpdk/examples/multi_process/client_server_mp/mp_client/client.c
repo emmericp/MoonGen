@@ -44,7 +44,6 @@
 #include <rte_common.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
@@ -65,7 +64,6 @@
 #include <rte_string_fns.h>
 
 #include "common.h"
-#include "init_drivers.h"
 
 /* Number of packets to attempt to read from queue */
 #define PKT_READ_SIZE  ((uint16_t)32)
@@ -211,7 +209,7 @@ enqueue_packet(struct rte_mbuf *buf, uint8_t port)
 static void
 handle_packet(struct rte_mbuf *buf)
 {
-	const uint8_t in_port = buf->pkt.in_port;
+	const uint8_t in_port = buf->port;
 	const uint8_t out_port = output_ports[in_port];
 
 	enqueue_packet(buf, out_port);
@@ -240,8 +238,6 @@ main(int argc, char *argv[])
 	if (parse_app_args(argc, argv) < 0)
 		rte_exit(EXIT_FAILURE, "Invalid command-line arguments\n");
 
-	if (init_drivers() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot get NIC ports\n");
 	if (rte_eth_dev_count() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 

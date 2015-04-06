@@ -203,7 +203,7 @@ rte_pipeline_create(struct rte_pipeline_params *params)
 
 	/* Allocate memory for the pipeline on requested socket */
 	p = rte_zmalloc_socket("PIPELINE", sizeof(struct rte_pipeline),
-			CACHE_LINE_SIZE, params->socket_id);
+			RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (p == NULL) {
 		RTE_LOG(ERR, PIPELINE,
@@ -343,7 +343,7 @@ rte_pipeline_table_create(struct rte_pipeline *p,
 	entry_size = sizeof(struct rte_pipeline_table_entry) +
 		params->action_data_size;
 	default_entry = (struct rte_pipeline_table_entry *) rte_zmalloc_socket(
-		"PIPELINE", entry_size, CACHE_LINE_SIZE, p->socket_id);
+		"PIPELINE", entry_size, RTE_CACHE_LINE_SIZE, p->socket_id);
 	if (default_entry == NULL) {
 		RTE_LOG(ERR, PIPELINE,
 			"%s: Failed to allocate default entry\n", __func__);
@@ -999,6 +999,7 @@ rte_pipeline_compute_masks(struct rte_pipeline *p, uint64_t pkts_mask)
 {
 	p->action_mask1[RTE_PIPELINE_ACTION_DROP] = 0;
 	p->action_mask1[RTE_PIPELINE_ACTION_PORT] = 0;
+	p->action_mask1[RTE_PIPELINE_ACTION_PORT_META] = 0;
 	p->action_mask1[RTE_PIPELINE_ACTION_TABLE] = 0;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
@@ -1224,6 +1225,7 @@ rte_pipeline_run(struct rte_pipeline *p)
 		pkts_mask = RTE_LEN2MASK(n_pkts, uint64_t);
 		p->action_mask0[RTE_PIPELINE_ACTION_DROP] = 0;
 		p->action_mask0[RTE_PIPELINE_ACTION_PORT] = 0;
+		p->action_mask0[RTE_PIPELINE_ACTION_PORT_META] = 0;
 		p->action_mask0[RTE_PIPELINE_ACTION_TABLE] = 0;
 
 		/* Input port user actions */
@@ -1300,6 +1302,9 @@ rte_pipeline_run(struct rte_pipeline *p)
 				p->action_mask0[RTE_PIPELINE_ACTION_PORT] |=
 					p->action_mask1[
 						RTE_PIPELINE_ACTION_PORT];
+				p->action_mask0[RTE_PIPELINE_ACTION_PORT_META] |=
+					p->action_mask1[
+						RTE_PIPELINE_ACTION_PORT_META];
 				p->action_mask0[RTE_PIPELINE_ACTION_TABLE] |=
 					p->action_mask1[
 						RTE_PIPELINE_ACTION_TABLE];

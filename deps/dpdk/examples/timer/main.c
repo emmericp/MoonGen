@@ -41,15 +41,12 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_cycles.h>
 #include <rte_timer.h>
 #include <rte_debug.h>
-
-#include "main.h"
 
 #define TIMER_RESOLUTION_CYCLES 20000000ULL /* around 10ms at 2 Ghz */
 
@@ -115,7 +112,7 @@ lcore_mainloop(__attribute__((unused)) void *arg)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	int ret;
 	uint64_t hz;

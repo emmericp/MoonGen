@@ -43,7 +43,6 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
@@ -86,7 +85,7 @@ rte_memzone_reserve(const char *name, size_t len, int socket_id,
 		      unsigned flags)
 {
 	return rte_memzone_reserve_aligned(name,
-			len, socket_id, flags, CACHE_LINE_SIZE);
+			len, socket_id, flags, RTE_CACHE_LINE_SIZE);
 }
 
 /*
@@ -156,7 +155,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	}
 
 	/* if alignment is not a power of two */
-	if (!rte_is_power_of_2(align)) {
+	if (align && !rte_is_power_of_2(align)) {
 		RTE_LOG(ERR, EAL, "%s(): Invalid alignment: %u\n", __func__,
 				align);
 		rte_errno = EINVAL;
@@ -164,21 +163,21 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	}
 
 	/* alignment less than cache size is not allowed */
-	if (align < CACHE_LINE_SIZE)
-		align = CACHE_LINE_SIZE;
+	if (align < RTE_CACHE_LINE_SIZE)
+		align = RTE_CACHE_LINE_SIZE;
 
 
 	/* align length on cache boundary. Check for overflow before doing so */
-	if (len > SIZE_MAX - CACHE_LINE_MASK) {
+	if (len > SIZE_MAX - RTE_CACHE_LINE_MASK) {
 		rte_errno = EINVAL; /* requested size too big */
 		return NULL;
 	}
 
-	len += CACHE_LINE_MASK;
-	len &= ~((size_t) CACHE_LINE_MASK);
+	len += RTE_CACHE_LINE_MASK;
+	len &= ~((size_t) RTE_CACHE_LINE_MASK);
 
 	/* save minimal requested  length */
-	requested_len = RTE_MAX((size_t)CACHE_LINE_SIZE,  len);
+	requested_len = RTE_MAX((size_t)RTE_CACHE_LINE_SIZE,  len);
 
 	/* check that boundary condition is valid */
 	if (bound != 0 &&
@@ -216,10 +215,16 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 
 		/* check flags for hugepage sizes */
 		if ((flags & RTE_MEMZONE_2MB) &&
-				free_memseg[i].hugepage_sz == RTE_PGSIZE_1G )
+				free_memseg[i].hugepage_sz == RTE_PGSIZE_1G)
 			continue;
 		if ((flags & RTE_MEMZONE_1GB) &&
-				free_memseg[i].hugepage_sz == RTE_PGSIZE_2M )
+				free_memseg[i].hugepage_sz == RTE_PGSIZE_2M)
+			continue;
+		if ((flags & RTE_MEMZONE_16MB) &&
+				free_memseg[i].hugepage_sz == RTE_PGSIZE_16G)
+			continue;
+		if ((flags & RTE_MEMZONE_16GB) &&
+				free_memseg[i].hugepage_sz == RTE_PGSIZE_16M)
 			continue;
 
 		/* this segment is the best until now */
@@ -256,7 +261,8 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		 * try allocating again without the size parameter otherwise -fail.
 		 */
 		if ((flags & RTE_MEMZONE_SIZE_HINT_ONLY)  &&
-		    ((flags & RTE_MEMZONE_1GB) || (flags & RTE_MEMZONE_2MB)))
+		    ((flags & RTE_MEMZONE_1GB) || (flags & RTE_MEMZONE_2MB)
+		|| (flags & RTE_MEMZONE_16MB) || (flags & RTE_MEMZONE_16GB)))
 			return memzone_reserve_aligned_thread_unsafe(name,
 				len, socket_id, 0, align, bound);
 
@@ -313,7 +319,8 @@ rte_memzone_reserve_aligned(const char *name, size_t len,
 	const struct rte_memzone *mz = NULL;
 
 	/* both sizes cannot be explicitly called for */
-	if ((flags & RTE_MEMZONE_1GB) && (flags & RTE_MEMZONE_2MB)) {
+	if (((flags & RTE_MEMZONE_1GB) && (flags & RTE_MEMZONE_2MB))
+		|| ((flags & RTE_MEMZONE_16MB) && (flags & RTE_MEMZONE_16GB))) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -344,7 +351,8 @@ rte_memzone_reserve_bounded(const char *name, size_t len,
 	const struct rte_memzone *mz = NULL;
 
 	/* both sizes cannot be explicitly called for */
-	if ((flags & RTE_MEMZONE_1GB) && (flags & RTE_MEMZONE_2MB)) {
+	if (((flags & RTE_MEMZONE_1GB) && (flags & RTE_MEMZONE_2MB))
+		|| ((flags & RTE_MEMZONE_16MB) && (flags & RTE_MEMZONE_16GB))) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -421,8 +429,8 @@ memseg_sanitize(struct rte_memseg *memseg)
 	unsigned virt_align;
 	unsigned off;
 
-	phys_align = memseg->phys_addr & CACHE_LINE_MASK;
-	virt_align = (unsigned long)memseg->addr & CACHE_LINE_MASK;
+	phys_align = memseg->phys_addr & RTE_CACHE_LINE_MASK;
+	virt_align = (unsigned long)memseg->addr & RTE_CACHE_LINE_MASK;
 
 	/*
 	 * sanity check: phys_addr and addr must have the same
@@ -432,19 +440,19 @@ memseg_sanitize(struct rte_memseg *memseg)
 		return -1;
 
 	/* memseg is really too small, don't bother with it */
-	if (memseg->len < (2 * CACHE_LINE_SIZE)) {
+	if (memseg->len < (2 * RTE_CACHE_LINE_SIZE)) {
 		memseg->len = 0;
 		return 0;
 	}
 
 	/* align start address */
-	off = (CACHE_LINE_SIZE - phys_align) & CACHE_LINE_MASK;
+	off = (RTE_CACHE_LINE_SIZE - phys_align) & RTE_CACHE_LINE_MASK;
 	memseg->phys_addr += off;
 	memseg->addr = (char *)memseg->addr + off;
 	memseg->len -= off;
 
 	/* align end address */
-	memseg->len &= ~((uint64_t)CACHE_LINE_MASK);
+	memseg->len &= ~((uint64_t)RTE_CACHE_LINE_MASK);
 
 	return 0;
 }

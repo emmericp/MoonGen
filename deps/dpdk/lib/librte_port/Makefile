@@ -39,15 +39,17 @@ LIB = librte_port.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+EXPORT_MAP := rte_port_version.map
+
+LIBABIVER := 1
+
 #
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ring.c
 ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
-ifeq ($(CONFIG_RTE_MBUF_SCATTER_GATHER),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_frag.c
-endif
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ras.c
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_sched.c
@@ -58,9 +60,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ethdev.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ring.h
 ifeq ($(CONFIG_RTE_LIBRTE_IP_FRAG),y)
-ifeq ($(CONFIG_RTE_MBUF_SCATTER_GATHER),y)
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_frag.h
-endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ras.h
 endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_sched.h

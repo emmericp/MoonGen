@@ -48,7 +48,6 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -93,26 +92,6 @@ static struct rte_eth_conf port_conf = {
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
-};
-
-static struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-		.pthresh = APP_DEFAULT_NIC_RX_PTHRESH,
-		.hthresh = APP_DEFAULT_NIC_RX_HTHRESH,
-		.wthresh = APP_DEFAULT_NIC_RX_WTHRESH,
-	},
-	.rx_free_thresh = APP_DEFAULT_NIC_RX_FREE_THRESH,
-	.rx_drop_en = APP_DEFAULT_NIC_RX_DROP_EN,
-};
-
-static struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-		.pthresh = APP_DEFAULT_NIC_TX_PTHRESH,
-		.hthresh = APP_DEFAULT_NIC_TX_HTHRESH,
-		.wthresh = APP_DEFAULT_NIC_TX_WTHRESH,
-	},
-	.tx_free_thresh = APP_DEFAULT_NIC_TX_FREE_THRESH,
-	.tx_rs_thresh = APP_DEFAULT_NIC_TX_RS_THRESH,
 };
 
 static void
@@ -450,10 +429,6 @@ app_init_nics(void)
 	int ret;
 	uint32_t n_rx_queues, n_tx_queues;
 
-	if (rte_eal_pci_probe() < 0) {
-		rte_panic("Cannot probe PCI\n");
-	}
-
 	/* Init NIC ports and queues, then start the ports */
 	for (port = 0; port < APP_MAX_NIC_PORTS; port ++) {
 		struct rte_mempool *pool;
@@ -495,7 +470,7 @@ app_init_nics(void)
 				queue,
 				(uint16_t) app.nic_rx_ring_size,
 				socket,
-				&rx_conf,
+				NULL,
 				pool);
 			if (ret < 0) {
 				rte_panic("Cannot init RX queue %u for port %u (%d)\n",
@@ -516,7 +491,7 @@ app_init_nics(void)
 				0,
 				(uint16_t) app.nic_tx_ring_size,
 				socket,
-				&tx_conf);
+				NULL);
 			if (ret < 0) {
 				rte_panic("Cannot init TX queue 0 for port %d (%d)\n",
 					port,

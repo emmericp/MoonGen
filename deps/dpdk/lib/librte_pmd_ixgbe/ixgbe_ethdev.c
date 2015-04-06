@@ -52,7 +52,6 @@
 #include <rte_branch_prediction.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_alarm.h>
 #include <rte_ether.h>
@@ -68,6 +67,7 @@
 #include "ixgbe/ixgbe_common.h"
 #include "ixgbe_ethdev.h"
 #include "ixgbe_bypass.h"
+#include "ixgbe_rxtx.h"
 
 /*
  * High threshold controlling when to start sending XOFF frames. Must be at
@@ -92,12 +92,31 @@
 #define IXGBE_MMW_SIZE_DEFAULT        0x4
 #define IXGBE_MMW_SIZE_JUMBO_FRAME    0x14
 
+/*
+ *  Default values for RX/TX configuration
+ */
+#define IXGBE_DEFAULT_RX_FREE_THRESH  32
+#define IXGBE_DEFAULT_RX_PTHRESH      8
+#define IXGBE_DEFAULT_RX_HTHRESH      8
+#define IXGBE_DEFAULT_RX_WTHRESH      0
+
+#define IXGBE_DEFAULT_TX_FREE_THRESH  32
+#define IXGBE_DEFAULT_TX_PTHRESH      32
+#define IXGBE_DEFAULT_TX_HTHRESH      0
+#define IXGBE_DEFAULT_TX_WTHRESH      0
+#define IXGBE_DEFAULT_TX_RSBIT_THRESH 32
+
+/* Bit shift and mask */
+#define IXGBE_4_BIT_WIDTH  (CHAR_BIT / 2)
+#define IXGBE_4_BIT_MASK   RTE_LEN2MASK(IXGBE_4_BIT_WIDTH, uint8_t)
+#define IXGBE_8_BIT_WIDTH  CHAR_BIT
+#define IXGBE_8_BIT_MASK   UINT8_MAX
+
 #define IXGBEVF_PMD_NAME "rte_ixgbevf_pmd" /* PMD name */
 
 #define IXGBE_QUEUE_STAT_COUNTERS (sizeof(hw_stats->qprc) / sizeof(hw_stats->qprc[0]))
 
-static int eth_ixgbe_dev_init(struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev);
+static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
@@ -118,8 +137,9 @@ static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint8_t stat_idx,
 					     uint8_t is_rx);
 static void ixgbe_dev_info_get(struct rte_eth_dev *dev,
-				struct rte_eth_dev_info *dev_info);
-
+			       struct rte_eth_dev_info *dev_info);
+static void ixgbevf_dev_info_get(struct rte_eth_dev *dev,
+				 struct rte_eth_dev_info *dev_info);
 static int ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int ixgbe_vlan_filter_set(struct rte_eth_dev *dev,
@@ -144,9 +164,11 @@ static int ixgbe_flow_ctrl_set(struct rte_eth_dev *dev,
 static int ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 		struct rte_eth_pfc_conf *pfc_conf);
 static int ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
-		struct rte_eth_rss_reta *reta_conf);
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
 static int ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
-		struct rte_eth_rss_reta *reta_conf);
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
@@ -160,8 +182,7 @@ static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config);
 
 /* For Virtual Function support */
-static int eth_ixgbevf_dev_init(struct eth_driver *eth_drv,
-		struct rte_eth_dev *eth_dev);
+static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
 static int  ixgbevf_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
@@ -202,24 +223,38 @@ static void ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
 				 struct ether_addr *mac_addr,
 				 uint32_t index, uint32_t pool);
 static void ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
-static int ixgbe_add_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t rx_queue);
-static int ixgbe_remove_syn_filter(struct rte_eth_dev *dev);
-static int ixgbe_get_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t *rx_queue);
-static int ixgbe_add_ethertype_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t rx_queue);
-static int ixgbe_remove_ethertype_filter(struct rte_eth_dev *dev,
-			uint16_t index);
-static int ixgbe_get_ethertype_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_ethertype_filter *filter, uint16_t *rx_queue);
-static int ixgbe_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t rx_queue);
-static int ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
-			uint16_t index);
-static int ixgbe_get_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t *rx_queue);
-
+static int ixgbe_syn_filter_set(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter,
+			bool add);
+static int ixgbe_syn_filter_get(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter);
+static int ixgbe_syn_filter_handle(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op,
+			void *arg);
+static int ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
+			struct ixgbe_5tuple_filter *filter);
+static void ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
+			struct ixgbe_5tuple_filter *filter);
+static int ixgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *filter,
+			bool add);
+static int ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg);
+static int ixgbe_get_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *filter);
+static int ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter,
+			bool add);
+static int ixgbe_ethertype_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg);
+static int ixgbe_get_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter);
+static int ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg);
 static int ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 
 /*
@@ -330,14 +365,6 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.set_vf_vlan_filter   = ixgbe_set_pool_vlan_filter,
 	.set_queue_rate_limit = ixgbe_set_queue_rate_limit,
 	.set_vf_rate_limit    = ixgbe_set_vf_rate_limit,
-	.fdir_add_signature_filter    = ixgbe_fdir_add_signature_filter,
-	.fdir_update_signature_filter = ixgbe_fdir_update_signature_filter,
-	.fdir_remove_signature_filter = ixgbe_fdir_remove_signature_filter,
-	.fdir_infos_get               = ixgbe_fdir_info_get,
-	.fdir_add_perfect_filter      = ixgbe_fdir_add_perfect_filter,
-	.fdir_update_perfect_filter   = ixgbe_fdir_update_perfect_filter,
-	.fdir_remove_perfect_filter   = ixgbe_fdir_remove_perfect_filter,
-	.fdir_set_masks               = ixgbe_fdir_set_masks,
 	.reta_update          = ixgbe_dev_rss_reta_update,
 	.reta_query           = ixgbe_dev_rss_reta_query,
 #ifdef RTE_NIC_BYPASS
@@ -353,15 +380,7 @@ static struct eth_dev_ops ixgbe_eth_dev_ops = {
 #endif /* RTE_NIC_BYPASS */
 	.rss_hash_update      = ixgbe_dev_rss_hash_update,
 	.rss_hash_conf_get    = ixgbe_dev_rss_hash_conf_get,
-	.add_syn_filter	         = ixgbe_add_syn_filter,
-	.remove_syn_filter       = ixgbe_remove_syn_filter,
-	.get_syn_filter          = ixgbe_get_syn_filter,
-	.add_ethertype_filter    = ixgbe_add_ethertype_filter,
-	.remove_ethertype_filter = ixgbe_remove_ethertype_filter,
-	.get_ethertype_filter    = ixgbe_get_ethertype_filter,
-	.add_5tuple_filter       = ixgbe_add_5tuple_filter,
-	.remove_5tuple_filter    = ixgbe_remove_5tuple_filter,
-	.get_5tuple_filter       = ixgbe_get_5tuple_filter,
+	.filter_ctrl          = ixgbe_dev_filter_ctrl,
 };
 
 /*
@@ -377,7 +396,7 @@ static struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.stats_get            = ixgbevf_dev_stats_get,
 	.stats_reset          = ixgbevf_dev_stats_reset,
 	.dev_close            = ixgbevf_dev_close,
-	.dev_infos_get        = ixgbe_dev_info_get,
+	.dev_infos_get        = ixgbevf_dev_info_get,
 	.mtu_set              = ixgbevf_dev_set_mtu,
 	.vlan_filter_set      = ixgbevf_vlan_filter_set,
 	.vlan_strip_queue_set = ixgbevf_vlan_strip_queue_set,
@@ -544,15 +563,19 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	uint32_t q_map;
 	uint8_t n, offset;
 
-	if ((hw->mac.type != ixgbe_mac_82599EB) && (hw->mac.type != ixgbe_mac_X540))
+	if ((hw->mac.type != ixgbe_mac_82599EB) &&
+		(hw->mac.type != ixgbe_mac_X540) &&
+		(hw->mac.type != ixgbe_mac_X550) &&
+		(hw->mac.type != ixgbe_mac_X550EM_x))
 		return -ENOSYS;
 
-	PMD_INIT_LOG(INFO, "Setting port %d, %s queue_id %d to stat index %d\n",
-		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX", queue_id, stat_idx);
+	PMD_INIT_LOG(INFO, "Setting port %d, %s queue_id %d to stat index %d",
+		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
+		     queue_id, stat_idx);
 
 	n = (uint8_t)(queue_id / NB_QMAP_FIELDS_PER_QSM_REG);
 	if (n >= IXGBE_NB_STAT_MAPPING_REGS) {
-		PMD_INIT_LOG(ERR, "Nb of stat mapping registers exceeded\n");
+		PMD_INIT_LOG(ERR, "Nb of stat mapping registers exceeded");
 		return -EIO;
 	}
 	offset = (uint8_t)(queue_id % NB_QMAP_FIELDS_PER_QSM_REG);
@@ -572,19 +595,20 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	else
 		stat_mappings->rqsmr[n] |= qsmr_mask;
 
-	PMD_INIT_LOG(INFO, "Set port %d, %s queue_id %d to stat index %d\n"
-		     "%s[%d] = 0x%08x\n",
-		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX", queue_id, stat_idx,
-		     is_rx ? "RQSMR" : "TQSM",n, is_rx ? stat_mappings->rqsmr[n] : stat_mappings->tqsm[n]);
+	PMD_INIT_LOG(INFO, "Set port %d, %s queue_id %d to stat index %d",
+		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
+		     queue_id, stat_idx);
+	PMD_INIT_LOG(INFO, "%s[%d] = 0x%08x", is_rx ? "RQSMR" : "TQSM", n,
+		     is_rx ? stat_mappings->rqsmr[n] : stat_mappings->tqsm[n]);
 
 	/* Now write the mapping in the appropriate register */
 	if (is_rx) {
-		PMD_INIT_LOG(INFO, "Write 0x%x to RX IXGBE stat mapping reg:%d\n",
+		PMD_INIT_LOG(INFO, "Write 0x%x to RX IXGBE stat mapping reg:%d",
 			     stat_mappings->rqsmr[n], n);
 		IXGBE_WRITE_REG(hw, IXGBE_RQSMR(n), stat_mappings->rqsmr[n]);
 	}
 	else {
-		PMD_INIT_LOG(INFO, "Write 0x%x to TX IXGBE stat mapping reg:%d\n",
+		PMD_INIT_LOG(INFO, "Write 0x%x to TX IXGBE stat mapping reg:%d",
 			     stat_mappings->tqsm[n], n);
 		IXGBE_WRITE_REG(hw, IXGBE_TQSM(n), stat_mappings->tqsm[n]);
 	}
@@ -644,8 +668,10 @@ ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config)
 	/* support all DCB capabilities in 82599 */
 	dcb_config->support.capabilities = 0xFF;
 
-	/*we only support 4 Tcs for X540*/
-	if (hw->mac.type == ixgbe_mac_X540) {
+	/*we only support 4 Tcs for X540, X550 */
+	if (hw->mac.type == ixgbe_mac_X540 ||
+		hw->mac.type == ixgbe_mac_X550 ||
+		hw->mac.type == ixgbe_mac_X550EM_x) {
 		dcb_config->num_tcs.pg_tcs = 4;
 		dcb_config->num_tcs.pfc_tcs = 4;
 	}
@@ -667,7 +693,7 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
 	 */
 	mask = IXGBE_GSSR_PHY0_SM << hw->bus.func;
 	if (ixgbe_acquire_swfw_semaphore(hw, mask) < 0) {
-		   DEBUGOUT1("SWFW phy%d lock released", hw->bus.func);
+		PMD_DRV_LOG(DEBUG, "SWFW phy%d lock released", hw->bus.func);
 	}
 	ixgbe_release_swfw_semaphore(hw, mask);
 
@@ -679,7 +705,7 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
 	 */
 	mask = IXGBE_GSSR_EEP_SM | IXGBE_GSSR_MAC_CSR_SM | IXGBE_GSSR_SW_MNG_SM;
 	if (ixgbe_acquire_swfw_semaphore(hw, mask) < 0) {
-		   DEBUGOUT("SWFW common locks released");
+		PMD_DRV_LOG(DEBUG, "SWFW common locks released");
 	}
 	ixgbe_release_swfw_semaphore(hw, mask);
 }
@@ -689,8 +715,7 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
  * It returns 0 on success.
  */
 static int
-eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		     struct rte_eth_dev *eth_dev)
+eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
 	struct ixgbe_hw *hw =
@@ -701,6 +726,8 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
 	struct ixgbe_dcb_config *dcb_config =
 		IXGBE_DEV_PRIVATE_TO_DCB_CFG(eth_dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
 	uint32_t ctrl_ext;
 	uint16_t csum;
 	int diag, i;
@@ -711,12 +738,26 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &ixgbe_xmit_pkts;
 
-	/* for secondary processes, we don't initialise any further as primary
+	/*
+	 * For secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
-	 * RX function */
+	 * RX and TX function.
+	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
-		if (eth_dev->data->scattered_rx)
-			eth_dev->rx_pkt_burst = ixgbe_recv_scattered_pkts;
+		struct ixgbe_tx_queue *txq;
+		/* TX queue function in primary, set by last queue initialized
+		 * Tx queue may not initialized by primary process */
+		if (eth_dev->data->tx_queues) {
+			txq = eth_dev->data->tx_queues[eth_dev->data->nb_tx_queues-1];
+			ixgbe_set_tx_function(eth_dev, txq);
+		} else {
+			/* Use default TX function if we get here */
+			PMD_INIT_LOG(INFO, "No TX queues configured yet. "
+			                   "Using default TX function.");
+		}
+
+		ixgbe_set_rx_function(eth_dev);
+
 		return 0;
 	}
 	pci_dev = eth_dev->pci_dev;
@@ -725,9 +766,7 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
-#ifdef RTE_LIBRTE_IXGBE_ALLOW_UNSUPPORTED_SFP
 	hw->allow_unsupported_sfp = 1;
-#endif
 
 	/* Initialize the shared code (base driver) */
 #ifdef RTE_NIC_BYPASS
@@ -791,11 +830,12 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	if (diag == IXGBE_ERR_EEPROM_VERSION) {
 		PMD_INIT_LOG(ERR, "This device is a pre-production adapter/"
 		    "LOM.  Please be aware there may be issues associated "
-		    "with your hardware.\n If you are experiencing problems "
+		    "with your hardware.");
+		PMD_INIT_LOG(ERR, "If you are experiencing problems "
 		    "please contact your Intel or hardware representative "
-		    "who provided you with this hardware.\n");
+		    "who provided you with this hardware.");
 	} else if (diag == IXGBE_ERR_SFP_NOT_SUPPORTED)
-		PMD_INIT_LOG(ERR, "Unsupported SFP+ Module\n");
+		PMD_INIT_LOG(ERR, "Unsupported SFP+ Module");
 	if (diag) {
 		PMD_INIT_LOG(ERR, "Hardware Initialization Failure: %d", diag);
 		return -EIO;
@@ -849,12 +889,11 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 	IXGBE_WRITE_FLUSH(hw);
 
 	if (ixgbe_is_sfp(hw) && hw->phy.sfp_type != ixgbe_sfp_type_not_present)
-		PMD_INIT_LOG(DEBUG,
-			     "MAC: %d, PHY: %d, SFP+: %d<n",
+		PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d, SFP+: %d",
 			     (int) hw->mac.type, (int) hw->phy.type,
 			     (int) hw->phy.sfp_type);
 	else
-		PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d\n",
+		PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d",
 			     (int) hw->mac.type, (int) hw->phy.type);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
@@ -869,6 +908,11 @@ eth_ixgbe_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 
 	/* enable support intr */
 	ixgbe_enable_intr(eth_dev);
+
+	/* initialize 5tuple filter list */
+	TAILQ_INIT(&filter_info->fivetuple_list);
+	memset(filter_info->fivetuple_mask, 0,
+		sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
 
 	return 0;
 }
@@ -919,8 +963,7 @@ generate_random_mac_addr(struct ether_addr *mac_addr)
  * Virtual Function device init
  */
 static int
-eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
-		     struct rte_eth_dev *eth_dev)
+eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	int diag;
 	uint32_t tc, tcs;
@@ -933,7 +976,7 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
 	struct ether_addr *perm_addr = (struct ether_addr *) hw->mac.perm_addr;
 
-	PMD_INIT_LOG(DEBUG, "eth_ixgbevf_dev_init");
+	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &ixgbevf_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
@@ -1012,16 +1055,15 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			eth_dev->data->mac_addrs = NULL;
 			return diag;
 		}
-		RTE_LOG(INFO, PMD,
-			"\tVF MAC address not assigned by Host PF\n"
-			"\tAssign randomly generated MAC address "
-			"%02x:%02x:%02x:%02x:%02x:%02x\n",
-			perm_addr->addr_bytes[0],
-			perm_addr->addr_bytes[1],
-			perm_addr->addr_bytes[2],
-			perm_addr->addr_bytes[3],
-			perm_addr->addr_bytes[4],
-			perm_addr->addr_bytes[5]);
+		PMD_INIT_LOG(INFO, "\tVF MAC address not assigned by Host PF");
+		PMD_INIT_LOG(INFO, "\tAssign randomly generated MAC address "
+			     "%02x:%02x:%02x:%02x:%02x:%02x",
+			     perm_addr->addr_bytes[0],
+			     perm_addr->addr_bytes[1],
+			     perm_addr->addr_bytes[2],
+			     perm_addr->addr_bytes[3],
+			     perm_addr->addr_bytes[4],
+			     perm_addr->addr_bytes[5]);
 	}
 
 	/* Copy the permanent MAC address */
@@ -1038,9 +1080,9 @@ eth_ixgbevf_dev_init(__attribute__((unused)) struct eth_driver *eth_drv,
 			return (-EIO);
 	}
 
-	PMD_INIT_LOG(DEBUG, "\nport %d vendorID=0x%x deviceID=0x%x mac.type=%s\n",
-			 eth_dev->data->port_id, pci_dev->id.vendor_id, pci_dev->id.device_id,
-			 "ixgbe_mac_82599_vf");
+	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id, "ixgbe_mac_82599_vf");
 
 	return 0;
 }
@@ -1090,7 +1132,7 @@ rte_ixgbe_pmd_init(const char *name __rte_unused, const char *params __rte_unuse
 static int
 rte_ixgbevf_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
 {
-	DEBUGFUNC("rte_ixgbevf_pmd_init");
+	PMD_INIT_FUNC_TRACE();
 
 	rte_eth_driver_register(&rte_ixgbevf_pmd);
 	return (0);
@@ -1387,11 +1429,20 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* set flag to update link status after init */
 	intr->flags |= IXGBE_FLAG_NEED_LINK_UPDATE;
+
+	/*
+	 * Initialize to TRUE. If any of Rx queues doesn't meet the bulk
+	 * allocation or vector Rx preconditions we will reset it.
+	 */
+	hw->rx_bulk_alloc_allowed = true;
+	hw->rx_vec_allowed = true;
 
 	return 0;
 }
@@ -1418,9 +1469,9 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	/* IXGBE devices don't support half duplex */
 	if ((dev->data->dev_conf.link_duplex != ETH_LINK_AUTONEG_DUPLEX) &&
 			(dev->data->dev_conf.link_duplex != ETH_LINK_FULL_DUPLEX)) {
-		PMD_INIT_LOG(ERR, "Invalid link_duplex (%hu) for port %hhu\n",
-				dev->data->dev_conf.link_duplex,
-				dev->data->port_id);
+		PMD_INIT_LOG(ERR, "Invalid link_duplex (%hu) for port %hhu",
+			     dev->data->dev_conf.link_duplex,
+			     dev->data->port_id);
 		return -EINVAL;
 	}
 
@@ -1434,6 +1485,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	if (status != 0)
 		return -1;
 	hw->mac.ops.start_hw(hw);
+	hw->mac.get_link_status = true;
 
 	/* configure PF module if SRIOV enabled */
 	ixgbe_pf_host_configure(dev);
@@ -1444,11 +1496,20 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	/* This can fail when allocating mbufs for descriptor rings */
 	err = ixgbe_dev_rx_init(dev);
 	if (err) {
-		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware\n");
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware");
 		goto error;
 	}
 
-	ixgbe_dev_rxtx_start(dev);
+	err = ixgbe_dev_rxtx_start(dev);
+	if (err < 0) {
+		PMD_INIT_LOG(ERR, "Unable to start rxtx queues");
+		goto error;
+	}
+
+	/* Skip link setup if loopback mode is enabled for 82599. */
+	if (hw->mac.type == ixgbe_mac_82599EB &&
+			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
+		goto skip_link_setup;
 
 	if (ixgbe_is_sfp(hw) && hw->phy.multispeed_fiber) {
 		err = hw->mac.ops.setup_sfp(hw);
@@ -1459,14 +1520,11 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	/* Turn on the laser */
 	ixgbe_enable_tx_laser(hw);
 
-	/* Skip link setup if loopback mode is enabled for 82599. */
-	if (hw->mac.type == ixgbe_mac_82599EB &&
-			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
-		goto skip_link_setup;
-
 	err = ixgbe_check_link(hw, &speed, &link_up, 0);
 	if (err)
 		goto error;
+	dev->data->dev_link.link_status = link_up;
+
 	err = ixgbe_get_link_capabilities(hw, &speed, &negotiate);
 	if (err)
 		goto error;
@@ -1491,9 +1549,9 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		speed = IXGBE_LINK_SPEED_10GB_FULL;
 		break;
 	default:
-		PMD_INIT_LOG(ERR, "Invalid link_speed (%hu) for port %hhu\n",
-				dev->data->dev_conf.link_speed,
-				dev->data->port_id);
+		PMD_INIT_LOG(ERR, "Invalid link_speed (%hu) for port %hhu",
+			     dev->data->dev_conf.link_speed,
+			     dev->data->port_id);
 		goto error;
 	}
 
@@ -1559,6 +1617,9 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct ixgbe_5tuple_filter *p_5tuple, *p_5tuple_next;
 	int vf;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1582,9 +1643,24 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 
 	ixgbe_dev_clear_queues(dev);
 
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
+
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_ixgbe_dev_atomic_write_link_status(dev, &link);
+
+	/* Remove all ntuple filters of the device */
+	for (p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list);
+	     p_5tuple != NULL; p_5tuple = p_5tuple_next) {
+		p_5tuple_next = TAILQ_NEXT(p_5tuple, entries);
+		TAILQ_REMOVE(&filter_info->fivetuple_list,
+			     p_5tuple, entries);
+		rte_free(p_5tuple);
+	}
+	memset(filter_info->fivetuple_mask, 0,
+		sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
+
 }
 
 /*
@@ -1599,10 +1675,8 @@ ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
 #ifdef RTE_NIC_BYPASS
 		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
 			/* Not suported in bypass mode */
-			PMD_INIT_LOG(ERR,
-				"\nSet link up is not supported "
-				"by device id 0x%x\n",
-				hw->device_id);
+			PMD_INIT_LOG(ERR, "Set link up is not supported "
+				     "by device id 0x%x", hw->device_id);
 			return -ENOTSUP;
 		}
 #endif
@@ -1611,8 +1685,8 @@ ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
 		return 0;
 	}
 
-	PMD_INIT_LOG(ERR, "\nSet link up is not supported by device id 0x%x\n",
-		hw->device_id);
+	PMD_INIT_LOG(ERR, "Set link up is not supported by device id 0x%x",
+		     hw->device_id);
 	return -ENOTSUP;
 }
 
@@ -1628,10 +1702,8 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 #ifdef RTE_NIC_BYPASS
 		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
 			/* Not suported in bypass mode */
-			PMD_INIT_LOG(ERR,
-				"\nSet link down is not supported "
-				"by device id 0x%x\n",
-				 hw->device_id);
+			PMD_INIT_LOG(ERR, "Set link down is not supported "
+				     "by device id 0x%x", hw->device_id);
 			return -ENOTSUP;
 		}
 #endif
@@ -1640,9 +1712,8 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 		return 0;
 	}
 
-	PMD_INIT_LOG(ERR,
-		"\nSet link down is not supported by device id 0x%x\n",
-		 hw->device_id);
+	PMD_INIT_LOG(ERR, "Set link down is not supported by device id 0x%x",
+		     hw->device_id);
 	return -ENOTSUP;
 }
 
@@ -1895,7 +1966,6 @@ ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	if (stats == NULL)
 		return;
 
-	memset(stats, 0, sizeof(*stats));
 	stats->ipackets = hw_stats->vfgprc;
 	stats->ibytes = hw_stats->vfgorc;
 	stats->opackets = hw_stats->vfgptc;
@@ -1937,6 +2007,7 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->max_vmdq_pools = ETH_16_POOLS;
 	else
 		dev_info->max_vmdq_pools = ETH_64_POOLS;
+	dev_info->vmdq_queue_num = dev_info->max_rx_queues;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
@@ -1947,7 +2018,82 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_IPV4_CKSUM  |
 		DEV_TX_OFFLOAD_UDP_CKSUM   |
 		DEV_TX_OFFLOAD_TCP_CKSUM   |
-		DEV_TX_OFFLOAD_SCTP_CKSUM;
+		DEV_TX_OFFLOAD_SCTP_CKSUM  |
+		DEV_TX_OFFLOAD_TCP_TSO;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = IXGBE_DEFAULT_RX_PTHRESH,
+			.hthresh = IXGBE_DEFAULT_RX_HTHRESH,
+			.wthresh = IXGBE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = IXGBE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = IXGBE_DEFAULT_TX_PTHRESH,
+			.hthresh = IXGBE_DEFAULT_TX_HTHRESH,
+			.wthresh = IXGBE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+				ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
+	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+	dev_info->flow_type_rss_offloads = IXGBE_RSS_OFFLOAD_ALL;
+}
+
+static void
+ixgbevf_dev_info_get(struct rte_eth_dev *dev,
+		     struct rte_eth_dev_info *dev_info)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
+	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
+	dev_info->min_rx_bufsize = 1024; /* cf BSIZEPACKET in SRRCTL reg */
+	dev_info->max_rx_pktlen = 15872; /* includes CRC, cf MAXFRS reg */
+	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
+	dev_info->max_hash_mac_addrs = IXGBE_VMDQ_NUM_UC_MAC;
+	dev_info->max_vfs = dev->pci_dev->max_vfs;
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		dev_info->max_vmdq_pools = ETH_16_POOLS;
+	else
+		dev_info->max_vmdq_pools = ETH_64_POOLS;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
+				DEV_RX_OFFLOAD_IPV4_CKSUM |
+				DEV_RX_OFFLOAD_UDP_CKSUM  |
+				DEV_RX_OFFLOAD_TCP_CKSUM;
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
+				DEV_TX_OFFLOAD_IPV4_CKSUM  |
+				DEV_TX_OFFLOAD_UDP_CKSUM   |
+				DEV_TX_OFFLOAD_TCP_CKSUM   |
+				DEV_TX_OFFLOAD_SCTP_CKSUM;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = IXGBE_DEFAULT_RX_PTHRESH,
+			.hthresh = IXGBE_DEFAULT_RX_HTHRESH,
+			.wthresh = IXGBE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = IXGBE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = IXGBE_DEFAULT_TX_PTHRESH,
+			.hthresh = IXGBE_DEFAULT_TX_HTHRESH,
+			.wthresh = IXGBE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+				ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
 }
 
 /* return 0 means link status changed, -1 means not changed */
@@ -1956,7 +2102,7 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_link link, old;
-	ixgbe_link_speed link_speed;
+	ixgbe_link_speed link_speed = IXGBE_LINK_SPEED_UNKNOWN;
 	int link_up;
 	int diag;
 
@@ -1978,6 +2124,12 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		if (link.link_status == old.link_status)
 			return -1;
 		return 0;
+	}
+
+	if (link_speed == IXGBE_LINK_SPEED_UNKNOWN &&
+	    !hw->mac.get_link_status) {
+		memcpy(&link, &old, sizeof(link));
+		return -1;
 	}
 
 	if (link_up == 0) {
@@ -2180,7 +2332,7 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	int intr_enable_delay = false;
 
-	PMD_DRV_LOG(DEBUG, "intr action type %d\n", intr->flags);
+	PMD_DRV_LOG(DEBUG, "intr action type %d", intr->flags);
 
 	if (intr->flags & IXGBE_FLAG_MAILBOX) {
 		ixgbe_pf_mbx_process(dev);
@@ -2257,7 +2409,7 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
 	}
 
-	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler S[%08x]\n", eicr);
+	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler S[%08x]", eicr);
 	ixgbe_enable_intr(dev);
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
 }
@@ -2371,7 +2523,7 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (fc_conf->autoneg != !hw->fc.disable_fc_autoneg)
 		return -ENOTSUP;
 	rx_buf_size = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(0));
-	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x \n", rx_buf_size);
+	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
 
 	/*
 	 * At least reserve one Ethernet frame for watermark
@@ -2380,8 +2532,8 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	max_high_water = (rx_buf_size - ETHER_MAX_LEN) >> IXGBE_RXPBSIZE_SHIFT;
 	if ((fc_conf->high_water > max_high_water) ||
 		(fc_conf->high_water < fc_conf->low_water)) {
-		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB\n");
-		PMD_INIT_LOG(ERR, "High_water must <=  0x%x\n", max_high_water);
+		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
+		PMD_INIT_LOG(ERR, "High_water must <= 0x%x", max_high_water);
 		return (-EINVAL);
 	}
 
@@ -2413,7 +2565,7 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return 0;
 	}
 
-	PMD_INIT_LOG(ERR, "ixgbe_fc_enable = 0x%x \n", err);
+	PMD_INIT_LOG(ERR, "ixgbe_fc_enable = 0x%x", err);
 	return -EIO;
 }
 
@@ -2443,13 +2595,13 @@ ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
 	if (hw->fc.current_mode & ixgbe_fc_tx_pause) {
 		 /* High/Low water can not be 0 */
 		if( (!hw->fc.high_water[tc_num])|| (!hw->fc.low_water[tc_num])) {
-			PMD_INIT_LOG(ERR,"Invalid water mark configuration\n");
+			PMD_INIT_LOG(ERR, "Invalid water mark configuration");
 			ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
 			goto out;
 		}
 
 		if(hw->fc.low_water[tc_num] >= hw->fc.high_water[tc_num]) {
-			PMD_INIT_LOG(ERR,"Invalid water mark configuration\n");
+			PMD_INIT_LOG(ERR, "Invalid water mark configuration");
 			ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
 			goto out;
 		}
@@ -2515,7 +2667,7 @@ ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
 		fccfg_reg |= IXGBE_FCCFG_TFCE_PRIORITY;
 		break;
 	default:
-		DEBUGOUT("Flow control param set incorrectly\n");
+		PMD_DRV_LOG(DEBUG, "Flow control param set incorrectly");
 		ret_val = IXGBE_ERR_CONFIG;
 		goto out;
 		break;
@@ -2593,16 +2745,16 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 	ixgbe_dcb_unpack_map_cee(dcb_config, IXGBE_DCB_RX_CONFIG, map);
 	tc_num = map[pfc_conf->priority];
 	rx_buf_size = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(tc_num));
-	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x \n", rx_buf_size);
+	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
 	/*
 	 * At least reserve one Ethernet frame for watermark
 	 * high_water/low_water in kilo bytes for ixgbe
 	 */
 	max_high_water = (rx_buf_size - ETHER_MAX_LEN) >> IXGBE_RXPBSIZE_SHIFT;
 	if ((pfc_conf->fc.high_water > max_high_water) ||
-		(pfc_conf->fc.high_water <= pfc_conf->fc.low_water)) {
-		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB\n");
-		PMD_INIT_LOG(ERR, "High_water must <=  0x%x\n", max_high_water);
+	    (pfc_conf->fc.high_water <= pfc_conf->fc.low_water)) {
+		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
+		PMD_INIT_LOG(ERR, "High_water must <= 0x%x", max_high_water);
 		return (-EINVAL);
 	}
 
@@ -2618,44 +2770,48 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 	if ((err == IXGBE_SUCCESS) || (err == IXGBE_ERR_FC_NOT_NEGOTIATED))
 		return 0;
 
-	PMD_INIT_LOG(ERR, "ixgbe_dcb_pfc_enable = 0x%x \n", err);
+	PMD_INIT_LOG(ERR, "ixgbe_dcb_pfc_enable = 0x%x", err);
 	return -EIO;
 }
 
 static int
 ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
-				struct rte_eth_rss_reta *reta_conf)
+			  struct rte_eth_rss_reta_entry64 *reta_conf,
+			  uint16_t reta_size)
 {
-	uint8_t i,j,mask;
-	uint32_t reta;
-	struct ixgbe_hw *hw =
-			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint8_t i, j, mask;
+	uint32_t reta, r;
+	uint16_t idx, shift;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
-	/*
-	* Update Redirection Table RETA[n],n=0...31,The redirection table has
-	* 128-entries in 32 registers
-	 */
-	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
-		if (i < ETH_RSS_RETA_NUM_ENTRIES/2)
-			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
-		else
-			mask = (uint8_t)((reta_conf->mask_hi >>
-				(i - ETH_RSS_RETA_NUM_ENTRIES/2)) & 0xF);
-		if (mask != 0) {
-			reta = 0;
-			if (mask != 0xF)
-				reta = IXGBE_READ_REG(hw,IXGBE_RETA(i >> 2));
+	if (reta_size != ETH_RSS_RETA_SIZE_128) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)\n", reta_size, ETH_RSS_RETA_SIZE_128);
+		return -EINVAL;
+	}
 
-			for (j = 0; j < 4; j++) {
-				if (mask & (0x1 << j)) {
-					if (mask != 0xF)
-						reta &= ~(0xFF << 8 * j);
-					reta |= reta_conf->reta[i + j] << 8*j;
-				}
-			}
-			IXGBE_WRITE_REG(hw, IXGBE_RETA(i >> 2),reta);
+	for (i = 0; i < reta_size; i += IXGBE_4_BIT_WIDTH) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+						IXGBE_4_BIT_MASK);
+		if (!mask)
+			continue;
+		if (mask == IXGBE_4_BIT_MASK)
+			r = 0;
+		else
+			r = IXGBE_READ_REG(hw, IXGBE_RETA(i >> 2));
+		for (j = 0, reta = 0; j < IXGBE_4_BIT_WIDTH; j++) {
+			if (mask & (0x1 << j))
+				reta |= reta_conf[idx].reta[shift + j] <<
+							(CHAR_BIT * j);
+			else
+				reta |= r & (IXGBE_8_BIT_MASK <<
+						(CHAR_BIT * j));
 		}
+		IXGBE_WRITE_REG(hw, IXGBE_RETA(i >> 2), reta);
 	}
 
 	return 0;
@@ -2663,32 +2819,36 @@ ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 
 static int
 ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
-				struct rte_eth_rss_reta *reta_conf)
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
 {
-	uint8_t i,j,mask;
+	uint8_t i, j, mask;
 	uint32_t reta;
-	struct ixgbe_hw *hw =
-			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t idx, shift;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
-	/*
-	 * Read Redirection Table RETA[n],n=0...31,The redirection table has
-	 * 128-entries in 32 registers
-	 */
-	for(i = 0; i < ETH_RSS_RETA_NUM_ENTRIES; i += 4) {
-		if (i < ETH_RSS_RETA_NUM_ENTRIES/2)
-			mask = (uint8_t)((reta_conf->mask_lo >> i) & 0xF);
-		else
-			mask = (uint8_t)((reta_conf->mask_hi >>
-				(i - ETH_RSS_RETA_NUM_ENTRIES/2)) & 0xF);
+	if (reta_size != ETH_RSS_RETA_SIZE_128) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+				"(%d)\n", reta_size, ETH_RSS_RETA_SIZE_128);
+		return -EINVAL;
+	}
 
-		if (mask != 0) {
-			reta = IXGBE_READ_REG(hw,IXGBE_RETA(i >> 2));
-			for (j = 0; j < 4; j++) {
-				if (mask & (0x1 << j))
-					reta_conf->reta[i + j] =
-						(uint8_t)((reta >> 8 * j) & 0xFF);
-			}
+	for (i = 0; i < ETH_RSS_RETA_SIZE_128; i += IXGBE_4_BIT_WIDTH) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+						IXGBE_4_BIT_MASK);
+		if (!mask)
+			continue;
+
+		reta = IXGBE_READ_REG(hw, IXGBE_RETA(i >> 2));
+		for (j = 0; j < IXGBE_4_BIT_WIDTH; j++) {
+			if (mask & (0x1 << j))
+				reta_conf[idx].reta[shift + j] =
+					((reta >> (CHAR_BIT * j)) &
+						IXGBE_8_BIT_MASK);
 		}
 	}
 
@@ -2765,7 +2925,7 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 static void
 ixgbevf_intr_disable(struct ixgbe_hw *hw)
 {
-	PMD_INIT_LOG(DEBUG, "ixgbevf_intr_disable");
+	PMD_INIT_FUNC_TRACE();
 
 	/* Clear interrupt mask to stop from interrupts being generated */
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMC, IXGBE_VF_IRQ_CLEAR_MASK);
@@ -2778,8 +2938,8 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf* conf = &dev->data->dev_conf;
 
-	PMD_INIT_LOG(DEBUG, "\nConfigured Virtual Function port id: %d\n",
-		dev->data->port_id);
+	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
+		     dev->data->port_id);
 
 	/*
 	 * VF has no ability to enable/disable HW CRC
@@ -2787,12 +2947,12 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 	 */
 #ifndef RTE_LIBRTE_IXGBE_PF_DISABLE_STRIP_CRC
 	if (!conf->rxmode.hw_strip_crc) {
-		PMD_INIT_LOG(INFO, "VF can't disable HW CRC Strip\n");
+		PMD_INIT_LOG(INFO, "VF can't disable HW CRC Strip");
 		conf->rxmode.hw_strip_crc = 1;
 	}
 #else
 	if (conf->rxmode.hw_strip_crc) {
-		PMD_INIT_LOG(INFO, "VF can't enable HW CRC Strip\n");
+		PMD_INIT_LOG(INFO, "VF can't enable HW CRC Strip");
 		conf->rxmode.hw_strip_crc = 0;
 	}
 #endif
@@ -2807,9 +2967,10 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int err, mask = 0;
 
-	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_start");
+	PMD_INIT_FUNC_TRACE();
 
 	hw->mac.ops.reset_hw(hw);
+	hw->mac.get_link_status = true;
 
 	/* negotiate mailbox API version to use with the PF. */
 	ixgbevf_negotiate_api(hw);
@@ -2819,7 +2980,7 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	/* This can fail when allocating mbufs for descriptor rings */
 	err = ixgbevf_dev_rx_init(dev);
 	if (err) {
-		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware (%d)\n", err);
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware (%d)", err);
 		ixgbe_dev_clear_queues(dev);
 		return err;
 	}
@@ -2842,7 +3003,7 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_stop");
+	PMD_INIT_FUNC_TRACE();
 
 	hw->adapter_stopped = TRUE;
 	ixgbe_stop_adapter(hw);
@@ -2853,6 +3014,9 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	  */
 	ixgbevf_set_vfta_all(dev,0);
 
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
+
 	ixgbe_dev_clear_queues(dev);
 }
 
@@ -2861,7 +3025,7 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, "ixgbevf_dev_close");
+	PMD_INIT_FUNC_TRACE();
 
 	ixgbe_reset_hw(hw);
 
@@ -2970,7 +3134,7 @@ ixgbe_vmdq_mode_check(struct ixgbe_hw *hw)
 	/* we only need to do this if VMDq is enabled */
 	reg_val = IXGBE_READ_REG(hw, IXGBE_VT_CTL);
 	if (!(reg_val & IXGBE_VT_CTL_VT_ENABLE)) {
-		PMD_INIT_LOG(ERR, "VMDq must be enabled for this setting\n");
+		PMD_INIT_LOG(ERR, "VMDq must be enabled for this setting");
 		return (-1);
 	}
 
@@ -3087,6 +3251,26 @@ ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 	return 0;
 
 }
+
+uint32_t
+ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val)
+{
+	uint32_t new_val = orig_val;
+
+	if (rx_mask & ETH_VMDQ_ACCEPT_UNTAG)
+		new_val |= IXGBE_VMOLR_AUPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_MC)
+		new_val |= IXGBE_VMOLR_ROMPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC)
+		new_val |= IXGBE_VMOLR_ROPE;
+	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
+		new_val |= IXGBE_VMOLR_BAM;
+	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
+		new_val |= IXGBE_VMOLR_MPE;
+
+	return new_val;
+}
+
 static int
 ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
 			       uint16_t rx_mask, uint8_t on)
@@ -3099,22 +3283,13 @@ ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
 
 	if (hw->mac.type == ixgbe_mac_82598EB) {
 		PMD_INIT_LOG(ERR, "setting VF receive mode set should be done"
-			" on 82599 hardware and newer\n");
+			     " on 82599 hardware and newer");
 		return (-ENOTSUP);
 	}
 	if (ixgbe_vmdq_mode_check(hw) < 0)
 		return (-ENOTSUP);
 
-	if (rx_mask & ETH_VMDQ_ACCEPT_UNTAG )
-		val |= IXGBE_VMOLR_AUPE;
-	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_MC )
-		val |= IXGBE_VMOLR_ROMPE;
-	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC)
-		val |= IXGBE_VMOLR_ROPE;
-	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
-		val |= IXGBE_VMOLR_BAM;
-	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
-		val |= IXGBE_VMOLR_MPE;
+	val = ixgbe_convert_vm_rx_mask_to_val(rx_mask, val);
 
 	if (on)
 		vmolr |= val;
@@ -3528,225 +3703,103 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	}
 }
 
-/*
- * add syn filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * filter: ponter to the filter that will be added.
- * rx_queue: the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
+#define MAC_TYPE_FILTER_SUP(type)    do {\
+	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540 &&\
+		(type) != ixgbe_mac_X550)\
+		return -ENOTSUP;\
+} while (0)
+
 static int
-ixgbe_add_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t rx_queue)
+ixgbe_syn_filter_set(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter,
+			bool add)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t synqf;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	if (rx_queue >= IXGBE_MAX_RX_QUEUE_NUM)
+	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM)
 		return -EINVAL;
 
 	synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
 
-	if (synqf & IXGBE_SYN_FILTER_ENABLE)
-		return -EINVAL;
+	if (add) {
+		if (synqf & IXGBE_SYN_FILTER_ENABLE)
+			return -EINVAL;
+		synqf = (uint32_t)(((filter->queue << IXGBE_SYN_FILTER_QUEUE_SHIFT) &
+			IXGBE_SYN_FILTER_QUEUE) | IXGBE_SYN_FILTER_ENABLE);
 
-	synqf = (uint32_t)(((rx_queue << IXGBE_SYN_FILTER_QUEUE_SHIFT) &
-		IXGBE_SYN_FILTER_QUEUE) | IXGBE_SYN_FILTER_ENABLE);
-
-	if (filter->hig_pri)
-		synqf |= IXGBE_SYN_FILTER_SYNQFP;
-	else
-		synqf &= ~IXGBE_SYN_FILTER_SYNQFP;
-
+		if (filter->hig_pri)
+			synqf |= IXGBE_SYN_FILTER_SYNQFP;
+		else
+			synqf &= ~IXGBE_SYN_FILTER_SYNQFP;
+	} else {
+		if (!(synqf & IXGBE_SYN_FILTER_ENABLE))
+			return -ENOENT;
+		synqf &= ~(IXGBE_SYN_FILTER_QUEUE | IXGBE_SYN_FILTER_ENABLE);
+	}
 	IXGBE_WRITE_REG(hw, IXGBE_SYNQF, synqf);
+	IXGBE_WRITE_FLUSH(hw);
 	return 0;
 }
 
-/*
- * remove syn filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
 static int
-ixgbe_remove_syn_filter(struct rte_eth_dev *dev)
+ixgbe_syn_filter_get(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t synqf;
+	uint32_t synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
-
-	synqf &= ~(IXGBE_SYN_FILTER_QUEUE | IXGBE_SYN_FILTER_ENABLE);
-
-	IXGBE_WRITE_REG(hw, IXGBE_SYNQF, synqf);
-	return 0;
-}
-
-/*
- * get the syn filter's info
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * filter: ponter to the filter that returns.
- * *rx_queue: pointer to the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_get_syn_filter(struct rte_eth_dev *dev,
-			struct rte_syn_filter *filter, uint16_t *rx_queue)
-
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t synqf;
-
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
 	if (synqf & IXGBE_SYN_FILTER_ENABLE) {
 		filter->hig_pri = (synqf & IXGBE_SYN_FILTER_SYNQFP) ? 1 : 0;
-		*rx_queue = (uint16_t)((synqf & IXGBE_SYN_FILTER_QUEUE) >> 1);
+		filter->queue = (uint16_t)((synqf & IXGBE_SYN_FILTER_QUEUE) >> 1);
 		return 0;
 	}
 	return -ENOENT;
 }
 
-/*
- * add an ethertype filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- * filter: ponter to the filter that will be added.
- * rx_queue: the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
 static int
-ixgbe_add_ethertype_filter(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_ethertype_filter *filter,
-			uint16_t rx_queue)
+ixgbe_syn_filter_handle(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op,
+			void *arg)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t etqf, etqs = 0;
+	int ret;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
 
-	if (index >= IXGBE_MAX_ETQF_FILTERS ||
-		rx_queue >= IXGBE_MAX_RX_QUEUE_NUM)
-		return -EINVAL;
-
-	etqf = IXGBE_READ_REG(hw, IXGBE_ETQF(index));
-	if (etqf & IXGBE_ETQF_FILTER_EN)
-		return -EINVAL;  /* filter index is in use. */
-
-	etqf = 0;
-	etqf |= IXGBE_ETQF_FILTER_EN;
-	etqf |= (uint32_t)filter->ethertype;
-
-	if (filter->priority_en) {
-		if (filter->priority > IXGBE_ETQF_MAX_PRI)
-			return -EINVAL;
-		etqf |= (uint32_t)((filter->priority << IXGBE_ETQF_SHIFT) & IXGBE_ETQF_UP);
-		etqf |= IXGBE_ETQF_UP_EN;
-	}
-	etqs |= (uint32_t)((rx_queue << IXGBE_ETQS_RX_QUEUE_SHIFT) & IXGBE_ETQS_RX_QUEUE);
-	etqs |= IXGBE_ETQS_QUEUE_EN;
-
-	IXGBE_WRITE_REG(hw, IXGBE_ETQF(index), etqf);
-	IXGBE_WRITE_REG(hw, IXGBE_ETQS(index), etqs);
-	return 0;
-}
-
-/*
- * remove an ethertype filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_remove_ethertype_filter(struct rte_eth_dev *dev,
-			uint16_t index)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	if (index >= IXGBE_MAX_ETQF_FILTERS)
-		return -EINVAL;
-
-	IXGBE_WRITE_REG(hw, IXGBE_ETQF(index), 0);
-	IXGBE_WRITE_REG(hw, IXGBE_ETQS(index), 0);
-
-	return 0;
-}
-
-/*
- * get an ethertype filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- * filter: ponter to the filter that will be gotten.
- * *rx_queue: the ponited of the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_get_ethertype_filter(struct rte_eth_dev *dev,
-			uint16_t index, struct rte_ethertype_filter *filter,
-			uint16_t *rx_queue)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t etqf, etqs;
-
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	if (index >= IXGBE_MAX_ETQF_FILTERS)
-		return -EINVAL;
-
-	etqf = IXGBE_READ_REG(hw, IXGBE_ETQF(index));
-	etqs = IXGBE_READ_REG(hw, IXGBE_ETQS(index));
-	if (etqf & IXGBE_ETQF_FILTER_EN) {
-		filter->ethertype = etqf & IXGBE_ETQF_ETHERTYPE;
-		filter->priority_en = (etqf & IXGBE_ETQF_UP_EN) ? 1 : 0;
-		if (filter->priority_en)
-			filter->priority = (etqf & IXGBE_ETQF_UP) >> 16;
-		*rx_queue = (etqs & IXGBE_ETQS_RX_QUEUE) >> IXGBE_ETQS_RX_QUEUE_SHIFT;
+	if (filter_op == RTE_ETH_FILTER_NOP)
 		return 0;
+
+	if (arg == NULL) {
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u",
+			    filter_op);
+		return -EINVAL;
 	}
-	return -ENOENT;
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = ixgbe_syn_filter_set(dev,
+				(struct rte_eth_syn_filter *)arg,
+				TRUE);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = ixgbe_syn_filter_set(dev,
+				(struct rte_eth_syn_filter *)arg,
+				FALSE);
+		break;
+	case RTE_ETH_FILTER_GET:
+		ret = ixgbe_syn_filter_get(dev,
+				(struct rte_eth_syn_filter *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
 }
+
 
 static inline enum ixgbe_5tuple_protocol
 convert_protocol_type(uint8_t protocol_value)
@@ -3759,19 +3812,6 @@ convert_protocol_type(uint8_t protocol_value)
 		return IXGBE_FILTER_PROTOCOL_SCTP;
 	else
 		return IXGBE_FILTER_PROTOCOL_NONE;
-}
-
-static inline uint8_t
-revert_protocol_type(enum ixgbe_5tuple_protocol protocol)
-{
-	if (protocol == IXGBE_FILTER_PROTOCOL_TCP)
-		return IPPROTO_TCP;
-	else if (protocol == IXGBE_FILTER_PROTOCOL_UDP)
-		return IPPROTO_UDP;
-	else if (protocol == IXGBE_FILTER_PROTOCOL_SCTP)
-		return IPPROTO_SCTP;
-	else
-		return 0;
 }
 
 /*
@@ -3788,62 +3828,69 @@ revert_protocol_type(enum ixgbe_5tuple_protocol protocol)
  *    - On failure, a negative value.
  */
 static int
-ixgbe_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t rx_queue)
+ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
+			struct ixgbe_5tuple_filter *filter)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t ftqf, sdpqf = 0;
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i, idx, shift;
+	uint32_t ftqf, sdpqf;
 	uint32_t l34timir = 0;
 	uint8_t mask = 0xff;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
+	/*
+	 * look for an unused 5tuple filter index,
+	 * and insert the filter to list.
+	 */
+	for (i = 0; i < IXGBE_MAX_FTQF_FILTERS; i++) {
+		idx = i / (sizeof(uint32_t) * NBBY);
+		shift = i % (sizeof(uint32_t) * NBBY);
+		if (!(filter_info->fivetuple_mask[idx] & (1 << shift))) {
+			filter_info->fivetuple_mask[idx] |= 1 << shift;
+			filter->index = i;
+			TAILQ_INSERT_TAIL(&filter_info->fivetuple_list,
+					  filter,
+					  entries);
+			break;
+		}
+	}
+	if (i >= IXGBE_MAX_FTQF_FILTERS) {
+		PMD_DRV_LOG(ERR, "5tuple filters are full.");
 		return -ENOSYS;
-
-	if (index >= IXGBE_MAX_FTQF_FILTERS ||
-		rx_queue >= IXGBE_MAX_RX_QUEUE_NUM ||
-		filter->priority > IXGBE_5TUPLE_MAX_PRI ||
-		filter->priority < IXGBE_5TUPLE_MIN_PRI)
-		return -EINVAL;  /* filter index is out of range. */
-
-	if (filter->tcp_flags) {
-		PMD_INIT_LOG(INFO, "82599EB not tcp flags in 5tuple");
-		return -EINVAL;
 	}
 
-	ftqf = IXGBE_READ_REG(hw, IXGBE_FTQF(index));
-	if (ftqf & IXGBE_FTQF_QUEUE_ENABLE)
-		return -EINVAL;  /* filter index is in use. */
+	sdpqf = (uint32_t)(filter->filter_info.dst_port <<
+				IXGBE_SDPQF_DSTPORT_SHIFT);
+	sdpqf = sdpqf | (filter->filter_info.src_port & IXGBE_SDPQF_SRCPORT);
 
-	ftqf = 0;
-	sdpqf = (uint32_t)(filter->dst_port << IXGBE_SDPQF_DSTPORT_SHIFT);
-	sdpqf = sdpqf | (filter->src_port & IXGBE_SDPQF_SRCPORT);
-
-	ftqf |= (uint32_t)(convert_protocol_type(filter->protocol) &
+	ftqf = (uint32_t)(filter->filter_info.proto &
 		IXGBE_FTQF_PROTOCOL_MASK);
-	ftqf |= (uint32_t)((filter->priority & IXGBE_FTQF_PRIORITY_MASK) <<
-		IXGBE_FTQF_PRIORITY_SHIFT);
-	if (filter->src_ip_mask == 0) /* 0 means compare. */
+	ftqf |= (uint32_t)((filter->filter_info.priority &
+		IXGBE_FTQF_PRIORITY_MASK) << IXGBE_FTQF_PRIORITY_SHIFT);
+	if (filter->filter_info.src_ip_mask == 0) /* 0 means compare. */
 		mask &= IXGBE_FTQF_SOURCE_ADDR_MASK;
-	if (filter->dst_ip_mask == 0)
+	if (filter->filter_info.dst_ip_mask == 0)
 		mask &= IXGBE_FTQF_DEST_ADDR_MASK;
-	if (filter->src_port_mask == 0)
+	if (filter->filter_info.src_port_mask == 0)
 		mask &= IXGBE_FTQF_SOURCE_PORT_MASK;
-	if (filter->dst_port_mask == 0)
+	if (filter->filter_info.dst_port_mask == 0)
 		mask &= IXGBE_FTQF_DEST_PORT_MASK;
-	if (filter->protocol_mask == 0)
+	if (filter->filter_info.proto_mask == 0)
 		mask &= IXGBE_FTQF_PROTOCOL_COMP_MASK;
 	ftqf |= mask << IXGBE_FTQF_5TUPLE_MASK_SHIFT;
 	ftqf |= IXGBE_FTQF_POOL_MASK_EN;
 	ftqf |= IXGBE_FTQF_QUEUE_ENABLE;
 
-	IXGBE_WRITE_REG(hw, IXGBE_DAQF(index), filter->dst_ip);
-	IXGBE_WRITE_REG(hw, IXGBE_SAQF(index), filter->src_ip);
-	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(index), sdpqf);
-	IXGBE_WRITE_REG(hw, IXGBE_FTQF(index), ftqf);
+	IXGBE_WRITE_REG(hw, IXGBE_DAQF(i), filter->filter_info.dst_ip);
+	IXGBE_WRITE_REG(hw, IXGBE_SAQF(i), filter->filter_info.src_ip);
+	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(i), sdpqf);
+	IXGBE_WRITE_REG(hw, IXGBE_FTQF(i), ftqf);
 
 	l34timir |= IXGBE_L34T_IMIR_RESERVE;
-	l34timir |= (uint32_t)(rx_queue << IXGBE_L34T_IMIR_QUEUE_SHIFT);
-	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(index), l34timir);
+	l34timir |= (uint32_t)(filter->queue <<
+				IXGBE_L34T_IMIR_QUEUE_SHIFT);
+	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(i), l34timir);
 	return 0;
 }
 
@@ -3852,92 +3899,27 @@ ixgbe_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
  *
  * @param
  * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
+ * filter: the pointer of the filter will be removed.
  */
-static int
+static void
 ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
-			uint16_t index)
+			struct ixgbe_5tuple_filter *filter)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint16_t index = filter->index;
 
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	if (index >= IXGBE_MAX_FTQF_FILTERS)
-		return -EINVAL;  /* filter index is out of range. */
+	filter_info->fivetuple_mask[index / (sizeof(uint32_t) * NBBY)] &=
+				~(1 << (index % (sizeof(uint32_t) * NBBY)));
+	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
+	rte_free(filter);
 
 	IXGBE_WRITE_REG(hw, IXGBE_DAQF(index), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_SAQF(index), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(index), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_FTQF(index), 0);
 	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(index), 0);
-	return 0;
-}
-
-/*
- * get a 5tuple filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates
- * filter: ponter to the filter that returns.
- * *rx_queue: pointer of the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_get_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
-			struct rte_5tuple_filter *filter, uint16_t *rx_queue)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t sdpqf, ftqf, l34timir;
-	uint8_t mask;
-	enum ixgbe_5tuple_protocol proto;
-
-	if (hw->mac.type != ixgbe_mac_82599EB)
-		return -ENOSYS;
-
-	if (index >= IXGBE_MAX_FTQF_FILTERS)
-		return -EINVAL;  /* filter index is out of range. */
-
-	ftqf = IXGBE_READ_REG(hw, IXGBE_FTQF(index));
-	if (ftqf & IXGBE_FTQF_QUEUE_ENABLE) {
-		proto = (enum ixgbe_5tuple_protocol)(ftqf & IXGBE_FTQF_PROTOCOL_MASK);
-		filter->protocol = revert_protocol_type(proto);
-		filter->priority = (ftqf >> IXGBE_FTQF_PRIORITY_SHIFT) &
-					IXGBE_FTQF_PRIORITY_MASK;
-		mask = (uint8_t)((ftqf >> IXGBE_FTQF_5TUPLE_MASK_SHIFT) &
-					IXGBE_FTQF_5TUPLE_MASK_MASK);
-		filter->src_ip_mask =
-			(mask & IXGBE_FTQF_SOURCE_ADDR_MASK) ? 1 : 0;
-		filter->dst_ip_mask =
-			(mask & IXGBE_FTQF_DEST_ADDR_MASK) ? 1 : 0;
-		filter->src_port_mask =
-			(mask & IXGBE_FTQF_SOURCE_PORT_MASK) ? 1 : 0;
-		filter->dst_port_mask =
-			(mask & IXGBE_FTQF_DEST_PORT_MASK) ? 1 : 0;
-		filter->protocol_mask =
-			(mask & IXGBE_FTQF_PROTOCOL_COMP_MASK) ? 1 : 0;
-
-		sdpqf = IXGBE_READ_REG(hw, IXGBE_SDPQF(index));
-		filter->dst_port = (sdpqf & IXGBE_SDPQF_DSTPORT) >>
-					IXGBE_SDPQF_DSTPORT_SHIFT;
-		filter->src_port = sdpqf & IXGBE_SDPQF_SRCPORT;
-		filter->dst_ip = IXGBE_READ_REG(hw, IXGBE_DAQF(index));
-		filter->src_ip = IXGBE_READ_REG(hw, IXGBE_SAQF(index));
-
-		l34timir = IXGBE_READ_REG(hw, IXGBE_L34T_IMIR(index));
-		*rx_queue = (l34timir & IXGBE_L34T_IMIR_QUEUE) >>
-					IXGBE_L34T_IMIR_QUEUE_SHIFT;
-		return 0;
-	}
-	return -ENOENT;
 }
 
 static int
@@ -3972,6 +3954,479 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* update max frame size */
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame;
 	return 0;
+}
+
+#define MAC_TYPE_FILTER_SUP_EXT(type)    do {\
+	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540)\
+		return -ENOTSUP;\
+} while (0)
+
+static inline struct ixgbe_5tuple_filter *
+ixgbe_5tuple_filter_lookup(struct ixgbe_5tuple_filter_list *filter_list,
+			struct ixgbe_5tuple_filter_info *key)
+{
+	struct ixgbe_5tuple_filter *it;
+
+	TAILQ_FOREACH(it, filter_list, entries) {
+		if (memcmp(key, &it->filter_info,
+			sizeof(struct ixgbe_5tuple_filter_info)) == 0) {
+			return it;
+		}
+	}
+	return NULL;
+}
+
+/* translate elements in struct rte_eth_ntuple_filter to struct ixgbe_5tuple_filter_info*/
+static inline int
+ntuple_filter_to_5tuple(struct rte_eth_ntuple_filter *filter,
+			struct ixgbe_5tuple_filter_info *filter_info)
+{
+	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM ||
+		filter->priority > IXGBE_5TUPLE_MAX_PRI ||
+		filter->priority < IXGBE_5TUPLE_MIN_PRI)
+		return -EINVAL;
+
+	switch (filter->dst_ip_mask) {
+	case UINT32_MAX:
+		filter_info->dst_ip_mask = 0;
+		filter_info->dst_ip = filter->dst_ip;
+		break;
+	case 0:
+		filter_info->dst_ip_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid dst_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->src_ip_mask) {
+	case UINT32_MAX:
+		filter_info->src_ip_mask = 0;
+		filter_info->src_ip = filter->src_ip;
+		break;
+	case 0:
+		filter_info->src_ip_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid src_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->dst_port_mask) {
+	case UINT16_MAX:
+		filter_info->dst_port_mask = 0;
+		filter_info->dst_port = filter->dst_port;
+		break;
+	case 0:
+		filter_info->dst_port_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid dst_port mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->src_port_mask) {
+	case UINT16_MAX:
+		filter_info->src_port_mask = 0;
+		filter_info->src_port = filter->src_port;
+		break;
+	case 0:
+		filter_info->src_port_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid src_port mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->proto_mask) {
+	case UINT8_MAX:
+		filter_info->proto_mask = 0;
+		filter_info->proto =
+			convert_protocol_type(filter->proto);
+		break;
+	case 0:
+		filter_info->proto_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid protocol mask.");
+		return -EINVAL;
+	}
+
+	filter_info->priority = (uint8_t)filter->priority;
+	return 0;
+}
+
+/*
+ * add or delete a ntuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * ntuple_filter: Pointer to struct rte_eth_ntuple_filter
+ * add: if true, add filter, if false, remove filter
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+ixgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *ntuple_filter,
+			bool add)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct ixgbe_5tuple_filter_info filter_5tuple;
+	struct ixgbe_5tuple_filter *filter;
+	int ret;
+
+	if (ntuple_filter->flags != RTE_5TUPLE_FLAGS) {
+		PMD_DRV_LOG(ERR, "only 5tuple is supported.");
+		return -EINVAL;
+	}
+
+	memset(&filter_5tuple, 0, sizeof(struct ixgbe_5tuple_filter_info));
+	ret = ntuple_filter_to_5tuple(ntuple_filter, &filter_5tuple);
+	if (ret < 0)
+		return ret;
+
+	filter = ixgbe_5tuple_filter_lookup(&filter_info->fivetuple_list,
+					 &filter_5tuple);
+	if (filter != NULL && add) {
+		PMD_DRV_LOG(ERR, "filter exists.");
+		return -EEXIST;
+	}
+	if (filter == NULL && !add) {
+		PMD_DRV_LOG(ERR, "filter doesn't exist.");
+		return -ENOENT;
+	}
+
+	if (add) {
+		filter = rte_zmalloc("ixgbe_5tuple_filter",
+				sizeof(struct ixgbe_5tuple_filter), 0);
+		if (filter == NULL)
+			return -ENOMEM;
+		(void)rte_memcpy(&filter->filter_info,
+				 &filter_5tuple,
+				 sizeof(struct ixgbe_5tuple_filter_info));
+		filter->queue = ntuple_filter->queue;
+		ret = ixgbe_add_5tuple_filter(dev, filter);
+		if (ret < 0) {
+			rte_free(filter);
+			return ret;
+		}
+	} else
+		ixgbe_remove_5tuple_filter(dev, filter);
+
+	return 0;
+}
+
+/*
+ * get a ntuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * ntuple_filter: Pointer to struct rte_eth_ntuple_filter
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+ixgbe_get_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *ntuple_filter)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct ixgbe_5tuple_filter_info filter_5tuple;
+	struct ixgbe_5tuple_filter *filter;
+	int ret;
+
+	if (ntuple_filter->flags != RTE_5TUPLE_FLAGS) {
+		PMD_DRV_LOG(ERR, "only 5tuple is supported.");
+		return -EINVAL;
+	}
+
+	memset(&filter_5tuple, 0, sizeof(struct ixgbe_5tuple_filter_info));
+	ret = ntuple_filter_to_5tuple(ntuple_filter, &filter_5tuple);
+	if (ret < 0)
+		return ret;
+
+	filter = ixgbe_5tuple_filter_lookup(&filter_info->fivetuple_list,
+					 &filter_5tuple);
+	if (filter == NULL) {
+		PMD_DRV_LOG(ERR, "filter doesn't exist.");
+		return -ENOENT;
+	}
+	ntuple_filter->queue = filter->queue;
+	return 0;
+}
+
+/*
+ * ixgbe_ntuple_filter_handle - Handle operations for ntuple filter.
+ * @dev: pointer to rte_eth_dev structure
+ * @filter_op:operation will be taken.
+ * @arg: a pointer to specific structure corresponding to the filter_op
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL) {
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = ixgbe_add_del_ntuple_filter(dev,
+			(struct rte_eth_ntuple_filter *)arg,
+			TRUE);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = ixgbe_add_del_ntuple_filter(dev,
+			(struct rte_eth_ntuple_filter *)arg,
+			FALSE);
+		break;
+	case RTE_ETH_FILTER_GET:
+		ret = ixgbe_get_ntuple_filter(dev,
+			(struct rte_eth_ntuple_filter *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+static inline int
+ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,
+			uint16_t ethertype)
+{
+	int i;
+
+	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+		if (filter_info->ethertype_filters[i] == ethertype &&
+		    (filter_info->ethertype_mask & (1 << i)))
+			return i;
+	}
+	return -1;
+}
+
+static inline int
+ixgbe_ethertype_filter_insert(struct ixgbe_filter_info *filter_info,
+			uint16_t ethertype)
+{
+	int i;
+
+	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+		if (!(filter_info->ethertype_mask & (1 << i))) {
+			filter_info->ethertype_mask |= 1 << i;
+			filter_info->ethertype_filters[i] = ethertype;
+			return i;
+		}
+	}
+	return -1;
+}
+
+static inline int
+ixgbe_ethertype_filter_remove(struct ixgbe_filter_info *filter_info,
+			uint8_t idx)
+{
+	if (idx >= IXGBE_MAX_ETQF_FILTERS)
+		return -1;
+	filter_info->ethertype_mask &= ~(1 << idx);
+	filter_info->ethertype_filters[idx] = 0;
+	return idx;
+}
+
+static int
+ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter,
+			bool add)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint32_t etqf = 0;
+	uint32_t etqs = 0;
+	int ret;
+
+	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM)
+		return -EINVAL;
+
+	if (filter->ether_type == ETHER_TYPE_IPv4 ||
+		filter->ether_type == ETHER_TYPE_IPv6) {
+		PMD_DRV_LOG(ERR, "unsupported ether_type(0x%04x) in"
+			" ethertype filter.", filter->ether_type);
+		return -EINVAL;
+	}
+
+	if (filter->flags & RTE_ETHTYPE_FLAGS_MAC) {
+		PMD_DRV_LOG(ERR, "mac compare is unsupported.");
+		return -EINVAL;
+	}
+	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP) {
+		PMD_DRV_LOG(ERR, "drop option is unsupported.");
+		return -EINVAL;
+	}
+
+	ret = ixgbe_ethertype_filter_lookup(filter_info, filter->ether_type);
+	if (ret >= 0 && add) {
+		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter exists.",
+			    filter->ether_type);
+		return -EEXIST;
+	}
+	if (ret < 0 && !add) {
+		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter doesn't exist.",
+			    filter->ether_type);
+		return -ENOENT;
+	}
+
+	if (add) {
+		ret = ixgbe_ethertype_filter_insert(filter_info,
+			filter->ether_type);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "ethertype filters are full.");
+			return -ENOSYS;
+		}
+		etqf = IXGBE_ETQF_FILTER_EN;
+		etqf |= (uint32_t)filter->ether_type;
+		etqs |= (uint32_t)((filter->queue <<
+				    IXGBE_ETQS_RX_QUEUE_SHIFT) &
+				    IXGBE_ETQS_RX_QUEUE);
+		etqs |= IXGBE_ETQS_QUEUE_EN;
+	} else {
+		ret = ixgbe_ethertype_filter_remove(filter_info, (uint8_t)ret);
+		if (ret < 0)
+			return -ENOSYS;
+	}
+	IXGBE_WRITE_REG(hw, IXGBE_ETQF(ret), etqf);
+	IXGBE_WRITE_REG(hw, IXGBE_ETQS(ret), etqs);
+	IXGBE_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int
+ixgbe_get_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint32_t etqf, etqs;
+	int ret;
+
+	ret = ixgbe_ethertype_filter_lookup(filter_info, filter->ether_type);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter doesn't exist.",
+			    filter->ether_type);
+		return -ENOENT;
+	}
+
+	etqf = IXGBE_READ_REG(hw, IXGBE_ETQF(ret));
+	if (etqf & IXGBE_ETQF_FILTER_EN) {
+		etqs = IXGBE_READ_REG(hw, IXGBE_ETQS(ret));
+		filter->ether_type = etqf & IXGBE_ETQF_ETHERTYPE;
+		filter->flags = 0;
+		filter->queue = (etqs & IXGBE_ETQS_RX_QUEUE) >>
+			       IXGBE_ETQS_RX_QUEUE_SHIFT;
+		return 0;
+	}
+	return -ENOENT;
+}
+
+/*
+ * ixgbe_ethertype_filter_handle - Handle operations for ethertype filter.
+ * @dev: pointer to rte_eth_dev structure
+ * @filter_op:operation will be taken.
+ * @arg: a pointer to specific structure corresponding to the filter_op
+ */
+static int
+ixgbe_ethertype_filter_handle(struct rte_eth_dev *dev,
+				enum rte_filter_op filter_op,
+				void *arg)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	MAC_TYPE_FILTER_SUP(hw->mac.type);
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL) {
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = ixgbe_add_del_ethertype_filter(dev,
+			(struct rte_eth_ethertype_filter *)arg,
+			TRUE);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = ixgbe_add_del_ethertype_filter(dev,
+			(struct rte_eth_ethertype_filter *)arg,
+			FALSE);
+		break;
+	case RTE_ETH_FILTER_GET:
+		ret = ixgbe_get_ethertype_filter(dev,
+			(struct rte_eth_ethertype_filter *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+static int
+ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	int ret = -EINVAL;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+		ret = ixgbe_ntuple_filter_handle(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ret = ixgbe_ethertype_filter_handle(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_SYN:
+		ret = ixgbe_syn_filter_handle(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_FDIR:
+		ret = ixgbe_fdir_ctrl_func(dev, filter_op, arg);
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+							filter_type);
+		break;
+	}
+
+	return ret;
 }
 
 static struct rte_driver rte_ixgbe_driver = {

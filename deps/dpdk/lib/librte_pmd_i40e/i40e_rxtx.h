@@ -112,7 +112,7 @@ struct i40e_rx_queue {
 	uint16_t max_pkt_len; /* Maximum packet length */
 	uint8_t hs_mode; /* Header Split mode */
 	bool q_set; /**< indicate if rx queue has been configured */
-	bool start_rx_per_q; /**< don't start this queue in dev start */
+	bool rx_deferred_start; /**< don't start this queue in dev start */
 };
 
 struct i40e_tx_entry {
@@ -151,7 +151,20 @@ struct i40e_tx_queue {
 	uint16_t tx_next_dd;
 	uint16_t tx_next_rs;
 	bool q_set; /**< indicate if tx queue has been configured */
-	bool start_tx_per_q; /**< don't start this queue in dev start */
+	bool tx_deferred_start; /**< don't start this queue in dev start */
+};
+
+/** Offload features */
+union i40e_tx_offload {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
+		uint64_t l4_len:8; /**< L4 Header Length. */
+		uint64_t tso_segsz:16; /**< TCP TSO segment size */
+		uint64_t outer_l2_len:8; /**< outer L2 Header Length */
+		uint64_t outer_l3_len:16; /**< outer L3 Header Length */
+	};
 };
 
 int i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);

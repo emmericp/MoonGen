@@ -48,7 +48,6 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -113,7 +112,7 @@ struct app_params app = {
 		.rx_adv_conf = {
 			.rss_conf = {
 				.rss_key = NULL,
-				.rss_hf = ETH_RSS_IPV4 | ETH_RSS_IPV6,
+				.rss_hf = ETH_RSS_IP,
 			},
 		},
 		.txmode = {
@@ -419,7 +418,7 @@ app_init_rings(void)
 	RTE_LOG(INFO, USER1, "Initializing %u SW rings ...\n", n_swq);
 
 	app.rings = rte_malloc_socket(NULL, n_swq * sizeof(struct rte_ring *),
-		CACHE_LINE_SIZE, rte_socket_id());
+		RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (app.rings == NULL)
 		rte_panic("Cannot allocate memory to store ring pointers\n");
 
@@ -473,11 +472,6 @@ static void
 app_init_ports(void)
 {
 	uint32_t i;
-
-	/* Init driver */
-	RTE_LOG(INFO, USER1, "Initializing the PMD driver ...\n");
-	if (rte_eal_pci_probe() < 0)
-		rte_panic("Cannot probe PCI\n");
 
 	/* Init NIC ports, then start the ports */
 	for (i = 0; i < app.n_ports; i++) {
@@ -561,7 +555,7 @@ app_ping(void)
 			rte_panic("Unable to allocate new message\n");
 
 		req = (struct app_msg_req *)
-			((struct rte_mbuf *)msg)->ctrl.data;
+				rte_ctrlmbuf_data((struct rte_mbuf *)msg);
 		req->type = APP_MSG_REQ_PING;
 
 		/* Send request */
@@ -600,7 +594,7 @@ app_init_etc(void)
 void
 app_init(void)
 {
-	if ((sizeof(struct app_pkt_metadata) % CACHE_LINE_SIZE) != 0)
+	if ((sizeof(struct app_pkt_metadata) % RTE_CACHE_LINE_SIZE) != 0)
 		rte_panic("Application pkt meta-data size mismatch\n");
 
 	app_check_core_params();

@@ -51,15 +51,16 @@
 
 #define VIRTIO_MAX_RX_QUEUES 128
 #define VIRTIO_MAX_TX_QUEUES 128
-#define VIRTIO_MAX_MAC_ADDRS 1
+#define VIRTIO_MAX_MAC_ADDRS 64
 #define VIRTIO_MIN_RX_BUFSIZE 64
-#define VIRTIO_MAX_RX_PKTLEN  1518
+#define VIRTIO_MAX_RX_PKTLEN  9728
 
 /* Features desired/implemented by this driver. */
 #define VTNET_FEATURES \
 	(VIRTIO_NET_F_MAC       | \
 	VIRTIO_NET_F_STATUS     | \
 	VIRTIO_NET_F_MQ         | \
+	VIRTIO_NET_F_CTRL_MAC_ADDR | \
 	VIRTIO_NET_F_CTRL_VQ    | \
 	VIRTIO_NET_F_CTRL_RX    | \
 	VIRTIO_NET_F_CTRL_VLAN  | \
@@ -87,7 +88,7 @@ void virtio_dev_rxtx_start(struct rte_eth_dev *dev);
 int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			int queue_type,
 			uint16_t queue_idx,
-			uint8_t  vtpci_queue_idx,
+			uint16_t  vtpci_queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id,
 			struct virtqueue **pvq);
@@ -110,15 +111,6 @@ uint16_t virtio_recv_mergeable_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 uint16_t virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
-/*
- * Structure to store private data for each driver instance (for each port).
- */
-struct virtio_adapter {
-	struct virtio_hw hw;
-};
-
-#define VIRTIO_DEV_PRIVATE_TO_HW(adapter)\
-	(&((struct virtio_adapter *)adapter)->hw)
 
 /*
  * The VIRTIO_NET_F_GUEST_TSO[46] features permit the host to send us

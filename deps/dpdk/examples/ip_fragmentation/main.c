@@ -49,7 +49,6 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
-#include <rte_tailq.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
@@ -74,8 +73,6 @@
 #include <rte_string_fns.h>
 
 #include <rte_ip_frag.h>
-
-#include "main.h"
 
 #define RTE_LOGTYPE_IP_FRAG RTE_LOGTYPE_USER1
 
@@ -105,25 +102,6 @@
 #define	MAX_PACKET_FRAG RTE_LIBRTE_IP_FRAG_MAX_FRAG
 
 #define NB_MBUF   8192
-
-/*
- * RX and TX Prefetch, Host, and Write-back threshold values should be
- * carefully set for optimal performance. Consult the network
- * controller's datasheet and supporting DPDK documentation for guidance
- * on how these parameters should be set.
- */
-#define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
-#define RX_HTHRESH 8 /**< Default values of RX host threshold reg. */
-#define RX_WTHRESH 4 /**< Default values of RX write-back threshold reg. */
-
-/*
- * These default values are optimized for use with the Intel(R) 82599 10 GbE
- * Controller and the DPDK ixgbe PMD. Consider using other values for other
- * network controllers and/or network drivers.
- */
-#define TX_PTHRESH 36 /**< Default values of TX prefetch threshold reg. */
-#define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
-#define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST	32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
@@ -206,24 +184,6 @@ static const struct rte_eth_conf port_conf = {
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
-};
-
-static const struct rte_eth_rxconf rx_conf = {
-	.rx_thresh = {
-		.pthresh = RX_PTHRESH,
-		.hthresh = RX_HTHRESH,
-		.wthresh = RX_WTHRESH,
-	},
-};
-
-static const struct rte_eth_txconf tx_conf = {
-	.tx_thresh = {
-		.pthresh = TX_PTHRESH,
-		.hthresh = TX_HTHRESH,
-		.wthresh = TX_WTHRESH,
-	},
-	.tx_free_thresh = 0, /* Use PMD default values */
-	.tx_rs_thresh = 0, /* Use PMD default values */
 };
 
 /*
@@ -342,7 +302,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		}
 
 		/* if we don't need to do any fragmentation */
-		if (likely (IPV4_MTU_DEFAULT >= m->pkt.pkt_len)) {
+		if (likely (IPV4_MTU_DEFAULT >= m->pkt_len)) {
 			qconf->tx_mbufs[port_out].m_table[len] = m;
 			len2 = 1;
 		} else {
@@ -379,7 +339,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		}
 
 		/* if we don't need to do any fragmentation */
-		if (likely (IPV6_MTU_DEFAULT >= m->pkt.pkt_len)) {
+		if (likely (IPV6_MTU_DEFAULT >= m->pkt_len)) {
 			qconf->tx_mbufs[port_out].m_table[len] = m;
 			len2 = 1;
 		} else {
@@ -413,7 +373,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 			rte_panic("No headroom in mbuf.\n");
 		}
 
-		m->pkt.vlan_macip.f.l2_len = sizeof(struct ether_hdr);
+		m->l2_len = sizeof(struct ether_hdr);
 
 		/* 02:00:00:00:00:xx */
 		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
@@ -637,13 +597,9 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, struct ether_addr *eth_addr)
 {
-	printf("%s%02X:%02X:%02X:%02X:%02X:%02X", name,
-	       eth_addr->addr_bytes[0],
-	       eth_addr->addr_bytes[1],
-	       eth_addr->addr_bytes[2],
-	       eth_addr->addr_bytes[3],
-	       eth_addr->addr_bytes[4],
-	       eth_addr->addr_bytes[5]);
+	char buf[ETHER_ADDR_FMT_SIZE];
+	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	printf("%s%s", name, buf);
 }
 
 /* Check the link status of all ports in up to 9s, and print them finally */
@@ -848,9 +804,11 @@ init_mem(void)
 }
 
 int
-MAIN(int argc, char **argv)
+main(int argc, char **argv)
 {
 	struct lcore_queue_conf *qconf;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf *txconf;
 	struct rx_queue *rxq;
 	int socket, ret;
 	unsigned nb_ports;
@@ -870,9 +828,6 @@ MAIN(int argc, char **argv)
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid arguments");
-
-	if (rte_eal_pci_probe() < 0)
-		rte_panic("Cannot probe PCI\n");
 
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports > RTE_MAX_ETHPORTS)
@@ -942,7 +897,7 @@ MAIN(int argc, char **argv)
 
 		/* init one RX queue */
 		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
-					     socket, &rx_conf,
+					     socket, NULL,
 					     socket_direct_pool[socket]);
 		if (ret < 0) {
 			printf("\n");
@@ -964,8 +919,12 @@ MAIN(int argc, char **argv)
 			socket = (int) rte_lcore_to_socket_id(lcore_id);
 			printf("txq=%u,%d ", lcore_id, queueid);
 			fflush(stdout);
+
+			rte_eth_dev_info_get(portid, &dev_info);
+			txconf = &dev_info.default_txconf;
+			txconf->txq_flags = 0;
 			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
-						     socket, &tx_conf);
+						     socket, txconf);
 			if (ret < 0) {
 				printf("\n");
 				rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: "
