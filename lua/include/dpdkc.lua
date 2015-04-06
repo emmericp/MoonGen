@@ -8,44 +8,80 @@ ffi.cdef[[
 		WAIT, RUNNING, FINISHED
 	};
 
+	
+
 	// packets/mbufs
-	struct rte_pktmbuf {
-		struct rte_mbuf* next;
-		void* data;
-		uint16_t data_len;
-		uint8_t nb_segs;
-		uint8_t in_port;
-		uint32_t pkt_len;
-		//union {
-		uint16_t header_lengths;
-		uint16_t vlan_tci;
-		//uint32_t value;
-		//} offsets;
-		union {
-			uint32_t rss;
-			struct {
-				uint16_t hash;
-				uint16_t id;
-			} fdir;
-			uint32_t sched;
-		} hash;
-	};
-
-	struct rte_mbuf {
-		void* pool;
-		void* data;
-		uint64_t phy_addr;
-		uint16_t len;
-		uint16_t refcnt;
-		uint8_t type;
-		uint8_t reserved;
-		uint16_t ol_flags;
-		struct rte_pktmbuf pkt;
-	};
-
+	
 	struct mempool {
 	}; // dummy struct, only needed to associate it with a metatable
+
+	typedef void    *MARKER[0];
+	typedef uint8_t  MARKER8[0];
+	typedef uint64_t MARKER64[0];
 	
+	struct rte_mbuf;
+	struct rte_mbuf {
+		MARKER cacheline0;
+
+		void *buf_addr;           /**< Virtual address of segment buffer. */
+		void *buf_physaddr; /**< Physical address of segment buffer. */
+
+		uint16_t buf_len;         /**< Length of segment buffer. */
+
+		/* next 6 bytes are initialised on RX descriptor rearm */
+		MARKER8 rearm_data;
+		uint16_t data_off;
+
+		uint16_t refcnt;
+		uint8_t nb_segs;
+		uint8_t port;
+
+		uint64_t ol_flags;
+
+		/* remaining bytes are set on RX when pulling packet from descriptor */
+		MARKER rx_descriptor_fields1;
+
+		/**
+		 * The packet type, which is used to indicate ordinary packet and also
+		 * tunneled packet format, i.e. each number is represented a type of
+		 * packet.
+		 */
+		uint16_t packet_type;
+
+		uint16_t data_len;        /**< Amount of data in segment buffer. */
+		uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
+		uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
+		uint16_t reserved;
+		union {
+			uint32_t rss;     /**< RSS hash result if RSS enabled */
+			struct {
+				union {
+					struct {
+						uint16_t hash;
+						uint16_t id;
+					};
+					uint32_t lo;
+					/**< Second 4 flexible bytes */
+				};
+				uint32_t hi;
+				/**< First 4 flexible bytes or FD ID, dependent on
+				     PKT_RX_FDIR_* flag in ol_flags. */
+			} fdir;           /**< Filter identifier if FDIR enabled */
+			uint32_t sched;   /**< Hierarchical scheduler */
+			uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
+		} hash;                   /**< hash information */
+
+		uint32_t seqn;
+
+		MARKER cacheline1 __attribute__((aligned(64)));
+
+		uint64_t udata64;
+
+		struct rte_mempool *pool;
+		struct rte_mbuf *next;
+
+		uint64_t tx_offload;
+	};
 	// device status/info
 	struct rte_eth_link {
 		uint16_t link_speed;
