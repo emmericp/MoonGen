@@ -56,7 +56,8 @@ function rxQueue:__serialize()
 end
 
 local devices = {}
-function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
+function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs)
+	speed = speed or 0
 	if devices[port] and devices[port].initialized then
 		printf("[WARNING] Device %d already configured, skipping initilization", port)
 		return mod.get(port)
@@ -73,7 +74,7 @@ function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
 	rxDescs = rxDescs or 0
 	txDescs = txDescs or 0
 	-- TODO: support options
-	local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, mempool)
+	local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, speed, mempool)
 	if rc ~= 0 then
 		errorf("could not configure device %d: error %d", port, rc)
 	end
