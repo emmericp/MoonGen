@@ -20,6 +20,10 @@ function timer:expired()
 	return self.stop <= dpdk.getTime()
 end
 
+function timer:timeLeft()
+	return self.stop - dpdk.getTime()
+end
+
 function timer:reset(time)
 	self.stop = dpdk.getTime() + time or self.time
 end
