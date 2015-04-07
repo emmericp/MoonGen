@@ -159,6 +159,15 @@ function udpPacket:fill(args)
 	self.udp:fill(args)
 end
 
+-- TODO: ugly place for this but required
+-- @scholzd: how to fix this?
+function udpPacket:setLength(len)
+	local ipLen = len - 14
+	local udpLen = len - 14 - 20
+	self.ip:setLength(ipLen)
+	self.udp:setLength(udpLen)
+end
+
 --- Retrieve the values of all members.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see etherHeader:get
