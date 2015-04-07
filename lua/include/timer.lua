@@ -35,7 +35,8 @@ end
 --- Perform a non-busy wait on the timer.
 -- Might be less accurate than busyWait()
 function timer:wait()
-	error("NYI")
+	-- TODO: implement
+	return self:busyWait()
 end
 
 return mod
