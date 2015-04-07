@@ -19,7 +19,7 @@ Lua script, it can be used to implement advanced test scripts. E.g. one can use
 two instances of MoonGen that establish a connection with each other. This
 setup can be used to benchmark middle-boxes like firewalls.
 
-Reading the example script [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service.lua) is a good way to learn more about our scripting API as this script uses most features of MoonGen.
+Reading the example script [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua) is a good way to learn more about our scripting API as this script uses most features of MoonGen.
 
 MoonGen focuses on four main points:
 
