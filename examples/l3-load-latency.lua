@@ -6,6 +6,8 @@ local dpdkc		= require "dpdkc"
 local filter	= require "filter"
 local ffi		= require "ffi"
 
+local incAndWrap = incAndWrap
+
 -- set addresses here
 local srcmac = "00:42:00:00:00:01"
 local dstmac = "00:42:00:00:00:02"
@@ -61,13 +63,7 @@ function loadSlave(port, queue, size, numFlows)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
 			pkt.ip.src:set(baseIP + counter)
-			if numFlows <= 32 then
-				-- this is significantly faster for small numbers
-				-- TODO: this optimization shouldn't be necessary...
-				counter = (counter + 1) % numFlows
-			else
-				counter = counter == numFlows and 0 or counter + 1
-			end
+			counter = incAndWrap(counter, numFlows)
 		end
 		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
 		bufs:offloadUdpChecksums()

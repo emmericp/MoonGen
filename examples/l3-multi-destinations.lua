@@ -71,11 +71,7 @@ function loadSlave(dev, queue, minA, numIPs)
 			-- increment IP
 			pkt.ip:setDst(minIP)
 			pkt.ip.dst:add(counter)
-			if numIPs <= 32 then
-				counter = (counter + 1) % numIPs
-			else 
-				counter = counter == numIPs and 0 or counter + 1
-			end
+			counter = incAndWrap(counter, numIPs)
 
 			-- dump first few packets to see what we send
 			if c < 3 then

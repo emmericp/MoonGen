@@ -73,11 +73,7 @@ function loadSlave(port, queue, minA, numIPs)
 			--increment IP
 			pkt.ip.src:set(minIP)
 			pkt.ip.src:add(counter)
-			if numIPs <= 32 then
-				counter = (counter + 1) % numIPs
-			else 
-				counter = counter == numIPs and 0 or counter + 1
-			end
+			counter = incAndWrap(counter, numIPs)
 
 			-- dump first 3 packets
 			if c < 3 then
