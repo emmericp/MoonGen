@@ -366,12 +366,12 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 	self.txBufs:alloc(pktSize)
 	local buf = self.txBufs[1]
 	buf:enableTimestamps()
-	buf:getPtpPacket().ptp:setSequenceID(self.seq)
 	local expectedSeq = self.seq
+	self.seq = (self.seq + 1) % 2^16
+	buf:getPtpPacket().ptp:setSequenceID(expectedSeq)
 	if packetModifier then
 		packetModifier(buf, pktSize)
 	end
-	self.seq = self.seq + 1
 	mod.syncClocks(self.txDev, self.rxDev)
 	self.txQueue:send(self.txBufs)
 	local tx = self.txQueue:getTimestamp(500)
