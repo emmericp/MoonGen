@@ -52,6 +52,7 @@ int lua_core_main(void* arg) {
 error:
 	free(cfg->args);
 	free(cfg);
+	lua_close(L);
 	return rc;
 }
 
