@@ -11,6 +11,7 @@ function master(txPort, rxPort)
 	end
 	local txDev = device.config(txPort)
 	local rxDev = device.config(rxPort)
+	device.waitForLinks()
 	runTest(txDev:getTxQueue(0), rxDev:getRxQueue(0))
 end
 
