@@ -99,7 +99,7 @@ function mod.init()
 end
 
 ffi.cdef[[
-	void launch_lua_core(int core, uint64_t task_id, char* args);
+	void launch_lua_core(int core, uint64_t task_id, char* userscript, char* args);
 	
 	void free(void* ptr);
 	uint64_t generate_task_id();
@@ -163,11 +163,13 @@ end
 --- TODO: use proper serialization and only pass strings
 function mod.launchLuaOnCore(core, ...)
 	checkCore()
-	local args = serpent.dump({ mod.userScript, ... })
+	local args = serpent.dump({ ... })
 	local task = task:new(core)
 	local buf = ffi.new("char[?]", #args + 1)
 	ffi.copy(buf, args)
-	dpdkc.launch_lua_core(core, task.id, buf)
+	local userscript = ffi.new("char[?]", #mod.userScript + 1)
+	ffi.copy(userscript, mod.userScript)
+	dpdkc.launch_lua_core(core, task.id, userscript, buf)
 	return task
 end
 

@@ -63,19 +63,23 @@ local function master(_, file, ...)
 	-- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()
 end
 
-local function slave(taskId, args)
+local function slave(taskId, userscript, args)
+	-- must be done before parsing the args as they might rely on deserializers defined in the script
+	run(userscript)
 	args = loadstring(args)()
-	file, func = unpack(args)
+	func = args[1]
 	if func == "master" then
 		print("[WARNING] Calling master as slave. This is probably a bug.")
+	end
+	if not _G[func] then
+		errorf("slave function %s not found", func)
 	end
 	--require("jit.p").start("l")
 	--require("jit.dump").on()
 	MOONGEN_TASK_NAME = func
 	MOONGEN_TASK_ID = taskId
-	run(file)
 	-- decode args
-	local results = { select(2, xpcall(_G[func], getStackTrace, select(3, unpackAll(args)))) }
+	local results = { select(2, xpcall(_G[func], getStackTrace, select(2, unpackAll(args)))) }
 	local vals = serpent.dump(results)
 	local buf = ffi.new("char[?]", #vals + 1)
 	ffi.copy(buf, vals)
