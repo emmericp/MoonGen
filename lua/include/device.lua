@@ -375,6 +375,25 @@ function rxQueue:tryRecv(bufArray, maxWait)
 	return 0
 end
 
+--- Receive packets from a rx queue with a timeout.
+-- Does not perform a busy wait, this is not suitable for high-throughput applications.
+function rxQueue:tryRecvIdle(bufArray, maxWait)
+	maxWait = maxWait or math.huge
+	while maxWait >= 0 do
+		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, bufArray.size)
+		if rx > 0 then
+			return rx
+		end
+		maxWait = maxWait - 1
+		-- don't sleep pointlessly
+		if maxWait < 0 then
+			break
+		end
+		dpdk.sleepMicrosIdle(1)
+	end
+	return 0
+end
+
 -- export prototypes to extend them in other modules (TODO: use a proper 'class' system with mix-ins or something)
 mod.__devicePrototype = dev
 mod.__txQueuePrototype = txQueue

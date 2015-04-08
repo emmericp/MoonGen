@@ -356,9 +356,8 @@ local function arpTask(rxQueue, txQueue, ips)
 	local txBufs = txMem:bufArray(1)
 	dev:l2Filter(eth.TYPE_ARP, rxQueue)
 	
-	
 	while dpdk.running() do
-		rx = rxQueue:tryRecv(rxBufs, 10000)
+		rx = rxQueue:tryRecvIdle(rxBufs, 10000)
 		assert(rx <= 1)
 		if rx > 0 then
 			local rxPkt = rxBufs[1]:getArpPacket()
