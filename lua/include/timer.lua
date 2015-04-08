@@ -25,7 +25,7 @@ function timer:timeLeft()
 end
 
 function timer:reset(time)
-	self.stop = dpdk.getTime() + time or self.time
+	self.stop = dpdk.getTime() + (time or self.time)
 end
 
 --- Perform a busy wait on the timer.
