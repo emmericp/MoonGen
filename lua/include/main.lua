@@ -7,6 +7,7 @@ local dpdkc		= require "dpdkc"
 local dev		= require "device"
 local stp		= require "StackTracePlus"
 local ffi		= require "ffi"
+local memory	= require "memory"
 local serpent	= require "Serpent"
 
 -- TODO: add command line switches for this and other luajit-debugging features
@@ -84,6 +85,8 @@ local function slave(taskId, userscript, args)
 	local buf = ffi.new("char[?]", #vals + 1)
 	ffi.copy(buf, vals)
 	dpdkc.store_result(taskId, buf)
+	dev.reclaimTxBuffers()
+	memory.freeMemPools()
 	--require("jit.p").stop()
 end
 
