@@ -58,6 +58,12 @@ function histogram:calc()
 			idx = idx + 1
 		end
 	end
+
+	for i = 1, 3 do
+		if not self.quarts[i] then
+			self.quarts[i] = 0/0
+		end
+	end
 	self.dirty = false
 end
 
