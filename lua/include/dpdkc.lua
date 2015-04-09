@@ -154,7 +154,7 @@ ffi.cdef[[
 	uint64_t get_mac_addr(int port, char* buf);
 	void rte_eth_link_get(uint8_t port, struct rte_eth_link* link);
 	void rte_eth_link_get_nowait(uint8_t port, struct rte_eth_link* link);
-	int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool);
+	int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en);
 	void get_mac_addr(int port, char* buf);
 	uint32_t get_pci_id(uint8_t port);
 	uint32_t read_reg32(uint8_t port, uint32_t reg);

@@ -56,15 +56,18 @@ function rxQueue:__serialize()
 end
 
 local devices = {}
-function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs)
-	speed = speed or 0
+
+-- TODO: use a table/named arguments as this is becoming excessive
+function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
+	if not mempool or type(mempool) == "number" then
+		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
+	end
 	if devices[port] and devices[port].initialized then
 		printf("[WARNING] Device %d already configured, skipping initilization", port)
 		return mod.get(port)
 	end
-	if not mempool or type(mempool) == "number" then
-		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, rxDescs)
-	end
+	speed = speed or 0
+	dropEnable = dropEnable == nil and true
 	if rxQueues == 0 or txQueues == 0 then
 		-- dpdk does not like devices without rx/tx queues :(
 		errorf("cannot initialize device without %s queues", rxQueues == 0 and txQueues == 0 and "rx and tx" or rxQueues == 0 and "rx" or "tx")
@@ -74,7 +77,7 @@ function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs)
 	rxDescs = rxDescs or 0
 	txDescs = txDescs or 0
 	-- TODO: support options
-	local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, speed, mempool)
+	local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, speed, mempool, dropEnable)
 	if rc ~= 0 then
 		errorf("could not configure device %d: error %d", port, rc)
 	end
