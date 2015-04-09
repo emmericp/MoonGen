@@ -88,7 +88,7 @@ function mod.get(id)
 		return devices[id]
 	end
 	devices[id] = setmetatable({ id = id, rxQueues = {}, txQueues = {} }, dev)
-	if MOONGEN_TASK_NAME ~= "master" then
+	if MOONGEN_TASK_NAME ~= "master" and not MOONGEN_IGNORE_BAD_NUMA_MAPPING then
 		-- check the NUMA association if we are running in a worker thread
 		-- (it's okay to do the initial config from the wrong socket, but sending packets from it is a bad idea)
 		local devSocket = devices[id]:getSocket()

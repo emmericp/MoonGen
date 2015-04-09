@@ -276,5 +276,9 @@ function mod.getCore()
 	return dpdkc.get_current_core(), dpdkc.get_current_socket()
 end
 
+function mod.disableBadSocketWarning()
+	MOONGEN_IGNORE_BAD_NUMA_MAPPING = true
+end
+
 return mod
 
