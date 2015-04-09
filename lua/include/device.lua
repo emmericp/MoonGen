@@ -323,13 +323,23 @@ function txQueue:getTxRate()
 end
 
 function txQueue:send(bufs)
+	self.used = true
 	dpdkc.send_all_packets(self.id, self.qid, bufs.array, bufs.size);
 	return bufs.size
+end
+
+function txQueue:start()
+	assert(dpdkc.rte_eth_dev_tx_queue_start(self.id, self.qid) == 0)
+end
+
+function txQueue:stop()
+	assert(dpdkc.rte_eth_dev_tx_queue_stop(self.id, self.qid) == 0)
 end
 
 do
 	local mempool
 	function txQueue:sendWithDelay(bufs, method)
+		self.used = true
 		mempool = mempool or memory.createMemPool(2047, nil, nil, 4095)
 		method = method or "crc"
 		if method == "crc" then
@@ -343,6 +353,18 @@ do
 	end
 end
 
+--- Restarts all tx queues that were actively used by this task.
+-- 'Actively used' means that either :send() or :sendWithDelay() was called from the current task.
+function mod.reclaimTxBuffers()
+	for _, dev in pairs(devices) do
+		for _, queue in pairs(dev.txQueues) do
+			if queue.used then
+				queue:stop()
+				queue:start()
+			end
+		end
+	end
+end
 
 --- Receive packets from a rx queue.
 -- Returns as soon as at least one packet is available.
