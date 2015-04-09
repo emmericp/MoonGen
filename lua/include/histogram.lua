@@ -1,6 +1,8 @@
 local histogram = {}
 histogram.__index = histogram
 
+local serpent = require "Serpent"
+
 function histogram:create()
 	local histo = setmetatable({}, histogram)
 	histo.histo = {}
@@ -114,6 +116,10 @@ function histogram:print()
 	if self.dirty then self:calc() end
 
 	printf("Samples: %d, Average: %.1f, StdDev: %.1f, Quartiles: %.1f/%.1f/%.1f", self.numSamples, self.avg, self.stdDev, unpack(self.quarts))
+end
+
+function histogram:__serialize()
+	return "require 'histogram'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('histogram')"), true
 end
 
 return histogram
