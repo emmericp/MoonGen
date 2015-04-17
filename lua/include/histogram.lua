@@ -118,6 +118,22 @@ function histogram:print()
 	printf("Samples: %d, Average: %.1f, StdDev: %.1f, Quartiles: %.1f/%.1f/%.1f", self.numSamples, self.avg, self.stdDev, unpack(self.quarts))
 end
 
+function histogram:save(file)
+	if self.dirty then self:calc() end
+	local close = false
+	if type(file) ~= "userdata" then
+		file = io.open(file, "w+")
+		close = true
+	end
+	for i, v in ipairs(self.sortedHisto) do
+		file:write(("%s,%s\n"):format(v.k, v.v))
+	end
+	if close then
+		file:close()
+	end
+end
+
+
 function histogram:__serialize()
 	return "require 'histogram'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('histogram')"), true
 end
