@@ -17,6 +17,7 @@ SET(FILES
 	src/task-results.cpp
 	src/pipe.cpp
 	src/lock.cpp
+	src/namespaces.cpp
 )
 
 SET(DPDK_LIBS
