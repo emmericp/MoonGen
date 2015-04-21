@@ -1,14 +1,7 @@
-local dpdk	= require "dpdk"
+local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
-local ts	= require "timestamping"
-local dpdkc	= require "dpdkc"
-local filter	= require "filter"
-local utils 	= require "utils"
-local headers	= require "headers"
-local packet	= require "packet"
 
-local ffi	= require "ffi"
 
 function master(...)
 	local txPort = tonumber((select(1, ...)))
