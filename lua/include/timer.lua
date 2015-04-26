@@ -7,8 +7,8 @@ timer.__index = timer
 
 function mod:new(time)
 	return setmetatable({
-		time = time,
-		stop = dpdk.getTime() + time
+		time = time or 0,
+		stop = dpdk.getTime() + (time or 0)
 	}, timer)
 end
 
@@ -20,8 +20,12 @@ function timer:expired()
 	return self.stop <= dpdk.getTime()
 end
 
-function timer:reset()
-	self.stop = dpdk.getTime() + self.time
+function timer:timeLeft()
+	return self.stop - dpdk.getTime()
+end
+
+function timer:reset(time)
+	self.stop = dpdk.getTime() + (time or self.time)
 end
 
 --- Perform a busy wait on the timer.
@@ -35,7 +39,8 @@ end
 --- Perform a non-busy wait on the timer.
 -- Might be less accurate than busyWait()
 function timer:wait()
-	error("NYI")
+	-- TODO: implement
+	return self:busyWait()
 end
 
 return mod

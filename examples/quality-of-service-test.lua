@@ -9,11 +9,11 @@ local hist		= require "histogram"
 
 local PKT_SIZE = 124
 
-function master(txPort, rxPort, rate, bgRate)
+function master(txPort, rxPort, fgRate, bgRate)
 	if not txPort or not rxPort then
-		return print("usage: txPort rxPort [rate [bgRate]]")
+		return print("usage: txPort rxPort [fgRate [bgRate]]")
 	end
-	rate = rate or 100
+	fgRate = fgRate or 100
 	bgRate = bgRate or 1500
 	-- 3 tx queues: traffic, background traffic, and timestamped packets
 	-- 2 rx queues: traffic and timestamped packets
@@ -35,7 +35,7 @@ function master(txPort, rxPort, rate, bgRate)
 	-- setup rate limiters for CBR traffic
 	-- see l2-poisson.lua for an example with different traffic patterns
 	txDev:getTxQueue(0):setRate(bgRate)
-	txDev:getTxQueue(1):setRate(rate)
+	txDev:getTxQueue(1):setRate(fgRate)
 	-- background traffic
 	dpdk.launchLua("loadSlave", txDev:getTxQueue(0), 42)
 	-- high priority traffic (different UDP port)
@@ -43,8 +43,7 @@ function master(txPort, rxPort, rate, bgRate)
 	-- count the incoming packets
 	dpdk.launchLua("counterSlave", rxDev:getRxQueue(0), 42, 43)
 	-- measure latency from a second queue
-	--dpdk.launchLua("timerSlave", txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, rate / bgRate)
-	timerSlave(txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, rate / bgRate)
+	timerSlave(txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, fgRate / (fgRate + bgRate))
 	-- wait until all tasks are finished
 	dpdk.waitForSlaves()
 end
@@ -152,9 +151,6 @@ end
 
 function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 	-- TODO fix the time stamping API
-	if ratio > 1 then
-		error("background traffic > qos traffic is not yet supported")
-	end
 	local txDev = txQueue.dev
 	local rxDev = rxQueue.dev
 	local mem = memory.createMemPool()

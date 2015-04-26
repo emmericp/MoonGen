@@ -24,8 +24,11 @@ function mod.free(buf)
 	C.free(buf)
 end
 
+local mempools = {}
 
 --- Create a new memory pool.
+-- Memory pools are recycled once the owning task terminates.
+-- Call :retain() for mempools that are passed to other tasks.
 -- @param n optional (default = 2047), size of the mempool
 -- @param func optional, init func, called for each argument
 -- @param socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
@@ -41,7 +44,8 @@ function mod.createMemPool(n, func, socket, bufSize)
 	end
 	n = n or 2047
 	socket = socket or -1
-	local mem = dpdkc.init_mem(n, socket, bufSize and bufSize or 0)
+	-- TODO: get cached mempool from the mempool pool if possible and use that instead
+	local mem = dpdkc.init_mem(n, socket, bufSize or 0)
 	if func then
 		local bufs = {}
 		for i = 1, n do
@@ -53,11 +57,35 @@ function mod.createMemPool(n, func, socket, bufSize)
 			dpdkc.rte_pktmbuf_free_export(v)
 		end
 	end
+	mempools[#mempools + 1] = mem
 	return mem
+end
+
+--- Free all memory pools owned by this task.
+-- All queues using these pools must be stopped before calling this.
+function mod.freeMemPools()
+	for _, mem in ipairs(mempools) do
+		print("NYI: reclaim mempool " .. tostring(mem))
+		-- TODO: need a way to communicate with the master task here
+		-- two possible approaches:
+		-- * each slave gets a pipe to communicate back to the master task which is somewhat ugly as currently only have SPSC pipes
+		-- * something like a global table (which will be needed for other stuff anyways (e.g. arp table))
+	end
 end
 
 local mempool = {}
 mempool.__index = mempool
+
+--- Retain a memory pool.
+-- This will prevent the pool from being returned to a pool of pools once the task ends.
+function mempool:retain()
+	for i, v in ipairs(mempools) do
+		if v == self then
+			table.remove(mempools, i)
+			return
+		end
+	end
+end
 
 function mempool:alloc(l)
 	local r = dpdkc.alloc_mbuf(self)

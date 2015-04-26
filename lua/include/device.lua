@@ -56,14 +56,18 @@ function rxQueue:__serialize()
 end
 
 local devices = {}
-function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
+
+-- TODO: use a table/named arguments as this is becoming excessive
+function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
+	if not mempool or type(mempool) == "number" then
+		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
+	end
 	if devices[port] and devices[port].initialized then
 		printf("[WARNING] Device %d already configured, skipping initilization", port)
 		return mod.get(port)
 	end
-	if not mempool or type(mempool) == "number" then
-		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, rxDescs)
-	end
+	speed = speed or 0
+	dropEnable = dropEnable == nil and true
 	if rxQueues == 0 or txQueues == 0 then
 		-- dpdk does not like devices without rx/tx queues :(
 		errorf("cannot initialize device without %s queues", rxQueues == 0 and txQueues == 0 and "rx and tx" or rxQueues == 0 and "rx" or "tx")
@@ -73,7 +77,7 @@ function mod.config(port, mempool, rxQueues, txQueues, rxDescs, txDescs)
 	rxDescs = rxDescs or 0
 	txDescs = txDescs or 0
 	-- TODO: support options
-	local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, mempool)
+	local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, speed, mempool, dropEnable)
 	if rc ~= 0 then
 		errorf("could not configure device %d: error %d", port, rc)
 	end
@@ -87,7 +91,7 @@ function mod.get(id)
 		return devices[id]
 	end
 	devices[id] = setmetatable({ id = id, rxQueues = {}, txQueues = {} }, dev)
-	if MOONGEN_TASK_NAME ~= "master" then
+	if MOONGEN_TASK_NAME ~= "master" and not MOONGEN_IGNORE_BAD_NUMA_MAPPING then
 		-- check the NUMA association if we are running in a worker thread
 		-- (it's okay to do the initial config from the wrong socket, but sending packets from it is a bad idea)
 		local devSocket = devices[id]:getSocket()
@@ -319,13 +323,23 @@ function txQueue:getTxRate()
 end
 
 function txQueue:send(bufs)
+	self.used = true
 	dpdkc.send_all_packets(self.id, self.qid, bufs.array, bufs.size);
 	return bufs.size
+end
+
+function txQueue:start()
+	assert(dpdkc.rte_eth_dev_tx_queue_start(self.id, self.qid) == 0)
+end
+
+function txQueue:stop()
+	assert(dpdkc.rte_eth_dev_tx_queue_stop(self.id, self.qid) == 0)
 end
 
 do
 	local mempool
 	function txQueue:sendWithDelay(bufs, method)
+		self.used = true
 		mempool = mempool or memory.createMemPool(2047, nil, nil, 4095)
 		method = method or "crc"
 		if method == "crc" then
@@ -339,6 +353,18 @@ do
 	end
 end
 
+--- Restarts all tx queues that were actively used by this task.
+-- 'Actively used' means that either :send() or :sendWithDelay() was called from the current task.
+function mod.reclaimTxBuffers()
+	for _, dev in pairs(devices) do
+		for _, queue in pairs(dev.txQueues) do
+			if queue.used then
+				queue:stop()
+				queue:start()
+			end
+		end
+	end
+end
 
 --- Receive packets from a rx queue.
 -- Returns as soon as at least one packet is available.
@@ -370,6 +396,25 @@ function rxQueue:tryRecv(bufArray, maxWait)
 			break
 		end
 		dpdk.sleepMicros(1)
+	end
+	return 0
+end
+
+--- Receive packets from a rx queue with a timeout.
+-- Does not perform a busy wait, this is not suitable for high-throughput applications.
+function rxQueue:tryRecvIdle(bufArray, maxWait)
+	maxWait = maxWait or math.huge
+	while maxWait >= 0 do
+		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, bufArray.size)
+		if rx > 0 then
+			return rx
+		end
+		maxWait = maxWait - 1
+		-- don't sleep pointlessly
+		if maxWait < 0 then
+			break
+		end
+		dpdk.sleepMicrosIdle(1)
 	end
 	return 0
 end

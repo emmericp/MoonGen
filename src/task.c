@@ -43,24 +43,29 @@ int lua_core_main(void* arg) {
 	lua_getglobal(L, "main");
 	lua_pushstring(L, "slave");
 	lua_pushnumber(L, cfg->task_id);
+	lua_pushstring(L, cfg->userscript);
 	lua_pushstring(L, cfg->args);
-	if (lua_pcall(L, 3, 0, 0)) {
+	if (lua_pcall(L, 4, 0, 0)) {
 		printf("Lua error: %s\n", lua_tostring(L, -1));
 		goto error;
 	}
 	rc = 0;
 error:
 	free(cfg->args);
+	free(cfg->userscript);
 	free(cfg);
+	if (L) lua_close(L);
 	return rc;
 }
 
-void launch_lua_core(int core, uint64_t task_id, char* args) {
+void launch_lua_core(int core, uint64_t task_id, char* userscript, char* args) {
 	struct lua_core_config* cfg = (struct lua_core_config*) malloc(sizeof(struct lua_core_config));
 	cfg->task_id = task_id;
-	// copy the string as it might be freed immediately after the call by the caller
-	cfg->args = (char *) malloc(strlen(args) + 1);
+	// copy the strings as they might be freed immediately after the call by the caller
+	cfg->args = (char*) malloc(strlen(args) + 1);
+	cfg->userscript = (char*) malloc(strlen(userscript) + 1);
 	strcpy(cfg->args, args);
+	strcpy(cfg->userscript, userscript);
 	rte_eal_remote_launch(&lua_core_main, cfg, core);
 }
 

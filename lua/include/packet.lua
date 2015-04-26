@@ -60,6 +60,11 @@ function pkt:setRate(rate)
 	self.hash.rss = 10^10 / 8 / (rate * 10^6) - self.pkt_len - 24
 end
 
+function pkt:setSize(size)
+	self.pkt.pkt_len = size
+	self.pkt.data_len = size
+end
+
 --- Print a hex dump of the complete packet.
 -- Dumps the first self.pkt_len bytes of self.data.
 -- As this struct has no information about the actual type of the packet, it gets recreated by analyzing the protocol fields (etherType, protocol, ...).

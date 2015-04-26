@@ -295,3 +295,16 @@ function unpackAll(tbl)
 	return unpackers[table.maxn(tbl)](tbl)
 end
 
+
+local band = bit.band
+local sar = bit.arshift
+
+--- Increment a wrapping counter, i.e. (val + 1) % max
+-- This function is optimized to generate branchless code and faster than a naive modulo-based implementation.
+-- 
+-- NOTE: all attempts to wrap this in a nice and simple class have failed (~30% performance impact).
+function incAndWrap(val, max)
+	return band(val + 1, sar(val - max + 1, 31))
+end
+
+

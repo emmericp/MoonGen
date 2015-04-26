@@ -9,11 +9,12 @@
 
 struct lua_core_config {
 	uint64_t task_id;
+	char* userscript;
 	char* args;
 };
 
 lua_State* launch_lua();
 
-void launch_lua_core(int core, uint64_t task_id, char* args);
+void launch_lua_core(int core, uint64_t task_id, char* userscript, char* args);
 
 #endif

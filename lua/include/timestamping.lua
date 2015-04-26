@@ -335,9 +335,14 @@ local timestamper = {}
 timestamper.__index = timestamper
 
 --- Create a new timestamper.
-function mod:newTimestamper(txQueue, rxQueue, mem)
+function mod:newTimestamper(txQueue, rxQueue, mem, udp)
 	mem = mem or memory.createMemPool(function(buf)
-		buf:getPtpPacket():fill{} -- defaults are good enough for us
+		if udp then
+			-- TODO: use pkt:fill{}
+			mod.fillPacket(buf, 1234, 124)
+		else
+			buf:getPtpPacket():fill{} -- defaults are good enough for us
+		end
 	end)
 	txQueue:enableTimestamps()
 	rxQueue:enableTimestamps()
@@ -350,7 +355,12 @@ function mod:newTimestamper(txQueue, rxQueue, mem)
 		txDev = txQueue.dev,
 		rxDev = rxQueue.dev,
 		seq = 1,
+		udp = udp,
 	}, timestamper)
+end
+
+function mod:newUdpTimestamper(txQueue, rxQueue, mem)
+	return self:newTimestamper(txQueue, rxQueue, mem, true)
 end
 
 --- Try to measure the latency of a single packet.
@@ -361,17 +371,23 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 	if type(pktSize) == "function" then -- optional first argument was skipped
 		return self:measureLatency(nil, pktSize, packetModifier)
 	end
-	pktSize = self.udp and 76 or 60
+	pktSize = pktSize or self.udp and 76 or 60
 	maxWait = (maxWait or 15) / 1000
 	self.txBufs:alloc(pktSize)
 	local buf = self.txBufs[1]
 	buf:enableTimestamps()
-	buf:getPtpPacket().ptp:setSequenceID(self.seq)
 	local expectedSeq = self.seq
+	self.seq = (self.seq + 1) % 2^16
+	-- FIXME: implement sequence numbers for UDP
+	if not self.udp then buf:getPtpPacket().ptp:setSequenceID(expectedSeq) end
 	if packetModifier then
-		packetModifier(buf, pktSize)
+		packetModifier(buf)
 	end
-	self.seq = self.seq + 1
+	if self.udp then
+		-- change timestamped UDP port as each packet may be on a different port
+		self.rxQueue:enableTimestamps(buf:getUdpPacket().udp:getDstPort())
+		self.txBufs:offloadUdpChecksums()
+	end
 	mod.syncClocks(self.txDev, self.rxDev)
 	self.txQueue:send(self.txBufs)
 	local tx = self.txQueue:getTimestamp(500)
@@ -384,7 +400,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 			for i = 1, rx do
 				local buf = self.rxBufs[i]
 				local pkt = buf:getPtpPacket()
-				local seq = pkt.ptp:getSequenceID()
+				local seq = self.udp and expectedSeq or pkt.ptp:getSequenceID()
 				if buf:hasTimestamp() and seq == expectedSeq then
 					-- yay!
 					local delay = (self.rxQueue:getTimestamp() - tx) * 6.4

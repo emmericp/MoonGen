@@ -36,7 +36,7 @@ static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
 
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, struct rte_mempool* mempool) {
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en) {
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
 		return -1;
@@ -78,6 +78,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 			.mq_mode = ETH_MQ_TX_NONE,
 		},
 		.fdir_conf = fdir_conf,
+		.link_speed = link_speed,
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
 	if (rc) return rc;
@@ -102,7 +103,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		}
 	}
 	struct rte_eth_rxconf rx_conf = {
-		.rx_drop_en = 1, // TODO: make this configurable per queue
+		.rx_drop_en = drop_en, // TODO: make this configurable per queue
 		.rx_thresh = {
 			.pthresh = RX_PTHRESH,
 			.hthresh = RX_HTHRESH,

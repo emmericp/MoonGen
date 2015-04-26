@@ -5,6 +5,7 @@ local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 local memory = require "memory"
 local filter = require "filter"
+local ns = require "namespaces"
 
 local eth = require "proto.ethernet"
 
@@ -321,11 +322,16 @@ end
 --- ARP Handler Task
 ---------------------------------------------------------------------------------
 
---- Arp handler task, responds to ARP queries for given IPs
--- TODO: implement arp request support, but this depends on some other features (something like globals)
+--- Arp handler task, responds to ARP queries for given IPs and performs arp lookups
+-- TODO implement garbage collection/refreshing entries
+-- the current implementation does not handle large tables efficiently
+-- TODO multi-NIC support
 arp.arpTask = "__MG_ARP_TASK"
 
+local arpTable = ns:get()
+
 local function arpTask(rxQueue, txQueue, ips)
+	arpTable.taskRunning = true
 	if type(ips) ~= "table" then
 		ips = { ips }
 	end
@@ -340,6 +346,7 @@ local function arpTask(rxQueue, txQueue, ips)
 	if rxQueue.dev ~= txQueue.dev then
 		error("both queues must belong to the same device")
 	end
+	local arpSrcIP = ips[1] -- the source address for ARP requests
 
 	local dev = rxQueue.dev
 	local devMac = dev:getMac()
@@ -356,32 +363,81 @@ local function arpTask(rxQueue, txQueue, ips)
 	local txBufs = txMem:bufArray(1)
 	dev:l2Filter(eth.TYPE_ARP, rxQueue)
 	
-	
 	while dpdk.running() do
-		rx = rxQueue:tryRecv(rxBufs, 10000)
+		rx = rxQueue:tryRecvIdle(rxBufs, 1000)
 		assert(rx <= 1)
 		if rx > 0 then
 			local rxPkt = rxBufs[1]:getArpPacket()
-			if rxPkt.eth:getType() == eth.TYPE_ARP and rxPkt.arp:getOperation() == arp.OP_REQUEST then
-				local ip = rxPkt.arp:getProtoDst()
-				local mac = ipToMac[ip]
-				if mac then
-					if mac == true then
-						mac = devMac
+			if rxPkt.eth:getType() == eth.TYPE_ARP then
+				if rxPkt.arp:getOperation() == arp.OP_REQUEST then
+					local ip = rxPkt.arp:getProtoDst()
+					local mac = ipToMac[ip]
+					if mac then
+						if mac == true then
+							mac = devMac
+						end
+						txBufs:alloc(60)
+						-- TODO: a single-packet API would be nice for things like this
+						local pkt = txBufs[1]:getArpPacket()
+						pkt.eth:setDst(rxPkt.eth:getSrc())
+						pkt.arp:setOperation(arp.OP_REPLY)
+						pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
+						pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
+						pkt.arp:setProtoSrc(ip)
+						txQueue:send(txBufs)
 					end
-					txBufs:alloc(60)
-					local pkt = txBufs[1]:getArpPacket()
-					pkt.eth:setDst(rxPkt.eth:getSrc())
-					pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
-					pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
-					pkt.arp:setProtoSrc(ip)
-					txQueue:send(txBufs)
+				elseif rxPkt.arp:getOperation() == arp.OP_REPLY then
+					-- learn from all arp replies we see (suspicable to arp cache poisoning but that doesn't matter here)
+					local mac = rxPkt.arp:getHardwareSrcString()
+					local ip = rxPkt.arp:getProtoSrcString()
+					arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = dpdk.getTime() }
 				end
 			end
 			rxBufs:freeAll()
 		end
-		dpdk.sleepMillisIdle(1)
+		-- send outstanding requests
+		arpTable:forEach(function(ip, value)
+			-- TODO: refresh or GC old entries
+			if value ~= "pending" then
+				return
+			end
+			arpTable[ip] = "requested"
+			-- TODO: the format should be compatible with parseIPAddress
+			ip = tonumber(ip)
+			txBufs:alloc(60)
+			local pkt = txBufs[1]:getArpPacket()
+			pkt.eth:setDstString(eth.BROADCAST)
+			pkt.arp:setOperation(arp.OP_REQUEST)
+			pkt.arp:setHardwareDstString(eth.BROADCAST)
+			pkt.arp:setProtoDst(ip)
+			pkt.arp:setProtoSrc(arpSrcIP)
+			txQueue:send(txBufs)
+		end)
+		--dpdk.sleepMillisIdle(1)
 	end
+end
+
+function arp.lookup(ip)
+	if type(ip) == "string" then
+		ip = parseIPAddress(ip)
+	elseif type(ip) == "cdata" then
+		ip = ip:get()
+	end
+	if not arpTable.taskRunning then
+		error("ARP task is not running")
+	end
+	local mac = arpTable[tostring(ip)]
+	if mac and mac ~= "pending" then
+		return mac.mac, mac.timestamp
+	end
+	if mac ~= "requested" then
+		arpTable[tostring(ip)] = "pending" -- FIXME: this needs a lock
+	end
+	return nil
+end
+
+function arp.blockingLookup(ip)
+	error("NYI")
 end
 
 __MG_ARP_TASK = arpTask
