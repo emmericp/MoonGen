@@ -214,13 +214,32 @@ function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
 end
 
 function bufArray:offloadIPChecksums(ipv4, l2Len, l3Len)
+	-- please do not touch this function without carefully measuring the performance impact
 	ipv4 = ipv4 == nil or ipv4
+	-- moving this outside the function is significantly (~5%) slower, so don't
+	local PKT_TX_IPV4_CSUM = dpdk.PKT_TX_IPV4_CSUM
 	if ipv4 then
-		l2_len = l2_len or 14
-		l3_len = l3_len or 20
-		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4_CSUM)
-			self.array[i].pkt.header_lengths = l2_len * 512 + l3_len
+		-- yes, special-casing the most common case is slightly (~2% in udp-throughput.lua) faster
+		-- probably not worth implementing this in all offload functions...
+		-- this is just to be slightly faster in the benchmark....
+		-- now, if we find any other place for another 5% or so, then we can claim to achieve
+		-- line rate in udp-throughput.lua with 1.5 GHz instead of 1.6 GHz, that would be great...
+		if not l2Len and not l3Len then
+			for i = 0, self.size - 1 do
+				local buf = self.array[i]
+				-- caching bit.bor in a local is actually slightly slower on average (~0.5%)
+				-- not sure how that happens...
+				buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IPV4_CSUM)
+				buf.pkt.header_lengths = 0x1C14
+			end
+		else
+			l2_len = l2_len or 14
+			l3_len = l3_len or 20
+			for i = 0, self.size - 1 do
+				local buf = self.array[i]
+				buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IPV4_CSUM)
+				buf.pkt.header_lengths = l2_len * 512 + l3_len
+			end
 		end
 	end
 end
