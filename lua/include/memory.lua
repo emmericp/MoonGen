@@ -247,9 +247,7 @@ end
 
 --- Allocates buffers from the memory pool and fills the array
 function bufArray:alloc(size)
-	for i = 0, self.size - 1 do
-		self.array[i] = self.mem:alloc(size)
-	end
+	dpdkc.alloc_mbufs(self.mem, self.array, self.size, size)
 end
 
 --- Free all buffers in the array. Stops when it encounters the first one that is null.
