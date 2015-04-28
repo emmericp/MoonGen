@@ -1,7 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter -g -O2 -std=gnu++11 -march=native -msse4.2 -I${CMAKE_CURRENT_SOURCE_DIR}/src")
-SET(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-parameter -g -O2 -std=gnu99 -march=native -msse4.2")
+SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu++11 -march=native -msse4.2 -I${CMAKE_CURRENT_SOURCE_DIR}/src")
+SET(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu99 -march=native -msse4.2")
 SET(CMAKE_EXE_LINKER_FLAGS "-rdynamic") # to access functions from luajit
 
 SET(PRJ MoonGen)
