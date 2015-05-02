@@ -13,7 +13,7 @@ local stats		= require "stats"
 local hist		= require "histogram"
 
 local REPS = 10
-local RUN_TIME = 10
+local RUN_TIME = 20
 local PKT_SIZE = 60
 
 function master(...)
