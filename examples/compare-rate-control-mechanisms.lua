@@ -32,20 +32,19 @@ function master(...)
 	rxDev:l2Filter(0x1234, filter.DROP)
 	device.waitForLinks()
 	local results = {}
-	local rate = minRate
-	while rate <= maxRate do
-		local result = {rate = rate, hw = {{}, {}, {}}, sw = {{}, {}, {}}}
+	for rate = minRate, maxRate, (maxRate - minRate) / steps do
+		local result = {rate = rate, hardware = {{}, {}, {}}, software = {{}, {}, {}}}
 		table.insert(results, result)
 		for i = 1, REPS do
-			for method = 1, 2 do
-				printf("Testing rate %f Mpps with %s rate control, test run %d", rate, method == 1 and "hardware" or "software", i)
-				txQueue:setRateMpps(method == 1 and rate or 0)
-				local loadTask = dpdk.launchLua("loadSlave", txQueue, rxDev, method == 2 and rate)
-				local timerTask = dpdk.launchLua("timerSlave", txDev, rxDev, txQueueTs, rxQueueTs)
+			for _, method in ipairs{"hardware", "software"} do
+				printf("Testing rate %f Mpps with %s rate control, test run %d", rate, method, i)
+				txQueue:setRateMpps(method == "hardware" and rate or 0)
+				local loadTask = dpdk.launchLua("loadSlave", txQueue, rxDev, method == "software" and rate)
+				local timerTask = dpdk.launchLua("timerSlave", txDev, rxDev, txQueueTs, rxQueueTs, ("%s-%s-%d"):format(method, rate, i))
 				loadTask:wait()
 				local quarts = { timerTask:wait() }
 				for i, v in ipairs(quarts) do
-					table.insert(result[method == 1 and "hw" or "sw"][i], v)
+					table.insert(result[method][i], v)
 				end
 				printf("\n")
 				dpdk.sleepMillis(500)
@@ -57,19 +56,18 @@ function master(...)
 		if not dpdk.running() then
 			break
 		end
-		rate = rate + (maxRate - minRate) / steps
 	end
 	printCsv("Rate", "Percentile", "Avg-SW", "Avg-HW", "StdDev-SW", "StdDev-HW")
 	for i, r in ipairs(results) do
-		for i, v in ipairs(r.sw) do
+		for i, v in ipairs(r.software) do
 			stats.addStats(v)
 		end
-		for i, v in ipairs(r.hw) do
+		for i, v in ipairs(r.hardware) do
 			stats.addStats(v)
 		end
-		printCsv(r.rate, "25", r.sw[1].avg, r.hw[1].avg, r.sw[1].stdDev, r.hw[1].stdDev)
-		printCsv(r.rate, "50", r.sw[2].avg, r.hw[2].avg, r.sw[2].stdDev, r.hw[2].stdDev)
-		printCsv(r.rate, "75", r.sw[3].avg, r.hw[3].avg, r.sw[3].stdDev, r.hw[3].stdDev)
+		printCsv(r.rate, "25", r.software[1].avg, r.hardware[1].avg, r.software[1].stdDev, r.hardware[1].stdDev)
+		printCsv(r.rate, "50", r.software[2].avg, r.hardware[2].avg, r.software[2].stdDev, r.hardware[2].stdDev)
+		printCsv(r.rate, "75", r.software[3].avg, r.hardware[3].avg, r.software[3].stdDev, r.hardware[3].stdDev)
 	end
 end
 
@@ -103,7 +101,7 @@ function loadSlave(queue, rxDev, rate)
 	printf("Packet loss: %d (%f%%)", loss, loss / txStats.total * 100)
 end
 
-function timerSlave(txDev, rxDev, txQueue, rxQueue)
+function timerSlave(txDev, rxDev, txQueue, rxQueue, id)
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
 	local hist = hist:new()
 	-- wait for a second to give the other task a chance to start
@@ -120,6 +118,7 @@ function timerSlave(txDev, rxDev, txQueue, rxQueue)
 	end
 	dpdk.sleepMillis(1500)
 	hist:print()
+	hist:save("hist-" .. id .. ".csv")
 	return hist:quartiles()
 end
 
