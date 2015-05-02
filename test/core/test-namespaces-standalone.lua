@@ -15,6 +15,8 @@ function master()
 	for i = 1, 100 do
 		test3[tostring(i)] = i
 	end
+	assert(test1.lock and test2.lock)
+	assert(test1.lock ~= test2.lock)
 	dpdk.launchLua("slave", test1, test2, test3):wait()
 	assert(test3["66"] == 66) -- must not block
 end

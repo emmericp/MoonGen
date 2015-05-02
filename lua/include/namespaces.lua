@@ -3,6 +3,7 @@ local mod = {}
 local ffi		= require "ffi"
 local serpent	= require "Serpent"
 local stp		= require "StackTracePlus"
+local lock		= require "lock"
 
 ffi.cdef [[
 	struct namespace { };
@@ -11,6 +12,7 @@ ffi.cdef [[
 	void namespace_delete(struct namespace* ns, const char* key);
 	const char* namespace_retrieve(struct namespace* ns, const char* key);
 	void namespace_iterate(struct namespace* ns, void (*func)(const char* key, const char* val));
+	struct lock* namespace_get_lock(struct namespace* ns);
 ]]
 
 local C = ffi.C
@@ -37,6 +39,8 @@ function namespace:__index(key)
 	end
 	if key == "forEach" then
 		return namespace.forEach
+	elseif key == "lock" then
+		return C.namespace_get_lock(self)
 	end
 	local val = C.namespace_retrieve(self, key)
 	return val ~= nil and loadstring(ffi.string(val))() or nil
@@ -49,7 +53,7 @@ function namespace:__newindex(key, val)
 	if type(key) ~= "string" then
 		error("table index must be a string")
 	end
-	if key == "forEach" then
+	if key == "forEach" or key == "lock" then
 		error(key .. " is reserved", 2)
 	end
 	if val == nil then
