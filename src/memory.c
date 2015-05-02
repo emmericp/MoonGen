@@ -8,9 +8,6 @@
 
 #define MEMPOOL_CACHE_SIZE 256
 
-#define MBUF_SIZE 2048
-
-
 struct rte_mempool* init_mem(uint32_t nb_mbuf, int32_t socket, uint32_t mbuf_size) {
 	static volatile uint32_t mbuf_cnt = 0;
 	char pool_name[32];
@@ -18,7 +15,7 @@ struct rte_mempool* init_mem(uint32_t nb_mbuf, int32_t socket, uint32_t mbuf_siz
 	// rte_mempool_create is apparently not thread-safe :(
 	static rte_spinlock_t lock = RTE_SPINLOCK_INITIALIZER;
 	rte_spinlock_lock(&lock);
-	struct rte_mempool* pool = rte_mempool_create(pool_name, nb_mbuf, mbuf_size > 0 ? mbuf_size : MBUF_SIZE, MEMPOOL_CACHE_SIZE,
+	struct rte_mempool* pool = rte_mempool_create(pool_name, nb_mbuf, mbuf_size, MEMPOOL_CACHE_SIZE,
 		sizeof(struct rte_pktmbuf_pool_private),
 		rte_pktmbuf_pool_init, NULL,
 		rte_pktmbuf_init, NULL,

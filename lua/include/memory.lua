@@ -44,8 +44,9 @@ function mod.createMemPool(n, func, socket, bufSize)
 	end
 	n = n or 2047
 	socket = socket or -1
+	bufSize = bufSize or 2048
 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
-	local mem = dpdkc.init_mem(n, socket, bufSize or 0)
+	local mem = dpdkc.init_mem(n, socket, bufSize)
 	if func then
 		local bufs = {}
 		for i = 1, n do
