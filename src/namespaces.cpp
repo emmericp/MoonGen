@@ -36,6 +36,11 @@ extern "C" {
 		ns->map[key] = value;
 	}
 
+	void namespace_delete(ns* ns, const char* key) {
+		std::lock_guard<std::recursive_timed_mutex> lock(ns->lock);
+		ns->map.erase(key);
+	}
+
 	const char* namespace_retrieve(ns* ns, const char* key) {
 		std::lock_guard<std::recursive_mutex> lock(ns->lock);
 		auto value = ns->map.find(key);

@@ -8,6 +8,7 @@ ffi.cdef [[
 	struct namespace { };
 	struct namespace* create_or_get_namespace(const char* name);
 	void namespace_store(struct namespace* ns, const char* key, const char* value);
+	void namespace_delete(struct namespace* ns, const char* key);
 	const char* namespace_retrieve(struct namespace* ns, const char* key);
 	void namespace_iterate(struct namespace* ns, void (*func)(const char* key, const char* val));
 ]]
@@ -51,7 +52,11 @@ function namespace:__newindex(key, val)
 	if key == "forEach" then
 		error(key .. " is reserved", 2)
 	end
-	C.namespace_store(self, key, serpent.dump(val))
+	if val == nil then
+		C.namespace_delete(self, key)
+	else
+		C.namespace_store(self, key, serpent.dump(val))
+	end
 end
 
 --- Iterate over all keys/values in a namespace
