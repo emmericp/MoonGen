@@ -12,6 +12,9 @@ local timer		= require "timer"
 local stats		= require "stats"
 local hist		= require "histogram"
 
+-- required here because this script creates *a lot* of mempools
+memory.enableCache()
+
 local REPS = 10
 local RUN_TIME = 20
 local PKT_SIZE = 60
