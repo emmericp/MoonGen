@@ -76,7 +76,9 @@ function namespace:forEach(cb)
 		end
 		-- avoid throwing an error across the C++ frame unnecessarily
 		-- not sure if this would work properly when compiled with clang instead of gcc
-		local ok, err = xpcall(cb, function(err) return stp.stacktrace(err) end, ffi.string(key), loadstring(ffi.string(val))())
+		local ok, err = xpcall(cb, function(err)
+			return stp.stacktrace(err)
+		end, ffi.string(key), loadstring(ffi.string(val))())
 		if not ok then
 			caughtError = err
 		end
@@ -86,7 +88,6 @@ function namespace:forEach(cb)
 		error("error while calling callback, inner error: " .. caughtError)
 	end
 end
-
 
 ffi.metatype("struct namespace", namespace)
 
