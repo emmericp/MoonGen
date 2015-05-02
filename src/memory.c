@@ -8,7 +8,7 @@
 
 #define MEMPOOL_CACHE_SIZE 256
 
-struct rte_mempool* init_mem(uint32_t nb_mbuf, int32_t socket, uint32_t mbuf_size) {
+struct rte_mempool* init_mem(uint32_t nb_mbuf, uint32_t socket, uint32_t mbuf_size) {
 	static volatile uint32_t mbuf_cnt = 0;
 	char pool_name[32];
 	sprintf(pool_name, "mbuf_pool%d", __sync_fetch_and_add(&mbuf_cnt, 1));
@@ -19,7 +19,7 @@ struct rte_mempool* init_mem(uint32_t nb_mbuf, int32_t socket, uint32_t mbuf_siz
 		sizeof(struct rte_pktmbuf_pool_private),
 		rte_pktmbuf_pool_init, NULL,
 		rte_pktmbuf_init, NULL,
-		socket < 0 ? rte_socket_id() : (uint32_t) socket, 0
+		socket, 0
 	);
 	rte_spinlock_unlock(&lock);
 	if (!pool) {

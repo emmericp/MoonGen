@@ -43,7 +43,7 @@ function mod.createMemPool(n, func, socket, bufSize)
 		func = nil
 	end
 	n = n or 2047
-	socket = socket or -1
+	socket = socket or select(2, dpdk.getCore())
 	bufSize = bufSize or 2048
 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
 	local mem = dpdkc.init_mem(n, socket, bufSize)
