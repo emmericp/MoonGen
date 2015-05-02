@@ -1,8 +1,10 @@
+-- vim:ts=4:sw=4:noexpandtab
 local mod = {}
 
-local ffi = require "ffi"
+local ffi	= require "ffi"
 local dpdkc = require "dpdkc"
-local dpdk = require "dpdk"
+local dpdk	= require "dpdk"
+local ns	= require "namespaces"
 
 ffi.cdef [[
 	void* malloc(size_t size);
@@ -25,6 +27,59 @@ function mod.free(buf)
 end
 
 local mempools = {}
+local mempoolCache = ns:get()
+
+local cacheEnabled = false
+
+--- Enable mempool recycling.
+-- Calling this function enables the mempool cache. This prevents memory leaks
+-- as DPDK cannot delete mempools.
+-- Mempools with the same parameters created on the same core will be recycled.
+-- This is not yet enabled by default because I'm not 100% confident that it works
+-- properly in all cases.
+-- For example, mempools passed to other tasks will probably break stuff.
+function mod.enableCache()
+	cacheEnabled = true
+end
+
+local function getPoolFromCache(socket, n, bufSize)
+	if not cacheEnabled then
+		return
+	end
+	local pool
+	mempoolCache.lock(function()
+		-- TODO: pass an iterator context to the callback
+		-- the context could then run functions like abort() or removeCurrent()
+		local result
+		mempoolCache:forEach(function(key, pool)
+			if result then
+				return
+			end
+			if pool.socket == socket
+			and	pool.n == n
+			and pool.bufSize == bufSize
+			and pool.core == dpdk.getCore() then
+				result = key
+			end
+		end)
+		if result then
+			pool = mempoolCache[result].pool
+			mempoolCache[result] = nil
+		end
+	end)
+	if pool then
+		local bufs = {}
+		for i = 1, n do
+			local buf = pool:alloc(bufSize)
+			ffi.fill(buf.data, buf.len, 0)
+			bufs[#bufs + 1] = buf
+		end
+		for _, v in ipairs(bufs) do
+			dpdkc.rte_pktmbuf_free_export(v)
+		end
+	end
+	return pool
+end
 
 --- Create a new memory pool.
 -- Memory pools are recycled once the owning task terminates.
@@ -46,7 +101,7 @@ function mod.createMemPool(n, func, socket, bufSize)
 	socket = socket or select(2, dpdk.getCore())
 	bufSize = bufSize or 2048
 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
-	local mem = dpdkc.init_mem(n, socket, bufSize)
+	local mem = getPoolFromCache(socket, n, bufSize) or dpdkc.init_mem(n, socket, bufSize)
 	if func then
 		local bufs = {}
 		for i = 1, n do
@@ -58,20 +113,28 @@ function mod.createMemPool(n, func, socket, bufSize)
 			dpdkc.rte_pktmbuf_free_export(v)
 		end
 	end
-	mempools[#mempools + 1] = mem
+	mempools[#mempools + 1] = {
+		pool = mem,
+		socket = socket,
+		n = n,
+		bufSize = bufSize,
+		core = dpdk.getCore()
+	}
 	return mem
 end
+
+
 
 --- Free all memory pools owned by this task.
 -- All queues using these pools must be stopped before calling this.
 function mod.freeMemPools()
-	for _, mem in ipairs(mempools) do
-		print("NYI: reclaim mempool " .. tostring(mem))
-		-- TODO: need a way to communicate with the master task here
-		-- two possible approaches:
-		-- * each slave gets a pipe to communicate back to the master task which is somewhat ugly as currently only have SPSC pipes
-		-- * something like a global table (which will be needed for other stuff anyways (e.g. arp table))
+	if not cacheEnabled then
+		return
 	end
+	for _, mem in ipairs(mempools) do
+		mempoolCache[tostring(mem.pool)] = mem
+	end
+	mempools = {}
 end
 
 local mempool = {}
@@ -81,7 +144,7 @@ mempool.__index = mempool
 -- This will prevent the pool from being returned to a pool of pools once the task ends.
 function mempool:retain()
 	for i, v in ipairs(mempools) do
-		if v == self then
+		if v.pool == self then
 			table.remove(mempools, i)
 			return
 		end
