@@ -3,6 +3,7 @@
 #include <rte_mbuf.h>
 #include <rte_errno.h>
 #include <rte_spinlock.h>
+#include <sys/mman.h>
 
 #include <stdint.h>
 
@@ -50,5 +51,11 @@ uint16_t rte_mbuf_refcnt_read_export(struct rte_mbuf* m) {
 
 uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value) {
 	return rte_mbuf_refcnt_update(m, value);
+}
+
+void* alloc_huge(size_t size) {
+	void* mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	madvise(mem, size, MADV_HUGEPAGE);
+	return mem;
 }
 

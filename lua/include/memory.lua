@@ -9,6 +9,7 @@ local ns	= require "namespaces"
 ffi.cdef [[
 	void* malloc(size_t size);
 	void free(void* buf);
+	void* alloc_huge(size_t size);
 ]]
 
 local C = ffi.C
@@ -24,6 +25,13 @@ end
 --- Free off-heap allocated object.
 function mod.free(buf)
 	C.free(buf)
+end
+
+--- Off-heap allocation on huge pages, not garbage-collected.
+-- See memory.alloc.
+-- TODO: add a free function for this
+function mod.allocHuge(ctype, size)
+	return cast(ctype, C.alloc_huge(size))
 end
 
 local mempools = {}
