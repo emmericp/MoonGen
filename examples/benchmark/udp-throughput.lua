@@ -51,10 +51,7 @@ function loadSlave(dev, queue, numFlows)
 	local ctr = stats:newDevTxCounter(dev, "plain")
 	while dpdk.running() do
 		bufs:alloc(60)
-		-- + 2.5% performance over ipairs in this example
-		-- (don't do this in a normal script, not worth it)
-		for i = 0, bufs.size - 1 do
-			local buf = bufs.array[i]
+		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
 			pkt.ip.src:set(baseIP + flow)
 			flow = incAndWrap(flow, numFlows)
