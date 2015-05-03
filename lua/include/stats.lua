@@ -198,12 +198,19 @@ local function updateCounter(self, time, pkts, bytes, dontPrint)
 	self.lastTotalBytes = self.totalBytes
 end
 
+local function getStats(self)
+	mod.addStats(self.mpps, true)
+	mod.addStats(self.mbit, true)
+	mod.addStats(self.wireMbit, true)
+	return self.mpps, self.mbit, self.wireMbit
+end
+
 local function finalizeCounter(self, sleep)
 	-- wait for any remaining packets to arrive/be sent if necessary
 	dpdk.sleepMillis(sleep)
 	-- last stats are probably complete nonsense, especially if sleep ~= 0
 	-- we just do this to get the correct totals
-	local pkts, bytes = self:getStats()
+	local pkts, bytes = self:getThroughput()
 	updateCounter(self, dpdk.getTime(), pkts, bytes, true)
 	mod.addStats(self.mpps, true)
 	mod.addStats(self.mbit, true)
@@ -273,12 +280,19 @@ function rxCounter:update()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self:getStats()
+	local pkts, bytes = self:getThroughput()
 	updateCounter(self, time, pkts, bytes)
 end
 
+function rxCounter:getStats()
+	-- force an update
+	local pkts, bytes = self:getThroughput()
+	updateCounter(self, dpdk.getTime(), pkts, bytes, true)
+	return getStats(self)
+end
+
 -- Device-based counter
-function devRxCounter:getStats() 
+function devRxCounter:getThroughput() 
     return self.dev:getRxStats() 
 end 
 
@@ -288,7 +302,7 @@ function pktRxCounter:countPacket(buf)
 	self.currentBytes = self.currentBytes + buf.pkt.pkt_len + 4 -- include CRC
 end
 
-function pktRxCounter:getStats()
+function pktRxCounter:getThroughput()
 	local pkts, bytes = self.current, self.currentBytes
 	self.current, self.currentBytes = 0, 0
 	return pkts, bytes
@@ -303,11 +317,11 @@ function manualRxCounter:update(pkts, bytes)
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self:getStats()
+	local pkts, bytes = self:getThroughput()
 	updateCounter(self, time, pkts, bytes)
 end
 
-function manualRxCounter:getStats()
+function manualRxCounter:getThroughput()
 	local pkts, bytes = self.current, self.currentBytes
 	self.current, self.currentBytes = 0, 0
 	return pkts, bytes
@@ -320,7 +334,7 @@ function manualRxCounter:updateWithSize(pkts, size)
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self:getStats()
+	local pkts, bytes = self:getThroughput()
 	updateCounter(self, time, pkts, bytes)
 end
 
@@ -384,11 +398,20 @@ function txCounter:update()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self:getStats()
+	local pkts, bytes = self:getThroughput()
 	updateCounter(self, time, pkts, bytes)
 end
 
-function devTxCounter:getStats()
+--- Get accumulated statistics.
+-- Calculat the average throughput.
+function txCounter:getStats()
+	-- force an update
+	local pkts, bytes = self:getThroughput()
+	updateCounter(self, dpdk.getTime(), pkts, bytes, true)
+	return getStats(self)
+end
+
+function devTxCounter:getThroughput()
 	return self.dev:getTxStats()
 end
 
@@ -398,7 +421,7 @@ function pktTxCounter:countPacket(buf)
 	self.currentBytes = self.currentBytes + buf.pkt.pkt_len + 4 -- include CRC
 end
 
-function pktTxCounter:getStats()
+function pktTxCounter:getThroughput()
 	local pkts, bytes = self.current, self.currentBytes
 	self.current, self.currentBytes = 0, 0
 	return pkts, bytes
@@ -412,7 +435,7 @@ function manualTxCounter:update(pkts, bytes)
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self:getStats()
+	local pkts, bytes = self:getThroughput()
 	updateCounter(self, time, pkts, bytes)
 end
 
@@ -423,11 +446,11 @@ function manualTxCounter:updateWithSize(pkts, size)
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
-	local pkts, bytes = self:getStats()
+	local pkts, bytes = self:getThroughput()
 	updateCounter(self, time, pkts, bytes)
 end
 
-function manualTxCounter:getStats()
+function manualTxCounter:getThroughput()
 	local pkts, bytes = self.current, self.currentBytes
 	self.current, self.currentBytes = 0, 0
 	return pkts, bytes
