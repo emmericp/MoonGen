@@ -33,6 +33,14 @@ function mod.stdDev(data)
 	return (sum / (#data - 1)) ^ 0.5
 end
 
+function mod.sum(data)
+	local sum = 0
+	for i, v in ipairs(data) do
+		sum = sum + v
+	end
+	return sum
+end
+
 function mod.addStats(data, ignoreFirstAndLast)
 	local copy = { }
 	if ignoreFirstAndLast then
@@ -47,6 +55,7 @@ function mod.addStats(data, ignoreFirstAndLast)
 	data.avg = mod.average(copy)
 	data.stdDev = mod.stdDev(copy)
 	data.median = mod.median(copy)
+	data.sum = mod.sum(copy)
 end
 
 local function getPlainUpdate(direction)
