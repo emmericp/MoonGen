@@ -43,12 +43,11 @@ function loadSlave(port, queue)
 		data[12] = 0x12
 		data[13] = 0x34
 	end)
-	local MAX_BURST_SIZE = 31
 	local lastPrint = dpdk.getTime()
 	local totalSent = 0
 	local lastTotal = 0
 	local lastSent = 0
-	local bufs = mem:bufArray(MAX_BURST_SIZE)
+	local bufs = mem:bufArray()
 	local seq = 0
 	while dpdk.running() do
 		bufs:alloc(60)
