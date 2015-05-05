@@ -39,10 +39,10 @@ function loadSlave(queue1, queue2, size)
 	local ctr2 = stats:newDevTxCounter(queue2.dev, "plain")
 	local runtime = timer:new(10)
 	while runtime:running() and dpdk.running() do
-		bufs:alloc(60)
+		bufs:alloc(size)
 		queue1:send(bufs)
 		ctr1:update()
-		bufs:alloc(60)
+		bufs:alloc(size)
 		queue2:send(bufs)
 		ctr2:update()
 	end
