@@ -12,20 +12,24 @@ local tests = {
 	{ "initUdp", "touchPkt" },
 	{ "initUdp", { "touchPkt", "touch2ndCacheline" }, size = 68 },
 	{ "initUdp", "randomSrc" },
---	{ "initUdp", "randomDst" },
+	{ "initUdp", "randomDst" },
 	{ "initUdp", "countSrc" },
---	{ "initUdp", "countDst" },
+	{ "initUdp", "countDst" },
 	{ "initUdp", { "touchPkt", "randomSrc" } },
 	{ "initUdp", { "randomSrc", "randomDst" } },
 	{ "initUdp", { "countSrc", "countDst" } },
+	{ "initUdp", "randomFields2" },
+	{ "initUdp", "randomFields4" },
+	{ "initUdp", "randomFields8" },
+	{ "initUdp", "countFields2" },
+	{ "initUdp", "countFields4" },
+	{ "initUdp", "countFields8" },
 	{ "initUdp", nil, "offloadIP"},
 	{ "initUdp", nil, "offloadUdp"},
 	{ "initTcp", nil, "offloadTcp"},
-	{ "initUdp", "randomMemoryWrite", arg = 2^12 }, --   4 KiB
-	{ "initUdp", "randomMemoryWrite", arg = 2^16 }, --  64 KiB
-	{ "initUdp", "randomMemoryWrite", arg = 2^21 }, --   2 Mib
-	{ "initUdp", "randomMemoryWrite", arg = 2^28 }, -- 256 MiB
-	{ "initUdp", "randomMemoryWrite", arg = 2^30 }, --   1 GiB
+	{ "initUdp", "randomMemoryWrite", arg = 2^13 }, --   8 KiB
+	{ "initUdp", "randomMemoryWrite", arg = 2^17 }, -- 128 KiB
+	{ "initUdp", "randomMemoryWrite", arg = 2^22 }, --   4 Mib
 	-- add your own combinations you want to test here!
 }
 
@@ -162,6 +166,81 @@ function countDst(buf)
 	ctr2 = incAndWrap(ctr2, 4000)
 end
 
+local ffi = require "ffi"
+local cast = ffi.cast
+local uintptr = ffi.typeof("uint32_t*")
+
+-- a simple loop somehow fails here
+function randomFields2(buf)
+	local data = cast(uintptr, buf.pkt.data)
+	data[0] = math.random(0, 2^32 - 1)
+	data[1] = math.random(0, 2^32 - 1)
+end
+
+function randomFields4(buf)
+	local data = cast(uintptr, buf.pkt.data)
+	data[0] = math.random(0, 2^32 - 1)
+	data[1] = math.random(0, 2^32 - 1)
+	data[2] = math.random(0, 2^32 - 1)
+	data[3] = math.random(0, 2^32 - 1)
+end
+
+function randomFields8(buf)
+	local data = cast(uintptr, buf.pkt.data)
+	data[0] = math.random(0, 2^32 - 1)
+	data[1] = math.random(0, 2^32 - 1)
+	data[2] = math.random(0, 2^32 - 1)
+	data[3] = math.random(0, 2^32 - 1)
+	data[4] = math.random(0, 2^32 - 1)
+	data[5] = math.random(0, 2^32 - 1)
+	data[6] = math.random(0, 2^32 - 1)
+	data[7] = math.random(0, 2^32 - 1)
+end
+
+local ctrFields21, ctrFields22 = 0, 0
+function countFields2(buf)
+	local data = cast(uintptr, buf.pkt.data)
+	data[0] = ctrFields21
+	data[1] = ctrFields22
+	ctrFields21 = incAndWrap(ctrFields21, 4000)
+	ctrFields22 = incAndWrap(ctrFields22, 4000)
+end
+
+local ctrFields41, ctrFields42, ctrFields43, ctrFields44 = 0, 0, 0, 0
+function countFields4(buf)
+	local data = cast(uintptr, buf.pkt.data)
+	data[0] = ctrFields41
+	data[1] = ctrFields42
+	data[2] = ctrFields43
+	data[3] = ctrFields44
+	ctrFields41 = incAndWrap(ctrFields41, 4000)
+	ctrFields42 = incAndWrap(ctrFields42, 4000)
+	ctrFields43 = incAndWrap(ctrFields43, 4000)
+	ctrFields44 = incAndWrap(ctrFields44, 4000)
+end
+
+
+local ctrFields81, ctrFields82, ctrFields83, ctrFields84 = 0, 0, 0, 0
+local ctrFields85, ctrFields86, ctrFields87, ctrFields88 = 0, 0, 0, 0
+function countFields8(buf)
+	local data = cast(uintptr, buf.pkt.data)
+	data[0] = ctrFields81
+	data[1] = ctrFields82
+	data[2] = ctrFields83
+	data[3] = ctrFields84
+	data[4] = ctrFields85
+	data[5] = ctrFields86
+	data[6] = ctrFields87
+	data[7] = ctrFields88
+	ctrFields81 = incAndWrap(ctrFields81, 4000)
+	ctrFields82 = incAndWrap(ctrFields82, 4000)
+	ctrFields83 = incAndWrap(ctrFields83, 4000)
+	ctrFields84 = incAndWrap(ctrFields84, 4000)
+	ctrFields85 = incAndWrap(ctrFields85, 4000)
+	ctrFields86 = incAndWrap(ctrFields86, 4000)
+	ctrFields87 = incAndWrap(ctrFields87, 4000)
+	ctrFields88 = incAndWrap(ctrFields88, 4000)
+end
 
 local testMem
 
@@ -170,6 +249,8 @@ function randomMemoryRead(buf, size)
 	buf:getUdpPacket().payload.uint32[0] = testMem[math.random(size / 4)]
 end
 
+-- note that this includes a packet access, this must be taken into account
+-- when calculating the time for just the memory access
 function randomMemoryWrite(buf, size)
 	testMem[math.random(0, size / 4 - 1)] = buf:getUdpPacket().payload.uint32[0]
 end
