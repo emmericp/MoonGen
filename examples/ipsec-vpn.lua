@@ -11,7 +11,7 @@ function master(txPort, rxPort)
 	local rxDev = device.config(rxPort, 1)
 	device.waitForLinks()
 
-	dpdk.launchLua("rxSlave", rxPort)
+	dpdk.launchLua("rxSlave", rxPort, rxDev:getRxQueue(0))
 	dpdk.launchLua("txSlave", txPort, txDev:getTxQueue(0), rxDev:getRxQueue(0))
 
 	dpdk.waitForSlaves()
@@ -20,7 +20,7 @@ end
 
 -- txSlave sends out (ipsec crypto) packages
 function txSlave(port, srcQueue, dstQueue)
-	local numFlows = 1
+	local numFlows = 256
 	local mem = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
 			pktLength = 60,
@@ -44,23 +44,35 @@ function txSlave(port, srcQueue, dstQueue)
 			flow = incAndWrap(flow, numFlows)
 		end
 		-- UDP checksums are optional, so just IP checksums are sufficient here
-		bufs:offloadIPChecksums()
+		-- bufs:offloadIPChecksums()
+		bufs:offloadUdpChecksums()
 		srcQueue:send(bufs)
 	end
 	ipsec.disable(port)
 end
 
 -- rxSlave logs received packages
-function rxSlave(port)
+function rxSlave(port, queue)
 	local dev = device.get(port)
+	local bufs = memory.bufArray()
 	local total = 0
 	while dpdk.running() do
+		local rx = queue:recv(bufs)
+		--for i = 1, rx do
+		--	local buf  = bufs[i]
+		--	buf:dump() -- hexdump of received packet (incl. header)
+		--end
+		-- Dump only one packet per second
+		local buf = bufs[rx]
+		buf:dump() -- hexdump of received packet (incl. header)
+		bufs:freeAll()
+
 		local time = dpdk.getTime()
 		dpdk.sleepMillis(1000)
 		local elapsed = dpdk.getTime() - time
 		local pkts = dev:getRxStats(port)
 		total = total + pkts
-		printf("Received %d packets, current rate %.2f Mpps", total, pkts / elapsed / 10^6)
+		printf("Received %d packets, current rate %.2f Mpps\n", total, pkts / elapsed / 10^6)
 	end
 	printf("Received %d packets", total)
 end
