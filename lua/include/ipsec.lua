@@ -16,17 +16,17 @@ local SECTXBUFFAF	= 0x00008808
 function dump_regs(port)
 	print("===== DUMP REGS =====")
 	local reg = dpdkc.read_reg32(port, SECTXCTRL)
-	printf("SECTXCTRL: %#010x", reg)
+	printf("SECTXCTRL: 0x%x", reg)
 	local reg = dpdkc.read_reg32(port, SECRXCTRL)
-	printf("SECRXCTRL: %#010x", reg)
+	printf("SECRXCTRL: 0x%x", reg)
 	local reg = dpdkc.read_reg32(port, SECTXSTAT)
-	printf("SECTXSTAT: %#010x", reg)
+	printf("SECTXSTAT: 0x%x", reg)
 	local reg = dpdkc.read_reg32(port, SECRXSTAT)
-	printf("SECRXSTAT: %#010x", reg)
+	printf("SECRXSTAT: 0x%x", reg)
 	local reg = dpdkc.read_reg32(port, SECTXMINIFG) --TODO: check wrong init: 0x1001 instead of 0x1
-	printf("SECTXMINIFG: %#010x", reg)
+	printf("SECTXMINIFG: 0x%x", reg)
 	local reg = dpdkc.read_reg32(port, SECTXBUFFAF)
-	printf("SECTXBUFFAF: %#010x", reg)
+	printf("SECTXBUFFAF: 0x%x", reg)
 end
 
 function mod.enable(port)
