@@ -118,6 +118,13 @@ ffi.cdef[[
 		uint16_t	urg;
 		uint32_t	options[];
 	};
+	
+	struct __attribute__((__packed__)) vxlan_header {
+		uint8_t		flags;
+		uint8_t		reserved[3];
+		uint8_t		vni[3];
+		uint8_t		reserved2;
+	};
 ]]
 
 return ffi.C
