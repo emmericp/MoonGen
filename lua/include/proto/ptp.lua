@@ -1,4 +1,5 @@
 local ffi = require "ffi"
+local pkt = require "packet"
 
 require "utils"
 require "headers"
@@ -326,36 +327,25 @@ function ptpHeader:getString()
 		.. " log " .. self:getLogMessageIntervalString()
 end
 
+function ptpHeader:resolveNextHeader()
+	return nil
+end
 
------------------------------------------------------------------------------
----- PTP packet
------------------------------------------------------------------------------
-
-local ptpPacket = {}
-ptpPacket.__index = ptpPacket
-
-function ptpPacket:fill(args)
-	args = args or {}
-	
-	-- calculate length value for ptp header
-	if args.pktLength then
-		args.ptpLength = args.ptpLength or args.pktLength - 14 -- ethernet, assuming rest of packet is ptp header and body (no other payload)
+function ptpHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+	-- set length
+	if not namedArgs["ptpLength"] and namedArgs["pktLength"] then
+		namedArgs["ptpLength"] = namedArgs["pktLength"] - accumulatedLength
 	end
-	
-	-- change default value for ptp
-	args.ethType = args.ethType or eth.TYPE_PTP
-	
-	self.eth:fill(args)
-	self.ptp:fill(args)
+	return namedArgs
 end
 
-function ptpPacket:get()
-	return mergeTables(self.eth:get(), self.ptp:get())
-end
 
-function ptpPacket:dump(bytes)
-	dumpPacket(self, bytes, self.eth, self.ptp)
-end
+---------------------------------------------------------------------------------
+--- Packets
+---------------------------------------------------------------------------------
+
+pkt.getPtpPacket = packetCreate("eth", "ptp")
+pkt.getL3PtpPacket = packetCreate("eth", { "ip4", "ip" }, "udp", "ptp")
 
 
 ------------------------------------------------------------------------
@@ -363,6 +353,5 @@ end
 ------------------------------------------------------------------------
 
 ffi.metatype("struct ptp_header", ptpHeader)
-ffi.metatype("struct ptp_packet", ptpPacket)
 
 return ptp
