@@ -1,4 +1,5 @@
 local ffi = require "ffi"
+local pkt = require "packet"
 
 require "utils"
 require "headers"
@@ -157,6 +158,8 @@ function etherHeader:getTypeString()
 		cleartext = "(IP6)"
 	elseif type == eth.TYPE_ARP then
 		cleartext = "(ARP)"
+	elseif type == eth.TYPE_PTP then
+		cleartext = "(PTP)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -207,39 +210,43 @@ function etherHeader:getString()
 	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " type " .. self:getTypeString()
 end
 
+local mapNameType = {
+	ip4 = eth.TYPE_IP,
+	ip6 = eth.TYPE_IP6,
+	arp = eth.TYPE_ARP,
+	ptp = eth.TYPE_PTP,
+}
 
---------------------------------------------------------------------------------
---- Ethernet packet
---------------------------------------------------------------------------------
-
-local etherPacket = {}
-etherPacket.__index = etherPacket
-
---- Set all members of the ethernet header.
--- Per default, all members are set to default values specified in the respective set function.
--- Optional named arguments can be used to set a member to a user-provided value.
--- @param args Table of named arguments. For a list of available arguments see "See also"
--- @usage fill() -- only default values
--- @usage fill{ ethSrc="12:23:34:45:56:67" } -- all members are set to default values with the exception of ethSrc
--- @see etherHeader:fill
-function etherPacket:fill(args)
-	args = args or {}
-
-	self.eth:fill(args)
+function etherHeader:resolveNextHeader()
+	local type = self:getType()
+	for name, _type in pairs(mapNameType) do
+		if type == _type then
+			return name
+		end
+	end
+	return nil
 end
 
---- Retrieve the values of all members.
--- @return Table of named arguments. For a list of arguments see "See also".
--- @see etherHeader:get
-function etherPacket:get()
-	return self.eth:get()
+function etherHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+	-- only set ethType
+	if not namedArgs["ethType"] then
+		for name, type in pairs(mapNameType) do
+			if nextHeader == name then
+				namedArgs["ethType"] = type
+				break
+			end
+		end
+	end
+	return namedArgs
 end
 
---- Print information about the headers and a hex dump of the complete packet.
--- @param bytes Number of bytes to dump.
-function etherPacket:dump(bytes)
-	dumpPacket(self, bytes, self.eth)
-end
+
+----------------------------------------------------------------------------------
+--- Packets
+----------------------------------------------------------------------------------
+
+pkt.getEthernetPacket = packetCreate("eth")
+pkt.getEthPacket = pkt.getEthernetPacket -- just an alias
 
 
 ----------------------------------------------------------------------------------
@@ -247,7 +254,7 @@ end
 ----------------------------------------------------------------------------------
 
 ffi.metatype("struct mac_address", macAddr)
-ffi.metatype("struct ethernet_packet", etherPacket)
 ffi.metatype("struct ethernet_header", etherHeader)
+
 
 return eth

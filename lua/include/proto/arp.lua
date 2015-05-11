@@ -1,4 +1,5 @@
 local ffi = require "ffi"
+local pkt = require "packet"
 
 require "headers"
 local dpdkc = require "dpdkc"
@@ -278,44 +279,19 @@ function arpHeader:getString()
 	return str
 end
 
+function arpHeader:resolveNextHeader()
+	return nil
+end
 
+function arpHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+	return namedArgs
+end
+	
 ---------------------------------------------------------------------------------
---- ARP packet
+--- Packets
 ---------------------------------------------------------------------------------
 
-local arpPacketType = ffi.typeof("struct arp_packet*")
-local arpPacket = {}
-arpPacket.__index = arpPacket
-
---- Set all members of the arpnet header.
--- Per default, all members are set to default values specified in the respective set function.
--- Optional named arguments can be used to set a member to a user-provided value.
--- @param args Table of named arguments. For a list of available arguments see "See also"
--- @usage fill() -- only default values
--- @usage fill{ ethSrc="12:23:34:45:56:67" } -- all members are set to default values with the exception of ethSrc
--- @see ethernet.etherHeader:fill
--- @see arpHeader:fill
-function arpPacket:fill(args)
-	args = args or {}
-
-	args.ethType = args.ethType or eth.TYPE_ARP
-
-	self.eth:fill(args)
-	self.arp:fill(args)
-end
-
---- Retrieve the values of all members.
--- @return Table of named arguments. For a list of arguments see "See also".
--- @see arpHeader:get
-function arpPacket:get()
-	return mergeTables(self.eth:get(), self.arp:get())
-end
-
---- Print information about the headers and a hex dump of the complete packet.
--- @param bytes Number of bytes to dump.
-function arpPacket:dump(bytes)
-	dumpPacket(self, bytes, self.eth, self.arp)
-end
+pkt.getArpPacket = packetCreate("eth", "arp")
 
 
 ---------------------------------------------------------------------------------
@@ -448,7 +424,6 @@ __MG_ARP_TASK = arpTask
 ---------------------------------------------------------------------------------
 
 ffi.metatype("struct arp_header", arpHeader)
-ffi.metatype("struct arp_packet", arpPacket)
 
 return arp
 
