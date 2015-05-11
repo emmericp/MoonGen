@@ -5,17 +5,9 @@ require "headers"
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 
-local eth = require "proto.ethernet"
-local arp = require "proto.arp"
-local ptp = require "proto.ptp"
-local ip = require "proto.ip"
-local ip6 = require "proto.ip6"
-local icmp = require "proto.icmp"
-local udp = require "proto.udp"
-local tcp = require "proto.tcp"
-
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
+local write = io.write
 
 
 -------------------------------------------------------------------------------------------
@@ -59,56 +51,16 @@ function pkt:setSize(size)
 	self.pkt.data_len = size
 end
 
---- Print a hex dump of the complete packet.
--- Dumps the first self.pkt_len bytes of self.data.
--- As this struct has no information about the actual type of the packet, it gets recreated by analyzing the protocol fields (etherType, protocol, ...).
--- The packet is then dumped using the dump method of the best fitting packet (starting with an ethernet packet and going up the layers).
--- TODO if packet was received print reception time instead
--- @see etherPacket:dump
--- @see ip4Packet:dump
--- @see udpPacket:dump
--- @see tcp.tcp4Packet:dump
-function pkt:dump()
-	local p = self:getEthernetPacket()
-	local type = p.eth:getType()
-	if type == eth.TYPE_ARP then
-		-- ARP
-		p = self:getArpPacket()
-	elseif type == eth.TYPE_PTP then
-		-- PTP
-		p = self:getPtpPacket()
-	elseif type == eth.TYPE_IP then
-		-- ipv4
-		p = self:getIPPacket()
-		local proto = p.ip:getProtocol()
+--- Returns the packet data cast to the best fitting packet struct (starting with ethernet header)
+-- @return packet data as cdata of best fitting packet
+function pkt:get()
+	return self:getEthernetPacket():resolveLastHeader()
+end
 
-		if proto == ip.PROTO_ICMP then
-			-- ICMPv4
-			p = self:getIcmpPacket()
-		elseif proto == ip.PROTO_UDP then
-			-- UDPv4
-			p = self:getUdpPacket()
-		elseif proto == ip.PROTO_TCP then
-			-- TCPv4
-			p = self:getTcpPacket()
-		end
-	elseif type == eth.TYPE_IP6 then
-		-- IPv6
-		p = self:getIP6Packet()
-		local proto = p.ip:getNextHeader()
-		
-		if proto == ip6.PROTO_ICMP then
-			-- ICMPv6
-			p = self:getIcmp6Packet()
-		elseif proto == ip6.PROTO_UDP then
-			-- UDPv6
-			p = self:getUdp6Packet()
-		elseif proto == ip6.PROTO_TCP then
-			-- TCPv6
-			p = self:getTcp6Packet()
-		end
-	end
-	p:dump(self.pkt.pkt_len)
+--- Dumps the packet data cast to the best fitting packet struct
+-- @param bytes number of bytes to dump
+function pkt:dump(bytes)
+	self:get():dump(bytes)
 end
 
 
@@ -182,133 +134,289 @@ function pkt:enableTimestamps()
 	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IEEE1588_TMST)
 end
 
--------------------------------------------------------------------------------------------
---- Return packet as XYZ
--------------------------------------------------------------------------------------------
 
-local etherPacketType = ffi.typeof("struct ethernet_packet*")
---- Retrieve an ethernet packet.
--- @return Packet in 'struct ethernet_packet' format
-function pkt:getEthernetPacket()
-	return etherPacketType(self.pkt.data)
+----------------------------------------------------------------------------------
+--- Create new packet type
+----------------------------------------------------------------------------------
+
+-- functions of the packet
+local packetGetHeaders
+local packetGetHeader
+local packetDump
+local packetFill
+local packetGet
+local packetResolveLastHeader
+local packetCalculateChecksums
+local packetMakeStruct
+
+--- Create struct and functions for a new packet
+-- For implemented headers (see proto/) these packets are defined in the section 'Packet struct' of each protocol file
+-- @param args list of keywords (see makeStruct)
+-- @return returns the constructor/cast function for this packet
+-- @see makeStruct
+function packetCreate(...)
+	local args = { ... }
+	
+	local packet = {}
+	packet.__index = packet
+
+	-- create struct
+	local packetName, ctype = packetMakeStruct(args)
+
+	--- functions of the packet
+	packet.getArgs = function() return args end
+	
+	packet.getName = function() return packetName end
+
+	packet.getHeaders = packetGetHeaders
+
+	packet.getHeader = packetGetHeader 
+
+	packet.dump = packetDump
+	
+	packet.fill = packetFill
+
+	packet.get = packetGet
+
+	packet.resolveLastHeader = packetResolveLastHeader
+
+	packet.setLength = packetSetLength
+
+	-- functions for manual (not offloaded) checksum calculations
+	packet.calculateChecksums = packetCalculateChecksums
+	
+	for _, v in ipairs(args) do
+		local header, member
+		if type(v) == "table" then
+			header = v[1]
+			member = v[2]
+		else
+			header = v
+			member = v
+		end
+		-- if the header has a checksum, add a function to calculate it
+		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
+			local key = 'calculate' .. member:gsub("^.", string.upper) .. 'Checksum'
+			packet[key] = function(self) self:getHeader(v):calculateChecksum() end
+		end
+	end
+
+
+	-- add functions to packet
+	ffi.metatype(packetName, packet)
+
+	-- return 'get'/'cast' for this kind of packet
+	return function(self) return ctype(self.pkt.data) end
 end
 
-local arpPacketType = ffi.typeof("struct arp_packet*")
---- Retrieve an ARP packet.
--- @return Packet in 'struct arp_packet' format
-function pkt:getArpPacket()
-	return arpPacketType(self.pkt.data)
+--- Get all headers of a packet as list
+-- @param self The packet
+-- @return Table of members of the packet
+function packetGetHeaders(self) 
+	local headers = {} 
+	for i, v in ipairs(self:getArgs()) do 
+		headers[i] = packetGetHeader(self, v) 
+	end 
+	return headers 
 end
 
-local ptpPacketType = ffi.typeof("struct ptp_packet*")
---- Retrieve an PTP packet.
--- @return Packet in 'struct ptp_packet' format
-function pkt:getPtpPacket()
-	return ptpPacketType(self.pkt.data)
-end
-
-local ip4PacketType = ffi.typeof("struct ip_packet*")
---- Retrieve an IP4 packet.
--- @return Packet in 'struct ip_packet' format
-function pkt:getIP4Packet()
-	return ip4PacketType(self.pkt.data)
-end
-
-local ip6PacketType = ffi.typeof("struct ip_v6_packet*")
---- Retrieve an IP6 packet.
--- @return Packet in 'struct ip_v6_packet' format
-function pkt:getIP6Packet()
-	return ip6PacketType(self.pkt.data)
-end
-
---- Retrieve either an IPv4 or IPv6 packet.
--- @param ipv4 If true or nil returns IPv4, IPv6 otherwise
--- @return Packet in 'struct ip_packet' or 'struct ip_v6_packet' format
-function pkt:getIPPacket(ipv4)
-	ipv4 = ipv4 == nil or ipv4
-	if ipv4 then
-		return self:getIP4Packet()
+--- Get the specified header of a packet (e.g. self.eth)
+-- @param self the packet (cdata)
+-- @param h header to be returned
+-- @return The member of the packet
+function packetGetHeader(self, h)
+	local proto, member
+	if type(h) == "table" then
+		member = h[2]
 	else
-		return self:getIP6Packet()
+		member = h
+	end
+	return self[member]
+end
+
+--- Print a hex dump of a packet.
+-- @param self the packet
+-- @param bytes Number of bytes to dump. If no size is specified the payload is truncated.
+function packetDump(self, bytes) 
+	bytes = bytes or ffi.sizeof(self:getName())
+
+	-- print timestamp
+	write(getTimeMicros())
+
+	-- headers in cleartext
+	for i, v in ipairs(self:getHeaders()) do
+		local str = v:getString()
+		if i == 1 then write(" " .. str .. "\n") else print(str) end
+	end
+
+	-- hex dump
+	dumpHex(self, bytes)
+end
+	
+--- Set all members of all headers.
+-- Note: this function is slow. If you want to modify members of a header during a time critical section of your script use the respective setters.
+-- Per default, all members are set to default values specified in the respective set function.
+-- Optional named arguments can be used to set a member to a user-provided value.
+-- The argument 'pktLength' can be used to automatically calculate and set the length member of headers (e.g. ip header).
+-- @param self The packet
+-- @param args Table of named arguments. For a list of available arguments see "See also"
+-- @usage fill() -- only default values
+-- @usage fill{ ethSrc="12:23:34:45:56:67", ipTTL=100 } -- all members are set to default values with the exception of ethSrc and ipTTL
+-- @usage fill{ pktLength=64 } -- only default values, length members of the headers are adjusted
+function packetFill(self, namedArgs) 
+	-- fill headers
+	local headers = self:getHeaders()
+	local args = self:getArgs()
+	local accumulatedLength = 0
+	for i, v in ipairs(headers) do
+		local nextHeader = args[i + 1]
+		if type(nextHeader) == "table" then
+			nextHeader = nextHeader[1]
+		end
+		namedArgs = v:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+		v:fill(namedArgs) 
+
+		accumulatedLength = accumulatedLength + ffi.sizeof(v)
 	end
 end
 
-local icmp4PacketType = ffi.typeof("struct icmp_packet*")
---- Retrieve an ICMPv4 packet.
--- @return Packet in 'struct icmp_packet' format
-function pkt:getIcmp4Packet()
-	return icmp4PacketType(self.pkt.data)
+--- Retrieve the values of all members as list of named arguments.
+-- @param self The packet
+-- @return Table of named arguments. For a list of arguments see "See also".
+-- @see packetFill
+function packetGet(self) 
+	local args = {} 
+	for _, v in ipairs(self:getHeaders()) do 
+		args = mergeTables(args, v:get()) 
+	end 
+	return args 
 end
 
-local icmp6PacketType = ffi.typeof("struct icmp_v6_packet*")
---- Retrieve an ICMPv6 packet.
--- @return Packet in 'struct icmp_v6_packet' format
-function pkt:getIcmp6Packet()
-	return icmp6PacketType(self.pkt.data)
-end
-
---- Retrieve either an ICMPv4 or ICMPv6 packet.
--- @return ipv4 If true or nil returns ICMPv4, ICMPv6 otherwise
--- @return Packet in 'struct icmp_packet' or 'struct icmp_v6_packet' format
-function pkt:getIcmpPacket(ipv4)
-	ipv4 = ipv4 == nil or ipv4
-	if ipv4 then
-		return self:getIcmp4Packet()
+--- Try to find out what the next header in the payload of this packet is
+-- This function is only used for buf:get/buf:dump
+-- @param self The packet
+function packetResolveLastHeader(self)
+	local name = self:getName()
+	local headers = self:getHeaders()
+	local next_header = headers[#headers]:resolveNextHeader()
+	
+	if not next_header then
+		return self
 	else
-		return self:getIcmp6Packet()
+		next_member = next_header
+		-- ugly, but necessary as those are always renamed
+		if next_header == "ethernet" then
+			next_member = "eth"
+		elseif next_header == "ip4" or next_header == "ip6" then
+			next_member = "ip"
+		end
+
+		name = name .. "__" .. next_header .. "_" .. next_member .. "*"
+		return ffi.cast(name, self):resolveLastHeader()
 	end
 end
 
-local udpPacketType = ffi.typeof("struct udp_packet*")
---- Retrieve an IPv4 UDP packet.
--- @return Packet in 'struct udp_packet' format.
-function pkt:getUdp4Packet()
-	return udpPacketType(self.pkt.data)
-end
-
-local udp6PacketType = ffi.typeof("struct udp_v6_packet*")
---- Retrieve an IPv6 UDP packet.
--- @return Packet in 'struct udp_v6_packet' format.
-function pkt:getUdp6Packet()
-	return udp6PacketType(self.pkt.data)
-end
-
---- Retrieve either an UDPv4 or UDPv6 packet.
--- @return ipv4 If true or nil returns UDPv4, UDPv6 otherwise
--- @return Packet in 'struct udp_packet' or 'struct udp_v6_packet' format
-function pkt:getUdpPacket(ipv4)
-	ipv4 = ipv4 == nil or ipv4
-	if ipv4 then
-		return self:getUdp4Packet()
-	else
-		return self:getUdp6Packet()
+--- Set length for all headers.
+-- Necessary when sending variable sized packets.
+-- TODO runtime critical function: this has to be fast (check with benchmark)
+-- @param self The packet
+-- @param length Length of the packet. Value for respective length member of headers get calculated using this value.
+function packetSetLength(self, length)
+	local accumulatedLength = 0
+	for _, v in ipairs(self:getArgs()) do
+		local header, member
+		if type(v) == "table" then
+			header = v[1]
+			member = v[2]
+		else
+			header = v
+			member = v
+		end
+		if header == "ip4" or header == "udp" or header == "ptp" then
+			self[member]:setLength(length - accumulatedLength)
+		elseif header == "ip6" then
+			self[member]:setLength(length - (accumulatedLength + 40))
+		end
+		accumulatedLength = accumulatedLength + ffi.sizeof(self[member])
 	end
 end
 
-local tcp4PacketType = ffi.typeof("struct tcp_packet*")
---- Retrieve an TCPv4 packet.
--- @return Packet in 'struct tcp_packet' format
-function pkt:getTcp4Packet()
-	return tcp4PacketType(self.pkt.data)
-end
-
-local tcp6PacketType = ffi.typeof("struct tcp_v6_packet*")
---- Retrieve an TCPv6 packet.
--- @return Packet in 'struct tcp_v6_packet' format
-function pkt:getTcp6Packet()
-	return tcp6PacketType(self.pkt.data)
-end
-
---- Retrieve either an TCPv4 or TCPv6 packet.
--- @return ipv4 If true or nil returns TCPv4, TCPv6 otherwise
--- @return Packet in 'struct tcp_packet' or 'struct tcp_v6_packet' format
-function pkt:getTcpPacket(ipv4)
-	ipv4 = ipv4 == nil or ipv4
-	if ipv4 then
-		return self:getTcp4Packet()
-	else
-		return self:getTcp6Packet()
+--- Calculate all checksums manually (not offloading them)
+-- There also exist functions to calculate the checksum of only one header.
+-- Naming convention: pkt:calculate<member>Checksum() (for all existing packets member = {Ip, Tcp, Udp, Icmp})
+-- TODO runtime critical function: this has to be fast (check with benchmark)
+function packetCalculateChecksums(self)
+	for _, v in ipairs(self:getArgs()) do
+		local header, member
+		if type(v) == "table" then
+			header = v[1]
+			member = v[2]
+		else
+			header = v
+			member = v
+		end
+		
+		-- if the header has a checksum, call the function
+		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
+			self:getHeader(v):calculateChecksum()
+		end
 	end
+end
+
+--- Creates a packet struct (cdata) consisting of different headers
+-- simply list the headers in the order you want them to be in a packet
+-- if you want the member to be named differently, use the following syntax
+-- normal: <header>  different membername: { <header>, <member> }
+-- supported keywords: eth, arp, ptp, ip, ip6, udp, tcp, icmp
+-- e.g. makeStruct('eth', { 'ip4', 'ip' }, 'udp') creates an UDP packet struct
+-- @param args list of keywords/tables of keyword-member pairs
+-- @return name name of the struct
+-- @return ctype ctype of the struct
+function packetMakeStruct(...)
+	local name = ""
+	local str = ""
+	
+	-- add the specified headers and build the name
+	for _, v in ipairs(...) do
+		local header, member
+		if type(v) == "table" then
+			header = v[1]
+			member = v[2]
+		else
+			header = v
+			member = v
+		end
+
+		-- alias for eth -> ethernet
+		if header == 'eth' then
+			header = 'ethernet'
+		end
+
+		-- add header
+		str = str .. [[
+		struct ]] .. header .. '_header ' .. member .. [[;
+		]]
+
+		-- build name
+		name = name .. "__" .. header .. "_" .. member
+	end
+
+	-- add rest of the struct
+	str = [[
+	struct __attribute__((__packed__)) ]] 
+	.. name 
+	.. [[ {
+		]]
+	.. str 
+	.. [[
+		union payload_t payload;
+	};	
+	]]
+	
+	-- add struct definition, return full name and typeof
+	ffi.cdef(str)
+	name = "struct " .. name
+	return name, ffi.typeof(name .. "*")
 end
 
 
@@ -318,3 +426,4 @@ end
 
 ffi.metatype("struct rte_mbuf", pkt)
 
+return pkt
