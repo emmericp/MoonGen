@@ -134,7 +134,7 @@ function parseMacAddress(mac)
 end
 
 --- Parse a string to an IP address
--- @return address ip address in ipv4_address or ipv6_address format or nil if invalid address
+-- @return address ip address in ip4_address or ip6_address format or nil if invalid address
 -- @return boolean true if IPv4 address, false otherwise
 function parseIPAddress(ip)
 	ip = tostring(ip)
@@ -178,17 +178,17 @@ int inet_pton(int af, const char *src, void *dst);
 
 --- Parse a string to an IPv6 address
 -- @param ip address in string format
--- @return address in ipv6_address format or nil if invalid address
+-- @return address in ip6_address format or nil if invalid address
 function parseIP6Address(ip)
 	ip = tostring(ip)
 	local LINUX_AF_INET6 = 10 --preprocessor constant of Linux
-	local tmp_addr = ffi.new("union ipv6_address")
+	local tmp_addr = ffi.new("union ip6_address")
 	local res = ffi.C.inet_pton(LINUX_AF_INET6, ip, tmp_addr)
 	if res == 0 then
 		return nil
 	end
 
-	local addr = ffi.new("union ipv6_address")
+	local addr = ffi.new("union ip6_address")
 	addr.uint32[0] = bswap(tmp_addr.uint32[3])
 	addr.uint32[1] = bswap(tmp_addr.uint32[2])
 	addr.uint32[2] = bswap(tmp_addr.uint32[1])
@@ -234,23 +234,6 @@ function dumpHex(data, bytes)
 		end
 	end
 	write("\n\n")
-end
-
---- Print a hex dump of a packet.
--- @param data The cdata to be dumped.
--- @param bytes Number of bytes to dump.
--- @param args Arbitrary amount of protocol headers to be displayed in cleartext. The header must provide :getString().
-function dumpPacket(data, bytes, ...)
-	write(getTimeMicros())
-
-	-- headers in cleartext
-	for i = 1, select("#", ...) do
-		local str = select(i, ...):getString()
-		if i == 1 then write(" " .. str .. "\n") else print(str) end
-	end
-
-	-- hex dump
-	dumpHex(data, bytes)
 end
 
 --- Merge tables.
