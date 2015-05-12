@@ -19,12 +19,12 @@ ffi.cdef[[
 		uint8_t		uint8[6];
 	};
 
-	union ipv4_address {
+	union ip4_address {
 		uint8_t		uint8[4];
 		uint32_t	uint32;
 	};
 
-	union ipv6_address {
+	union ip6_address {
 		uint8_t 	uint8[16];
 		uint32_t	uint32[4];
 		uint64_t	uint64[2];
@@ -48,9 +48,9 @@ ffi.cdef[[
 		uint8_t		pln;
 		uint16_t	op;
 		struct mac_address	sha;
-		union ipv4_address	spa;
+		union ip4_address	spa;
 		struct mac_address	tha;
-		union ipv4_address	tpa;
+		union ip4_address	tpa;
 	};
 	
 	struct __attribute__((__packed__)) ptp_header {
@@ -70,7 +70,7 @@ ffi.cdef[[
 		uint8_t		logMessageInterval;
 	};
 
-	struct __attribute__((__packed__)) ipv4_header {
+	struct __attribute__((__packed__)) ip4_header {
 		uint8_t			verihl;
 		uint8_t			tos;
 		uint16_t		len;
@@ -79,17 +79,17 @@ ffi.cdef[[
 		uint8_t			ttl;
 		uint8_t			protocol;
 		uint16_t		cs;
-		union ipv4_address	src;
-		union ipv4_address	dst;
+		union ip4_address	src;
+		union ip4_address	dst;
 	 };
 
-	struct __attribute__((__packed__)) ipv6_header {
+	struct __attribute__((__packed__)) ip6_header {
 		uint32_t 		vtf;
 		uint16_t  		len;
 		uint8_t   		nextHeader;
 		uint8_t   		ttl;
-		union ipv6_address 	src;
-		union ipv6_address	dst;
+		union ip6_address 	src;
+		union ip6_address	dst;
 	};
 
 	struct __attribute__((__packed__)) icmp_header {
@@ -117,80 +117,6 @@ ffi.cdef[[
 		uint16_t	cs;
 		uint16_t	urg;
 		uint32_t	options[];
-	};
-	
-	
-	// -----------------------------------------------------
-	// ---- Packet structs
-	// -----------------------------------------------------
-	
-	struct __attribute__((__packed__)) ethernet_packet {
-		struct ethernet_header 	eth;
-		union payload_t payload;
-	};
-
-	struct __attribute__((__packed__)) arp_packet {
-		struct ethernet_header 	eth;
-		struct arp_header		arp;
-		union payload_t			payload;
-	};
-	
-	struct __attribute__((__packed__)) ptp_packet {
-		struct ethernet_header eth;
-		struct ptp_header ptp;
-		union payload_t payload;
-	};
-
-	struct __attribute__((__packed__)) ip_packet {
-		struct ethernet_header 	eth;
-		struct ipv4_header	ip;
-		union payload_t payload;
-	};
-
-	struct __attribute__((__packed__)) ip_v6_packet {
-		struct ethernet_header 	eth;
-		struct ipv6_header 	ip;
-		union payload_t payload;
-	};
-
-	struct __attribute__((__packed__)) icmp_packet {
-		struct ethernet_header	eth;
-		struct ipv4_header		ip;
-		struct icmp_header		icmp;
-	};
-	
-	struct __attribute__((__packed__)) icmp_v6_packet {
-		struct ethernet_header	eth;
-		struct ipv6_header		ip;
-		struct icmp_header		icmp;
-	};
-
-	struct __attribute__((__packed__)) udp_packet {
-		struct ethernet_header 	eth;
-		struct ipv4_header 	ip;
-		struct udp_header 	udp;
-		union payload_t payload;
-	};
-	
-	struct __attribute__((__packed__)) udp_v6_packet {
-		struct ethernet_header	eth;
-		struct ipv6_header 	ip;
-		struct udp_header 	udp;
-		union payload_t payload;
-	};
-
-	struct __attribute__((__packed__)) tcp_packet {
-		struct ethernet_header	eth;
-		struct ipv4_header		ip;
-		struct tcp_header		tcp;
-		union payload_t			payload;
-	};
-	
-	struct __attribute__((__packed__)) tcp_v6_packet {
-		struct ethernet_header	eth;
-		struct ipv6_header		ip;
-		struct tcp_header		tcp;
-		union payload_t			payload;
 	};
 ]]
 
