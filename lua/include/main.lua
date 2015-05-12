@@ -1,6 +1,7 @@
 -- globally available utility functions
 require "utils"
-require "packet"
+-- all available headers, packets, ... and their utility functions
+require "proto.proto"
 
 local dpdk		= require "dpdk"
 local dpdkc		= require "dpdkc"

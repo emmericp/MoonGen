@@ -403,7 +403,12 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 				local seq = self.udp and expectedSeq or pkt.ptp:getSequenceID()
 				if buf:hasTimestamp() and seq == expectedSeq then
 					-- yay!
-					local delay = (self.rxQueue:getTimestamp() - tx) * 6.4
+					local rxTs = self.rxQueue:getTimestamp() 
+					if not rxTs then
+						-- can happen if you hotplug cables
+						return nil
+					end
+					local delay = (rxTs - tx) * 6.4
 					self.rxBufs:freeAll()
 					return delay
 				elseif buf:hasTimestamp() then

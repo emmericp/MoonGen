@@ -1,4 +1,5 @@
 local ffi = require "ffi"
+local pkt = require "packet"
 
 require "utils"
 require "headers"
@@ -285,6 +286,11 @@ function tcpHeader:setChecksum(int)
 	self.cs = hton16(int)
 end
 
+--- Calculate the checksum
+-- FIXME NYI
+function tcpHeader:calculateChecksum(len)
+end
+
 function tcpHeader:getChecksum()
 	return hton16(self.cs)
 end
@@ -388,88 +394,25 @@ function tcpHeader:getString()
 		.. " urg " 	.. self:getUrgentPointerString() 
 end
 
-
---------------------------------------------------------------------------------
---- TCPv4 packets
---------------------------------------------------------------------------------
-
-local tcp4Packet = {}
-local tcp4PacketType = ffi.typeof("struct tcp_packet*")
-tcp4Packet.__index = tcp4Packet
-
-function tcp4Packet:fill(args)
-	args = args or {}
-
-	-- calculate length value for ip headers
-	if args.pktLength then
-		args.ipLength = args.ipLength or args.pktLength - 14 -- ethernet
-	end
-	
-	-- rewrite default values
-	args.ipProtocol = args.ipProtocol or ip.PROTO_TCP
-	
-	self.eth:fill(args)
-	self.ip:fill(args)
-	self.tcp:fill(args)
+function tcpHeader:resolveNextHeader()
+	return nil
 end
 
-function tcp4Packet:get()
-	return mergeTables(self.eth:get(), self.ip:get(), self.tcp:get())
-end
-
-function tcp4Packet:dump(bytes)
-	dumpPacket(self, bytes, self.eth, self.ip, self.tcp)
-end
-
-function tcp4Packet:calculateTcpChecksum()
-	-- TODO
-	self.tcp:setChecksum()
+function tcpHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+	return namedArgs
 end
 
 
 ----------------------------------------------------------------------------------
---- TCPv6 packets
+--- Packets
 ----------------------------------------------------------------------------------
 
-local tcp6Packet = {}
-local tcp6PacketType = ffi.typeof("struct tcp_v6_packet*")
-tcp6Packet.__index = tcp6Packet
-
-function tcp6Packet:fill(args)
-	args = args or {}
-
-	-- calculate length value for ip headers
-	if args.pktLength then
-		args.ip6Length = args.ip6Length or args.pktLength - (14 + 40) -- ethernet + ip
-	end
-	
-	-- rewrite default values
-	args.ethType = args.ethType or eth.TYPE_IP6
-	args.ip6NextHeader = args.ip6NextHeader or ip6.PROTO_TCP
-
-	self.eth:fill(args)
-	self.ip:fill(args)
-	self.tcp:fill(args)
-end
-
-function tcp6Packet:get()
-	return mergeTables(self.eth:get(), self.ip:get(), self.tcp:get())
-end
-
-function tcp6Packet:dump(bytes)
-	dumpPacket(self, bytes, self.eth, self.ip, self.tcp)
-end
-
-function tcp6Packet:calculateTcpChecksum()
-	-- TODO
-	self.tcp:setChecksum()
-end
-
+pkt.getTcp4Packet = packetCreate("eth", {"ip4", "ip"}, "tcp")
+pkt.getTcp6Packet = packetCreate("eth", {"ip6", "ip"}, "tcp")
+pkt.getTcpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getTcp4Packet(self) else return pkt.getTcp6Packet(self) end end   
 
 ------------------------------------------------------------------------------------
 --- Metatypes
 ------------------------------------------------------------------------------------
 
 ffi.metatype("struct tcp_header", tcpHeader)
-ffi.metatype("struct tcp_packet", tcp4Packet)
-ffi.metatype("struct tcp_v6_packet", tcp6Packet)

@@ -7,7 +7,7 @@
 template<typename K, typename V>
 struct lockable_map {
 	std::unordered_map<K, V> map;
-	std::recursive_mutex lock;
+	std::recursive_timed_mutex lock;
 
 	lockable_map() : map(), lock() {
 	}
@@ -20,7 +20,7 @@ static lockable_map<std::string, ns*> namespaces;
 extern "C" {
 
 	ns* create_or_get_namespace(const char* name) {
-		std::lock_guard<std::recursive_mutex> lock(namespaces.lock);
+		std::lock_guard<std::recursive_timed_mutex> lock(namespaces.lock);
 		auto result = namespaces.map.find(name);
 		if (result != namespaces.map.end()) {
 			return result->second;
@@ -32,12 +32,17 @@ extern "C" {
 	
 	// key and value are copied and must be freed by the caller
 	void namespace_store(ns* ns, const char* key, const char* value) {
-		std::lock_guard<std::recursive_mutex> lock(ns->lock);
+		std::lock_guard<std::recursive_timed_mutex> lock(ns->lock);
 		ns->map[key] = value;
 	}
 
+	void namespace_delete(ns* ns, const char* key) {
+		std::lock_guard<std::recursive_timed_mutex> lock(ns->lock);
+		ns->map.erase(key);
+	}
+
 	const char* namespace_retrieve(ns* ns, const char* key) {
-		std::lock_guard<std::recursive_mutex> lock(ns->lock);
+		std::lock_guard<std::recursive_timed_mutex> lock(ns->lock);
 		auto value = ns->map.find(key);
 		if (value != ns->map.end()) {
 			return value->second.c_str();
@@ -47,10 +52,14 @@ extern "C" {
 	}
 
 	void namespace_iterate(ns* ns, void (*cb)(const char*, const char*)) {
-		std::lock_guard<std::recursive_mutex> lock(ns->lock);
+		std::lock_guard<std::recursive_timed_mutex> lock(ns->lock);
 		for (auto e : ns->map) {
 			cb(e.first.c_str(), e.second.c_str());
 		}
+	}
+
+	std::recursive_timed_mutex* namespace_get_lock(ns* ns) {
+		return &ns->lock;
 	}
 
 }

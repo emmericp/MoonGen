@@ -3,19 +3,17 @@ local memory	= require "memory"
 local device	= require "device"
 local stats		= require "stats"
 
-function master(numCores, ...)
+function master(...)
 	local devices = { ... }
-	if not numCores or #devices == 0 then
-		return print("Usage: numCores port [port...]")
+	if #devices == 0 then
+		return print("Usage: port [port...]")
 	end
-	map(devices, function(dev) return device.config(dev, 1, numCores) end)
+	map(devices, function(dev) return device.config(dev) end)
 	device.waitForLinks()
-	for i = 0, numCores - 1 do
-		dpdk.launchLua("loadSlave", devices, i, 256)
+	for i, dev in ipairs(devices) do
+		-- TODO: detect NUMA node and start on the right socket
+		dpdk.launchLua("loadSlave", dev, dev:getTxQueue(0), 256)
 	end
-	-- TODO: the main core is wasted for stats tracking, this could be optimized
-	-- (e.g. with DPDK 2.0)
-	counterSlave(devices)
 	dpdk.waitForSlaves()
 end
 
@@ -36,43 +34,33 @@ function counterSlave(devices)
 end
 
 
-function loadSlave(devices, taskId, numFlows)
-	local queues = {}
-	local mems = {}
-	local bufs = {}
-	for i, dev in ipairs(devices) do
-		queues[i] = dev:getTxQueue(taskId)
-		mems[i] = memory.createMemPool(function(buf)
-			buf:getUdpPacket():fill{
-				pktLength = 60,
-				ethSrc = queues[i],
-				ethDst = "10:11:12:13:14:15",
-				ipDst = "192.168.1.1",
-				udpSrc = 1234,
-				udpDst = 5678,
-			}
-		end)
-		bufs[i] = mems[i]:bufArray(128)
-	end
+function loadSlave(dev, queue, numFlows)
+	local mem = memory.createMemPool(function(buf)
+		buf:getUdpPacket():fill{
+			pktLength = 60,
+			ethSrc = queue,
+			ethDst = "10:11:12:13:14:15",
+			ipDst = "192.168.1.1",
+			udpSrc = 1234,
+			udpDst = 5678,	
+		}
+	end)
+	bufs = mem:bufArray(128)
 	local baseIP = parseIPAddress("10.0.0.1")
-	local counter = 0
+	local flow = 0
+	local ctr = stats:newDevTxCounter(dev, "plain")
 	while dpdk.running() do
-		for i = 1, #queues do
-			local queue = queues[i]
-			local bufs = bufs[i]
-			bufs:alloc(60)
-			-- + 2.5% performance over ipairs in this example
-			-- (don't do this in a normal script, not worth it)
-			for i = 0, bufs.size - 1 do
-				local buf = bufs.array[i]
-				local pkt = buf:getUdpPacket()
-				pkt.ip.src:set(baseIP + counter)
-				counter = incAndWrap(counter, numFlows)
-			end
-			-- UDP checksums are optional, so just IP checksums are sufficient here
-			bufs:offloadIPChecksums()
-			queue:send(bufs)
+		bufs:alloc(60)
+		for _, buf in ipairs(bufs) do
+			local pkt = buf:getUdpPacket()
+			pkt.ip.src:set(baseIP + flow)
+			flow = incAndWrap(flow, numFlows)
 		end
+		-- UDP checksums are optional, so just IP checksums are sufficient here
+		bufs:offloadIPChecksums()
+		queue:send(bufs)
+		ctr:update()
 	end
+	ctr:finalize()
 end
 

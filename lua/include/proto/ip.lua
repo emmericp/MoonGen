@@ -1,7 +1,9 @@
 local ffi = require "ffi"
+local pkt = require "packet"
 
 require "utils"
 require "headers"
+local eth = require "proto.ethernet"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -28,7 +30,7 @@ ip.PROTO_UDP	= 0x11
 
 local ip4Addr = {}
 ip4Addr.__index = ip4Addr
-local ip4AddrType = ffi.typeof("union ipv4_address")
+local ip4AddrType = ffi.typeof("union ip4_address")
 
 --- Retrieve the IPv4 address.
 -- @return Address in uint32 format.
@@ -56,8 +58,8 @@ end
 
 
 --- Test equality of two IPv4 addresses.
--- @param lhs Address in 'union ipv4_address' format.
--- @param rhs Address in 'union ipv4_address' format.
+-- @param lhs Address in 'union ip4_address' format.
+-- @param rhs Address in 'union ip4_address' format.
 -- @return true if equal, false otherwise.
 function ip4Addr.__eq(lhs, rhs)
 	return istype(ip4AddrType, lhs) and istype(ip4AddrType, rhs) and lhs.uint32 == rhs.uint32
@@ -65,7 +67,7 @@ end
 
 --- Add a number to an IPv4 address.
 -- Max. 32 bit, commutative.
--- @param lhs Address in 'union ipv4_address' format.
+-- @param lhs Address in 'union ip4_address' format.
 -- @param rhs Number to add (32 bit integer).
 -- @return Resulting address in uint32 format.
 function ip4Addr.__add(lhs, rhs)
@@ -344,25 +346,25 @@ function ip4Header:calculateChecksum()
 end
 
 --- Set the destination address.
--- @param int Address in 'union ipv4_address' format.
+-- @param int Address in 'union ip4_address' format.
 function ip4Header:setDst(int)
 	self.dst:set(int)
 end
 
 --- Retrieve the destination IP address. 
--- @return Address in 'union ipv4_address' format.
+-- @return Address in 'union ip4_address' format.
 function ip4Header:getDst()
 	return self.dst:get()
 end
 
 --- Set the source address.
--- @param int Address in 'union ipv4_address' format.
+-- @param int Address in 'union ip4_address' format.
 function ip4Header:setSrc(int)
 	self.src:set(int)
 end
 
 --- Retrieve the source IP address. 
--- @return Address in 'union ipv4_address' format.
+-- @return Address in 'union ip4_address' format.
 function ip4Header:getSrc()
 	return self.src:get()
 end
@@ -399,7 +401,7 @@ end
 -- @usage fill{ ipSrc="1.1.1.1", ipTTL=100 } -- all members are set to default values with the exception of ipSrc and ipTTL
 function ip4Header:fill(args)
 	args = args or {}
-
+	
 	self:setVersion(args.ipVersion)
 	self:setHeaderLength(args.ipHeaderLength)
 	self:setTOS(args.ipTOS)
@@ -414,7 +416,7 @@ function ip4Header:fill(args)
 	args.ipSrc = args.ipSrc or "192.168.1.1"
 	args.ipDst = args.ipDst or "192.168.1.2"
 	
-	-- if for some reason the address is in 'union ipv4_address' format, cope with it
+	-- if for some reason the address is in 'union ip4_address' format, cope with it
 	if type(args.ipSrc) == "string" then
 		self:setSrcString(args.ipSrc)
 	else
@@ -444,57 +446,55 @@ function ip4Header:getString()
 		   .. " ttl " .. self:getTTLString() .. " proto " .. self:getProtocolString() .. " cksum " .. self:getChecksumString()
 end
 
+local mapNameProto = {
+	icmp = ip.PROTO_ICMP,
+	udp = ip.PROTO_UDP,
+	tcp = ip.PROTO_TCP,
+}
 
--------------------------------------------------------------------------------------------
---- IPv4 packets
--------------------------------------------------------------------------------------------
-
-local ip4Packet = {}
-ip4Packet.__index = ip4Packet
-
---- Set all members of all headers.
--- Per default, all members are set to default values specified in the respective set function.
--- Optional named arguments can be used to set a member to a user-provided value.
--- The argument 'pktLength' can be used to automatically calculate and set the length member of the ip header.
--- @param args Table of named arguments. For a list of available arguments see "See also"
--- @usage fill() -- only default values
--- @usage fill{ ethSrc="12:23:34:45:56:67", ipTTL=100 } -- all members are set to default values with the exception of ethSrc and ipTTL
--- @usage fill{ pktLength=64 } -- only default values, ipLength is set to the respective value
--- @see etherHeader:fill
--- @see ip4Header:fill
-function ip4Packet:fill(args)
-	args = args or {}
-	
-	-- calculate length value for ip headers
-	if args.pktLength then
-		args.ipLength = args.ipLength or args.pktLength - 14 -- ethernet
+function ip4Header:resolveNextHeader()
+	local proto = self:getProtocol()
+	for name, _proto in pairs(mapNameProto) do
+		if proto == _proto then
+			return name
+		end
 	end
-
-	self.eth:fill(args)
-	self.ip:fill(args)
+	return nil
 end
 
---- Retrieve the values of all members.
--- @return Table of named arguments. For a list of arguments see "See also".
--- @see etherHeader:get
--- @see ip4Header:get
-function ip4Packet:get()
-	return mergeTables(self.eth:get(), self.ip:get())
+-- TODO do not use static >ip<Length etc, instead use >member<Length (e.g. if member is 'innerIP' -> innerIPLength)
+function ip4Header:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+	-- set length
+	if not namedArgs["ipLength"] and namedArgs["pktLength"] then
+		namedArgs["ipLength"] = namedArgs["pktLength"] - accumulatedLength
+	end
+	
+	-- set protocol
+	if not namedArgs["ipProtocol"] then
+		for name, type in pairs(mapNameProto) do
+			if nextHeader == name then
+				namedArgs["ipProtocol"] = type
+				break
+			end
+		end
+	end
+	return namedArgs
 end
 
---- Print information about the headers and a hex dump of the complete packet.
--- @param bytes Number of bytes to dump.
-function ip4Packet:dump(bytes)
-	dumpPacket(self, bytes, self.eth, self.ip)
-end
+
+----------------------------------------------------------------------------------
+--- Packets
+----------------------------------------------------------------------------------
+
+pkt.getIP4Packet = packetCreate("eth", { "ip4", "ip" }) 
+pkt.getIPPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getIP4Packet(self) else return pkt.getIP6Packet(self) end end   
 
 
 ------------------------------------------------------------------------
 --- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("union ipv4_address", ip4Addr)
-ffi.metatype("struct ipv4_header", ip4Header)
-ffi.metatype("struct ip_packet", ip4Packet)
+ffi.metatype("union ip4_address", ip4Addr)
+ffi.metatype("struct ip4_header", ip4Header)
 
 return ip

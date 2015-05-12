@@ -3,13 +3,16 @@ local mod = {}
 local ffi		= require "ffi"
 local serpent	= require "Serpent"
 local stp		= require "StackTracePlus"
+local lock		= require "lock"
 
 ffi.cdef [[
 	struct namespace { };
 	struct namespace* create_or_get_namespace(const char* name);
 	void namespace_store(struct namespace* ns, const char* key, const char* value);
+	void namespace_delete(struct namespace* ns, const char* key);
 	const char* namespace_retrieve(struct namespace* ns, const char* key);
 	void namespace_iterate(struct namespace* ns, void (*func)(const char* key, const char* val));
+	struct lock* namespace_get_lock(struct namespace* ns);
 ]]
 
 local C = ffi.C
@@ -36,6 +39,8 @@ function namespace:__index(key)
 	end
 	if key == "forEach" then
 		return namespace.forEach
+	elseif key == "lock" then
+		return C.namespace_get_lock(self)
 	end
 	local val = C.namespace_retrieve(self, key)
 	return val ~= nil and loadstring(ffi.string(val))() or nil
@@ -48,10 +53,14 @@ function namespace:__newindex(key, val)
 	if type(key) ~= "string" then
 		error("table index must be a string")
 	end
-	if key == "forEach" then
+	if key == "forEach" or key == "lock" then
 		error(key .. " is reserved", 2)
 	end
-	C.namespace_store(self, key, serpent.dump(val))
+	if val == nil then
+		C.namespace_delete(self, key)
+	else
+		C.namespace_store(self, key, serpent.dump(val))
+	end
 end
 
 --- Iterate over all keys/values in a namespace
@@ -67,7 +76,9 @@ function namespace:forEach(cb)
 		end
 		-- avoid throwing an error across the C++ frame unnecessarily
 		-- not sure if this would work properly when compiled with clang instead of gcc
-		local ok, err = xpcall(cb, function(err) return stp.stacktrace(err) end, ffi.string(key), loadstring(ffi.string(val))())
+		local ok, err = xpcall(cb, function(err)
+			return stp.stacktrace(err)
+		end, ffi.string(key), loadstring(ffi.string(val))())
 		if not ok then
 			caughtError = err
 		end
@@ -77,7 +88,6 @@ function namespace:forEach(cb)
 		error("error while calling callback, inner error: " .. caughtError)
 	end
 end
-
 
 ffi.metatype("struct namespace", namespace)
 
