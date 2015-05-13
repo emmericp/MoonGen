@@ -229,13 +229,13 @@ function bufArray:offloadIPChecksums(ipv4, l2Len, l3Len)
 		l3_len = l3_len or 20
 		for i = 0, self.size - 1 do
 			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM)
-			self.array[i].header_lengths = l2_len * 512 + l3_len
+			self.array[i].header_lengths = l2_len + l3_len * 128
 		end
 	else
 		l3_len = l3_len or 40
 		for i = 0, self.size - 1 do
 			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV6, dpdk.PKT_TX_IP_CKSUM)
-			self.array[i].header_lengths = l2_len * 512 + l3_len
+			self.array[i].header_lengths = l2_len + l3_len * 128
 		end
 	end
 end
