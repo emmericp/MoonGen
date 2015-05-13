@@ -53,8 +53,8 @@ function pkt:setRate(rate)
 end
 
 function pkt:setSize(size)
-	self.pkt.pkt_len = size
-	self.pkt.data_len = size
+	self.pkt_len = size
+	self.data_len = size
 end
 
 --- Returns the packet data cast to the best fitting packet struct (starting with ethernet header)
@@ -215,7 +215,7 @@ function packetCreate(...)
 	ffi.metatype(packetName, packet)
 
 	-- return 'get'/'cast' for this kind of packet
-	return function(self) return ctype(self.pkt:getData()) end
+	return function(self) return ctype(self:getData()) end
 end
 
 --- Get all headers of a packet as list
