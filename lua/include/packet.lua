@@ -215,7 +215,7 @@ function packetCreate(...)
 	ffi.metatype(packetName, packet)
 
 	-- return 'get'/'cast' for this kind of packet
-	return function(self) return ctype(self.pkt.data) end
+	return function(self) return ctype(self.pkt:getData()) end
 end
 
 --- Get all headers of a packet as list
