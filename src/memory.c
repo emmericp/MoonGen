@@ -38,8 +38,8 @@ struct rte_mbuf* alloc_mbuf(struct rte_mempool* mp) {
 void alloc_mbufs(struct rte_mempool* mp, struct rte_mbuf* bufs[], uint32_t len, uint16_t pkt_len) {
 	for (uint32_t i = 0; i < len; i++) {
 		struct rte_mbuf* buf = rte_pktmbuf_alloc(mp);
-		buf->pkt.pkt_len = pkt_len;
-		buf->pkt.data_len = pkt_len;
+		buf->pkt_len = pkt_len;
+		buf->data_len = pkt_len;
 		bufs[i] = buf;
 	}
 }
