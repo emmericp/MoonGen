@@ -20,32 +20,33 @@ end
 
 -- txSlave sends out (ipsec crypto) packages
 function txSlave(port, srcQueue, dstQueue)
-	local numFlows = 256
+	local count = 0
 	local mem = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
 			pktLength = 60,
 			ethSrc = srcQueue,
 			ethDst = dstQueue,
+			ipSrc = "10.0.0.1",
 			ipDst = "192.168.1.1",
 			udpSrc = 1234,
 			udpDst = 5678,	
 		}
 	end)
 	bufs = mem:bufArray(128)
-	local baseIP = parseIPAddress("10.0.0.1")
-	local flow = 0
 
 	ipsec.enable(port)
 	while dpdk.running() do
 		bufs:alloc(60)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
-			pkt.ip.src:set(baseIP + flow)
-			flow = incAndWrap(flow, numFlows)
+			pkt.payload.uint32[0] = 0xdeadbeef
+			pkt.payload.uint32[1] = count
+			pkt.payload.uint32[2] = 0xdeadbeef
+			count = (count+1) % 0xffffffff
 		end
 		-- UDP checksums are optional, so just IP checksums are sufficient here
-		-- bufs:offloadIPChecksums()
-		bufs:offloadUdpChecksums()
+		-- bufs:offloadUdpChecksums()
+		bufs:offloadIPChecksums()
 		srcQueue:send(bufs)
 	end
 	ipsec.disable(port)
@@ -60,11 +61,16 @@ function rxSlave(port, queue)
 		local rx = queue:recv(bufs)
 		--for i = 1, rx do
 		--	local buf  = bufs[i]
-		--	buf:dump() -- hexdump of received packet (incl. header)
+		--	local pkt = buf:getUdpPacket()
+		--	printf("C: %u", pkt.payload.uint32[1])
 		--end
 		-- Dump only one packet per second
 		local buf = bufs[rx]
+		local pkt = buf:getUdpPacket()
 		buf:dump() -- hexdump of received packet (incl. header)
+		printf("H: 0x%x", pkt.payload.uint32[0])
+		printf("C: 0x%x (%u)", pkt.payload.uint32[1], pkt.payload.uint32[1])
+		printf("T: 0x%x", pkt.payload.uint32[2])
 		bufs:freeAll()
 
 		local time = dpdk.getTime()
