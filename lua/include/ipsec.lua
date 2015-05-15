@@ -18,7 +18,14 @@ local IPSTXKEY_1	= 0x0000890C
 local IPSTXKEY_0	= 0x00008908 --LSB of key
 local IPSTXSALT		= 0x00008904
 
---Helper function to return unsigned 32bit hex string
+local IPSRXIDX		= 0x00008E00
+local IPSRXKEY_3	= 0x00008E28 --MSB of key
+local IPSRXKEY_2	= 0x00008E24
+local IPSRXKEY_1	= 0x00008E20
+local IPSRXKEY_0	= 0x00008E1C --LSB ofkey
+local IPSRXSALT		= 0x00008E2C
+
+-- Helper function to return padded, unsigned 32bit hex string.
 function uhex32(x)
 	return bit.tohex(x, 8)
 end
@@ -161,4 +168,84 @@ function mod.tx_get_key(port, idx)
 	return key, uhex32(_salt)
 end
 
+-- Write AES 128 bit SA into hw SA RX table
+-- @idx: Index into SA RX table (0-1023)
+-- @key: 128 bit AES key  (as hex string)
+-- @salt: 32 bit AES salt (as hex string)
+function mod.rx_set_key(port, idx, key, salt)
+	if idx > 1023 or idx < 0 then
+		error("Idx must be in range 0-1023")
+	end
+	if string.len(key) ~= 32 then
+		error("Key must be 128 bit (hex string).")
+	end
+	if string.len(salt) ~= 8 then
+		error("Salt must be 32 bit (hex string).")
+	end
+
+	local key_3 = tonumber(string.sub(key,  1,  8), 16) --MSB
+	local key_2 = tonumber(string.sub(key,  9, 16), 16)
+	local key_1 = tonumber(string.sub(key, 17, 24), 16)
+	local key_0 = tonumber(string.sub(key, 25, 32), 16) --LSB
+	local _salt = tonumber(salt, 16)
+
+	local IPSRXIDX__BASE		= 0x0
+	local IPSRXIDX__IPS_RX_EN	= bit.lshift(0, 0) --TODO: should probably be enabled
+	local IPSRXIDX__TABLE		= bit.lshift(3, 1) --3 means KEY table
+	local IPSRXIDX__TB_IDX		= bit.lshift(idx, 3)
+	local IPSRXIDX__READ		= bit.lshift(0, 30)
+	local IPSRXIDX__WRITE		= bit.lshift(1, 31)
+	local IPSRXIDX__VALUE = bit.bor(
+		IPSRXIDX__BASE,
+		IPSRXIDX__IPS_RX_EN,
+		IPSRXIDX__TABLE,
+		IPSRXIDX__TB_IDX,
+		IPSRXIDX__READ,
+		IPSRXIDX__WRITE)
+	--print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
+
+	--prepare registers
+	dpdkc.write_reg32(port, IPSRXKEY_3, key_3)
+	dpdkc.write_reg32(port, IPSRXKEY_2, key_2)
+	dpdkc.write_reg32(port, IPSRXKEY_1, key_1)
+	dpdkc.write_reg32(port, IPSRXKEY_0, key_0)
+	dpdkc.write_reg32(port, IPSRXSALT, _salt)
+	--push to hw
+	dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
+end
+
+function mod.rx_get_key(port, idx)
+	if idx > 1023 or idx < 0 then
+		error("Idx must be in range 0..1023")
+	end
+
+	local IPSRXIDX__BASE		= 0x0
+	local IPSRXIDX__IPS_RX_EN	= bit.lshift(0, 0) --TODO: should probably be enabled
+	local IPSRXIDX__TABLE		= bit.lshift(3, 1) --3 means KEY table
+	local IPSRXIDX__TB_IDX		= bit.lshift(idx, 3)
+	local IPSRXIDX__READ		= bit.lshift(1, 30)
+	local IPSRXIDX__WRITE		= bit.lshift(0, 31)
+	local IPSRXIDX__VALUE = bit.bor(
+		IPSRXIDX__BASE,
+		IPSRXIDX__IPS_RX_EN,
+		IPSRXIDX__TABLE,
+		IPSRXIDX__TB_IDX,
+		IPSRXIDX__READ,
+		IPSRXIDX__WRITE)
+	--print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
+
+	--pull from hw
+	dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
+
+	--fetch result
+	local key_3 = dpdkc.read_reg32(port, IPSRXKEY_3)
+	local key_2 = dpdkc.read_reg32(port, IPSRXKEY_2)
+	local key_1 = dpdkc.read_reg32(port, IPSRXKEY_1)
+	local key_0 = dpdkc.read_reg32(port, IPSRXKEY_0)
+	local _salt  = dpdkc.read_reg32(port, IPSRXSALT)
+
+	local key = uhex32(key_3)..uhex32(key_2)..uhex32(key_1)..uhex32(key_0)
+
+	return key, uhex32(_salt)
+end
 return mod

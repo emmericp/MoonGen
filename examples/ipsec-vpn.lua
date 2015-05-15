@@ -59,6 +59,11 @@ end
 
 -- rxSlave logs received packages
 function rxSlave(port, queue)
+	ipsec.rx_set_key(port, 0, "ffffffffdeadbeef77777777DEADBEEF", "ff0420ff")
+	local key, salt = ipsec.rx_get_key(port, 0)
+	print("Key:  0x"..key)
+	print("Salt: 0x"..salt)
+
 	local dev = device.get(port)
 	local bufs = memory.bufArray()
 	local total = 0
@@ -85,6 +90,6 @@ function rxSlave(port, queue)
 		total = total + pkts
 		printf("Received %d packets, current rate %.2f Mpps\n", total, pkts / elapsed / 10^6)
 	end
-	printf("Received %d packets", total)
+	print("Received "..total.." packets")
 end
 
