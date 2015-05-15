@@ -274,40 +274,46 @@ function ptpHeader:getLogMessageIntervalString()
 	return self:getLogMessageInterval()
 end
 
-function ptpHeader:fill(args)
-	self:setMessageType(args.ptpMessageType)
-	self:setVersion(args.ptpVersion or 2)
-	self:setLength(args.ptpLength)
-	self:setDomain(args.ptpDomain)
-	self:setReserved(args.ptpReserved)
-	self:setFlags(args.ptpFlags)
-	self:setCorrection(args.ptpCorrection)
-	self:setReserved2(args.ptpReserved2)
-	self:setOui(args.ptpOui)
-	self:setUuid(args.ptpUuid)
-	self:setNodePort(args.ptpNodePort)
-	self:setSequenceID(args.ptpSequenceID)
-	self:setControl(args.ptpControl)
-	self:setLogMessageInterval(args.ptpLogMessageInterval)
+function ptpHeader:fill(args, pre)
+	args = args or {}
+	pre = pre or "ptp"
+
+	self:setMessageType(args[pre .. "MessageType"])
+	self:setVersion(args[pre .. "Version"])
+	self:setLength(args[pre .. "Length"])
+	self:setDomain(args[pre .. "Domain"])
+	self:setReserved(args[pre .. "Reserved"])
+	self:setFlags(args[pre .. "Flags"])
+	self:setCorrection(args[pre .. "Correction"])
+	self:setReserved2(args[pre .. "Reserved2"])
+	self:setOui(args[pre .. "Oui"])
+	self:setUuid(args[pre .. "Uuid"])
+	self:setNodePort(args[pre .. "NodePort"])
+	self:setSequenceID(args[pre .. "SequenceID"])
+	self:setControl(args[pre .. "Control"])
+	self:setLogMessageInterval(args[pre .. "LogMessageInterval"])
 end
 
-function ptpHeader:get()
-	return { 
-		ptpMessageTyp			= self:getMessageType(),
-		ptpVersion				= self:getVersion(),
-		ptpLength				= self:getLength(),
-		ptpDomain				= self:getDomain(),
-		ptpReserved				= self:getReserved(),
-		ptpFlags				= self:getFlags(),
-		ptpCorrection			= self:getCorrection(),
-		ptpReserved2			= self:getReserved2(),
-		ptpOui					= self:getOui(),
-		ptpUuid					= self:getUuid(),
-		ptpNodePort				= self:getNodePort(),
-		ptpSequenceID			= self:getSequenceID(),
-		ptpControl				= self:getControl(),
-		ptpLogMessageInterval	= self:getLogMessageInterval()
-	}
+function ptpHeader:get(pre)
+	pre = pre or "ptp"
+
+	local args = {}
+	args[pre .. "MessageTyp"] = self:getMessageType()
+	args[pre .. "Version"] = self:getVersion()
+	args[pre .. "Length"] = self:getLength()
+	args[pre .. "Domain"] = self:getDomain()
+	args[pre .. "Reserved"] = self:getReserved()
+	args[pre .. "Flags"] = self:getFlags()
+	args[pre .. "Correction"] = self:getCorrection()
+	args[pre .. "Reserved2"] = self:getReserved2()
+	args[pre .. "Oui"] = self:getOui()
+	args[pre .. "Uuid"] = self:getUuid()
+	args[pre .. "NodePort"] = self:getNodePort()
+	args[pre .. "SequenceID"] = self:getSequenceID()
+	args[pre .. "Control"] = self:getControl()
+	args[pre .. "LogMessageInterval"] = self:getLogMessageInterval()
+
+	return args
 end
 
 function ptpHeader:getString()
@@ -331,10 +337,10 @@ function ptpHeader:resolveNextHeader()
 	return nil
 end
 
-function ptpHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+function ptpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	-- set length
-	if not namedArgs["ptpLength"] and namedArgs["pktLength"] then
-		namedArgs["ptpLength"] = namedArgs["pktLength"] - accumulatedLength
+	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
+		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - accumulatedLength
 	end
 	return namedArgs
 end
@@ -345,7 +351,7 @@ end
 ---------------------------------------------------------------------------------
 
 pkt.getPtpPacket = packetCreate("eth", "ptp")
-pkt.getL3PtpPacket = packetCreate("eth", { "ip4", "ip" }, "udp", "ptp")
+pkt.getL3PtpPacket = packetCreate("eth", "ip4", "udp", "ptp")
 
 
 ------------------------------------------------------------------------

@@ -171,37 +171,49 @@ end
 -- Per default, all members are set to default values specified in the respective set function.
 -- Optional named arguments can be used to set a member to a user-provided value.
 -- @param args Table of named arguments. Available arguments: ethSrc, ethDst, ethType
+-- @param pre prefix for namedArgs. Default 'eth'.
 -- @usage fill() -- only default values
 -- @usage fill{ ethSrc="12:23:34:45:56:67", ethType=0x137 } -- default value for ethDst; ethSrc and ethType user-specified
-function etherHeader:fill(args)
+function etherHeader:fill(args, pre)
 	args = args or {}
+	pre = pre or "eth"
 
-	args.ethSrc = args.ethSrc or "01:02:03:04:05:06"
-	args.ethDst = args.ethDst or "07:08:09:0a:0b:0c"
+	local src = pre .. "Src"
+	local dst = pre .. "Dst"
+	args[src] = args[src] or "01:02:03:04:05:06"
+	args[dst] = args[dst] or "07:08:09:0a:0b:0c"
 	
 	-- addresses can be either a string, a mac_address ctype or a device/queue object
-	if type(args.ethSrc) == "string" then
-		self:setSrcString(args.ethSrc)
-	elseif istype(macAddrType, args.ethSrc) then
-		self:setSrc(args.ethSrc)
-	elseif type(args.ethSrc) == "table" and args.ethSrc.id then
-		self:setSrcString((args.ethSrc.dev or args.ethSrc):getMacString())
+	if type(args[src]) == "string" then
+		self:setSrcString(args[src])
+	elseif istype(macAddrType, args[src]) then
+		self:setSrc(args[src])
+	elseif type(args[src]) == "table" and args[src].id then
+		self:setSrcString((args[src].dev or args[src]):getMacString())
 	end
-	if type(args.ethDst) == "string" then
-		self:setDstString(args.ethDst)
-	elseif istype(macAddrType, args.ethDst) then
-		self:setDst(args.ethDst)
-	elseif type(args.ethDst) == "table" and args.ethDst.id then
-		self:setDstString((args.ethDst.dev or args.ethDst):getMacString())
+	if type(args[dst]) == "string" then
+		self:setDstString(args[dst])
+	elseif istype(macAddrType, args[dst]) then
+		self:setDst(args[dst])
+	elseif type(args[dst]) == "table" and args[dst].id then
+		self:setDstString((args[dst].dev or args[dst]):getMacString())
 	end
-	self:setType(args.ethType)
+	self:setType(args[pre .. "Type"])
 end
 
 --- Retrieve the values of all members.
+-- @param pre prefix for namedArgs. Default 'eth'.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see etherHeader:fill
-function etherHeader:get()
-	return { ethSrc=self:getSrcString(), ethDst=self:getDstString(), ethType=self:getType() }
+function etherHeader:get(pre)
+	pre = pre or "eth"
+	
+	local args = {}
+	args[pre .. "Src"] = self:getSrcString()
+	args[pre .. "Dst"] = self:getDstString()
+	args[pre .. "Type"] = self:getType()
+	
+	return args
 end
 
 --- Retrieve the values of all members.
@@ -227,12 +239,12 @@ function etherHeader:resolveNextHeader()
 	return nil
 end
 
-function etherHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
-	-- only set ethType
-	if not namedArgs["ethType"] then
+function etherHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+	-- only set Type
+	if not namedArgs[pre .. "Type"] then
 		for name, type in pairs(mapNameType) do
 			if nextHeader == name then
-				namedArgs["ethType"] = type
+				namedArgs[pre .. "Type"] = type
 				break
 			end
 		end

@@ -117,22 +117,33 @@ end
 -- Per default, all members are set to default values specified in the respective set function.
 -- Optional named arguments can be used to set a member to a user-provided value.
 -- @param args Table of named arguments. Available arguments: udpSrc, udpDst, udpLength, udpChecksum
+-- @param pre prefix for namedArgs. Default 'udp'.
 -- @usage fill() -- only default values
 -- @usage fill{ udpSrc=44566, ip6Length=101 } -- all members are set to default values with the exception of udpSrc and udpLength
-function udpHeader:fill(args)
+function udpHeader:fill(args, pre)
 	args = args or {}
+	pre = pre or "udp"
 
-	self:setSrcPort(args.udpSrc)
-	self:setDstPort(args.udpDst)
-	self:setLength(args.udpLength)
-	self:setChecksum(args.udpChecksum)
+	self:setSrcPort(args[pre .. "Src"])
+	self:setDstPort(args[pre .. "Dst"])
+	self:setLength(args[pre .. "Length"])
+	self:setChecksum(args[pre .. "Checksum"])
 end
 
 --- Retrieve the values of all members.
+-- @param pre prefix for namedArgs. Default 'udp'.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see udpHeader:fill
-function udpHeader:get()
-	return { udpSrc=self:getSrcPort(), udpDst=self:getDstPort(), udpLength=self:getLength(), udpChecksum=self:getChecksum() }
+function udpHeader:get(pre)
+	pre = pre or "udp"
+
+	local args = {}
+	args[pre .. "Src"] = self:getSrcPort()
+	args[pre .. "Dst"] = self:getDstPort()
+	args[pre .. "Length"] = self:getLength()
+	args[pre .. "Checksum"] = self:getChecksum()
+
+	return args
 end
 
 --- Retrieve the values of all members.
@@ -162,17 +173,17 @@ function udpHeader:resolveNextHeader()
 	return nil
 end	
 
-function udpHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+function udpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	-- set length
-	if not namedArgs["udpLength"] and namedArgs["pktLength"] then
-		namedArgs["udpLength"] = namedArgs["pktLength"] - accumulatedLength
+	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
+		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - accumulatedLength
 	end
 
 	-- set dst port
-	if not namedArgs["udpDst"] then
+	if not namedArgs[pre .. "Dst"] then
 		for name, _port in pairs(mapNamePort) do
 			if nextHeader == name then
-				namedArgs["udpDst"] = type(_port) == "table" and _port[1] or _port
+				namedArgs[pre .. "Dst"] = type(_port) == "table" and _port[1] or _port
 				break
 			end
 		end
@@ -184,8 +195,8 @@ end
 --- Packets
 ----------------------------------------------------------------------------------
 
-pkt.getUdp4Packet = packetCreate("eth", { "ip4", "ip" }, "udp")
-pkt.getUdp6Packet = packetCreate("eth", { "ip6", "ip" }, "udp") 
+pkt.getUdp4Packet = packetCreate("eth", "ip4", "udp")
+pkt.getUdp6Packet = packetCreate("eth", "ip6", "udp") 
 pkt.getUdpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getUdp4Packet(self) else return pkt.getUdp6Packet(self) end end   
 
 

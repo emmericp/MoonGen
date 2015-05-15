@@ -16,7 +16,6 @@ local format = string.format
 
 ------------------------------------------------------------------------------------
 --- IP6 constants
--- TODO nextHeader uses same constants as IP protocol -> use the values from ip.lua?
 ------------------------------------------------------------------------------------
 
 local ip6 = {}
@@ -24,6 +23,7 @@ local ip6 = {}
 ip6.PROTO_TCP 	= 0x06
 ip6.PROTO_UDP 	= 0x11
 ip6.PROTO_ICMP	= 0x3a -- 58
+
 
 -------------------------------------------------------------------------------------
 --- IPv6 addresses
@@ -344,40 +344,56 @@ end
 -- Per default, all members are set to default values specified in the respective set function.
 -- Optional named arguments can be used to set a member to a user-provided value.
 -- @param args Table of named arguments. Available arguments: ip6Version, ip6TrafficClass, ip6FlowLabel, ip6Length, ip6NextHeader, ip6TTL, ip6Src, ip6Dst
+-- @param pre prefix for namedArgs. Default 'ip6'.
 -- @usage fill() -- only default values
 -- @usage fill{ ip6Src="f880::ab", ip6TTL=101 } -- all members are set to default values with the exception of ip6Src and ip6TTL
-function ip6Header:fill(args)
+function ip6Header:fill(args, pre)
 	args = args or {}
+	pre = pre or "ip6"
 
-	self:setVersion(args.ip6Version)
-	self:setTrafficClass(args.ip6TrafficClass)
-	self:setFlowLabel(args.ip6FlowLabel)
-	self:setLength(args.ip6Length)
-	self:setNextHeader(args.ip6NextHeader)
-	self:setTTL(args.ip6TTL)
+	self:setVersion(args[pre .. "Version"])
+	self:setTrafficClass(args[pre .. "TrafficClass"])
+	self:setFlowLabel(args[pre .. "FlowLabel"])
+	self:setLength(args[pre .. "Length"])
+	self:setNextHeader(args[pre .. "NextHeader"])
+	self:setTTL(args[pre .. "TTL"])
 	
-	args.ip6Src = args.ip6Src or "fe80::1"
-	args.ip6Dst = args.ip6Dst or "fe80::2"	
+	local src = pre .. "Src"
+	local dst = pre .. "Dst"
+	args[src] = args[src] or "fe80::1"
+	args[dst] = args[dst] or "fe80::2"	
 	
 	-- if for some reason the address is in 'union ip6_address' format, cope with it
-	if type(args.ip6Src) == "string" then
-		self:setSrcString(args.ip6Src)
+	if type(args[src]) == "string" then
+		self:setSrcString(args[src])
 	else
-		self:setSrc(args.ip6Src)
+		self:setSrc(args[src])
 	end
-	if type(args.ip6Dst) == "string" then
-		self:setDstString(args.ip6Dst)
+	if type(args[dst]) == "string" then
+		self:setDstString(args[dst])
 	else
-		self:setDst(args.ip6Dst)
+		self:setDst(args[dst])
 	end
 end
 
 --- Retrieve the values of all members.
+-- @param pre prefix for namedArgs. Default 'ip6'.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see ip6Header:fill
-function ip6Header:get()
-	return { ip6Src=self:getSrcString(), ip6Dst=self:getDstString(), ip6Version=self:getVersion(), ip6TrafficClass=self:getTrafficClass(), 
-			 ip6FlowLabel=self:getFlowLabel(), ip6Length=self:getLength(), ip6NextHeader=self:getNextHeader(), ip6TTL=self:getTTL() }
+function ip6Header:get(pre)
+	pre = pre or "ip6"
+
+	local args = {}
+	args[pre .. "Src"] = self:getSrcString()
+	args[pre .. "Dst"] = self:getDstString()
+	args[pre .. "Version"] = self:getVersion()
+	args[pre .. "TrafficClass"] = self:getTrafficClass()
+	args[pre .. "FlowLabel"] = self:getFlowLabel()
+	args[pre .. "Length"] = self:getLength()
+	args[pre .. "NextHeader"] = self:getNextHeader()
+	args[pre .. "TTL"] = self:getTTL()
+
+	return args
 end
 
 --- Retrieve the values of all members.
@@ -405,17 +421,17 @@ function ip6Header:resolveNextHeader()
 end
 
 -- TODO do not use static >ip<Length etc, instead use >member<Length (e.g. if member is 'innerIP' -> innerIPLength)
-function ip6Header:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+function ip6Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	-- set length
-	if not namedArgs["ip6Length"] and namedArgs["pktLength"] then
-		namedArgs["ip6Length"] = namedArgs["pktLength"] - (accumulatedLength + 40)
+	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
+		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - (accumulatedLength + 40)
 	end
 	
 	-- set protocol
-	if not namedArgs["ip6NextHeader"] then
+	if not namedArgs[pre .. "NextHeader"] then
 		for name, type in pairs(mapNameProto) do
 			if nextHeader == name then
-				namedArgs["ip6NextHeader"] = type
+				namedArgs[pre .. "NextHeader"] = type
 				break
 			end
 		end
@@ -427,7 +443,7 @@ end
 --- Packets
 ----------------------------------------------------------------------------------
 
-pkt.getIP6Packet = packetCreate("eth", { "ip6", "ip" })
+pkt.getIP6Packet = packetCreate("eth", "ip6")
 
 
 ------------------------------------------------------------------------

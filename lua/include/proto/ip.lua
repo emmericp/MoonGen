@@ -397,44 +397,64 @@ end
 -- Per default, all members are set to default values specified in the respective set function.
 -- Optional named arguments can be used to set a member to a user-provided value.
 -- @param args Table of named arguments. Available arguments: ipVersion, ipHeaderLength, ipTOS, ipLength, ipID, ipFlags, ipFragment, ipTTL, ipProtocol, ipChecksum, ipSrc, ipDst
+-- @param pre prefix for namedArgs. Default 'ip4'.
 -- @usage fill() -- only default values
 -- @usage fill{ ipSrc="1.1.1.1", ipTTL=100 } -- all members are set to default values with the exception of ipSrc and ipTTL
-function ip4Header:fill(args)
+function ip4Header:fill(args, pre)
 	args = args or {}
+	pre = pre or "ip4"
 	
-	self:setVersion(args.ipVersion)
-	self:setHeaderLength(args.ipHeaderLength)
-	self:setTOS(args.ipTOS)
-	self:setLength(args.ipLength)
-	self:setID(args.ipID)
-	self:setFlags(args.ipFlags)
-	self:setFragment(args.ipFragment)
-	self:setTTL(args.ipTTL)
-	self:setProtocol(args.ipProtocol)
-	self:setChecksum(args.ipChecksum)
+	self:setVersion(args[pre .. "Version"])
+	self:setHeaderLength(args[pre .. "HeaderLength"])
+	self:setTOS(args[pre .. "TOS"])
+	self:setLength(args[pre .. "Length"])
+	self:setID(args[pre .. "ID"])
+	self:setFlags(args[pre .. "Flags"])
+	self:setFragment(args[pre .. "Fragment"])
+	self:setTTL(args[pre .. "TTL"])
+	self:setProtocol(args[pre .. "Protocol"])
+	self:setChecksum(args[pre .. "Checksum"])
 
-	args.ipSrc = args.ipSrc or "192.168.1.1"
-	args.ipDst = args.ipDst or "192.168.1.2"
+	local src = pre .. "Src"
+	local dst = pre .. "Dst"
+	args[src] = args[src] or "192.168.1.1"
+	args[dst] = args[dst] or "192.168.1.2"
 	
 	-- if for some reason the address is in 'union ip4_address' format, cope with it
-	if type(args.ipSrc) == "string" then
-		self:setSrcString(args.ipSrc)
+	if type(args[src]) == "string" then
+		self:setSrcString(args[src])
 	else
-		self:setSrc(args.ipSrc)
+		self:setSrc(args[src])
 	end
-	if type(args.ipDst) == "string" then
-		self:setDstString(args.ipDst)
+	if type(args[dst]) == "string" then
+		self:setDstString(args[dst])
 	else
-		self:setDst(args.ipDst)
+		self:setDst(args[dst])
 	end
 end
 
 --- Retrieve the values of all members.
+-- @param pre prefix for namedArgs. Default 'ip4'.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see ip4Header:fill
-function ip4Header:get()
-	return { ipSrc=self:getSrcString(), ipDst=self:getDstString(), ipVersion=self:getVersion(), ipHeaderLength=self:getHeaderLength(), ipTOS=self:getTOS(), ipLength=self:getLength(), 
-			 ipID=self:getID(), ipFlags=self:getFlags(), ipFragment=self:getFragment(), ipTTL=self:getTTL(), ipProtocol=self:getProtocol(), ipChecksum=self:getChecksum() }
+function ip4Header:get(pre)
+	pre = pre or "ip4"
+
+	local args = {}
+	args[pre .. "Src"] = self:getSrcString()
+	args[pre .. "Dst"] = self:getDstString()
+	args[pre .. "Version"] = self:getVersion()
+	args[pre .. "HeaderLength"] = self:getHeaderLength()
+	args[pre .. "TOS"] = self:getTOS()
+	args[pre .. "Length"] = self:getLength()
+	args[pre .. "ID"] = self:getID()
+	args[pre .. "Flags"] = self:getFlags()
+	args[pre .. "Fragment"] = self:getFragment()
+	args[pre .. "TTL"] = self:getTTL()
+	args[pre .. "Protocol"] = self:getProtocol()
+	args[pre .. "Checksum"] = self:getChecksum()
+
+	return args	
 end
 
 --- Retrieve the values of all members.
@@ -462,18 +482,17 @@ function ip4Header:resolveNextHeader()
 	return nil
 end
 
--- TODO do not use static >ip<Length etc, instead use >member<Length (e.g. if member is 'innerIP' -> innerIPLength)
-function ip4Header:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+function ip4Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	-- set length
-	if not namedArgs["ipLength"] and namedArgs["pktLength"] then
-		namedArgs["ipLength"] = namedArgs["pktLength"] - accumulatedLength
+	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
+		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - accumulatedLength
 	end
 	
 	-- set protocol
-	if not namedArgs["ipProtocol"] then
+	if not namedArgs[pre .. "Protocol"] then
 		for name, type in pairs(mapNameProto) do
 			if nextHeader == name then
-				namedArgs["ipProtocol"] = type
+				namedArgs[pre .. "Protocol"] = type
 				break
 			end
 		end
@@ -486,9 +505,11 @@ end
 --- Packets
 ----------------------------------------------------------------------------------
 
-pkt.getIP4Packet = packetCreate("eth", { "ip4", "ip" }) 
+pkt.getIP4Packet = packetCreate("eth", "ip4") 
 pkt.getIPPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getIP4Packet(self) else return pkt.getIP6Packet(self) end end   
 
+
+pkt.getTestPacket = packetCreate("ip4", {"ip4", "innerIp4"}, {"ip4", "deepIp4"})
 
 ------------------------------------------------------------------------
 --- Metatypes
