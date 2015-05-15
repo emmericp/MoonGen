@@ -60,9 +60,10 @@ end
 -- rxSlave logs received packages
 function rxSlave(port, queue)
 	ipsec.rx_set_key(port, 0, "ffffffffdeadbeef77777777DEADBEEF", "ff0420ff")
-	local key, salt = ipsec.rx_get_key(port, 0)
+	local key, salt, valid, proto, decrypt, ipv6 = ipsec.rx_get_key(port, 0)
 	print("Key:  0x"..key)
 	print("Salt: 0x"..salt)
+	print("Valid ("..valid.."), Proto ("..proto.."), Decrypt ("..decrypt.."), IPv6 ("..ipv6..")")
 
 	ipsec.rx_set_ip(port, 0, "1.2.3.4")
 	local ip  = ipsec.rx_get_ip(port, 0)

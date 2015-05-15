@@ -145,7 +145,7 @@ end
 
 function mod.tx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0..1023")
+		error("Idx must be in range 0-1023")
 	end
 
 	local IPSTXIDX__BASE		= 0x0
@@ -212,20 +212,33 @@ function mod.rx_set_key(port, idx, key, salt)
 		IPSRXIDX__WRITE)
 	--print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
 
+	--TODO: assign configuration fields (valid, proto, decrypt, ipv6) dynamically
+	local IPSRXMOD__BASE		= 0x0
+	local IPSRXMOD__VALID		= bit.lshift(1, 0) -- 1=valid, 0=invalid
+	local IPSRXMOD__PROTO		= bit.lshift(1, 2) -- 1=ESP, 0=AH
+	local IPSRXMOD__DECRYPT		= bit.lshift(1, 3) -- 1=decrypt(ESP), 0=authenticate(ESP)
+	local IPSRXMOD__IPV6		= bit.lshift(0, 4) -- 1=IPv6, 0=IPv4
+	local IPSRXMOD__VALUE = bit.bor(
+		IPSRXMOD__BASE,
+		IPSRXMOD__VALID,
+		IPSRXMOD__PROTO,
+		IPSRXMOD__DECRYPT,
+		IPSRXMOD__IPV6)
+
 	--prepare registers
 	dpdkc.write_reg32(port, IPSRXKEY_3, key_3)
 	dpdkc.write_reg32(port, IPSRXKEY_2, key_2)
 	dpdkc.write_reg32(port, IPSRXKEY_1, key_1)
 	dpdkc.write_reg32(port, IPSRXKEY_0, key_0)
 	dpdkc.write_reg32(port, IPSRXSALT, _salt)
-	--TODO: prepare IPSRXMOD register before push
+	dpdkc.write_reg32(port, IPSRXMOD, IPSRXMOD__VALUE)
 	--push to hw
 	dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
 end
 
 function mod.rx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0..1023")
+		error("Idx must be in range 0-1023")
 	end
 
 	local IPSRXIDX__BASE		= 0x0
@@ -251,16 +264,21 @@ function mod.rx_get_key(port, idx)
 	local key_2 = dpdkc.read_reg32(port, IPSRXKEY_2)
 	local key_1 = dpdkc.read_reg32(port, IPSRXKEY_1)
 	local key_0 = dpdkc.read_reg32(port, IPSRXKEY_0)
-	local _salt  = dpdkc.read_reg32(port, IPSRXSALT)
+	local _salt = dpdkc.read_reg32(port, IPSRXSALT)
+	local _mode = dpdkc.read_reg32(port, IPSRXMOD)
 
+	local valid   = bit.rshift(bit.band(_mode, 0x01), 0)
+	local proto   = bit.rshift(bit.band(_mode, 0x04), 2)
+	local decrypt = bit.rshift(bit.band(_mode, 0x08), 3)
+	local ipv6    = bit.rshift(bit.band(_mode, 0x10), 4)
 	local key = uhex32(key_3)..uhex32(key_2)..uhex32(key_1)..uhex32(key_0)
 
-	return key, uhex32(_salt)
+	return key, uhex32(_salt), valid, proto, decrypt, ipv6
 end
 
 function mod.rx_set_ip(port, idx, ip_addr)
 	if idx > 127 or idx < 0 then
-		error("Idx must be in range 0..127")
+		error("Idx must be in range 0-127")
 	end
 
 	local ip, is_ipv4 = parseIPAddress(ip_addr)
@@ -305,7 +323,7 @@ end
 
 function mod.rx_get_ip(port, idx, is_ipv4)
 	if idx > 127 or idx < 0 then
-		error("Idx must be in range 0..127")
+		error("Idx must be in range 0-127")
 	end
 	if is_ipv4 == nil then
 		is_ipv4 = true
