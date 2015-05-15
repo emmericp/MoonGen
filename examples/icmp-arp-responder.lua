@@ -8,7 +8,6 @@ local packet	= require "packet"
 
 local arp		= require "proto.arp"
 local icmp		= require "proto.icmp"
-local ip		= require "proto.ip"
 
 local ffi	= require "ffi"
 

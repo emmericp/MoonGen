@@ -4,10 +4,6 @@ local pkt = require "packet"
 require "utils"
 require "headers"
 
-local eth = require "proto.ethernet"
-local ip = require "proto.ip"
-local ip6 = require "proto.ip6"
-
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
