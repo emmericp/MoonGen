@@ -64,6 +64,11 @@ function rxSlave(port, queue)
 	print("Key:  0x"..key)
 	print("Salt: 0x"..salt)
 
+	ipsec.rx_set_ip(port, 0, "1.2.3.4")
+	ipsec.rx_get_ip(port, 0)
+	ipsec.rx_set_ip(port, 1, "0123:4567:89AB:CDEF:1011:1213:1415:1617")
+	ipsec.rx_get_ip(port, 1)
+
 	local dev = device.get(port)
 	local bufs = memory.bufArray()
 	local total = 0

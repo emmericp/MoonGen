@@ -24,6 +24,13 @@ local IPSRXKEY_2	= 0x00008E24
 local IPSRXKEY_1	= 0x00008E20
 local IPSRXKEY_0	= 0x00008E1C --LSB ofkey
 local IPSRXSALT		= 0x00008E2C
+local IPSRXMOD		= 0x00008E30
+
+--Note: Field is defined in Big Endian (LS byte is first on the wire).
+local IPSRXIPADDR_3	= 0x00008E10 --LSB of IPv6 or IPv4
+local IPSRXIPADDR_2	= 0x00008E0C
+local IPSRXIPADDR_1	= 0x00008E08
+local IPSRXIPADDR_0	= 0x00008E04 --MSB of IPv6 or 0
 
 -- Helper function to return padded, unsigned 32bit hex string.
 function uhex32(x)
@@ -210,6 +217,7 @@ function mod.rx_set_key(port, idx, key, salt)
 	dpdkc.write_reg32(port, IPSRXKEY_1, key_1)
 	dpdkc.write_reg32(port, IPSRXKEY_0, key_0)
 	dpdkc.write_reg32(port, IPSRXSALT, _salt)
+	--TODO: prepare IPSRXMOD register before push
 	--push to hw
 	dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
 end
@@ -248,4 +256,82 @@ function mod.rx_get_key(port, idx)
 
 	return key, uhex32(_salt)
 end
+
+function mod.rx_set_ip(port, idx, ip_addr)
+	if idx > 127 or idx < 0 then
+		error("Idx must be in range 0..127")
+	end
+
+	local ip, is_ipv4 = parseIPAddress(ip_addr)
+
+	local ip_3 = 0x0
+	local ip_2 = 0x0
+	local ip_1 = 0x0
+	local ip_0 = 0x0
+	
+	if is_ipv4 == true then
+		ip_3 = bswap(ip)
+	else
+		ip_3 = bswap(ip.uint32[0])
+		ip_2 = bswap(ip.uint32[1])
+		ip_1 = bswap(ip.uint32[2])
+		ip_0 = bswap(ip.uint32[3])
+	end
+
+        local IPSRXIDX__BASE            = 0x0
+        local IPSRXIDX__IPS_RX_EN       = bit.lshift(0, 0) --TODO: should probably be enabled
+        local IPSRXIDX__TABLE           = bit.lshift(1, 1) --1 means IP table
+        local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
+        local IPSRXIDX__READ            = bit.lshift(0, 30)
+        local IPSRXIDX__WRITE           = bit.lshift(1, 31)
+        local IPSRXIDX__VALUE = bit.bor(
+                IPSRXIDX__BASE,
+                IPSRXIDX__IPS_RX_EN,
+                IPSRXIDX__TABLE,
+                IPSRXIDX__TB_IDX,
+                IPSRXIDX__READ,
+                IPSRXIDX__WRITE)
+        --print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
+
+	--prepare registers
+        dpdkc.write_reg32(port, IPSRXIPADDR_3, ip_3)
+        dpdkc.write_reg32(port, IPSRXIPADDR_2, ip_2)
+        dpdkc.write_reg32(port, IPSRXIPADDR_1, ip_1)
+        dpdkc.write_reg32(port, IPSRXIPADDR_0, ip_0)
+        --push to hw
+        dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
+end
+
+function mod.rx_get_ip(port, idx)
+	if idx > 127 or idx < 0 then
+		error("Idx must be in range 0..127")
+	end
+
+        local IPSRXIDX__BASE            = 0x0
+        local IPSRXIDX__IPS_RX_EN       = bit.lshift(0, 0) --TODO: should probably be enabled
+        local IPSRXIDX__TABLE           = bit.lshift(1, 1) --1 means IP table
+        local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
+        local IPSRXIDX__READ            = bit.lshift(1, 30)
+        local IPSRXIDX__WRITE           = bit.lshift(0, 31)
+        local IPSRXIDX__VALUE = bit.bor(
+                IPSRXIDX__BASE,
+                IPSRXIDX__IPS_RX_EN,
+                IPSRXIDX__TABLE,
+                IPSRXIDX__TB_IDX,
+                IPSRXIDX__READ,
+                IPSRXIDX__WRITE)
+        --print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
+
+        --pull from hw
+        dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
+	--fetch result
+        local ip_3 = dpdkc.read_reg32(port, IPSRXIPADDR_3)
+        local ip_2 = dpdkc.read_reg32(port, IPSRXIPADDR_2)
+        local ip_1 = dpdkc.read_reg32(port, IPSRXIPADDR_1)
+        local ip_0 = dpdkc.read_reg32(port, IPSRXIPADDR_0)
+
+	--TODO: how to determine ipv4/ipv6?
+	print("IP at idx "..idx..": "..uhex32(ip_3)..uhex32(ip_2)..uhex32(ip_1)..uhex32(ip_0)) --This is 128 bit in network byte order!
+end
+
 return mod
