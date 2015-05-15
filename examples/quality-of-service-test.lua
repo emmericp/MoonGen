@@ -57,7 +57,7 @@ function loadSlave(queue, port, rate)
 			ethSrc = queue, -- get the src mac from the device
 			ethDst = "10:11:12:13:14:15",
 			-- ipSrc will be set later as it varies
-			ipDst = "192.168.1.1",
+			ip4Dst = "192.168.1.1",
 			udpSrc = 1234,
 			udpDst = port,
 			-- payload will be initialized to 0x00 as new memory pools are initially empty
@@ -76,7 +76,7 @@ function loadSlave(queue, port, rate)
 			local pkt = buf:getUdpPacket()
 			-- select a randomized source IP address
 			-- you can also use a wrapping counter instead of random
-			pkt.ip.src:set(baseIP + math.random() * 255)
+			pkt.ip4.src:set(baseIP + math.random() * 255)
 			-- you can modify other fields here (e.g. different source ports or destination addresses)
 		end
 		-- send packets
@@ -174,12 +174,12 @@ function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 			ethSrc = txQueue, -- get the src mac from the device
 			ethDst = "10:11:12:13:14:15",
 			-- ipSrc will be set later as it varies
-			ipDst = "192.168.1.1",
+			ip4Dst = "192.168.1.1",
 			udpSrc = 1234,
 			udpDst = port,
 			-- payload will be initialized to 0x00 as new memory pools are initially empty
 		}
-		pkt.ip.src:set(baseIP + math.random() * 255)
+		pkt.ip4.src:set(baseIP + math.random() * 255)
 		bufs:offloadUdpChecksums()
 		rxQueue:enableTimestamps(port)
 		local lat = measureLatency(txQueue, rxQueue, bufs, rxBufs)

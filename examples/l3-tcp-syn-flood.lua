@@ -28,9 +28,9 @@ function loadSlave(port, queue, minA, numIPs)
 
 	local minIP, ipv4 = parseIPAddress(minA)
 	if minIP then
-		printf("INFO: Detected in %s address.", minIP and "IPv4" or "IPv6")
+		printf("INFO: Detected an %s address.", minIP and "IPv4" or "IPv6")
 	else
-		errorf("Invalid minIP: %s", minA)
+		errorf("ERROR: Invalid minIP: %s", minA)
 	end
 
 	-- min TCP packet size for IPv6 is 74 bytes (+ CRC)
@@ -41,7 +41,7 @@ function loadSlave(port, queue, minA, numIPs)
 	local mem = memory.createMemPool(function(buf)
 		buf:getTcpPacket(ipv4):fill{ 
 			ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
-			ipDst="192.168.1.1", 
+			ip4Dst="192.168.1.1", 
 			ip6Dst="fd06::1",
 			tcpSyn=1,
 			tcpSeqNumber=1,
@@ -65,8 +65,13 @@ function loadSlave(port, queue, minA, numIPs)
 			local pkt = buf:getTcpPacket(ipv4)
 			
 			--increment IP
-			pkt.ip.src:set(minIP)
-			pkt.ip.src:add(counter)
+			if ipv4 then
+				pkt.ip4.src:set(minIP)
+				pkt.ip4.src:add(counter)
+			else
+				pkt.ip6.src:set(minIP)
+				pkt.ip6.src:add(counter)
+			end
 			counter = incAndWrap(counter, numIPs)
 
 			-- dump first 3 packets

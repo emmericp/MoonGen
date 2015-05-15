@@ -109,8 +109,8 @@ function initUdp(buf, len)
 		pktLength = len,
 		ethSrc = "01:02:03:04:05:06",
 		ethDst = "10:11:12:13:14:15",
-		ipSrc = "10.0.0.2",
-		ipDst = "192.168.1.1",
+		ip4Src = "10.0.0.2",
+		ip4Dst = "192.168.1.1",
 		udpSrc = 1234,
 		udpDst = 5678,
 	}
@@ -121,8 +121,8 @@ function initTcp(buf, len)
 		pktLength = len,
 		ethSrc = "01:02:03:04:05:06",
 		ethDst = "10:11:12:13:14:15",
-		ipSrc = "10.0.0.2",
-		ipDst = "192.168.1.1",
+		ip4Src = "10.0.0.2",
+		ip4Dst = "192.168.1.1",
 		tcpSrc = 1234,
 		tcpDst = 5678,
 	}
@@ -148,21 +148,21 @@ function touch2ndCacheline(buf)
 end
 
 function randomSrc(buf)
-	buf:getIPPacket().ip.src:set(math.random(0, 2^32 - 1))
+	buf:getIPPacket().ip4.src:set(math.random(0, 2^32 - 1))
 end
 
 function randomDst(buf)
-	buf:getIPPacket().ip.src:set(math.random(0, 2^32 - 1))
+	buf:getIPPacket().ip4.src:set(math.random(0, 2^32 - 1))
 end
 
 function countSrc(buf)
-	buf:getIPPacket().ip.src:set(baseIP + ctr1)
+	buf:getIPPacket().ip4.src:set(baseIP + ctr1)
 	-- wrap-around point does not matter as incAndWrap takes a constant time without branches (see source code)
 	ctr1 = incAndWrap(ctr1, 4000)
 end
 
 function countDst(buf)
-	buf:getIPPacket().ip.src:set(baseIP + ctr2)
+	buf:getIPPacket().ip4.src:set(baseIP + ctr2)
 	ctr2 = incAndWrap(ctr2, 4000)
 end
 

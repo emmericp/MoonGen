@@ -40,7 +40,7 @@ function loadSlave(dev, queue, numFlows)
 			pktLength = 60,
 			ethSrc = queue,
 			ethDst = "10:11:12:13:14:15",
-			ipDst = "192.168.1.1",
+			ip4Dst = "192.168.1.1",
 			udpSrc = 1234,
 			udpDst = 5678,	
 		}
@@ -53,7 +53,7 @@ function loadSlave(dev, queue, numFlows)
 		bufs:alloc(60)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
-			pkt.ip.src:set(baseIP + flow)
+			pkt.ip4.src:set(baseIP + flow)
 			flow = incAndWrap(flow, numFlows)
 		end
 		-- UDP checksums are optional, so just IP checksums are sufficient here

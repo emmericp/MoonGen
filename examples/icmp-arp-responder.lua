@@ -72,12 +72,12 @@ function pingResponder(dev, funny)
 		if rx > 0 then
 			local buf = rxBufs[1]
 			local pkt = buf:getIcmpPacket()
-			if pkt.ip:getProtocol() == ip.PROTO_ICMP then
-				local tmp = pkt.ip.src:get()
+			if pkt.ip4:getProtocol() == ip4.PROTO_ICMP then
+				local tmp = pkt.ip4.src:get()
 				pkt.eth.dst:set(pkt.eth.src)
 				pkt.eth.src:set(devMac)
-				pkt.ip.src:set(pkt.ip.dst:get())
-				pkt.ip.dst:set(tmp)
+				pkt.ip4.src:set(pkt.ip4.dst:get())
+				pkt.ip4.dst:set(tmp)
 				pkt.icmp:setType(icmp.ECHO_REPLY.type)
 				if funny then
 					local ts = pkt.icmp.body.uint32[1]
@@ -85,12 +85,12 @@ function pingResponder(dev, funny)
 					local symbol = getSymbol(seq)
 					ts = ts - symbol
 					seq = seq + 10000
-					pkt.ip.ttl = math.min(63 - pkt.ip.ttl + 100, 200)
+					pkt.ip4.ttl = math.min(63 - pkt.ip4.ttl + 100, 200)
 					pkt.icmp.body.uint32[1] = ts
 					pkt.icmp.body.uint16[1] = bswap16(seq)
 				end
-				pkt.ip:setChecksum(0)
-				pkt.icmp:calculateChecksum(pkt.ip:getLength() - pkt.ip:getHeaderLength() * 4)
+				pkt.ip4:setChecksum(0)
+				pkt.icmp:calculateChecksum(pkt.ip4:getLength() - pkt.ip4:getHeaderLength() * 4)
 				rxBufs:offloadIPChecksums()
 				txQueue:send(rxBufs)
 			else
