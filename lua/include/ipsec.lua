@@ -2,6 +2,7 @@ local mod = {}
 
 local dpdkc	= require "dpdkc"
 local dpdk	= require "dpdk"
+local ffi	= require "ffi"
 
 -- Intel X540 registers
 local SECTXCTRL		= 0x00008800
@@ -302,9 +303,12 @@ function mod.rx_set_ip(port, idx, ip_addr)
         dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
 end
 
-function mod.rx_get_ip(port, idx)
+function mod.rx_get_ip(port, idx, is_ipv4)
 	if idx > 127 or idx < 0 then
 		error("Idx must be in range 0..127")
+	end
+	if is_ipv4 == nil then
+		is_ipv4 = true
 	end
 
         local IPSRXIDX__BASE            = 0x0
@@ -330,8 +334,21 @@ function mod.rx_get_ip(port, idx)
         local ip_1 = dpdkc.read_reg32(port, IPSRXIPADDR_1)
         local ip_0 = dpdkc.read_reg32(port, IPSRXIPADDR_0)
 
-	--TODO: how to determine ipv4/ipv6?
-	print("IP at idx "..idx..": "..uhex32(ip_3)..uhex32(ip_2)..uhex32(ip_1)..uhex32(ip_0)) --This is 128 bit in network byte order!
+	local ip = nil
+	if is_ipv4 == true then
+		local ip4 = ffi.new("union ipv4_address")
+		ip4.uint32 = ip_3
+		ip = ip4:getString()
+	else
+		local ip6 = ffi.new("union ipv6_address")
+		ip6.uint32[3] = ip_3
+		ip6.uint32[2] = ip_2
+		ip6.uint32[1] = ip_1
+		ip6.uint32[0] = ip_0
+		ip = ip6:getString()
+	end
+
+	return ip, is_ipv4
 end
 
 return mod
