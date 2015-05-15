@@ -34,8 +34,10 @@ function txSlave(port, srcQueue, dstQueue)
 	end)
 	bufs = mem:bufArray(128)
 
-	ipsec.tx_add_key(txPort, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff")
-	ipsec.tx_get_key(txPort, 0)
+	ipsec.tx_set_key(port, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff")
+	local key, salt = ipsec.tx_get_key(port, 0)
+	print("Key:  0x"..key)
+	print("Salt: 0x"..salt)
 
 	ipsec.enable(port)
 	while dpdk.running() do

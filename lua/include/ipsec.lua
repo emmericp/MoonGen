@@ -18,20 +18,25 @@ local IPSTXKEY_1	= 0x0000890C
 local IPSTXKEY_0	= 0x00008908 --LSB of key
 local IPSTXSALT		= 0x00008904
 
+--Helper function to return unsigned 32bit hex string
+function uhex32(x)
+	return bit.tohex(x, 8)
+end
+
 function dump_regs(port)
 	print("===== DUMP REGS =====")
 	local reg = dpdkc.read_reg32(port, SECTXCTRL)
-	printf("SECTXCTRL: 0x%x", reg)
+	print("SECTXCTRL: 0x"..uhex32(reg))
 	local reg = dpdkc.read_reg32(port, SECRXCTRL)
-	printf("SECRXCTRL: 0x%x", reg)
+	print("SECRXCTRL: 0x"..uhex32(reg))
 	local reg = dpdkc.read_reg32(port, SECTXSTAT)
-	printf("SECTXSTAT: 0x%x", reg)
+	print("SECTXSTAT: 0x"..uhex32(reg))
 	local reg = dpdkc.read_reg32(port, SECRXSTAT)
-	printf("SECRXSTAT: 0x%x", reg)
+	print("SECRXSTAT: 0x"..uhex32(reg))
 	local reg = dpdkc.read_reg32(port, SECTXMINIFG) --TODO: check wrong init: 0x1001 instead of 0x1
-	printf("SECTXMINIFG: 0x%x", reg)
+	print("SECTXMINIFG: 0x"..uhex32(reg))
 	local reg = dpdkc.read_reg32(port, SECTXBUFFAF)
-	printf("SECTXBUFFAF: 0x%x", reg)
+	print("SECTXBUFFAF: 0x"..uhex32(reg))
 end
 
 function mod.enable(port)
@@ -79,10 +84,13 @@ function mod.disable(port)
 end
 
 -- Write AES 128 bit SA into hw SA TX table
--- @idx: Index into SA TX table
+-- @idx: Index into SA TX table (0-1023)
 -- @key: 128 bit AES key  (as hex string)
 -- @salt: 32 bit AES salt (as hex string)
-function mod.tx_add_key(port, idx, key, salt)
+function mod.tx_set_key(port, idx, key, salt)
+	if idx > 1023 or idx < 0 then
+		error("Idx must be in range 0-1023")
+	end
 	if string.len(key) ~= 32 then
 		error("Key must be 128 bit (hex string).")
 	end
@@ -94,16 +102,20 @@ function mod.tx_add_key(port, idx, key, salt)
 	local key_2 = tonumber(string.sub(key,  9, 16), 16)
 	local key_1 = tonumber(string.sub(key, 17, 24), 16)
 	local key_0 = tonumber(string.sub(key, 25, 32), 16) --LSB
-	local _salt  = tonumber(salt, 16)
+	local _salt = tonumber(salt, 16)
 
-	local reg = dpdkc.read_reg32(port, IPSTXIDX)
-	printf("IPSTXIDX: 0x%x", reg)
-
-	printf("key_3: 0x%x", key_3)
-	printf("key_2: 0x%x", key_2)
-	printf("key_1: 0x%x", key_1)
-	printf("key_0: 0x%x", key_0)
-	printf("salt:  0x%x", _salt)
+	local IPSTXIDX__BASE		= 0x0
+	local IPSTXIDX__IPS_TX_EN	= bit.lshift(0, 0) --TODO: should probably be enabled
+	local IPSTXIDX__SA_IDX		= bit.lshift(idx, 3)
+	local IPSTXIDX__READ		= bit.lshift(0, 30)
+	local IPSTXIDX__WRITE		= bit.lshift(1, 31)
+	local IPSTXIDX__VALUE = bit.bor(
+		IPSTXIDX__BASE,
+		IPSTXIDX__IPS_TX_EN,
+		IPSTXIDX__SA_IDX,
+		IPSTXIDX__READ,
+		IPSTXIDX__WRITE)
+	--print("IPSTXIDX__VALUE: 0x"..uhex32(IPSTXIDX__VALUE))
 
 	--prepare registers
 	dpdkc.write_reg32(port, IPSTXKEY_3, key_3)
@@ -112,31 +124,41 @@ function mod.tx_add_key(port, idx, key, salt)
 	dpdkc.write_reg32(port, IPSTXKEY_0, key_0)
 	dpdkc.write_reg32(port, IPSTXSALT, _salt)
 	--push to hw
-	--TODO: make use of idx argument
-	dpdkc.write_reg32(port, IPSTXIDX, 0x80000000) --TODO: modify only relevant bits, IPS_TX_EN=0, idx/SA_IDX=0
-	--TODO: pass SA_IDX via 'TX context descriptor' to use this SA!
-
-	local reg = dpdkc.read_reg32(port, IPSTXIDX)
-	printf("IPSTXIDX: 0x%x", reg)
+	dpdkc.write_reg32(port, IPSTXIDX, IPSTXIDX__VALUE)
+	--pass SA_IDX via 'TX context descriptor' to use this SA!
 end
 
 function mod.tx_get_key(port, idx)
-	--pull from hw
-	--TODO: make use of idx argument
-	dpdkc.write_reg32(port, IPSTXIDX, 0x40000000) --TODO. modify only relevant bits, IPS_TX_EN=0, idx/SA_IDX=0
-	--dpdkc.write_reg32(port, IPSTXIDX, 0x40000008) --TODO. modify only relevant bits, IPS_TX_EN=0, idx/SA_IDX=1
+	if idx > 1023 or idx < 0 then
+		error("Idx must be in range 0..1023")
+	end
 
+	local IPSTXIDX__BASE		= 0x0
+	local IPSTXIDX__IPS_TX_EN	= bit.lshift(0, 0) --TODO: should probably be enabled
+	local IPSTXIDX__SA_IDX		= bit.lshift(idx, 3)
+	local IPSTXIDX__READ		= bit.lshift(1, 30)
+	local IPSTXIDX__WRITE		= bit.lshift(0, 31)
+	local IPSTXIDX__VALUE = bit.bor(
+		IPSTXIDX__BASE,
+		IPSTXIDX__IPS_TX_EN,
+		IPSTXIDX__SA_IDX,
+		IPSTXIDX__READ,
+		IPSTXIDX__WRITE)
+	--print("IPSTXIDX__VALUE: 0x"..uhex32(IPSTXIDX__VALUE))
+
+	--pull from hw
+	dpdkc.write_reg32(port, IPSTXIDX, IPSTXIDX__VALUE)
+
+	--fetch result
 	local key_3 = dpdkc.read_reg32(port, IPSTXKEY_3)
 	local key_2 = dpdkc.read_reg32(port, IPSTXKEY_2)
 	local key_1 = dpdkc.read_reg32(port, IPSTXKEY_1)
 	local key_0 = dpdkc.read_reg32(port, IPSTXKEY_0)
-	local salt  = dpdkc.read_reg32(port, IPSTXSALT)
+	local _salt  = dpdkc.read_reg32(port, IPSTXSALT)
 
-	printf("key_3: 0x%x", key_3)
-	printf("key_2: 0x%x", key_2)
-	printf("key_1: 0x%x", key_1)
-	printf("key_0: 0x%x", key_0)
-	printf("salt:  0x%x", salt)
+	local key = uhex32(key_3)..uhex32(key_2)..uhex32(key_1)..uhex32(key_0)
+
+	return key, uhex32(_salt)
 end
 
 return mod
