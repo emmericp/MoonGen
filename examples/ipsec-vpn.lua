@@ -72,6 +72,11 @@ function rxSlave(port, queue)
 	local ip = ipsec.rx_get_ip(port, 1, false)
 	print("IP: "..ip)
 
+	ipsec.rx_set_spi(port, 0, 0xdeadbeef, 0)
+	local spi, ip_idx = ipsec.rx_get_spi(port, 0)
+	print("SPI:    0x"..bit.tohex(spi, 8))
+	print("IP_IDX: "..ip_idx)
+
 	local dev = device.get(port)
 	local bufs = memory.bufArray()
 	local total = 0

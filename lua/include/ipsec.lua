@@ -33,6 +33,10 @@ local IPSRXIPADDR_2	= 0x00008E0C
 local IPSRXIPADDR_1	= 0x00008E08
 local IPSRXIPADDR_0	= 0x00008E04 --MSB of IPv6 or 0
 
+--Note: Field is defined in Big Endian (LS byte is first on the wire).
+local IPSRXSPI		= 0x00008E14
+local IPSRXIPIDX	= 0x00008E18
+
 -- Helper function to return padded, unsigned 32bit hex string.
 function uhex32(x)
 	return bit.tohex(x, 8)
@@ -367,6 +371,68 @@ function mod.rx_get_ip(port, idx, is_ipv4)
 	end
 
 	return ip, is_ipv4
+end
+
+function mod.rx_set_spi(port, idx, spi, ip_idx)
+	if idx > 1023 or idx < 0 then
+		error("Idx must be in range 0-1023")
+	end
+	if spi > 0xFFFFFFFF or spi < 0 then
+		error("Spi must be in range 0x0-0xFFFFFFFF")
+	end
+	if ip_idx > 127 or ip_idx < 0 then
+		error("IP_Idx must be in range 0-127")
+	end
+
+	local IPSRXIDX__BASE            = 0x0
+	local IPSRXIDX__IPS_RX_EN       = bit.lshift(0, 0) --TODO: should probably be enabled
+	local IPSRXIDX__TABLE           = bit.lshift(2, 1) --2 means SPI table
+	local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
+	local IPSRXIDX__READ            = bit.lshift(0, 30)
+	local IPSRXIDX__WRITE           = bit.lshift(1, 31)
+	local IPSRXIDX__VALUE = bit.bor(
+		IPSRXIDX__BASE,
+		IPSRXIDX__IPS_RX_EN,
+		IPSRXIDX__TABLE,
+		IPSRXIDX__TB_IDX,
+		IPSRXIDX__READ,
+		IPSRXIDX__WRITE)
+	--print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
+
+	--prepare registers
+	dpdkc.write_reg32(port, IPSRXSPI, bswap(spi)) --network byte order!
+	dpdkc.write_reg32(port, IPSRXIPIDX, ip_idx) --affects only bits 6:0 (i.e. 0-127)
+        --push to hw
+        dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
+end
+
+function mod.rx_get_spi(port, idx)
+	if idx > 1023 or idx < 0 then
+		error("Idx must be in range 0-1023")
+	end
+
+	local IPSRXIDX__BASE            = 0x0
+	local IPSRXIDX__IPS_RX_EN       = bit.lshift(0, 0) --TODO: should probably be enabled
+	local IPSRXIDX__TABLE           = bit.lshift(2, 1) --2 means SPI table
+	local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
+	local IPSRXIDX__READ            = bit.lshift(1, 30)
+	local IPSRXIDX__WRITE           = bit.lshift(0, 31)
+	local IPSRXIDX__VALUE = bit.bor(
+		IPSRXIDX__BASE,
+		IPSRXIDX__IPS_RX_EN,
+		IPSRXIDX__TABLE,
+		IPSRXIDX__TB_IDX,
+		IPSRXIDX__READ,
+		IPSRXIDX__WRITE)
+	--print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
+
+        --pull from hw
+        dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
+	--fetch result
+	local spi    = dpdkc.read_reg32(port, IPSRXSPI) --network byte order!
+	local ip_idx = dpdkc.read_reg32(port, IPSRXIPIDX)
+
+	return bswap(spi), bit.band(ip_idx, 0xffffff80)
 end
 
 return mod
