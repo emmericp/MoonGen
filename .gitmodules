@@ -2,3 +2,7 @@
 	path = deps/luajit
 	url = https://github.com/emmericp/luajit.git
 	ignore = untracked
+[submodule "deps/dpdk"]
+	path = deps/dpdk
+	url = https://github.com/emmericp/dpdk.git
+	branch = moongen-modifications
