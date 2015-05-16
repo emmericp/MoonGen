@@ -61,11 +61,6 @@ local TSAUXC_DISABLE		= bit.lshift(1, 31)
 
 local SRRCTL_TIMESTAMP		= bit.lshift(1, 30)
 
--- offloading flags
-local PKT_TX_IEEE1588_TMST	= 0x8000
-local PKT_TX_IP_CKSUM		= 0x1000
-local PKT_TX_UDP_CKSUM		= 0x6000
-
 
 ---
 -- @deprecated
@@ -76,7 +71,7 @@ function mod.fillL2Packet(buf, seq)
 	buf:getPtpPacket():fill{
 		ptpSequenceID = seq
 	}
-	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
+	buf.ol_flags = bit.bor(buf.ol_flags, dpdk.PKT_TX_IEEE1588_TMST)
 end
 
 ---
@@ -98,7 +93,7 @@ function mod.fillPacket(buf, port, size, ignoreBadSize)
 	end
 	buf.pkt_len = size
 	buf.data_len = size
-	buf.ol_flags = bit.bor(buf.ol_flags, PKT_TX_IEEE1588_TMST)
+	buf.ol_flags = bit.bor(buf.ol_flags, dpdk.PKT_TX_IEEE1588_TMST)
 	local data = ffi.cast("uint8_t*", buf:getData())
 	data[0] = 0x00 -- dst mac
 	data[1] = 0x25
