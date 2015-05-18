@@ -15,6 +15,12 @@ int mg_lpm_table_entry_add(
 	int *key_found,
 	void **entry_ptr);
 
+int mg_lpm_table_entry_add_simple(
+    void *table,
+    uint32_t ip,
+    uint8_t depth,
+    void *entry);
+
 int mg_lpm_table_entry_delete(
 	void *table,
 	void *key,
