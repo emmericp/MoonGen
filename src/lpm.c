@@ -30,6 +30,13 @@ int mg_lpm_table_free(void *table){
   return rte_table_lpm_ops.f_free(table);
 }
 
+//void printhex(void* data, int len){
+//  uint8_t *data8 = data;
+//  while(len--){
+//    printf("%2x ", data8++);
+//  }
+//}
+
 int mg_lpm_table_entry_add_simple(
     void *table,
     uint32_t ip,
@@ -38,9 +45,13 @@ int mg_lpm_table_entry_add_simple(
   struct rte_table_lpm_key key;
   key.ip = ip;
   key.depth = depth;
-  int *key_found;
-  void **entry_ptr;
-  return rte_table_lpm_ops.f_add(table, key, entry, key_found, entry_ptr);
+  printf("add key: ");
+  printhex(&key, 5);
+  printf("add entry: ");
+  printhex(entry, 11);
+  int key_found;
+  void *entry_ptr;
+  return rte_table_lpm_ops.f_add(table, &key, entry, &key_found, &entry_ptr);
 }
 
 int mg_lpm_table_entry_add(

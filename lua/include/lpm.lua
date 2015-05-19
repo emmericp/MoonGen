@@ -1,10 +1,11 @@
 local ffi = require "ffi"
 
 --require "utils"
-local band, lshift = bit.band, bit.lsift
+local band, lshift = bit.band, bit.lshift
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
-local burst = require "burst"
+local serpent = require "Serpent"
+--local burst = require "burst"
 
 ffi.cdef [[
 // table wrapper
@@ -53,9 +54,9 @@ struct mg_lpm4_table_entry {
 };
 
 struct mg_lpm4_routes {
-  struct mg_lpm4_table_entry entries[64]
-  uint64_t hit_mask
-}
+  struct mg_lpm4_table_entry entries[64];
+  uint64_t hit_mask;
+};
 
 int printf(const char *fmt, ...);
 
@@ -65,11 +66,13 @@ int printf(const char *fmt, ...);
 local mod = {}
 
 local mg_lpm4Table = {}
+mg_lpm4Table.__index = mg_lpm4Table
 
 --- Create a new LPM lookup table.
 -- @param socket optional (default = socket of the calling thread), CPU socket, where memory for the table should be allocated.
 -- @return the table handler
-function mod:createLpm4Table(socket)
+function mod.createLpm4Table(socket, table)
+  -- FIXME: understand getCore and select
   socket = socket or select(2, dpdk.getCore())
     -- configure parameters for the LPM table
   local params = ffi.new("struct rte_table_lpm_params")
@@ -77,7 +80,7 @@ function mod:createLpm4Table(socket)
   params.entry_unique_size = 5
   params.offset = 0
   return setmetatable({
-    table = ffi.C.mg_lpm_table_create(params, socket, ffi.sizeof("struct mg_lpm_table_entry"))
+    table = table or ffi.C.mg_lpm_table_create(params, socket, ffi.sizeof("struct mg_lpm4_table_entry"))
   }, mg_lpm4Table)
 end
 
@@ -101,17 +104,22 @@ end
 -- @param mask optional (default = all packets), bitmask, for which packets the lookup should be performed
 -- @param routes Preallocated routing entry list (mg_lpmRoutes)
 function mg_lpm4Table:lookupBurst(packets, mask, routes)
-  if(not(mask)) then
-    -- TODO: which one is faster:
-    -- mask = math.pow(2,packets.size) - 1
-    mask = lshift(1,packets.size) - 1
-  end
-  return ffi.C.mg_lpm_table_lookup(self.table, packets.array, mask, routes.hitMask, routes.entries)
+  --local bmask = mask or lshift(1,packets.size)-1
+  local bmask = lshift(1,packets.size)-1
+  -- if(not(mask)) then
+  --   -- TODO: which one is faster:
+  --   -- mask = math.pow(2,packets.size) - 1
+  --   mask = lshift(1,packets.size) - 1
+  -- end
+  return ffi.C.mg_lpm_table_lookup(self.table, packets.array, bmask, routes.hitMask, routes.entries)
 end
 
+function mg_lpm4Table:__serialize()
+	return "require 'lpm'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('lpm')"), true
+end
 --- Constructs a LPM table entry for IPv4
 -- @return LPM table entry of ctype "struct mg_lpm4_table_entry"
-function mod:constructLpm4TableEntry(ip_next_hop, interface, mac_next_hop)
+function mod.constructLpm4TableEntry(ip_next_hop, interface, mac_next_hop)
   entry = ffi.new("struct mg_lpm4_table_entry")
   entry.ip_next_hop = ip_next_hop
   entry.interface = interface
@@ -119,7 +127,7 @@ function mod:constructLpm4TableEntry(ip_next_hop, interface, mac_next_hop)
   return entry
 end
 
-function mod:allocateLpm4Routes()
+function mod.allocateLpm4Routes()
   return ffi.new("struct mg_lpm4_routes")
 end
 
@@ -130,12 +138,13 @@ mg_lpm4Routes.__index = mg_lpm4Routes
 -- @return corresponding routing entry, if valid. false otherwise
 function mg_lpm4Routes.__index(self, k)
 	-- TODO: is this as fast as I hope it to be?
-  self.hit_mask & (1<<(k-1))
+  --self.hit_mask & (1<<(k-1))
 	if type(k) == "number" then
-    local hit = band(self.hit_mask, lshift(1,k-1)) != 0
+    local hit = band(self.hit_mask, lshift(1,k-1)) ~= 0
     return hit and self.entries[i-1]
   else
-    return self[k]
+    --return self[k]
+    return false
   end
 end
 
