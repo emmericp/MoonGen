@@ -51,6 +51,14 @@ function clear_bit32(reg32, idx)
 	return bit.band(reg32, mask)
 end
 
+-- Helper function to set a single bit
+function set_bit32(reg32, idx)
+	if idx < 0 or idx > 31 then
+		error("Idx must be in range 0-31")
+	end
+	return bit.bor(reg32, bit.lshift(0x1, idx))
+end
+
 -- Helper function to clear the bits (MSB) from..to (LSB)
 function clear_bits32(reg32, from, to)
 	local tmp = reg32
@@ -58,6 +66,16 @@ function clear_bits32(reg32, from, to)
 		tmp = clear_bit32(tmp, i)
 	end
 	return tmp
+end
+
+-- Helper function to set the bits (MSB) from..to (LSB)
+function set_bits32(reg32, from, to, value)
+	local upper_limit = math.pow(2, ((from-to)+1))-1 --i.e. (2^num_bits)-1
+	if value < 0 or value > upper_limit then
+		error("Value must be in range 0-"..upper_limit)
+	end
+	local tmp = clear_bits32(reg32, from, to)
+	return bit.bor(tmp, bit.lshift(value, to))
 end
 
 function dump_regs(port)
@@ -80,20 +98,12 @@ function mod.enable(port)
 	print("IPsec enable, port: "..port)
 	dump_regs(port)
 
-	-- Stop TX data path (set TX_DIS bit).
-	local SECTXCTRL__BASE		= dpdkc.read_reg32(port, SECTXCTRL)
-	local SECTXCTRL__TX_DIS		= bit.lshift(1, 1)
-	local SECTXCTRL__VALUE = bit.bor(
-		SECTXCTRL__BASE,
-		SECTXCTRL__TX_DIS)
+	-- Stop TX data path (set TX_DIS bit)
+	local SECTXCTRL__VALUE = set_bit32(dpdkc.read_reg32(port, SECTXCTRL), 1) --set TX_DIS
 	dpdkc.write_reg32(port, SECTXCTRL, SECTXCTRL__VALUE)
 
-	-- Stop RX data path (set RX_DIS bit).
-	local SECRXCTRL__BASE		= dpdkc.read_reg32(port, SECRXCTRL)
-	local SECRXCTRL__RX_DIS		= bit.lshift(1, 1)
-	local SECRXCTRL__VALUE = bit.bor(
-		SECRXCTRL__BASE,
-		SECRXCTRL__RX_DIS)
+	-- Stop RX data path (set RX_DIS bit)
+	local SECRXCTRL__VALUE = set_bit32(dpdkc.read_reg32(port, SECRXCTRL), 1) --set RX_DIS
 	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
 
 	-- Wait for the data paths to be emptied by hardware (check SECTX/RX_RDY bits).
@@ -106,47 +116,28 @@ function mod.enable(port)
 	until SECTXSTAT__SECTX_RDY == 0x1 and SECRXSTAT__SECRX_RDY == 0x1
 
 	-- Set MINSECIFG to 0x3
-	local SECTXMINIFG__BASE		= clear_bits32(dpdkc.read_reg32(port, SECTXMINIFG), 3, 0) --clear MINSECIFG
-	local SECTXMINIFG__MINSECIFG	= bit.lshift(0x3, 0)
-	local SECTXMINIFG__VALUE = bit.bor(
-		SECTXMINIFG__BASE,
-		SECTXMINIFG__MINSECIFG)
+	local SECTXMINIFG__VALUE = set_bits32(dpdkc.read_reg32(port, SECTXMINIFG), 3, 0, 0x3) --set MINSECIFG
 	dpdkc.write_reg32(port, SECTXMINIFG, SECTXMINIFG__VALUE)
 
 	-- Set FULLTHRESH to 0x15
-	local SECTXBUFFAF__BASE		= clear_bits32(dpdkc.read_reg32(port, SECTXBUFFAF), 9, 0) --clear FULLTHRESH
-	local SECTXBUFFAF__FULLTHRESH	= bit.lshift(0x15, 0)
-	local SECTXBUFFAF__VALUE = bit.bor(
-		SECTXBUFFAF__BASE,
-		SECTXBUFFAF__FULLTHRESH)
+	local SECTXBUFFAF__VALUE = set_bits32(dpdkc.read_reg32(port, SECTXBUFFAF), 9, 0, 0x15) --set FULLTHRESH
 	dpdkc.write_reg32(port, SECTXBUFFAF, SECTXBUFFAF__VALUE)
 
 	-- Enable TX crypto engine
-	local SECTXCTRL__BASE		= clear_bit32(dpdkc.read_reg32(port, SECTXCTRL), 0) --clear SECTX_DIS
-	local SECTXCTRL__STORE_FORWARD	= bit.lshift(1, 2)
-	local SECTXCTRL__VALUE = bit.bor(
-		SECTXCTRL__BASE,
-		SECTXCTRL__STORE_FORWARD)
+	local SECTXCTRL__VALUE = clear_bit32(dpdkc.read_reg32(port, SECTXCTRL), 0) --clear SECTX_DIS
+	SECTXCTRL__VALUE = set_bit32(SECTXCTRL__VALUE, 2) --set STORE_FORWARD
 	dpdkc.write_reg32(port, SECTXCTRL, SECTXCTRL__VALUE)
 
 	-- Enable RX crypto engine
-	local SECRXCTRL__VALUE		= clear_bit32(dpdkc.read_reg32(port, SECRXCTRL), 0) --clear SECRX_DIS
+	local SECRXCTRL__VALUE = clear_bit32(dpdkc.read_reg32(port, SECRXCTRL), 0) --clear SECRX_DIS
 	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
 
 	-- Enable IPsec TX SA lookup
-	local IPSTXIDX__BASE		= dpdkc.read_reg32(port, IPSTXIDX)
-	local IPSTXIDX__IPS_TX_EN	= bit.lshift(1, 0)
-	local IPSTXIDX__VALUE = bit.bor(
-		IPSTXIDX__BASE,
-		IPSTXIDX__IPS_TX_EN)
+	local IPSTXIDX__VALUE = set_bit32(dpdkc.read_reg32(port, IPSTXIDX), 0) --set IPS_TX_EN
 	dpdkc.write_reg32(port, IPSTXIDX, IPSTXIDX__VALUE)
 
 	-- Enable IPsec RX SA lookup
-	local IPSRXIDX__BASE		= dpdkc.read_reg32(port, IPSRXIDX)
-	local IPSRXIDX__IPS_RX_EN	= bit.lshift(1, 0)
-	local IPSRXIDX__VALUE = bit.bor(
-		IPSRXIDX__BASE,
-		IPSRXIDX__IPS_RX_EN)
+	local IPSRXIDX__VALUE = set_bit32(dpdkc.read_reg32(port, IPSRXIDX), 0) --set IPS_RX_EN
 	dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
 
 	-- Restart TX data path (clear TX_DIS bit)
@@ -161,25 +152,57 @@ function mod.enable(port)
 end
 
 function mod.disable(port)
-	printf("IPsec disable, port: %d", port)
+	print("IPsec disable, port: "..port)
 	dump_regs(port)
 
-	dpdkc.write_reg32(port, SECTXCTRL, 0x1) --TODO: only modify TX_DIS bit
-	dpdkc.write_reg32(port, SECRXCTRL, 0x1) --TODO: only modify RX_DIS bit
-	--TODO: check only relevant bits
-	while dpdkc.read_reg32(port, SECTXSTAT) ~= 0x1 or dpdkc.read_reg32(port, SECRXSTAT) ~= 0x1 do
-		print("Waiting for registers to be asserted by hardware...")
-		dump_regs()
-	end
-	--TODO: clear IPSTXIDX.IPS_TX_EN
-	--TODO: clear IPSRXIDX.IPS_RX_EN
-	dpdkc.write_reg32(port, SECTXCTRL, 0x1) --TODO: only modify TX_DIS bit
-	dpdkc.write_reg32(port, SECRXCTRL, 0x1) --TODO: only modify RX_DIS bit
-	dpdkc.write_reg32(port, SECTXBUFFAF, 0x250) --TODO: only modify FULLTHRESH bit
-	dpdkc.write_reg32(port, SECTXCTRL, 0x0) --TODO: only modify TX_DIS bit
-	dpdkc.write_reg32(port, SECRXCTRL, 0x0) --TODO: only modify RX_DIS bit
+	-- Stop TX data path (set TX_DIS bit)
+	local SECTXCTRL__VALUE = set_bit32(dpdkc.read_reg32(port, SECTXCTRL), 1) --set TX_DIS
+	dpdkc.write_reg32(port, SECTXCTRL, SECTXCTRL__VALUE)
 
-	dpdk.sleepMillis(1000)
+	-- Stop RX data path (set RX_DIS bit)
+	local SECRXCTRL__VALUE = set_bit32(dpdkc.read_reg32(port, SECRXCTRL), 1) --set RX_DIS
+	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
+
+	-- Wait for the data paths to be emptied by hardware (check SECTX/RX_RDY bits).
+	repeat
+		print("Waiting for registers to be asserted by hardware...")
+		dpdk.sleepMillis(100) -- wait 100ms before poll
+		local SECTXSTAT__SECTX_RDY = bit.band(dpdkc.read_reg32(port, SECTXSTAT), 0x1)
+		local SECRXSTAT__SECRX_RDY = bit.band(dpdkc.read_reg32(port, SECRXSTAT), 0x1)
+		print("SECTX_RDY: "..SECTXSTAT__SECTX_RDY..", SECRX_RDY: "..SECRXSTAT__SECRX_RDY)
+	until SECTXSTAT__SECTX_RDY == 0x1 and SECRXSTAT__SECRX_RDY == 0x1
+
+	-- Disable IPsec TX SA lookup
+	local IPSTXIDX__VALUE = clear_bit32(dpdkc.read_reg32(port, IPSTXIDX), 0) --clear IPS_TX_EN
+	dpdkc.write_reg32(port, IPSTXIDX, IPSTXIDX__VALUE)
+
+	-- Disable IPsec RX SA lookup
+	local IPSRXIDX__VALUE = clear_bit32(dpdkc.read_reg32(port, IPSRXIDX), 0) --clear IPS_RX_EN
+	dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
+
+	--TODO: what about MINSECIFG?
+
+	-- Set FULLTHRESH to 0x250
+	local SECTXBUFFAF__VALUE = set_bits32(dpdkc.read_reg32(port, SECTXBUFFAF), 9, 0, 0x250) --set FULLTHRESH
+	dpdkc.write_reg32(port, SECTXBUFFAF, SECTXBUFFAF__VALUE)
+
+	-- Disable TX crypto engine
+	local SECTXCTRL__VALUE = set_bit32(dpdkc.read_reg32(port, SECTXCTRL), 0) --set SECTX_DIS
+	SECTXCTRL__VALUE = clear_bit32(SECTXCTRL__VALUE, 2) --clear STORE_FORWARD
+	dpdkc.write_reg32(port, SECTXCTRL, SECTXCTRL__VALUE)
+
+	-- Disable RX crypto engine
+	local SECRXCTRL__VALUE = set_bit32(dpdkc.read_reg32(port, SECRXCTRL), 0) --set SECRX_DIS
+	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
+
+	-- Restart TX data path (clear TX_DIS bit)
+	local SECTXCTRL__VALUE = clear_bit32(dpdkc.read_reg32(port, SECTXCTRL), 1) --clear TX_DIS
+	dpdkc.write_reg32(port, SECTXCTRL, SECTXCTRL__VALUE)
+
+	-- Restart RX data path (clear RX_DIS bit)
+	local SECRXCTRL__VALUE = clear_bit32(dpdkc.read_reg32(port, SECRXCTRL), 1) --clear RX_DIS
+	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
+
 	dump_regs(port)
 end
 
