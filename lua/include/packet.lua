@@ -111,6 +111,15 @@ function pkt:dump()
 	p:dump(self.pkt.pkt_len)
 end
 
+-------------------------------------------------------------------------------------------------------
+--- IPSec offloading
+-------------------------------------------------------------------------------------------------------
+
+function pkt:offloadIPSec()
+	-- Set IPSec offload flag in advanced data transmit descriptor.
+	self.pkt.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPSEC)
+	-- TODO: Set SA_IDX, Encryption, IPSEC_TYPE in advanced context transmit descriptor
+end
 
 -------------------------------------------------------------------------------------------------------
 --- Checksum offloading

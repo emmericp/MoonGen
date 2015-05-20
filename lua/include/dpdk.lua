@@ -11,6 +11,7 @@ mod.PKT_TX_IPV4_CSUM		= 0x1000
 mod.PKT_TX_TCP_CKSUM     	= 0x2000
 mod.PKT_TX_UDP_CKSUM		= 0x6000
 mod.PKT_TX_NO_CRC_CSUM		= 0x0001
+mod.PKT_TX_IPSEC		= 0x0002
 mod.PKT_TX_IEEE1588_TMST	= 0x8000
 
 local function fileExists(f)

@@ -456,6 +456,13 @@ tx_desc_cksum_flags_to_olinfo(uint16_t ol_flags)
 }
 
 static inline uint32_t
+tx_desc_ipsec_flags_to_olinfo(uint16_t ol_flags)
+{
+	static const uint32_t ipsec_olinfo[2] = {0, IXGBE_ADVTXD_POPTS_IPSEC};
+	return ipsec_olinfo[(ol_flags & PKT_TX_IPSEC) != 0];
+}
+
+static inline uint32_t
 tx_desc_vlan_flags_to_cmdtype(uint16_t ol_flags)
 {
 	static const uint32_t vlan_cmd[2] = {0, IXGBE_ADVTXD_DCMD_VLE};
@@ -744,6 +751,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 */
 			cmd_type_len  |= tx_desc_vlan_flags_to_cmdtype(ol_flags);
 			olinfo_status |= tx_desc_cksum_flags_to_olinfo(ol_flags);
+			olinfo_status |= tx_desc_ipsec_flags_to_olinfo(ol_flags);
 			olinfo_status |= ctx << IXGBE_ADVTXD_IDX_SHIFT;
 		}
 
