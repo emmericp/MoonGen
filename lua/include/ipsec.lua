@@ -42,6 +42,24 @@ function uhex32(x)
 	return bit.tohex(x, 8)
 end
 
+-- Helper function to clear a single bit
+function clear_bit32(reg32, idx)
+	if idx < 0 or idx > 31 then
+		error("Idx must be in range 0-31")
+	end
+	local mask = bit.bnot(bit.lshift(0x1, idx))
+	return bit.band(reg32, mask)
+end
+
+-- Helper function to clear the bits (MSB) from..to (LSB)
+function clear_bits32(reg32, from, to)
+	local tmp = reg32
+	for i=from,to,-1 do
+		tmp = clear_bit32(tmp, i)
+	end
+	return tmp
+end
+
 function dump_regs(port)
 	print("===== DUMP REGS =====")
 	local reg = dpdkc.read_reg32(port, SECTXCTRL)
@@ -52,30 +70,93 @@ function dump_regs(port)
 	print("SECTXSTAT: 0x"..uhex32(reg))
 	local reg = dpdkc.read_reg32(port, SECRXSTAT)
 	print("SECRXSTAT: 0x"..uhex32(reg))
-	local reg = dpdkc.read_reg32(port, SECTXMINIFG) --TODO: check wrong init: 0x1001 instead of 0x1
+	local reg = dpdkc.read_reg32(port, SECTXMINIFG)
 	print("SECTXMINIFG: 0x"..uhex32(reg))
 	local reg = dpdkc.read_reg32(port, SECTXBUFFAF)
 	print("SECTXBUFFAF: 0x"..uhex32(reg))
 end
 
 function mod.enable(port)
-	printf("IPsec enable, port: %d", port)
+	print("IPsec enable, port: "..port)
 	dump_regs(port)
 
-	dpdkc.write_reg32(port, SECTXCTRL, 0x1) --TODO: only modify TX_DIS bit
-	dpdkc.write_reg32(port, SECRXCTRL, 0x1) --TODO: only modify RX_DIS bit
-	--TODO: check only relevant bits
-	while dpdkc.read_reg32(port, SECTXSTAT) ~= 0x1 or dpdkc.read_reg32(port, SECRXSTAT) ~= 0x1 do
-		print("Waiting for registers to be asserted by hardware...")
-		dump_regs()
-	end
-	dpdkc.write_reg32(port, SECTXCTRL, 0x0) --TODO: only modify TX_DIS bit
-	dpdkc.write_reg32(port, SECRXCTRL, 0x0) --TODO: only modify RX_DIS bit
-	dpdkc.write_reg32(port, SECTXMINIFG, 0x3) --TODO: only modify MINSECIFG bits
-	dpdkc.write_reg32(port, SECTXCTRL, 0x4) --TODO only modify STORE_FORWARD bit
-	dpdkc.write_reg32(port, SECTXBUFFAF, 0x15) --TODO: only modify FULLTHRESH bit
+	-- Stop TX data path (set TX_DIS bit).
+	local SECTXCTRL__BASE		= dpdkc.read_reg32(port, SECTXCTRL)
+	local SECTXCTRL__TX_DIS		= bit.lshift(1, 1)
+	local SECTXCTRL__VALUE = bit.bor(
+		SECTXCTRL__BASE,
+		SECTXCTRL__TX_DIS)
+	dpdkc.write_reg32(port, SECTXCTRL, SECTXCTRL__VALUE)
 
-	dpdk.sleepMillis(1000)
+	-- Stop RX data path (set RX_DIS bit).
+	local SECRXCTRL__BASE		= dpdkc.read_reg32(port, SECRXCTRL)
+	local SECRXCTRL__RX_DIS		= bit.lshift(1, 1)
+	local SECRXCTRL__VALUE = bit.bor(
+		SECRXCTRL__BASE,
+		SECRXCTRL__RX_DIS)
+	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
+
+	-- Wait for the data paths to be emptied by hardware (check SECTX/RX_RDY bits).
+	repeat
+		print("Waiting for registers to be asserted by hardware...")
+		dpdk.sleepMillis(100) -- wait 100ms before poll
+		local SECTXSTAT__SECTX_RDY = bit.band(dpdkc.read_reg32(port, SECTXSTAT), 0x1)
+		local SECRXSTAT__SECRX_RDY = bit.band(dpdkc.read_reg32(port, SECRXSTAT), 0x1)
+		print("SECTX_RDY: "..SECTXSTAT__SECTX_RDY..", SECRX_RDY: "..SECRXSTAT__SECRX_RDY)
+	until SECTXSTAT__SECTX_RDY == 0x1 and SECRXSTAT__SECRX_RDY == 0x1
+
+	-- Set MINSECIFG to 0x3
+	local SECTXMINIFG__BASE		= clear_bits32(dpdkc.read_reg32(port, SECTXMINIFG), 3, 0) --clear MINSECIFG
+	local SECTXMINIFG__MINSECIFG	= bit.lshift(0x3, 0)
+	local SECTXMINIFG__VALUE = bit.bor(
+		SECTXMINIFG__BASE,
+		SECTXMINIFG__MINSECIFG)
+	dpdkc.write_reg32(port, SECTXMINIFG, SECTXMINIFG__VALUE)
+
+	-- Set FULLTHRESH to 0x15
+	local SECTXBUFFAF__BASE		= clear_bits32(dpdkc.read_reg32(port, SECTXBUFFAF), 9, 0) --clear FULLTHRESH
+	local SECTXBUFFAF__FULLTHRESH	= bit.lshift(0x15, 0)
+	local SECTXBUFFAF__VALUE = bit.bor(
+		SECTXBUFFAF__BASE,
+		SECTXBUFFAF__FULLTHRESH)
+	dpdkc.write_reg32(port, SECTXBUFFAF, SECTXBUFFAF__VALUE)
+
+	-- Enable TX crypto engine
+	local SECTXCTRL__BASE		= clear_bit32(dpdkc.read_reg32(port, SECTXCTRL), 0) --clear SECTX_DIS
+	local SECTXCTRL__STORE_FORWARD	= bit.lshift(1, 2)
+	local SECTXCTRL__VALUE = bit.bor(
+		SECTXCTRL__BASE,
+		SECTXCTRL__STORE_FORWARD)
+	dpdkc.write_reg32(port, SECTXCTRL, SECTXCTRL__VALUE)
+
+	-- Enable RX crypto engine
+	local SECRXCTRL__VALUE		= clear_bit32(dpdkc.read_reg32(port, SECRXCTRL), 0) --clear SECRX_DIS
+	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
+
+	-- Enable IPsec TX SA lookup
+	local IPSTXIDX__BASE		= dpdkc.read_reg32(port, IPSTXIDX)
+	local IPSTXIDX__IPS_TX_EN	= bit.lshift(1, 0)
+	local IPSTXIDX__VALUE = bit.bor(
+		IPSTXIDX__BASE,
+		IPSTXIDX__IPS_TX_EN)
+	dpdkc.write_reg32(port, IPSTXIDX, IPSTXIDX__VALUE)
+
+	-- Enable IPsec RX SA lookup
+	local IPSRXIDX__BASE		= dpdkc.read_reg32(port, IPSRXIDX)
+	local IPSRXIDX__IPS_RX_EN	= bit.lshift(1, 0)
+	local IPSRXIDX__VALUE = bit.bor(
+		IPSRXIDX__BASE,
+		IPSRXIDX__IPS_RX_EN)
+	dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
+
+	-- Restart TX data path (clear TX_DIS bit)
+	local SECTXCTRL__VALUE = clear_bit32(dpdkc.read_reg32(port, SECTXCTRL), 1) --clear TX_DIS
+	dpdkc.write_reg32(port, SECTXCTRL, SECTXCTRL__VALUE)
+
+	-- Restart RX data path (clear RX_DIS bit)
+	local SECRXCTRL__VALUE = clear_bit32(dpdkc.read_reg32(port, SECRXCTRL), 1) --clear RX_DIS
+	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
+
 	dump_regs(port)
 end
 
@@ -123,14 +204,12 @@ function mod.tx_set_key(port, idx, key, salt)
 	local key_0 = tonumber(string.sub(key, 25, 32), 16) --LSB
 	local _salt = tonumber(salt, 16)
 
-	local IPSTXIDX__BASE		= 0x0
-	local IPSTXIDX__IPS_TX_EN	= bit.lshift(0, 0) --TODO: should probably be enabled
+	local IPSTXIDX__BASE		= clear_bits32(dpdkc.read_reg32(port, IPSTXIDX), 12, 3) --clear SA_IDX
 	local IPSTXIDX__SA_IDX		= bit.lshift(idx, 3)
 	local IPSTXIDX__READ		= bit.lshift(0, 30)
 	local IPSTXIDX__WRITE		= bit.lshift(1, 31)
 	local IPSTXIDX__VALUE = bit.bor(
 		IPSTXIDX__BASE,
-		IPSTXIDX__IPS_TX_EN,
 		IPSTXIDX__SA_IDX,
 		IPSTXIDX__READ,
 		IPSTXIDX__WRITE)
@@ -152,14 +231,12 @@ function mod.tx_get_key(port, idx)
 		error("Idx must be in range 0-1023")
 	end
 
-	local IPSTXIDX__BASE		= 0x0
-	local IPSTXIDX__IPS_TX_EN	= bit.lshift(0, 0) --TODO: should probably be enabled
+	local IPSTXIDX__BASE		= clear_bits32(dpdkc.read_reg32(port, IPSTXIDX), 12, 3) --clear SA_IDX
 	local IPSTXIDX__SA_IDX		= bit.lshift(idx, 3)
 	local IPSTXIDX__READ		= bit.lshift(1, 30)
 	local IPSTXIDX__WRITE		= bit.lshift(0, 31)
 	local IPSTXIDX__VALUE = bit.bor(
 		IPSTXIDX__BASE,
-		IPSTXIDX__IPS_TX_EN,
 		IPSTXIDX__SA_IDX,
 		IPSTXIDX__READ,
 		IPSTXIDX__WRITE)
@@ -201,15 +278,13 @@ function mod.rx_set_key(port, idx, key, salt)
 	local key_0 = tonumber(string.sub(key, 25, 32), 16) --LSB
 	local _salt = tonumber(salt, 16)
 
-	local IPSRXIDX__BASE		= 0x0
-	local IPSRXIDX__IPS_RX_EN	= bit.lshift(0, 0) --TODO: should probably be enabled
-	local IPSRXIDX__TABLE		= bit.lshift(3, 1) --3 means KEY table
+	local IPSRXIDX__BASE		= clear_bits32(dpdkc.read_reg32(port, IPSRXIDX), 12, 1) --clear TABLE and TB_IDX
+	local IPSRXIDX__TABLE		= bit.lshift(0x3, 1) --0x3 means KEY table
 	local IPSRXIDX__TB_IDX		= bit.lshift(idx, 3)
 	local IPSRXIDX__READ		= bit.lshift(0, 30)
 	local IPSRXIDX__WRITE		= bit.lshift(1, 31)
 	local IPSRXIDX__VALUE = bit.bor(
 		IPSRXIDX__BASE,
-		IPSRXIDX__IPS_RX_EN,
 		IPSRXIDX__TABLE,
 		IPSRXIDX__TB_IDX,
 		IPSRXIDX__READ,
@@ -245,15 +320,13 @@ function mod.rx_get_key(port, idx)
 		error("Idx must be in range 0-1023")
 	end
 
-	local IPSRXIDX__BASE		= 0x0
-	local IPSRXIDX__IPS_RX_EN	= bit.lshift(0, 0) --TODO: should probably be enabled
-	local IPSRXIDX__TABLE		= bit.lshift(3, 1) --3 means KEY table
+	local IPSRXIDX__BASE		= clear_bits32(dpdkc.read_reg32(port, IPSRXIDX), 12, 1) --clear TABLE and TB_IDX
+	local IPSRXIDX__TABLE		= bit.lshift(0x3, 1) --0x3 means KEY table
 	local IPSRXIDX__TB_IDX		= bit.lshift(idx, 3)
 	local IPSRXIDX__READ		= bit.lshift(1, 30)
 	local IPSRXIDX__WRITE		= bit.lshift(0, 31)
 	local IPSRXIDX__VALUE = bit.bor(
 		IPSRXIDX__BASE,
-		IPSRXIDX__IPS_RX_EN,
 		IPSRXIDX__TABLE,
 		IPSRXIDX__TB_IDX,
 		IPSRXIDX__READ,
@@ -301,19 +374,17 @@ function mod.rx_set_ip(port, idx, ip_addr)
 		ip_0 = bswap(ip.uint32[3])
 	end
 
-        local IPSRXIDX__BASE            = 0x0
-        local IPSRXIDX__IPS_RX_EN       = bit.lshift(0, 0) --TODO: should probably be enabled
-        local IPSRXIDX__TABLE           = bit.lshift(1, 1) --1 means IP table
-        local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
-        local IPSRXIDX__READ            = bit.lshift(0, 30)
-        local IPSRXIDX__WRITE           = bit.lshift(1, 31)
-        local IPSRXIDX__VALUE = bit.bor(
-                IPSRXIDX__BASE,
-                IPSRXIDX__IPS_RX_EN,
-                IPSRXIDX__TABLE,
-                IPSRXIDX__TB_IDX,
-                IPSRXIDX__READ,
-                IPSRXIDX__WRITE)
+	local IPSRXIDX__BASE		= clear_bits32(dpdkc.read_reg32(port, IPSRXIDX), 12, 1) --clear TABLE and TB_IDX
+	local IPSRXIDX__TABLE           = bit.lshift(0x1, 1) --0x1 means IP table
+	local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
+	local IPSRXIDX__READ            = bit.lshift(0, 30)
+	local IPSRXIDX__WRITE           = bit.lshift(1, 31)
+	local IPSRXIDX__VALUE = bit.bor(
+		IPSRXIDX__BASE,
+		IPSRXIDX__TABLE,
+		IPSRXIDX__TB_IDX,
+		IPSRXIDX__READ,
+		IPSRXIDX__WRITE)
         --print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
 
 	--prepare registers
@@ -333,20 +404,18 @@ function mod.rx_get_ip(port, idx, is_ipv4)
 		is_ipv4 = true
 	end
 
-        local IPSRXIDX__BASE            = 0x0
-        local IPSRXIDX__IPS_RX_EN       = bit.lshift(0, 0) --TODO: should probably be enabled
-        local IPSRXIDX__TABLE           = bit.lshift(1, 1) --1 means IP table
-        local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
-        local IPSRXIDX__READ            = bit.lshift(1, 30)
-        local IPSRXIDX__WRITE           = bit.lshift(0, 31)
-        local IPSRXIDX__VALUE = bit.bor(
-                IPSRXIDX__BASE,
-                IPSRXIDX__IPS_RX_EN,
-                IPSRXIDX__TABLE,
-                IPSRXIDX__TB_IDX,
-                IPSRXIDX__READ,
-                IPSRXIDX__WRITE)
-        --print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
+	local IPSRXIDX__BASE		= clear_bits32(dpdkc.read_reg32(port, IPSRXIDX), 12, 1) --clear TABLE and TB_IDX
+	local IPSRXIDX__TABLE           = bit.lshift(0x1, 1) --0x1 means IP table
+	local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
+	local IPSRXIDX__READ            = bit.lshift(1, 30)
+	local IPSRXIDX__WRITE           = bit.lshift(0, 31)
+	local IPSRXIDX__VALUE = bit.bor(
+		IPSRXIDX__BASE,
+		IPSRXIDX__TABLE,
+		IPSRXIDX__TB_IDX,
+		IPSRXIDX__READ,
+		IPSRXIDX__WRITE)
+	--print("IPSRXIDX__VALUE: 0x"..uhex32(IPSRXIDX__VALUE))
 
         --pull from hw
         dpdkc.write_reg32(port, IPSRXIDX, IPSRXIDX__VALUE)
@@ -384,15 +453,13 @@ function mod.rx_set_spi(port, idx, spi, ip_idx)
 		error("IP_Idx must be in range 0-127")
 	end
 
-	local IPSRXIDX__BASE            = 0x0
-	local IPSRXIDX__IPS_RX_EN       = bit.lshift(0, 0) --TODO: should probably be enabled
-	local IPSRXIDX__TABLE           = bit.lshift(2, 1) --2 means SPI table
+	local IPSRXIDX__BASE		= clear_bits32(dpdkc.read_reg32(port, IPSRXIDX), 12, 1) --clear TABLE and TB_IDX
+	local IPSRXIDX__TABLE           = bit.lshift(0x2, 1) --0x2 means SPI table
 	local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
 	local IPSRXIDX__READ            = bit.lshift(0, 30)
 	local IPSRXIDX__WRITE           = bit.lshift(1, 31)
 	local IPSRXIDX__VALUE = bit.bor(
 		IPSRXIDX__BASE,
-		IPSRXIDX__IPS_RX_EN,
 		IPSRXIDX__TABLE,
 		IPSRXIDX__TB_IDX,
 		IPSRXIDX__READ,
@@ -411,15 +478,13 @@ function mod.rx_get_spi(port, idx)
 		error("Idx must be in range 0-1023")
 	end
 
-	local IPSRXIDX__BASE            = 0x0
-	local IPSRXIDX__IPS_RX_EN       = bit.lshift(0, 0) --TODO: should probably be enabled
-	local IPSRXIDX__TABLE           = bit.lshift(2, 1) --2 means SPI table
+	local IPSRXIDX__BASE		= clear_bits32(dpdkc.read_reg32(port, IPSRXIDX), 12, 1) --clear TABLE and TB_IDX
+	local IPSRXIDX__TABLE           = bit.lshift(0x2, 1) --0x2 means SPI table
 	local IPSRXIDX__TB_IDX          = bit.lshift(idx, 3)
 	local IPSRXIDX__READ            = bit.lshift(1, 30)
 	local IPSRXIDX__WRITE           = bit.lshift(0, 31)
 	local IPSRXIDX__VALUE = bit.bor(
 		IPSRXIDX__BASE,
-		IPSRXIDX__IPS_RX_EN,
 		IPSRXIDX__TABLE,
 		IPSRXIDX__TB_IDX,
 		IPSRXIDX__READ,
