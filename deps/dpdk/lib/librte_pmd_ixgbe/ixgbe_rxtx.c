@@ -360,7 +360,9 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		volatile struct ixgbe_adv_tx_context_desc *ctx_txd,
 		uint16_t ol_flags, uint32_t vlan_macip_lens)
 {
+	//cf. table 7-35 (chapter 7.2.3.2.3 Advanced Transmit Context Descriptor)
 	uint32_t type_tucmd_mlhl;
+	uint32_t seqnum_seed = 0;
 	uint32_t mss_l4len_idx;
 	uint32_t ctx_idx;
 	uint32_t cmp_mask;
@@ -376,6 +378,18 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	if (ol_flags & PKT_TX_IP_CKSUM) {
 		type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4;
 		cmp_mask |= TX_MAC_LEN_CMP_MASK;
+	}
+
+	if (ol_flags & PKT_TX_IPSEC) {
+		//TODO: set SA_IDX, TUCMD(Encryption) and TUCMD(IPSEC_TYPE) dynamically
+		//but where do we get those infos from?!
+		//TUCMD is 11 bits, Encryption (bit 5) 1=ESP-encryption 0=ESP-auth, IPSEC_TYPE (bit 4) 1=ESP 0=AH
+		#define IXGBE_ADVTXD_IPS_ESP_LEN_64 0x40
+		#define IXGBE_ADVTXD_SA_IDX_42 0x2a
+		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_ENCRYPT_EN; //enable ESP encryption (hard coded)
+		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_TYPE_ESP; //IPsec type = ESP (hard coded)
+		type_tucmd_mlhl |= IXGBE_ADVTXD_IPS_ESP_LEN_64; //IPS_ESP_LEN = 64 (hard coded), only relevant for single send ESP packets. TODO: does this make sense?
+		seqnum_seed |= IXGBE_ADVTXD_SA_IDX_42; //SA_IDX = 42 (hard coded)
 	}
 
 	/* Specify which HW CTX to upload. */
@@ -413,7 +427,7 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
 	ctx_txd->mss_l4len_idx   = rte_cpu_to_le_32(mss_l4len_idx);
-	ctx_txd->seqnum_seed     = 0;
+	ctx_txd->seqnum_seed     = rte_cpu_to_le_32(seqnum_seed);
 }
 
 /*
