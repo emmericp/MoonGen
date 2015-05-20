@@ -2,6 +2,7 @@
 #include <rte_config.h>
 #include <rte_table_lpm.h>
 #include <rte_table.h>
+#include <rte_mbuf.h>
 
 /**
  * @file
@@ -23,6 +24,8 @@ void printhex(void* data, int len){
 }
 void* mg_lpm_table_create(void *params, int socket_id, uint32_t entry_size)
 {
+  printf("params: ");
+  printhex(params, 24);
   return rte_table_lpm_ops.f_create(params, socket_id, entry_size);
 }
 
@@ -81,23 +84,26 @@ int mg_lpm_table_lookup(
 	void *table,
 	struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
-	uint64_t *lookup_hit_mask,
-	void **entries)
+	//uint64_t *lookup_hit_mask,
+  struct mg_lpm4_routes * routes)
 {
   struct rte_pktmbuf pkt0 = pkts[0]->pkt;
+  printf("headroom: %d\n", rte_pktmbuf_headroom(pkts[0]));
+  //void * data = pkt0.data+128;
   void * data = pkt0.data;
   int i;
-  for(i=0;i<4;i++){
+  printf("data = \n");
+  for(i=0;i<256;i++){
     printf("%2x ", ((uint8_t*)data)[i]);
   }
   printf("\n");
 
   // FIXME: XXX: pkts_mask hardcoded to 1 for debugging
-  int result = rte_table_lpm_ops.f_lookup(table, pkts, 1, lookup_hit_mask, entries);
+  int result = rte_table_lpm_ops.f_lookup(table, pkts, 1, &routes->hit_mask, &(routes->entries));
   printf("hit mask c : ");
-  printhex(lookup_hit_mask, 8);
-  printf("C result entry: ");
-  printhex(entries[0], 5);
+  printhex(&routes->hit_mask, 8);
+  printf("C result entry[0]: ");
+  printhex(&routes->entries[0], 5);
 
   return result;
 }

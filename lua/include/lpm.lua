@@ -25,13 +25,18 @@ int mg_lpm_table_entry_delete(
 	int *key_found,
 	void *entry);
 
+//int mg_lpm_table_lookup(
+//	void *table,
+//	struct rte_mbuf **pkts,
+//	uint64_t pkts_mask,
+//	uint64_t *lookup_hit_mask,
+//	void **entries);
 int mg_lpm_table_lookup(
 	void *table,
 	struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
-	uint64_t *lookup_hit_mask,
-	void **entries);
-
+	//uint64_t *lookup_hit_mask,
+  struct mg_lpm4_routes * routes);
 
 ///////////////////////////////////////////////////////////////////
 /** LPM table parameters */
@@ -78,7 +83,8 @@ function mod.createLpm4Table(socket, table)
   local params = ffi.new("struct rte_table_lpm_params")
   params.n_rules = 1000
   params.entry_unique_size = 5
-  params.offset = 0
+  --params.offset = 128 + 27+4
+  params.offset = 27+4
   return setmetatable({
     table = table or ffi.C.mg_lpm_table_create(params, socket, ffi.sizeof("struct mg_lpm4_table_entry"))
   }, mg_lpm4Table)
@@ -105,13 +111,11 @@ end
 -- @param routes Preallocated routing entry list (mg_lpmRoutes)
 function mg_lpm4Table:lookupBurst(packets, mask, routes)
   --local bmask = mask or lshift(1,packets.size)-1
-  local bmask = lshift(1,packets.size)-1
-  -- if(not(mask)) then
-  --   -- TODO: which one is faster:
-  --   -- mask = math.pow(2,packets.size) - 1
-  --   mask = lshift(1,packets.size) - 1
-  -- end
-  return ffi.C.mg_lpm_table_lookup(self.table, packets.array, bmask, routes.hitMask, routes.entries)
+  --local bmask = lshift(1,packets.size)-1
+  print("here1")
+  mask = mask or lshift(1,packets.size) - 1
+  print("here2")
+  return ffi.C.mg_lpm_table_lookup(self.table, packets.array, mask, routes)
 end
 
 function mg_lpm4Table:__serialize()
@@ -134,19 +138,39 @@ end
 local mg_lpm4Routes = {}
 mg_lpm4Routes.__index = mg_lpm4Routes
 
---- Returns a routing table entry
--- @return corresponding routing entry, if valid. false otherwise
-function mg_lpm4Routes.__index(self, k)
-	-- TODO: is this as fast as I hope it to be?
-  --self.hit_mask & (1<<(k-1))
-	if type(k) == "number" then
-    local hit = band(self.hit_mask, lshift(1,k-1)) ~= 0
-    return hit and self.entries[i-1]
-  else
-    --return self[k]
-    return false
-  end
+----- Returns a routing table entry
+---- @return corresponding routing entry, if valid. false otherwise
+function mg_lpm4Routes:get(n)
+  local hit = band(self.hit_mask, lshift(1,n-1)) ~= 0
+  return hit and self.entries[i-1]
 end
+
+do
+	local function it(self, i)
+		if i >= 64 then
+			return nil
+		end
+		return i + 1, self:get(i)
+	end
+
+	function mg_lpm4Routes.__ipairs(self)
+		return it, self, 0
+	end
+end
+----- Returns a routing table entry
+---- @return corresponding routing entry, if valid. false otherwise
+--function mg_lpm4Routes.__index(self, k)
+--	-- TODO: is this as fast as I hope it to be?
+--  --self.hit_mask & (1<<(k-1))
+--	if type(k) == "number" then
+--    local hit = band(self.hit_mask, lshift(1,k-1)) ~= 0
+--    return hit and self.entries[i-1]
+--  else
+--    --return self[k]
+--    print("here")
+--    return false
+--  end
+--end
 
 
 ffi.metatype("struct mg_lpm4_routes", mg_lpm4Routes)
