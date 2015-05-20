@@ -20,6 +20,8 @@ end
 
 -- txSlave sends out (ipsec crypto) packages
 function txSlave(port, srcQueue, dstQueue)
+	ipsec.enable(port)
+
 	local count = 0
 	local mem = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
@@ -34,12 +36,12 @@ function txSlave(port, srcQueue, dstQueue)
 	end)
 	bufs = mem:bufArray(128)
 
-	ipsec.tx_set_key(port, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff")
-	local key, salt = ipsec.tx_get_key(port, 0)
+	--SA_IDX 42 is hard coded in TX context descriptor
+	ipsec.tx_set_key(port, 42, "77777777deadbeef77777777DEADBEEF", "ff0000ff")
+	local key, salt = ipsec.tx_get_key(port, 42)
 	print("Key:  0x"..key)
 	print("Salt: 0x"..salt)
 
-	ipsec.enable(port)
 	while dpdk.running() do
 		bufs:alloc(60)
 		for _, buf in ipairs(bufs) do
@@ -52,6 +54,7 @@ function txSlave(port, srcQueue, dstQueue)
 		-- UDP checksums are optional, so just IP checksums are sufficient here
 		-- bufs:offloadUdpChecksums()
 		bufs:offloadIPChecksums()
+		bufs:offloadIPSec()
 		srcQueue:send(bufs)
 	end
 	ipsec.disable(port)

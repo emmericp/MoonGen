@@ -221,6 +221,13 @@ function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
 	end
 end
 
+function bufArray:offloadIPSec()
+	for i = 0, self.size - 1 do
+		local buf = self.array[i]
+		buf.ol_flags = bit.bor(buf.ol_flags, dpdk.PKT_TX_IPSEC)
+	end
+end
+
 function bufArray:offloadIPChecksums(ipv4, l2Len, l3Len)
 	-- please do not touch this function without carefully measuring the performance impact
 	ipv4 = ipv4 == nil or ipv4
