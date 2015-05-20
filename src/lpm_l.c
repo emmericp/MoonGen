@@ -322,17 +322,26 @@ mg_table_lpm_lookup(
 	uint32_t i;
 
 
+  pkts_mask = 0xffffffffffffffff;
 
   struct rte_pktmbuf pkt0 = pkts[0]->pkt;
   printf("headroom: %d\n", rte_pktmbuf_headroom(pkts[0]));
   //void * data = pkt0.data+128;
   void * data = pkt0.data;
-  printhex("data = ", data, 256);
+  printhex("data          = ", data, 256);
+  printhex("data buf addr = ", pkts[0]->buf_addr, 256);
   printhex("pktinmask = ", &pkts_mask, 8);
+  printhex("ipaddr = ", pkts[0]->buf_addr + lpm->offset, 4);
 
 	pkts_out_mask = 0;
+  if(!pkts_mask){
+    // workaround for DPDK bug:
+    // __builtin_clzll(x) is undefined for x = 0
+    return 0;
+  }
 	for (i = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX -
 		__builtin_clzll(pkts_mask)); i++) {
+    printf("loop %d\n", i);
 		uint64_t pkt_mask = 1LLU << i;
 
 		if (pkt_mask & pkts_mask) {
@@ -341,11 +350,15 @@ mg_table_lpm_lookup(
 			//uint32_t ip = rte_bswap32(
 			//	*((uint32_t*)(&RTE_MBUF_METADATA_UINT8(pkt, lpm->offset))));
 			uint32_t ip = rte_bswap32( *((uint32_t*)(pkt->buf_addr + lpm->offset)) );
+			//uint32_t ip = ( *((uint32_t*)(pkt->buf_addr + lpm->offset)) );
+      printhex("checking ip: ", &ip, 4);
 			int status;
 			uint8_t nht_pos;
 
 			status = rte_lpm_lookup(lpm->lpm, ip, &nht_pos);
+      printf(" status: %d\n", status);
 			if (status == 0) {
+        printf("HIT HIT HIT\n");
 				pkts_out_mask |= pkt_mask;
 				entries[i] = (void *) &lpm->nht[nht_pos *
 					lpm->entry_size];

@@ -99,6 +99,12 @@ mg_table_lpm_create(void *params, int socket_id, uint32_t entry_size);
 int
 mg_table_lpm_free(void *table);
 int
+mg_table_entry_add_simple(
+	void *table,
+  uint32_t ip,
+  uint8_t depth,
+	void *entry);
+int
 mg_table_lpm_entry_add(
 	void *table,
   uint32_t ip,
