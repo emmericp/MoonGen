@@ -31,8 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __INCLUDE_RTE_TABLE_LPM_H__
-#define __INCLUDE_RTE_TABLE_LPM_H__
+#ifndef __INCLUDE_MG_TABLE_LPM_H__
+#define __INCLUDE_MG_TABLE_LPM_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,6 +75,10 @@ extern "C" {
 
 #include "rte_table.h"
 
+//struct mg_table_lpm_routes {
+//  struct mg_lpm4_table_entry entries[64];
+//  uint64_t hit_mask;
+//};
 /** LPM table parameters */
 struct rte_table_lpm_params {
 	/** Maximum number of LPM rules (i.e. IP routes) */
@@ -89,25 +93,33 @@ struct rte_table_lpm_params {
 	uint32_t offset;
 };
 
-/** LPM table rule (i.e. route), specified as IP prefix. While the key used by
-the lookup operation is the destination IP address (read from the input packet
-meta-data), the entry add and entry delete operations work with LPM rules, with
-each rule covering for a multitude of lookup keys (destination IP addresses)
-that share the same data (next hop). */
-struct rte_table_lpm_key {
-	/** IP address */
-	uint32_t ip;
 
-	/** IP address depth. The most significant "depth" bits of the IP
-	address specify the network part of the IP address, while the rest of
-	the bits specify the host part of the address and are ignored for the
-	purpose of route specification. */
-	uint8_t depth;
-};
-
-/** LPM table operations */
-extern struct rte_table_ops rte_table_lpm_ops;
-
+void *
+mg_table_lpm_create(void *params, int socket_id, uint32_t entry_size);
+int
+mg_table_lpm_free(void *table);
+int
+mg_table_lpm_entry_add(
+	void *table,
+  uint32_t ip,
+  uint8_t depth,
+	void *entry,
+	int *key_found,
+	void **entry_ptr);
+int
+mg_table_lpm_entry_delete(
+	void *table,
+  uint32_t ip,
+  uint8_t depth,
+	int *key_found,
+	void *entry);
+int
+mg_table_lpm_lookup(
+	void *table,
+	struct rte_mbuf **pkts,
+	uint64_t pkts_mask,
+	uint64_t *lookup_hit_mask,
+	void **entries);
 #ifdef __cplusplus
 }
 #endif

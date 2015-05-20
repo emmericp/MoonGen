@@ -34,6 +34,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <rte_config.h>
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
@@ -42,6 +43,7 @@
 #include <rte_lpm.h>
 
 #include "lpm_l.h"
+#include "debug.h"
 
 #define RTE_TABLE_LPM_MAX_NEXT_HOPS                        256
 
@@ -60,8 +62,8 @@ struct rte_table_lpm {
 	uint8_t nht[0] __rte_cache_aligned;
 };
 
-static void *
-rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
+void *
+mg_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 {
 	struct rte_table_lpm_params *p = (struct rte_table_lpm_params *) params;
 	struct rte_table_lpm *lpm;
@@ -86,10 +88,12 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 			__func__);
 		return NULL;
 	}
-	if ((p->offset & 0x3) != 0) {
-		RTE_LOG(ERR, TABLE, "%s: Invalid offset\n", __func__);
-		return NULL;
-	}
+  // XXX ASK: does a 32 bit aligned offset make any sense here?
+  //      this prevents me from accessing ip address in payload
+	//if ((p->offset & 0x3) != 0) {
+	//	RTE_LOG(ERR, TABLE, "%s: Invalid offset\n", __func__);
+	//	return NULL;
+	//}
 
 	entry_size = RTE_ALIGN(entry_size, sizeof(uint64_t));
 
@@ -122,8 +126,8 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 	return lpm;
 }
 
-static int
-rte_table_lpm_free(void *table)
+int
+mg_table_lpm_free(void *table)
 {
 	struct rte_table_lpm *lpm = (struct rte_table_lpm *) table;
 
@@ -173,8 +177,23 @@ nht_find_existing(struct rte_table_lpm *lpm, void *entry, uint32_t *pos)
 	return 0;
 }
 
-static int
-rte_table_lpm_entry_add(
+int
+mg_table_entry_add_simple(
+	void *table,
+  uint32_t ip,
+  uint8_t depth,
+	void *entry)
+{
+  printhex("add ip: ", &ip, 4);
+  printhex("add prefix: ", &depth, 1);
+  printhex("add entry: ", entry, 11);
+  int key_found;
+  void *entry_ptr;
+  return mg_table_lpm_entry_add(table, ip, depth, entry, &key_found, &entry_ptr);
+}
+
+int
+mg_table_lpm_entry_add(
 	void *table,
   uint32_t ip,
   uint8_t depth,
@@ -237,10 +256,11 @@ rte_table_lpm_entry_add(
 	return 0;
 }
 
-static int
-rte_table_lpm_entry_delete(
+int
+mg_table_lpm_entry_delete(
 	void *table,
-	void *key,
+  uint32_t ip,
+  uint8_t depth,
 	int *key_found,
 	void *entry)
 {
@@ -289,8 +309,8 @@ rte_table_lpm_entry_delete(
 	return 0;
 }
 
-static int
-rte_table_lpm_lookup(
+int
+mg_table_lpm_lookup(
 	void *table,
 	struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
@@ -301,6 +321,15 @@ rte_table_lpm_lookup(
 	uint64_t pkts_out_mask = 0;
 	uint32_t i;
 
+
+
+  struct rte_pktmbuf pkt0 = pkts[0]->pkt;
+  printf("headroom: %d\n", rte_pktmbuf_headroom(pkts[0]));
+  //void * data = pkt0.data+128;
+  void * data = pkt0.data;
+  printhex("data = ", data, 256);
+  printhex("pktinmask = ", &pkts_mask, 8);
+
 	pkts_out_mask = 0;
 	for (i = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX -
 		__builtin_clzll(pkts_mask)); i++) {
@@ -309,8 +338,9 @@ rte_table_lpm_lookup(
 		if (pkt_mask & pkts_mask) {
       printf("pktmaskmatch\n");
 			struct rte_mbuf *pkt = pkts[i];
-			uint32_t ip = rte_bswap32(
-				RTE_MBUF_METADATA_UINT32(pkt, lpm->offset));
+			//uint32_t ip = rte_bswap32(
+			//	*((uint32_t*)(&RTE_MBUF_METADATA_UINT8(pkt, lpm->offset))));
+			uint32_t ip = rte_bswap32( *((uint32_t*)(pkt->buf_addr + lpm->offset)) );
 			int status;
 			uint8_t nht_pos;
 
@@ -319,7 +349,9 @@ rte_table_lpm_lookup(
 				pkts_out_mask |= pkt_mask;
 				entries[i] = (void *) &lpm->nht[nht_pos *
 					lpm->entry_size];
-			}
+      }else{
+        entries[i] = NULL;
+      }
 		}
 	}
 
@@ -327,3 +359,33 @@ rte_table_lpm_lookup(
 
 	return 0;
 }
+
+
+//int mg_lpm_table_lookup(
+//	void *table,
+//	struct rte_mbuf **pkts,
+//	uint64_t pkts_mask,
+//	//uint64_t *lookup_hit_mask,
+//  struct mg_lpm4_routes * routes)
+//{
+//  struct rte_pktmbuf pkt0 = pkts[0]->pkt;
+//  printf("headroom: %d\n", rte_pktmbuf_headroom(pkts[0]));
+//  //void * data = pkt0.data+128;
+//  void * data = pkt0.data;
+//  int i;
+//  printf("data = \n");
+//  for(i=0;i<256;i++){
+//    printf("%2x ", ((uint8_t*)data)[i]);
+//  }
+//  printf("\n");
+//
+//  // FIXME: XXX: pkts_mask hardcoded to 1 for debugging
+//  int result = rte_table_lpm_ops.f_lookup(table, pkts, 1, &routes->hit_mask, &(routes->entries));
+//  printf("hit mask c : ");
+//  printhex(&routes->hit_mask, 8);
+//  printf("C result entry[0]: ");
+//  printhex(&routes->entries[0], 5);
+//
+//  return result;
+//}
+

@@ -14,7 +14,8 @@ SET(FILES
 	src/util.c
 	src/lifecycle.c
 	src/timestamping.c
-  src/lpm.c
+  src/debug.c
+  src/lpm_l.c
 	src/task-results.cpp
 	src/pipe.cpp
 	src/lock.cpp
