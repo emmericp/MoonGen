@@ -77,10 +77,6 @@ function mod.createLpm4Table(socket, table, entry_ctype)
   }, mg_lpm4Table)
 end
 
-function mod.allocateEntryPtrs(n)
-  return ffi.C.mg_lpm_table_allocate_entry_prts(n)
-end
-
 --- Free the LPM Table
 -- @return 0 on success, error code otherwise
 function mg_lpm4Table:destruct()
@@ -101,14 +97,9 @@ end
 -- @param mask optional (default = all packets), bitmask, for which packets the lookup should be performed
 -- @param routes Preallocated routing entry list (mg_lpmRoutes)
 function mg_lpm4Table:lookupBurst(packets, mask, hitMask, entries)
-  --local bmask = mask or lshift(1,packets.size)-1
-  --local bmask = lshift(1,packets.size)-1
-  print("here1")
-  print("here2 mask = " .. tostring(mask))
-  print("here2 maskc = " .. tostring(0xffffffffffffffff))
-  print("packets.size = " .. tostring(packets.size))
-  print("packets.size = " .. tostring(lshift(1,2)))
-  return ffi.C.mg_table_lpm_lookup_big_burst(self.table, packets.array, mask.bitmask, hitMask.bitmask, entries)
+  -- FIXME: I feel uneasy about this cast, should this cast not be
+  --  done implicitly?
+  return ffi.C.mg_table_lpm_lookup_big_burst(self.table, packets.array, mask.bitmask, hitMask.bitmask, ffi.cast("void **",entries.array))
 end
 
 function mg_lpm4Table:__serialize()
@@ -119,6 +110,23 @@ end
 -- @return The newly allocated entry
 function mg_lpm4Table:allocateEntry()
   return ffi.new(self.entry_ctype)
+end
+
+local mg_lpm4EntryPtrs = {}
+
+function mg_lpm4Table:allocateEntryPtrs(n)
+  -- return ffi.C.mg_lpm_table_allocate_entry_prts(n)
+  return setmetatable({
+    array = ffi.new(self.entry_ctype .. "*[?]", n)
+  }, mg_lpm4EntryPtrs)
+end
+
+function mg_lpm4EntryPtrs:__index(k)
+	if type(k) == "number" then
+    return self.array[k - 1]
+  else
+    return mg_lpm4EntryPtrs[k]
+  end
 end
 
 ----- Constructs a LPM table entry for IPv4

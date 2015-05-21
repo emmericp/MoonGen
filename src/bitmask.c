@@ -36,10 +36,10 @@ uint8_t mg_bitmask_get_bit(struct mg_bitmask * mask, uint16_t n){
 }
 
 void mg_bitmask_set_bit(struct mg_bitmask * mask, uint16_t n){
-  printf(" CC set bit nr %d\n", n);
-  printhex("mask = ", mask->mask, 8*3);
+  //printf(" CC set bit nr %d\n", n);
+  //printhex("mask = ", mask->mask, 8*3);
   mask->mask[n/64] |= (1ULL<< (n&0x3f));
-  printhex("mask = ", mask->mask, 8*3);
+  //printhex("mask = ", mask->mask, 8*3);
 }
 
 void mg_bitmask_clear_bit(struct mg_bitmask * mask, uint16_t n){
