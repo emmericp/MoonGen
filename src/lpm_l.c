@@ -321,9 +321,12 @@ int mg_table_lpm_lookup_big_burst(
   uint64_t *in_mask = ((struct mg_bitmask*)(pkts_mask))->mask;
   uint64_t *out_mask = ((struct mg_bitmask*)(lookup_hit_mask))->mask;
   uint16_t n_blocks  = ((struct mg_bitmask*)(pkts_mask))->n_blocks;
+  printf("n_blocks = %d\n", n_blocks);
   uint16_t i;
   for(i=0; i<n_blocks; i++){
     mg_table_lpm_lookup(table, pkts, *in_mask, out_mask, entries);
+    printhex("in_mask_iteration = ", in_mask, 8);
+    printhex("out_mask_iteration = ", out_mask, 8);
     pkts += 64;
     in_mask++;
     out_mask++;
