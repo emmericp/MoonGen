@@ -43,6 +43,7 @@
 #include <rte_lpm.h>
 
 #include "lpm_l.h"
+#include "bitmask.h"
 #include "debug.h"
 
 #define RTE_TABLE_LPM_MAX_NEXT_HOPS                        256
@@ -307,6 +308,28 @@ mg_table_lpm_entry_delete(
 			lpm->entry_size);
 
 	return 0;
+}
+
+int mg_table_lpm_lookup_big_burst(
+	void *table,
+	struct rte_mbuf **pkts,
+	struct mg_bitmask* pkts_mask,
+	struct mg_bitmask* lookup_hit_mask,
+	void **entries)
+{
+
+  uint64_t *in_mask = ((struct mg_bitmask*)(pkts_mask))->mask;
+  uint64_t *out_mask = ((struct mg_bitmask*)(lookup_hit_mask))->mask;
+  uint16_t n_blocks  = ((struct mg_bitmask*)(pkts_mask))->n_blocks;
+  uint16_t i;
+  for(i=0; i<n_blocks; i++){
+    mg_table_lpm_lookup(table, pkts, *in_mask, out_mask, entries);
+    pkts += 64;
+    in_mask++;
+    out_mask++;
+    entries += 64;
+  }
+  return 0;
 }
 
 int

@@ -15,6 +15,7 @@ SET(FILES
 	src/lifecycle.c
 	src/timestamping.c
   src/debug.c
+  src/bitmask.c
   src/lpm_l.c
 	src/task-results.cpp
 	src/pipe.cpp
