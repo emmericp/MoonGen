@@ -8,6 +8,7 @@ struct mg_bitmask{
   uint64_t mask[0];
 };
 struct mg_bitmask * mg_bitmask_create(uint16_t size);
+void mg_bitmask_free(struct mg_bitmask * mask);
 void mg_bitmask_set_all_one(struct mg_bitmask * mask);
 uint8_t mg_bitmask_get_bit(struct mg_bitmask * mask, uint16_t n);
 void mg_bitmask_set_bit(struct mg_bitmask * mask, uint16_t n);

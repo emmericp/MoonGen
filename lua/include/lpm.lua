@@ -15,9 +15,6 @@ struct rte_table_lpm_params {
 	uint32_t entry_unique_size;
 	uint32_t offset;
 };
-]]
-
-ffi.cdef[[
 void * mg_table_lpm_create(void *params, int socket_id, uint32_t entry_size);
 int mg_table_lpm_free(void *table);
 int mg_table_entry_add_simple(
@@ -25,8 +22,6 @@ int mg_table_entry_add_simple(
   uint32_t ip,
   uint8_t depth,
 	void *entry);
-]]
-ffi.cdef[[
 int mg_table_lpm_entry_add(
 	void *table,
   uint32_t ip,
@@ -34,29 +29,25 @@ int mg_table_lpm_entry_add(
 	void *entry,
 	int *key_found,
 	void **entry_ptr);
-]]
-ffi.cdef[[
 int mg_table_lpm_lookup(
 	void *table,
 	struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
 	uint64_t *lookup_hit_mask,
 	void **entries);
-]]
-ffi.cdef[[
+int mg_table_lpm_lookup_big_burst(
+	void *table,
+	struct rte_mbuf **pkts,
+	struct mg_bitmask* pkts_mask,
+	struct mg_bitmask* lookup_hit_mask,
+	void **entries);
 int mg_table_lpm_entry_delete(
 	void *table,
   uint32_t ip,
   uint8_t depth,
 	int *key_found,
 	void *entry);
-
-
-//struct mg_lpm4_routes {
-//  struct mg_lpm4_table_entry entries[64];
-//  uint64_t hit_mask;
-//};
-
+void ** mg_lpm_table_allocate_entry_prts(uint16_t n_entries);
 int printf(const char *fmt, ...);
 
 ]]
@@ -86,6 +77,10 @@ function mod.createLpm4Table(socket, table, entry_ctype)
   }, mg_lpm4Table)
 end
 
+function mod.allocateEntryPtrs(n)
+  return ffi.C.mg_lpm_table_allocate_entry_prts(n)
+end
+
 --- Free the LPM Table
 -- @return 0 on success, error code otherwise
 function mg_lpm4Table:destruct()
@@ -109,13 +104,11 @@ function mg_lpm4Table:lookupBurst(packets, mask, hitMask, entries)
   --local bmask = mask or lshift(1,packets.size)-1
   --local bmask = lshift(1,packets.size)-1
   print("here1")
-  mask = mask or lshift(0xffffffffffffffff, 64-packets.size)
-  mask = 0xffffffffffffffff
   print("here2 mask = " .. tostring(mask))
   print("here2 maskc = " .. tostring(0xffffffffffffffff))
   print("packets.size = " .. tostring(packets.size))
   print("packets.size = " .. tostring(lshift(1,2)))
-  return ffi.C.mg_table_lpm_lookup(self.table, packets.array, mask, hitMask, entries)
+  return ffi.C.mg_table_lpm_lookup_big_burst(self.table, packets.array, mask.bitmask, hitMask.bitmask, entries)
 end
 
 function mg_lpm4Table:__serialize()

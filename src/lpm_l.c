@@ -344,9 +344,6 @@ mg_table_lpm_lookup(
 	uint64_t pkts_out_mask = 0;
 	uint32_t i;
 
-
-  pkts_mask = 0xffffffffffffffff;
-
   struct rte_pktmbuf pkt0 = pkts[0]->pkt;
   printf("headroom: %d\n", rte_pktmbuf_headroom(pkts[0]));
   //void * data = pkt0.data+128;
@@ -396,6 +393,9 @@ mg_table_lpm_lookup(
 	return 0;
 }
 
+void ** mg_lpm_table_allocate_entry_prts(uint16_t n_entries){
+  return (void**)(rte_malloc(NULL, sizeof(void*)*n_entries, 0));
+}
 
 //int mg_lpm_table_lookup(
 //	void *table,

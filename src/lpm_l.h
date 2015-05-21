@@ -128,6 +128,14 @@ mg_table_lpm_lookup(
 	void **entries);
 #ifdef __cplusplus
 }
+void ** mg_lpm_table_allocate_entry_prts(uint16_t n_entries);
+int mg_table_lpm_lookup_big_burst(
+	void *table,
+	struct rte_mbuf **pkts,
+	struct mg_bitmask* pkts_mask,
+	struct mg_bitmask* lookup_hit_mask,
+	void **entries);
+
 #endif
 
 #endif
