@@ -360,6 +360,7 @@ mg_table_lpm_lookup(
   if(!pkts_mask){
     // workaround for DPDK bug:
     // __builtin_clzll(x) is undefined for x = 0
+    *lookup_hit_mask = pkts_out_mask;
     return 0;
   }
 	for (i = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX -
