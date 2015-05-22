@@ -124,6 +124,7 @@ mg_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 	lpm->n_rules = p->n_rules;
 	lpm->offset = p->offset;
 
+  printf("lpm allocate: %p\n", lpm);
 	return lpm;
 }
 
@@ -131,6 +132,7 @@ int
 mg_table_lpm_free(void *table)
 {
 	struct rte_table_lpm *lpm = (struct rte_table_lpm *) table;
+  printf("lpm free: %p\n", lpm);
 
 	/* Check input parameters */
 	if (lpm == NULL) {
@@ -185,9 +187,9 @@ mg_table_entry_add_simple(
   uint8_t depth,
 	void *entry)
 {
-  printhex("add ip: ", &ip, 4);
-  printhex("add prefix: ", &depth, 1);
-  printhex("add entry: ", entry, 11);
+  //printhex("add ip: ", &ip, 4);
+  //printhex("add prefix: ", &depth, 1);
+  //printhex("add entry: ", entry, 11);
   int key_found;
   void *entry_ptr;
   return mg_table_lpm_entry_add(table, ip, depth, entry, &key_found, &entry_ptr);

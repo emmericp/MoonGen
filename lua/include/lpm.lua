@@ -63,7 +63,6 @@ mg_lpm4Table.__index = mg_lpm4Table
 -- @param socket optional (default = socket of the calling thread), CPU socket, where memory for the table should be allocated.
 -- @return the table handler
 function mod.createLpm4Table(socket, table, entry_ctype)
-  -- FIXME: understand getCore and select
   socket = socket or select(2, dpdk.getCore())
     -- configure parameters for the LPM table
   local params = ffi.new("struct rte_table_lpm_params")
@@ -72,30 +71,40 @@ function mod.createLpm4Table(socket, table, entry_ctype)
   --params.offset = 128 + 27+4
   params.offset = 128+ 14 + 12+4
   return setmetatable({
-    table = table or ffi.C.mg_table_lpm_create(params, socket, ffi.sizeof(entry_ctype)),
+    table = table or ffi.gc(ffi.C.mg_table_lpm_create(params, socket, ffi.sizeof(entry_ctype)), function(self)
+      -- FIXME: why is destructor never called?
+      print "lpm garbage"
+      ffi.C.mg_table_lpm_free(self)
+    end),
     entry_ctype = entry_ctype
   }, mg_lpm4Table)
 end
 
---- Free the LPM Table
--- @return 0 on success, error code otherwise
-function mg_lpm4Table:destruct()
-  return ffi.C.mg__table_lpm_free(self.table)
-end
+-- --- Free the LPM Table
+-- -- @return 0 on success, error code otherwise
+-- function mg_lpm4Table:destruct()
+--   return ffi.C.mg_table_lpm_free(self.table)
+-- end
 
 --- Add an entry to a Table
 -- @param addr IPv4 network address of the destination network.
 -- @param depth number of significant bits of the destination network address
--- @param entry routing table entry
+-- @param entry routing table entry (will be copied)
 -- @return true if entry was added without error
 function mg_lpm4Table:addEntry(addr, depth, entry)
   return 0 == ffi.C.mg_table_entry_add_simple(self.table, addr, depth, entry)
 end
 
 --- Perform IPv4 route lookup for a burst of packets
+-- This should not be used for single packet lookup, as ist brings
+-- a significant penalty for bursts <<64
 -- @param packets Array of mbufs (bufArray), for which the lookup will be performed
 -- @param mask optional (default = all packets), bitmask, for which packets the lookup should be performed
--- @param routes Preallocated routing entry list (mg_lpmRoutes)
+-- @param hitMask Bitmask, where the routed packets are flagged
+-- with one. This may be the same Bitmask as passed in the mask
+-- parameter, in this case not routed packets will be cleared in
+-- the bitmask.
+-- @param entries Preallocated routing entry Pointers
 function mg_lpm4Table:lookupBurst(packets, mask, hitMask, entries)
   -- FIXME: I feel uneasy about this cast, should this cast not be
   --  done implicitly?
@@ -114,6 +123,11 @@ end
 
 local mg_lpm4EntryPtrs = {}
 
+--- Allocates an array of pointers to routing table entries
+-- This is used during burst lookup, to store references to the
+-- result entries.
+-- @param n Number of entry pointers
+-- @return Wrapper table around the allocated array
 function mg_lpm4Table:allocateEntryPtrs(n)
   -- return ffi.C.mg_lpm_table_allocate_entry_prts(n)
   return setmetatable({
@@ -128,59 +142,5 @@ function mg_lpm4EntryPtrs:__index(k)
     return mg_lpm4EntryPtrs[k]
   end
 end
-
------ Constructs a LPM table entry for IPv4
----- @return LPM table entry of ctype "struct mg_lpm4_table_entry"
---function mod.constructLpm4TableEntry(ip_next_hop, interface, mac_next_hop)
---  entry = ffi.new("struct mg_lpm4_table_entry")
---  entry.ip_next_hop = ip_next_hop
---  entry.interface = interface
---  entry.mac_next_hop = mac_next_hop
---  return entry
---end
-
--- function mod.allocateLpm4Routes()
---   return ffi.new("struct mg_lpm4_routes")
--- end
--- 
--- local mg_lpm4Routes = {}
--- mg_lpm4Routes.__index = mg_lpm4Routes
--- 
--- ----- Returns a routing table entry
--- ---- @return corresponding routing entry, if valid. false otherwise
--- function mg_lpm4Routes:get(n)
---   local hit = band(self.hit_mask, lshift(1,n-1)) ~= 0
---   return hit and self.entries[i-1]
--- end
--- 
--- do
--- 	local function it(self, i)
--- 		if i >= 64 then
--- 			return nil
--- 		end
--- 		return i + 1, self:get(i)
--- 	end
--- 
--- 	function mg_lpm4Routes.__ipairs(self)
--- 		return it, self, 0
--- 	end
--- end
--- ----- Returns a routing table entry
--- ---- @return corresponding routing entry, if valid. false otherwise
--- --function mg_lpm4Routes.__index(self, k)
--- --	-- TODO: is this as fast as I hope it to be?
--- --  --self.hit_mask & (1<<(k-1))
--- --	if type(k) == "number" then
--- --    local hit = band(self.hit_mask, lshift(1,k-1)) ~= 0
--- --    return hit and self.entries[i-1]
--- --  else
--- --    --return self[k]
--- --    print("here")
--- --    return false
--- --  end
--- --end
--- 
--- 
--- ffi.metatype("struct mg_lpm4_routes", mg_lpm4Routes)
 
 return mod
