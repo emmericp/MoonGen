@@ -1,4 +1,13 @@
 #include "5tuple.h"
+#include <rte_config.h>
+#include <rte_common.h>
+#include <rte_mbuf.h>
+#include <rte_acl.h>
+#include <rte_ip.h>
+#include <rte_ether.h>
+
+#include "bitmask.h"
+#include "debug.h"
 
 #define OFF_ETHHEAD	(sizeof(struct ether_hdr))
 #define OFF_IPV42PROTO (offsetof(struct ipv4_hdr, next_proto_id))
@@ -79,25 +88,25 @@ void mg_5tuple_destruct_filter(struct rte_acl_ctx * acl){
   rte_acl_free(acl);
 }
 
-void mg_5tuple_add_rule(struct rte_acl_ctx * acx, struct mg_5tuple_rule * mgrule, int32_t priority, uint32_t category_mask, uint32_t value){
+int mg_5tuple_add_rule(struct rte_acl_ctx * acx, struct mg_5tuple_rule * mgrule, int32_t priority, uint32_t category_mask, uint32_t value){
   // FIXME: stack or heap?
   struct acl_ipv4_rule acl_rules[1];
-  rule[0].data.userdata = value;
-  rule[0].data.category_mask = category_mask;
-  rule[0].data.priority = priority;
-  rule[0].field[0].value = mgrule.proto;
-  rule[0].field[0].mask = 0xff;
-  rule[0].field[1].value = mgrule.ip_src;
-  rule[0].field[1].mask = mgrule.ip_src_mask;
-  rule[0].field[2].value = mgrule.ip_dst;
-  rule[0].field[2].mask = mgrule.ip_dst_mask;
-  rule[0].field[3].value = mgrule.port_src;
-  rule[0].field[3].mask = mgrule.port_src_range;
-  rule[0].field[4].value = mgrule.port_dst;
-  rule[0].field[4].mask = mgrule.port_dst_range;
+  acl_rules[0].data.userdata = value;
+  acl_rules[0].data.category_mask = category_mask;
+  acl_rules[0].data.priority = priority;
+  acl_rules[0].field[0].value.u8 = mgrule->proto;
+  acl_rules[0].field[0].mask_range.u8 = 0xff;
+  acl_rules[0].field[1].value.u32 = mgrule->ip_src;
+  acl_rules[0].field[1].mask_range.u32 = mgrule->ip_src_prefix;
+  acl_rules[0].field[2].value.u32 = mgrule->ip_dst;
+  acl_rules[0].field[2].mask_range.u32 = mgrule->ip_dst_prefix;
+  acl_rules[0].field[3].value.u16 = mgrule->port_src;
+  acl_rules[0].field[3].mask_range.u16 = mgrule->port_src_range;
+  acl_rules[0].field[4].value.u16 = mgrule->port_dst;
+  acl_rules[0].field[4].mask_range.u16 = mgrule->port_dst_range;
 
 
-  return rte_acl_add_rules(acx, acl_rules, RTE_DIM(acl_rules));
+  return rte_acl_add_rules(acx, (struct rte_acl_rule *)(acl_rules), RTE_DIM(acl_rules));
 }
 
 int mg_5tuple_build_filter(struct rte_acl_ctx * acx, uint32_t num_categories){
@@ -113,27 +122,28 @@ int mg_5tuple_classify_burst(
     struct rte_acl_ctx * acx,
     struct rte_mbuf **pkts,
     struct mg_bitmask* pkts_mask,
-    uint32_t categories,
+    uint32_t num_categories,
     struct mg_bitmask** result_masks,
     uint32_t ** result_entries
     //FIXME: what will be the result?
     ){
 
   uint16_t i;
-  uint8_t * data[n];
+  // FIXME what does const here mean?
+  const uint8_t * data[pkts_mask->size];
 
   // compress:
   uint16_t n_real=0;
   for(i=0;i<pkts_mask->size;i++){
     if(mg_bitmask_get_bit(pkts_mask, i)){
-      uint8_t* data[n_real] = MBUF_IPV4_2PROTO(pkt);
+      data[n_real] = MBUF_IPV4_2PROTO(pkts[i]);
       n_real++;
     }
   }
 
   // compute results:
   uint32_t results[num_categories * n_real];
-  rte_acl_classify(acx, data, results, n_real, categories);
+  rte_acl_classify(acx, data, results, n_real, num_categories);
 
   // decompress:
   //uint32_t c;

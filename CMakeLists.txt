@@ -17,6 +17,7 @@ SET(FILES
   src/debug.c
   src/bitmask.c
   src/lpm_l.c
+  src/5tuple.c
 	src/task-results.cpp
 	src/pipe.cpp
 	src/lock.cpp
