@@ -128,10 +128,12 @@ int mg_5tuple_classify_burst(
     //FIXME: what will be the result?
     ){
 
+  printf("classify start\n");
   uint16_t i;
   // FIXME what does const here mean?
   const uint8_t * data[pkts_mask->size];
 
+  printf("compress\n");
   // compress:
   uint16_t n_real=0;
   for(i=0;i<pkts_mask->size;i++){
@@ -141,6 +143,7 @@ int mg_5tuple_classify_burst(
     }
   }
 
+  printf("compute\n");
   // compute results:
   uint32_t results[num_categories * n_real];
   rte_acl_classify(acx, data, results, n_real, num_categories);
@@ -163,22 +166,31 @@ int mg_5tuple_classify_burst(
   
 
   // decompress:
+  printf("decompress\n");
+  printf("n_real = %d\n", n_real);
   uint32_t category = 0;
   uint16_t packet = 0;
   for(i= 0; i< num_categories*n_real; i++){
+    //printf(" i = %d\n", i);
+    //printf(" category = %d\n", category);
+    //printf(" packet = %d\n", packet);
     if(category == num_categories){
       category = 0;
       packet++;
       while( mg_bitmask_get_bit(pkts_mask, packet) == 0){
+        //printf("  skip\n");
         packet++;
       }
     }
     if(results[i]){
+      printf("  set bit");
       mg_bitmask_set_bit(result_masks[category], packet);
     }
+    //printf("access entries\n");
     result_entries[category][packet] = results[i];
     category++;
   }
+  printf("return\n");
   return 0;
 }
 
