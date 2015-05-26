@@ -120,12 +120,16 @@ int mg_5tuple_build_filter(struct rte_acl_ctx * acx, uint32_t num_categories){
   return rte_acl_build(acx, &cfg);
 }
 
+uint32_t mg_5tuple_get_results_multiplier(){
+  return RTE_ACL_RESULTS_MULTIPLIER;
+}
 
 int mg_5tuple_classify_burst(
     struct rte_acl_ctx * acx,
     struct rte_mbuf **pkts,
     struct mg_bitmask* pkts_mask,
     uint32_t num_categories,
+    uint32_t num_real_categories,
     struct mg_bitmask** result_masks,
     uint32_t ** result_entries
     //FIXME: what will be the result?
@@ -197,12 +201,14 @@ int mg_5tuple_classify_burst(
         packet++;
       }
     }
-    if(results[i]){
-      printf("  set bit\n");
-      mg_bitmask_set_bit(result_masks[category], packet);
+    if(category < num_real_categories){
+      if(results[i]){
+        printf("  set bit\n");
+        mg_bitmask_set_bit(result_masks[category], packet);
+      }
+      printf("access entries\n");
+      result_entries[category][packet] = results[i];
     }
-    printf("access entries\n");
-    result_entries[category][packet] = results[i];
     category++;
   }
   printf("return\n");

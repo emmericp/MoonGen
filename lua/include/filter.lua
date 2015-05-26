@@ -4,6 +4,7 @@ local dpdkc = require "dpdkc"
 local device = require "device"
 local ffi = require "ffi"
 local dpdk = require "dpdk"
+local mbitmask = require "bitmask"
 
 mod.DROP = -1
 
@@ -101,9 +102,11 @@ int mg_5tuple_classify_burst(
     struct rte_mbuf **pkts,
     struct mg_bitmask* pkts_mask,
     uint32_t num_categories,
+    uint32_t num_real_categories,
     struct mg_bitmask** result_masks,
     uint32_t ** result_entries
     );
+uint32_t mg_5tuple_get_results_multiplier();
 ]]
 
 local mg_filter_5tuple = {}
@@ -115,10 +118,20 @@ mg_filter_5tuple.__index = mg_filter_5tuple
 -- @param acx experimental use only. should be nil.
 -- @param maxNRules optional (default = 10), maximum number of rules.
 -- @return a wrapper table for the created filter
-function mod.create5TupleFilter(socket, acx, maxNRules)
+function mod.create5TupleFilter(socket, acx, numCategories, maxNRules)
   socket = socket or select(2, dpdk.getCore())
   maxNRules = maxNRules or 10
-  return setmetatable({
+
+  local category_multiplier = ffi.C.mg_5tuple_get_results_multiplier()
+
+  local rest = numCategories % category_multiplier
+
+  local numBlownCategories = numCategories
+  if(rest ~= 0) then
+    numBlownCategories = numCategories + category_multiplier - rest
+  end
+
+  local result =  setmetatable({
     acx = acx or ffi.gc(ffi.C.mg_5tuple_create_filter(socket, maxNRules), function(self)
       -- FIXME: why is destructor never called?
       print "5tuple garbage"
@@ -126,9 +139,57 @@ function mod.create5TupleFilter(socket, acx, maxNRules)
     end),
     built = false,
     nrules = 0,
-    numCategories = 0
+    numCategories = numBlownCategories,
+    numRealCategories = numCategories,
+    out_masks = ffi.new("struct mg_bitmask*[?]", numCategories),
+    out_values = ffi.new("uint32_t*[?]", numCategories)
   }, mg_filter_5tuple)
+
+  for i = 1,numCategories do
+    result.out_masks[i-1] = nil
+  end
+  return result
 end
+
+
+function mg_filter_5tuple:bindValuesToCategory(values, category)
+  if type(values) == "number" then
+    values = ffi.new("uint32_t[?]", values)
+  end
+  if not category then
+    -- bind bitmask to all categories, which do not yet have an associated bitmask
+    for i = 1,self.numRealCategories do
+      if (self.out_values[i-1] == nil) then
+        print("assigned default at category " .. tostring(i))
+        self.out_values[i-1] = values
+      end
+    end
+  else
+    print("assigned bitmask to category " .. tostring(category))
+    self.out_values[category-1] = values
+  end
+  return values
+end
+
+function mg_filter_5tuple:bindBitmaskToCategory(bitmask, category)
+  if type(bitmask) == "number" then
+    bitmask = mbitmask.createBitMask(bitmask)
+  end
+  if not category then
+    -- bind bitmask to all categories, which do not yet have an associated bitmask
+    for i = 1,self.numRealCategories do
+      if (self.out_masks[i-1] == nil) then
+        print("assigned default at category " .. tostring(i))
+        self.out_masks[i-1] = bitmask.bitmask
+      end
+    end
+  else
+    print("assigned bitmask to category " .. tostring(category))
+    self.out_masks[category-1] = bitmask.bitmask
+  end
+  return bitmask
+end
+
 
 --- Allocates memory for one 5 tuple rule
 -- @return ctype object "struct mg_5tuple_rule"
@@ -153,9 +214,9 @@ end
 -- @param numCategories maximum number of categories, which are in use
 --  NOTE: Only some values are allowed for numCategories. -- FIXME: specify which or provide wrapper
 function mg_filter_5tuple:build(numCategories)
-  numCategories = numCategories or 1
+  numCategories = numCategories or self.numCategories
   self.built = true
-  self.numCategories = numCategories
+  --self.numCategories = numCategories
   return ffi.C.mg_5tuple_build_filter(self.acx, numCategories)
 end
 
@@ -164,20 +225,12 @@ end
 --  normal ethernet header (no VLAN tags). A L4 Protocol header has to be
 --  present, to avoid reading at invalid memory address. -- FIXME: check if this is true
 -- @param inMask bitMask, specifying on which packets the filter should be applied
--- @param outMasks Array of pointers to initialized lowlevel bitMask c-datastructures.
---  Each bitMask in the array will specify the packets, matched by the corresponding filter category.
--- @param entries Array(A) of arrays(B) of type uint32_t. Each array element of (A)
---  represents one filter category. The elements of each category array (B) correspond
---  to the input packets and contain the value of the rule, which matched the packet.
--- @param numCategories optional (default = number of categories specified during build()).
---  The number of filter categories, for which the classification should be performed.
---  NOTE: Only some values are allowed for numCategories. -- FIXME: specify which or provide wrapper
-function mg_filter_5tuple:classifyBurst(pkts, inMask, outMasks, entries, numCategories)
+function mg_filter_5tuple:classifyBurst(pkts, inMask)
   if not self.built then
     print("Warning: New rules have been added without building the filter!")
   end
-  numCategories = numCategories or self.numCategories
-  return ffi.C.mg_5tuple_classify_burst(self.acx, pkts.array, inMask.bitmask, numCategories, outMasks, entries)
+  --numCategories = numCategories or self.numCategories
+  return ffi.C.mg_5tuple_classify_burst(self.acx, pkts.array, inMask.bitmask, self.numCategories, self.numRealCategories, self.out_masks, self.out_values)
 end
 
 return mod

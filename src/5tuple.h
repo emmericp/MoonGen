@@ -37,8 +37,10 @@ int mg_5tuple_classify_burst(
     struct rte_mbuf **pkts,
     struct mg_bitmask* pkts_mask,
     uint32_t num_categories,
+    uint32_t num_real_categories,
     struct mg_bitmask** result_masks,
     uint32_t ** result_entries
     );
+uint32_t mg_5tuple_get_results_multiplier();
 #endif
 
