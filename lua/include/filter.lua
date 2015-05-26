@@ -116,6 +116,7 @@ mg_filter_5tuple.__index = mg_filter_5tuple
 --- Creates a new 5tuple filter / packet classifier
 -- @param socket optional (default: socket of calling thread), CPU socket, where memory for the filter should be allocated.
 -- @param acx experimental use only. should be nil.
+-- @param numCategories number of categories, this filter should support
 -- @param maxNRules optional (default = 10), maximum number of rules.
 -- @return a wrapper table for the created filter
 function mod.create5TupleFilter(socket, acx, numCategories, maxNRules)
@@ -152,6 +153,14 @@ function mod.create5TupleFilter(socket, acx, numCategories, maxNRules)
 end
 
 
+--- Bind an array of result values to a filter category.
+-- One array of values can be boun to multiple categories. After classification
+-- it will contain mixed values of all categories it was bound to.
+-- @param values Array of values to be bound to a category. May also be a number. In this case
+--  a new Array will be allocated and bound to the specified category.
+-- @param category optional (default = bind the specified array to all not yet bound categories),
+--  The category the array should be bound to
+-- @return the array, which was bound
 function mg_filter_5tuple:bindValuesToCategory(values, category)
   if type(values) == "number" then
     values = ffi.new("uint32_t[?]", values)
@@ -171,6 +180,16 @@ function mg_filter_5tuple:bindValuesToCategory(values, category)
   return values
 end
 
+--- Bind a BitMask to a filter category.
+-- On Classification the corresponding bits in the bitmask are set, when a rule
+-- matches a packet, for the corresponding category.
+-- One Bitmask can be bound to multiple categories. The result will be a bitwise OR
+-- of the Bitmasks, which would be filled for each category.
+-- @param bitmask Bitmask to be bound to a category. May also be a number. In this case
+--  a new BitMask will be allocated and bound to the specified category.
+-- @param category optional (default = bind the specified bitmask to all not yet bound categories),
+--  The category the bitmask should be bound to
+-- @return the bitmask, which was bound
 function mg_filter_5tuple:bindBitmaskToCategory(bitmask, category)
   if type(bitmask) == "number" then
     bitmask = mbitmask.createBitMask(bitmask)
@@ -211,20 +230,21 @@ function mg_filter_5tuple:addRule(rule, priority, category_mask, value)
 end
 
 --- Builds the filter with the currently added rules. Should be executed after adding rules
--- @param numCategories maximum number of categories, which are in use
---  NOTE: Only some values are allowed for numCategories. -- FIXME: specify which or provide wrapper
+-- @param optional (default = number of Categories, set at 5tuple filter creation time) numCategories maximum number of categories, which are in use.
 function mg_filter_5tuple:build(numCategories)
-  numCategories = numCategories or self.numCategories
+  numCategories = numCategories or self.numRealCategories
   self.built = true
   --self.numCategories = numCategories
   return ffi.C.mg_5tuple_build_filter(self.acx, numCategories)
 end
 
 --- Perform packet classification for a burst of packets
+-- Will do memory violation, when Masks or Values are not correctly bound to categories.
 -- @param pkts Array of mbufs. Mbufs should contain valid IPv4 packets with a
 --  normal ethernet header (no VLAN tags). A L4 Protocol header has to be
 --  present, to avoid reading at invalid memory address. -- FIXME: check if this is true
 -- @param inMask bitMask, specifying on which packets the filter should be applied
+-- @return 0 on successfull completion.
 function mg_filter_5tuple:classifyBurst(pkts, inMask)
   if not self.built then
     print("Warning: New rules have been added without building the filter!")
