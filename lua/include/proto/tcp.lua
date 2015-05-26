@@ -4,10 +4,6 @@ local pkt = require "packet"
 require "utils"
 require "headers"
 
-local eth = require "proto.ethernet"
-local ip = require "proto.ip"
-local ip6 = require "proto.ip6"
-
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
@@ -318,59 +314,65 @@ end
 	self. = int
 end--]]
 
-function tcpHeader:fill(args)
+function tcpHeader:fill(args, pre)
 	args = args or {}
-	self:setSrcPort(args.tcpSrc)
-	self:setDstPort(args.tcpDst)
-	self:setSeqNumber(args.tcpSeqNumber)
-	self:setAckNumber(args.tcpAckNumber)
-	self:setDataOffset(args.tcpDataOffset)
-	self:setReserved(args.tcpReserved)
-	self:setFlags(args.tcpFlags)
-	if args.tcpUrg and args.tcpUrg ~= 0 then
+	pre = pre or "tcp"
+
+	self:setSrcPort(args[pre .. "Src"])
+	self:setDstPort(args[pre .. "Dst"])
+	self:setSeqNumber(args[pre .. "SeqNumber"])
+	self:setAckNumber(args[pre .. "AckNumber"])
+	self:setDataOffset(args[pre .. "DataOffset"])
+	self:setReserved(args[pre .. "Reserved"])
+	self:setFlags(args[pre .. "Flags"])
+	if args[pre .. "Urg"] and args[pre .. "Urg"] ~= 0 then
 		self:setUrg()
 	end
-	if args.tcpAck and args.tcpAck ~= 0 then
+	if args[pre .. "Ack"] and args[pre .. "Ack"] ~= 0 then
 		self:setAck()
 	end
-	if args.tcpPsh and args.tcpPsh ~= 0 then
+	if args[pre .. "Psh"] and args[pre .. "Psh"] ~= 0 then
 		self:setPsh()
 	end
-	if args.tcpRst and args.tcpRst ~= 0 then
+	if args[pre .. "Rst"] and args[pre .. "Rst"] ~= 0 then
 		self:setRst()
 	end
-	if args.tcpSyn and args.tcpSyn ~= 0 then
+	if args[pre .. "Syn"] and args[pre .. "Syn"] ~= 0 then
 		self:setSyn()
 	end
-	if args.tcpFin and args.tcpFin ~= 0 then
+	if args[pre .. "Fin"] and args[pre .. "Fin"] ~= 0 then
 		self:setFin()
 	end
-	self:setWindow(args.tcpWindow)
-	self:setChecksum(args.tcpChecksum)
-	self:setUrgentPointer(args.tcpUrgentPointer)
+	self:setWindow(args[pre .. "Window"])
+	self:setChecksum(args[pre .. "Checksum"])
+	self:setUrgentPointer(args[pre .. "UrgentPointer"])
 end
 
 --- Retrieve the values of all members.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see tcpHeader:fill
-function tcpHeader:get()
-	return { tcpSrc			= self:getSrcPort(),
-		 tcpDst			= self:getDstPort(),
-		 tcpSeqNumber		= self:getSeqNumber(),
-		 tcpAckNumber		= self:getAckNumber(),
-		 tcpDataOffset		= self:getDataOffset(),
-		 tcpReserved		= self:getReserved(),
-		 tcpFlags		= self:getFlags(),
-		 tcpUrg			= self:getUrg(),
-		 tcpAck			= self:getAck(),
-		 tcpPsh			= self:getPsh(),
-		 tcpRst			= self:getRst(),
-		 tcpSyn			= self:getSyn(),
-		 tcpFin			= self:getFin(),
-		 tcpWindow		= self:getWindow(),
-		 tcpChecksum		= self:getChecksum(),
-		 tcpUrgentPointer	= self:getUrgentPointer()
-		}
+function tcpHeader:get(pre)
+	pre = pre or "tcp"
+
+	local args = {}
+	args[pre .. "Src"] = self:getSrcPort()
+	args[pre .. "Dst"] = self:getDstPort()
+	args[pre .. "SeqNumber"] = self:getSeqNumber()
+	args[pre .. "AckNumber"] = self:getAckNumber()
+	args[pre .. "DataOffset"] = self:getDataOffset()
+	args[pre .. "Reserved"] = self:getReserved()
+	args[pre .. "Flags"] = self:getFlags()
+	args[pre .. "Urg"] = self:getUrg()
+	args[pre .. "Ack"] = self:getAck()
+	args[pre .. "Psh"] = self:getPsh()
+	args[pre .. "Rst"] = self:getRst()
+	args[pre .. "Syn"] = self:getSyn()
+	args[pre .. "Fin"] = self:getFin()
+	args[pre .. "Window"] = self:getWindow()
+	args[pre .. "Checksum"] = self:getChecksum()
+	args[pre .. "UrgentPointer"] = self:getUrgentPointer()
+	
+	return args
 end
 
 --- Retrieve the values of all members.
@@ -398,7 +400,7 @@ function tcpHeader:resolveNextHeader()
 	return nil
 end
 
-function tcpHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+function tcpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
 end
 
@@ -407,8 +409,8 @@ end
 --- Packets
 ----------------------------------------------------------------------------------
 
-pkt.getTcp4Packet = packetCreate("eth", {"ip4", "ip"}, "tcp")
-pkt.getTcp6Packet = packetCreate("eth", {"ip6", "ip"}, "tcp")
+pkt.getTcp4Packet = packetCreate("eth", "ip4", "tcp")
+pkt.getTcp6Packet = packetCreate("eth", "ip6", "tcp")
 pkt.getTcpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getTcp4Packet(self) else return pkt.getTcp6Packet(self) end end   
 
 ------------------------------------------------------------------------------------

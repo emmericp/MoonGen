@@ -269,12 +269,16 @@ function packetFill(self, namedArgs)
 	local args = self:getArgs()
 	local accumulatedLength = 0
 	for i, v in ipairs(headers) do
+		local curMember = args[i]
+		if type(curMember) == "table" then
+			curMember = curMember[2]
+		end
 		local nextHeader = args[i + 1]
 		if type(nextHeader) == "table" then
 			nextHeader = nextHeader[1]
 		end
-		namedArgs = v:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
-		v:fill(namedArgs) 
+		namedArgs = v:setDefaultNamedArgs(curMember, namedArgs, nextHeader, accumulatedLength)
+		v:fill(namedArgs, curMember) 
 
 		accumulatedLength = accumulatedLength + ffi.sizeof(v)
 	end
@@ -285,11 +289,16 @@ end
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see packetFill
 function packetGet(self) 
-	local args = {} 
-	for _, v in ipairs(self:getHeaders()) do 
-		args = mergeTables(args, v:get()) 
+	local namedArgs = {} 
+	local args = self:getArgs()
+	for i, v in ipairs(self:getHeaders()) do 
+		local member = args[i]
+		if type(member) == "table" then
+			member = member[2]
+		end
+		namedArgs = mergeTables(namedArgs, v:get(member)) 
 	end 
-	return args 
+	return namedArgs 
 end
 
 --- Try to find out what the next header in the payload of this packet is
@@ -304,14 +313,13 @@ function packetResolveLastHeader(self)
 		return self
 	else
 		next_member = next_header
-		-- ugly, but necessary as those are always renamed
+		
 		if next_header == "ethernet" then
 			next_member = "eth"
-		elseif next_header == "ip4" or next_header == "ip6" then
-			next_member = "ip"
 		end
-
+		-- TODO if same header exists multiple times rename member
 		name = name .. "__" .. next_header .. "_" .. next_member .. "*"
+		-- TODO if packet does not exist, create it
 		return ffi.cast(name, self):resolveLastHeader()
 	end
 end
@@ -412,7 +420,6 @@ function packetMakeStruct(...)
 		union payload_t payload;
 	};	
 	]]
-	
 	-- add struct definition, return full name and typeof
 	ffi.cdef(str)
 	name = "struct " .. name

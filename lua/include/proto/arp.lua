@@ -193,58 +193,68 @@ function arpHeader:getProtoDstString()
 	return self.tpa:getString()
 end
 
-function arpHeader:fill(args)
+function arpHeader:fill(args, pre)
 	args = args or {}
+	pre = pre or "arp"
 	
-	self:setHardwareAddressType(args.arpHardwareAddressType)
-	self:setProtoAddressType(args.arpProtoAddressType)
-	self:setHardwareAddressLength(args.arpHardwareAddressLength)
-	self:setProtoAddressLength(args.arpProtoAddressLength)
-	self:setOperation(args.arpOperation)
+	self:setHardwareAddressType(args[pre .. "HardwareAddressType"])
+	self:setProtoAddressType(args[pre .. "ProtoAddressType"])
+	self:setHardwareAddressLength(args[pre .. "HardwareAddressLength"])
+	self:setProtoAddressLength(args[pre .. "ProtoAddressLength"])
+	self:setOperation(args[pre .. "Operation"])
 
-	args.arpHardwareSrc = args.arpHardwareSrc or "01:02:03:04:05:06"
-	args.arpHardwareDst = args.arpHardwareDst or "07:08:09:0a:0b:0c"
-	args.arpProtoSrc = args.arpProtoSrc or "0.1.2.3"
-	args.arpProtoDst = args.arpProtoDst or "4.5.6.7"
+	local hwSrc = pre .. "HardwareSrc"
+	local hwDst = pre .. "HardwareDst"
+	local prSrc = pre .. "ProtoSrc"
+	local prDst = pre .. "ProtoDst"
+	args[hwSrc] = args[hwSrc] or "01:02:03:04:05:06"
+	args[hwDst] = args[hwDst] or "07:08:09:0a:0b:0c"
+	args[prSrc] = args[prSrc] or "0.1.2.3"
+	args[prDst] = args[prDst] or "4.5.6.7"
 	
 	-- if for some reason the address is in 'struct mac_address'/'union ipv4_address' format, cope with it
-	if type(args.arpHardwareSrc) == "string" then
-		self:setHardwareSrcString(args.arpHardwareSrc)
+	if type(args[hwSrc]) == "string" then
+		self:setHardwareSrcString(args[hwSrc])
 	else
-		self:setHardwareSrc(args.arpHardwareSrc)
+		self:setHardwareSrc(args[hwSrc])
 	end
-	if type(args.arpHardwareDst) == "string" then
-		self:setHardwareDstString(args.arpHardwareDst)
+	if type(args[hwDst]) == "string" then
+		self:setHardwareDstString(args[hwDst])
 	else
-		self:setHardwareDst(args.arpHardwareDst)
+		self:setHardwareDst(args[hwDst])
 	end
 	
-	if type(args.arpProtoSrc) == "string" then
-		self:setProtoSrcString(args.arpProtoSrc)
+	if type(args[prSrc]) == "string" then
+		self:setProtoSrcString(args[prSrc])
 	else
-		self:setProtoSrc(args.arpProtoSrc)
+		self:setProtoSrc(args[prSrc])
 	end
-	if type(args.arpProtoDst) == "string" then
-		self:setProtoDstString(args.arpProtoDst)
+	if type(args[prDst]) == "string" then
+		self:setProtoDstString(args[prDst])
 	else
-		self:setProtoDst(args.arpProtoDst)
+		self:setProtoDst(args[prDst])
 	end
 end
 
 --- Retrieve the values of all members.
+-- @param pre prefix for namedArgs. Default 'arp'.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see arpHeader:fill
-function arpHeader:get()
-	return { arpHardwareAddressType 	= self:getHardwareAddressType(),
-			 arpProtoAddressType 		= self:getProtoAddressType(),
-			 arpHardwareAddressLength	= self:getHardwareAddressLength(),
-			 arpProtoAddressLength		= self:getProtoAddressLength(),
-			 arpOperation				= self:getOperation(),
-			 arpHardwareSrc				= self:getHardwareSrc(),
-			 arpHardwareDst				= self:getHardwareDst(),
-			 arpProtoSrc				= self:getProtoSrc(),
-			 arpProtoDst				= self:getProtoDst() 
-		 }
+function arpHeader:get(pre)
+	pre = pre or "arp"
+
+	local args = {}
+	args[pre .. "HardwareAddressType"] = self:getHardwareAddressType()
+	args[pre .. "ProtoAddressType"] = self:getProtoAddressType()
+	args[pre .. "HardwareAddressLength"] = self:getHardwareAddressLength()
+	args[pre .. "ProtoAddressLength"] = self:getProtoAddressLength()
+	args[pre .. "Operation"] = self:getOperation()
+	args[pre .. "HardwareSrc"] = self:getHardwareSrc()
+	args[pre .. "HardwareDst"] = self:getHardwareDst()
+	args[pre .. "ProtoSrc"] = self:getProtoSrc()
+	args[pre .. "ProtoDst"] = self:getProtoDst() 
+
+	return args
 end
 
 --- Retrieve the values of all members.
@@ -283,7 +293,7 @@ function arpHeader:resolveNextHeader()
 	return nil
 end
 
-function arpHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+function arpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
 end
 	

@@ -4,10 +4,6 @@ local pkt = require "packet"
 require "utils"
 require "headers"
 
-local eth = require "proto.ethernet"
-local ip = require "proto.ip"
-local ip6 = require "proto.ip6"
-
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
@@ -16,14 +12,11 @@ local format = string.format
 
 -- FIXME
 -- ICMPv6 and ICMPv4 use different values for the same types/codes which causes some complications when handling this with only one header:
--- - get() always returns values twice with the respective named arguments for both icmpv4/6
--- - fill(<ip6 values>), followed by fill(get()), will not work, because get also returns ip4 values which are then prefered in the next call of fill
 -- - getString() does not work for ICMPv6 correctly without some ugly workarounds (basically adding 'ipv4' flags to getString()'s of type/code and header)
 -- 	 currently getString() simply does not recognise ICMPv6
--- - Furthermore, dumpPacket would need a change to pass this flag when calling getString()
--- Once this is really needed, better move ICMPv6 to a seperate file (which would result in copying/duplicating 95% of this code)
--- For now those cosmetic issues should not matter.
-
+-- - Furthermore, packetDump would need a change to pass this flag when calling getString()
+-- TODO
+-- remove messageBody, instead use new packetCreate with additional header { "ip4", "messageBody" } or similar
 ---------------------------------------------------------------------------
 --- ICMPv4 constants
 ---------------------------------------------------------------------------
@@ -180,31 +173,33 @@ end
 -- Per default, all members are set to default values specified in the respective set function.
 -- Optional named arguments can be used to set a member to a user-provided value.
 -- @param args Table of named arguments. Available arguments: icmpType, icmpCode, icmpChecksum, icmpMessageBody
+-- @param pre prefix for namedArgs. Default 'icmp'.
 -- @usage fill() -- only default values
 -- @usage fill{ icmpCode=3 } -- all members are set to default values with the exception of icmpCode
-function icmpHeader:fill(args)
+function icmpHeader:fill(args, pre)
 	args = args or {}
+	pre = pre or "icmp"
 
-	self:setType(args.icmpType or args.icmp6Type)
-	self:setCode(args.icmpCode or args.icmp6Code)
-	self:setChecksum(args.icmpChecksum or args.icmp6Checksum)
-	self:setMessageBody(args.icmpMessageBody or args.icmp6MessageBody)
+	self:setType(args[pre .. "Type"])
+	self:setCode(args[pre .. "Code"])
+	self:setChecksum(args[pre .. "Checksum"])
+	self:setMessageBody(args[pre .. "MessageBody"])
 end
 
 --- Retrieve the values of all members.
--- Returns for both ICMP and ICMP6, the user normally knows which one he needs.
+-- @param pre prefix for namedArgs. Default 'icmp'.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see icmpHeader:fill
-function icmpHeader:get()
-	return { icmpType 			= self:getType(), 
-			 icmpCode 			= self:getCode(), 
-			 icmpChecksum 		= self:getChecksum(), 
-			 icmpMessageBody 	= self:getMessageBody(),
-			 -- now the same for icmp6
-			 icmp6Type 			= self:getType(), 
-			 icmp6Code 			= self:getCode(), 
-			 icmp6Checksum 		= self:getChecksum(), 
-			 icmp6MessageBody 	= self:getMessageBody() }
+function icmpHeader:get(pre)
+	pre = pre or "icmp"
+
+	local args = {}
+	args[pre .. "Type"] = self:getType()
+	args[pre .. "Code"] = self:getCode()
+	args[pre .. "Checksum"] = self:getChecksum()
+	args[pre .. "MessageBody"] = self:getMessageBody()
+	
+	return args
 end
 
 --- Retrieve the values of all members.
@@ -221,7 +216,7 @@ function icmpHeader:resolveNextHeader()
 	return nil
 end
 
-function icmpHeader:setDefaultNamedArgs(namedArgs, nextHeader, accumulatedLength)
+function icmpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
 end
 
@@ -230,9 +225,8 @@ end
 --- Packets
 ------------------------------------------------------------------------
 
--- TODO instead of only payload add inner_ip for icmp payload
-pkt.getIcmp4Packet = packetCreate("eth", { "ip4", "ip" }, "icmp")
-pkt.getIcmp6Packet = packetCreate("eth", { "ip6", "ip" }, "icmp")
+pkt.getIcmp4Packet = packetCreate("eth", "ip4", "icmp")
+pkt.getIcmp6Packet = packetCreate("eth", "ip6", "icmp")
 pkt.getIcmpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getIcmp4Packet(self) else return pkt.getIcmp6Packet(self) end end   
 
 
