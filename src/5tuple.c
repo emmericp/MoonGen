@@ -91,6 +91,8 @@ void mg_5tuple_destruct_filter(struct rte_acl_ctx * acl){
 int mg_5tuple_add_rule(struct rte_acl_ctx * acx, struct mg_5tuple_rule * mgrule, int32_t priority, uint32_t category_mask, uint32_t value){
   // FIXME: stack or heap?
   struct acl_ipv4_rule acl_rules[1];
+  printf("add mask = %x\n", category_mask);
+  printf("add value = %u\n", value);
   acl_rules[0].data.userdata = value;
   acl_rules[0].data.category_mask = category_mask;
   acl_rules[0].data.priority = priority;
@@ -111,6 +113,7 @@ int mg_5tuple_add_rule(struct rte_acl_ctx * acx, struct mg_5tuple_rule * mgrule,
 
 int mg_5tuple_build_filter(struct rte_acl_ctx * acx, uint32_t num_categories){
   struct rte_acl_config cfg;
+  printf("build: num_categories = %d\n", num_categories);
   cfg.num_categories = num_categories;
   cfg.num_fields = RTE_DIM(ipv4_defs);
   memcpy(cfg.defs, ipv4_defs, sizeof(ipv4_defs));
@@ -146,7 +149,10 @@ int mg_5tuple_classify_burst(
   printf("compute\n");
   // compute results:
   uint32_t results[num_categories * n_real];
-  rte_acl_classify(acx, data, results, n_real, num_categories);
+  int status = rte_acl_classify(acx, data, results, n_real, num_categories);
+  printf("status = %d\n", status);
+  printf("multiplier: %lu\n", RTE_ACL_RESULTS_MULTIPLIER);
+  printf("maxCat: %d\n", RTE_ACL_MAX_CATEGORIES);
 
   // decompress:
   //uint32_t c;
@@ -163,7 +169,16 @@ int mg_5tuple_classify_burst(
   //    }
   //  }
   //}
+  printf("num_categories = %d\n", num_categories);
   
+  printf("results:\n");
+  for (i=0;i<num_categories*n_real;i++){
+    printf(" %u", results[i]);
+    if (i%2 == 1){
+      printf("| ");
+    }
+  }
+  printf("\n");
 
   // decompress:
   printf("decompress\n");
@@ -171,26 +186,26 @@ int mg_5tuple_classify_burst(
   uint32_t category = 0;
   uint16_t packet = 0;
   for(i= 0; i< num_categories*n_real; i++){
-    //printf(" i = %d\n", i);
-    //printf(" category = %d\n", category);
-    //printf(" packet = %d\n", packet);
+    printf(" i = %d\n", i);
+    printf(" category = %d\n", category);
+    printf(" packet = %d\n", packet);
     if(category == num_categories){
       category = 0;
       packet++;
       while( mg_bitmask_get_bit(pkts_mask, packet) == 0){
-        //printf("  skip\n");
+        printf("  skip\n");
         packet++;
       }
     }
     if(results[i]){
-      printf("  set bit");
+      printf("  set bit\n");
       mg_bitmask_set_bit(result_masks[category], packet);
     }
-    //printf("access entries\n");
+    printf("access entries\n");
     result_entries[category][packet] = results[i];
     category++;
   }
   printf("return\n");
-  return 0;
+  return status;
 }
 

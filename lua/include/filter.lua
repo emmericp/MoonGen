@@ -110,6 +110,11 @@ local mg_filter_5tuple = {}
 mod.mg_filter_5tuple = mg_filter_5tuple
 mg_filter_5tuple.__index = mg_filter_5tuple
 
+--- Creates a new 5tuple filter / packet classifier
+-- @param socket optional (default: socket of calling thread), CPU socket, where memory for the filter should be allocated.
+-- @param acx experimental use only. should be nil.
+-- @param maxNRules optional (default = 10), maximum number of rules.
+-- @return a wrapper table for the created filter
 function mod.create5TupleFilter(socket, acx, maxNRules)
   socket = socket or select(2, dpdk.getCore())
   maxNRules = maxNRules or 10
@@ -125,15 +130,28 @@ function mod.create5TupleFilter(socket, acx, maxNRules)
   }, mg_filter_5tuple)
 end
 
+--- Allocates memory for one 5 tuple rule
+-- @return ctype object "struct mg_5tuple_rule"
 function mg_filter_5tuple:allocateRule()
   return ffi.new("struct mg_5tuple_rule")
 end
 
+--- Adds a rule to the filter
+-- @param rule the rule to be added (ctype "struct mg_5tuple_rule")
+-- @priority priority of the rule. Higher number -> higher priority
+-- @category_mask bitmask for the categories, this rule should apply
+-- @value 32bit integer value associated with this rule. Value is not allowed to be 0
 function mg_filter_5tuple:addRule(rule, priority, category_mask, value)
+  if(value == 0) then
+    error("ERROR: Adding a rule with a 0 value is not allowed")
+  end
   self.buit = false
   return ffi.C.mg_5tuple_add_rule(self.acx, rule, priority, category_mask, value)
 end
 
+--- Builds the filter with the currently added rules. Should be executed after adding rules
+-- @param numCategories maximum number of categories, which are in use
+--  NOTE: Only some values are allowed for numCategories. -- FIXME: specify which or provide wrapper
 function mg_filter_5tuple:build(numCategories)
   numCategories = numCategories or 1
   self.built = true
@@ -141,12 +159,25 @@ function mg_filter_5tuple:build(numCategories)
   return ffi.C.mg_5tuple_build_filter(self.acx, numCategories)
 end
 
+--- Perform packet classification for a burst of packets
+-- @param pkts Array of mbufs. Mbufs should contain valid IPv4 packets with a
+--  normal ethernet header (no VLAN tags). A L4 Protocol header has to be
+--  present, to avoid reading at invalid memory address. -- FIXME: check if this is true
+-- @param inMask bitMask, specifying on which packets the filter should be applied
+-- @param outMasks Array of pointers to initialized lowlevel bitMask c-datastructures.
+--  Each bitMask in the array will specify the packets, matched by the corresponding filter category.
+-- @param entries Array(A) of arrays(B) of type uint32_t. Each array element of (A)
+--  represents one filter category. The elements of each category array (B) correspond
+--  to the input packets and contain the value of the rule, which matched the packet.
+-- @param numCategories optional (default = number of categories specified during build()).
+--  The number of filter categories, for which the classification should be performed.
+--  NOTE: Only some values are allowed for numCategories. -- FIXME: specify which or provide wrapper
 function mg_filter_5tuple:classifyBurst(pkts, inMask, outMasks, entries, numCategories)
   if not self.built then
     print("Warning: New rules have been added without building the filter!")
   end
   numCategories = numCategories or self.numCategories
-  return ffi.C. mg_5tuple_classify_burst(self.acx, pkts.array, inMask.bitmask, numCategories, outMasks, entries)
+  return ffi.C.mg_5tuple_classify_burst(self.acx, pkts.array, inMask.bitmask, numCategories, outMasks, entries)
 end
 
 return mod
