@@ -1,4 +1,5 @@
 local ffi = require "ffi"
+local pkt = require "packet"
 
 require "headers"
 local dpdkc = require "dpdkc"
@@ -192,58 +193,68 @@ function arpHeader:getProtoDstString()
 	return self.tpa:getString()
 end
 
-function arpHeader:fill(args)
+function arpHeader:fill(args, pre)
 	args = args or {}
+	pre = pre or "arp"
 	
-	self:setHardwareAddressType(args.arpHardwareAddressType)
-	self:setProtoAddressType(args.arpProtoAddressType)
-	self:setHardwareAddressLength(args.arpHardwareAddressLength)
-	self:setProtoAddressLength(args.arpProtoAddressLength)
-	self:setOperation(args.arpOperation)
+	self:setHardwareAddressType(args[pre .. "HardwareAddressType"])
+	self:setProtoAddressType(args[pre .. "ProtoAddressType"])
+	self:setHardwareAddressLength(args[pre .. "HardwareAddressLength"])
+	self:setProtoAddressLength(args[pre .. "ProtoAddressLength"])
+	self:setOperation(args[pre .. "Operation"])
 
-	args.arpHardwareSrc = args.arpHardwareSrc or "01:02:03:04:05:06"
-	args.arpHardwareDst = args.arpHardwareDst or "07:08:09:0a:0b:0c"
-	args.arpProtoSrc = args.arpProtoSrc or "0.1.2.3"
-	args.arpProtoDst = args.arpProtoDst or "4.5.6.7"
+	local hwSrc = pre .. "HardwareSrc"
+	local hwDst = pre .. "HardwareDst"
+	local prSrc = pre .. "ProtoSrc"
+	local prDst = pre .. "ProtoDst"
+	args[hwSrc] = args[hwSrc] or "01:02:03:04:05:06"
+	args[hwDst] = args[hwDst] or "07:08:09:0a:0b:0c"
+	args[prSrc] = args[prSrc] or "0.1.2.3"
+	args[prDst] = args[prDst] or "4.5.6.7"
 	
 	-- if for some reason the address is in 'struct mac_address'/'union ipv4_address' format, cope with it
-	if type(args.arpHardwareSrc) == "string" then
-		self:setHardwareSrcString(args.arpHardwareSrc)
+	if type(args[hwSrc]) == "string" then
+		self:setHardwareSrcString(args[hwSrc])
 	else
-		self:setHardwareSrc(args.arpHardwareSrc)
+		self:setHardwareSrc(args[hwSrc])
 	end
-	if type(args.arpHardwareDst) == "string" then
-		self:setHardwareDstString(args.arpHardwareDst)
+	if type(args[hwDst]) == "string" then
+		self:setHardwareDstString(args[hwDst])
 	else
-		self:setHardwareDst(args.arpHardwareDst)
+		self:setHardwareDst(args[hwDst])
 	end
 	
-	if type(args.arpProtoSrc) == "string" then
-		self:setProtoSrcString(args.arpProtoSrc)
+	if type(args[prSrc]) == "string" then
+		self:setProtoSrcString(args[prSrc])
 	else
-		self:setProtoSrc(args.arpProtoSrc)
+		self:setProtoSrc(args[prSrc])
 	end
-	if type(args.arpProtoDst) == "string" then
-		self:setProtoDstString(args.arpProtoDst)
+	if type(args[prDst]) == "string" then
+		self:setProtoDstString(args[prDst])
 	else
-		self:setProtoDst(args.arpProtoDst)
+		self:setProtoDst(args[prDst])
 	end
 end
 
 --- Retrieve the values of all members.
+-- @param pre prefix for namedArgs. Default 'arp'.
 -- @return Table of named arguments. For a list of arguments see "See also".
 -- @see arpHeader:fill
-function arpHeader:get()
-	return { arpHardwareAddressType 	= self:getHardwareAddressType(),
-			 arpProtoAddressType 		= self:getProtoAddressType(),
-			 arpHardwareAddressLength	= self:getHardwareAddressLength(),
-			 arpProtoAddressLength		= self:getProtoAddressLength(),
-			 arpOperation				= self:getOperation(),
-			 arpHardwareSrc				= self:getHardwareSrc(),
-			 arpHardwareDst				= self:getHardwareDst(),
-			 arpProtoSrc				= self:getProtoSrc(),
-			 arpProtoDst				= self:getProtoDst() 
-		 }
+function arpHeader:get(pre)
+	pre = pre or "arp"
+
+	local args = {}
+	args[pre .. "HardwareAddressType"] = self:getHardwareAddressType()
+	args[pre .. "ProtoAddressType"] = self:getProtoAddressType()
+	args[pre .. "HardwareAddressLength"] = self:getHardwareAddressLength()
+	args[pre .. "ProtoAddressLength"] = self:getProtoAddressLength()
+	args[pre .. "Operation"] = self:getOperation()
+	args[pre .. "HardwareSrc"] = self:getHardwareSrc()
+	args[pre .. "HardwareDst"] = self:getHardwareDst()
+	args[pre .. "ProtoSrc"] = self:getProtoSrc()
+	args[pre .. "ProtoDst"] = self:getProtoDst() 
+
+	return args
 end
 
 --- Retrieve the values of all members.
@@ -278,44 +289,19 @@ function arpHeader:getString()
 	return str
 end
 
+function arpHeader:resolveNextHeader()
+	return nil
+end
 
+function arpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+	return namedArgs
+end
+	
 ---------------------------------------------------------------------------------
---- ARP packet
+--- Packets
 ---------------------------------------------------------------------------------
 
-local arpPacketType = ffi.typeof("struct arp_packet*")
-local arpPacket = {}
-arpPacket.__index = arpPacket
-
---- Set all members of the arpnet header.
--- Per default, all members are set to default values specified in the respective set function.
--- Optional named arguments can be used to set a member to a user-provided value.
--- @param args Table of named arguments. For a list of available arguments see "See also"
--- @usage fill() -- only default values
--- @usage fill{ ethSrc="12:23:34:45:56:67" } -- all members are set to default values with the exception of ethSrc
--- @see ethernet.etherHeader:fill
--- @see arpHeader:fill
-function arpPacket:fill(args)
-	args = args or {}
-
-	args.ethType = args.ethType or eth.TYPE_ARP
-
-	self.eth:fill(args)
-	self.arp:fill(args)
-end
-
---- Retrieve the values of all members.
--- @return Table of named arguments. For a list of arguments see "See also".
--- @see arpHeader:get
-function arpPacket:get()
-	return mergeTables(self.eth:get(), self.arp:get())
-end
-
---- Print information about the headers and a hex dump of the complete packet.
--- @param bytes Number of bytes to dump.
-function arpPacket:dump(bytes)
-	dumpPacket(self, bytes, self.eth, self.arp)
-end
+pkt.getArpPacket = packetCreate("eth", "arp")
 
 
 ---------------------------------------------------------------------------------
@@ -448,7 +434,6 @@ __MG_ARP_TASK = arpTask
 ---------------------------------------------------------------------------------
 
 ffi.metatype("struct arp_header", arpHeader)
-ffi.metatype("struct arp_packet", arpPacket)
 
 return arp
 

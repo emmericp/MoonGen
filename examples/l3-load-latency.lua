@@ -49,7 +49,7 @@ function loadSlave(port, queue, size, numFlows)
 		local pkt = buf:getUdpPacket()
 		pkt.eth.src:setString(srcmac)
 		pkt.eth.dst:setString(dstmac)
-		pkt.ip.dst:set(dstip)
+		pkt.ip4.dst:set(dstip)
 	end)
 	local lastPrint = dpdk.getTime()
 	local totalSent = 0
@@ -62,7 +62,7 @@ function loadSlave(port, queue, size, numFlows)
 		bufs:alloc(size)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
-			pkt.ip.src:set(baseIP + counter)
+			pkt.ip4.src:set(baseIP + counter)
 			counter = incAndWrap(counter, numFlows)
 		end
 		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
@@ -115,8 +115,8 @@ function timerSlave(txPort, rxPort, txQueue, rxQueue, size, numFlows)
 		ts.fillPacket(bufs[1], 1234, size)
 		pkt.eth.src:setString(srcmac)
 		pkt.eth.dst:setString(dstmac)
-		pkt.ip.src:set(baseIP + counter)
-		pkt.ip.dst:set(dstip)
+		pkt.ip4.src:set(baseIP + counter)
+		pkt.ip4.dst:set(dstip)
 		counter = (counter + 1) % numFlows
 		bufs:offloadUdpChecksums()
 		-- sync clocks and send

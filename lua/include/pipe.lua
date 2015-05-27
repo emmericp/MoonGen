@@ -71,7 +71,7 @@ function slowPipe:recv()
 end
 
 function slowPipe:count()
-	return C.count(self.pipe)
+	return tonumber(C.count(self.pipe))
 end
 
 function slowPipe:__serialize()
