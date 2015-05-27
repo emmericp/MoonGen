@@ -450,11 +450,11 @@ function mod.rx_get_ip(port, idx, is_ipv4)
 
 	local ip = nil
 	if is_ipv4 == true then
-		local ip4 = ffi.new("union ipv4_address")
+		local ip4 = ffi.new("union ip4_address")
 		ip4.uint32 = ip_3
 		ip = ip4:getString()
 	else
-		local ip6 = ffi.new("union ipv6_address")
+		local ip6 = ffi.new("union ip6_address")
 		ip6.uint32[3] = ip_3
 		ip6.uint32[2] = ip_2
 		ip6.uint32[1] = ip_1

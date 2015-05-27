@@ -28,8 +28,8 @@ function txSlave(port, srcQueue, dstQueue)
 			pktLength = 60,
 			ethSrc = srcQueue,
 			ethDst = dstQueue,
-			ipSrc = "10.0.0.1",
-			ipDst = "192.168.1.1",
+			ip4Src = "10.0.0.1",
+			ip4Dst = "192.168.1.1",
 			udpSrc = 1234,
 			udpDst = 5678,	
 		}
@@ -54,7 +54,7 @@ function txSlave(port, srcQueue, dstQueue)
 		-- UDP checksums are optional, so just IP checksums are sufficient here
 		-- bufs:offloadUdpChecksums()
 		bufs:offloadIPChecksums()
-		bufs:offloadIPSec()
+		--bufs:offloadIPSec()
 		srcQueue:send(bufs)
 	end
 	ipsec.disable(port)
