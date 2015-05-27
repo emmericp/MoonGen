@@ -20,6 +20,7 @@ local RXMTRL			= 0x00005120
 local TSYNCRXCTL		= 0x00005188
 local RXSTMPL			= 0x000051E8
 local RXSTMPH			= 0x000051A4
+local RXSATRH			= 0x000051A8
 local ETQF_0			= 0x00005128
 local ETQS_0			= 0x0000EC00
 
@@ -43,6 +44,7 @@ local TXSTMPL_82580		= 0x0000B618
 local TXSTMPH_82580		= 0x0000B61C
 local RXSTMPL_82580		= 0x0000B624
 local RXSTMPH_82580		= 0x0000B628
+local RXSATRH_82580		= 0x0000B630
 local ETQF_82580_0		= 0x00005CB0
 
 local SYSTIMEL_82580	= 0x0000B600
@@ -354,6 +356,23 @@ function rxQueue:getTimestamp(wait)
 	return getTimestamp(wait, mod.tryReadRxTimestamp, self.id)
 end
 
+--- Check if the NIC saved a timestamp.
+-- @return the PTP sequence number of the timestamped packet, nil otherwise
+function dev:hasTimestamp()
+	local isIgb = device.get(self.id):getPciId() == device.PCI_ID_82580
+	if isIgb then
+		if bit.band(dpdkc.read_reg32(self.id, TSYNCRXCTL_82580), TSYNCRXCTL_RXTT) == 0 then
+			return nil
+		end
+		return bswap16(bit.rshift(dpdkc.read_reg32(self.id, RXSATRH_82580), 16))
+	else
+		if bit.band(dpdkc.read_reg32(self.id, TSYNCRXCTL), TSYNCRXCTL_RXTT) == 0 then
+			return nil
+		end
+		return bswap16(bit.rshift(dpdkc.read_reg32(self.id, RXSATRH), 16))
+	end
+end
+
 local timestampScales = {
 	[device.PCI_ID_X540]	= 6.4,
 	[device.PCI_ID_82599]	= 6.4,
@@ -459,6 +478,10 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 		self.txBufs:offloadUdpChecksums()
 	end
 	mod.syncClocks(self.txDev, self.rxDev)
+	-- clear any "leftover" timestamps
+	if self.rxDev:hasTimestamp() then 
+		self.rxQueue:getTimestamp()
+	end
 	self.txQueue:send(self.txBufs)
 	local tx = self.txQueue:getTimestamp(500)
 	if tx then
@@ -466,30 +489,41 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 		local timer = timer:new(maxWait)
 		while timer:running() do
 			local rx = self.rxQueue:tryRecv(self.rxBufs, 1000)
-			-- only one packet in a batch can be timestamped as the register must be read before a new packet is timestamped
-			for i = 1, rx do
-				local buf = self.rxBufs[i]
-				local pkt = buf:getPtpPacket()
-				local seq = self.udp and expectedSeq or pkt.ptp:getSequenceID()
-				if buf:hasTimestamp() and seq == expectedSeq then
-					-- yay!
-					local rxTs = self.rxQueue:getTimestamp() 
-					if not rxTs then
-						-- can happen if you hotplug cables
-						return nil
+			local timestampedPkt = self.rxDev:hasTimestamp()
+			if not timestampedPkt then
+				-- NIC didn't save a timestamp yet, just throw away the packets
+				self.rxBufs:freeAll()
+			else
+				-- received a timestamped packet (not necessarily in this batch)
+				-- FIXME: this loop may run into an ugly edge-case where we somehow
+				-- lose the timestamped packet during reception (e.g. when this is
+				-- running on a shared core and no filters are set), this case isn't handled here
+				for i = 1, rx do
+					local buf = self.rxBufs[i]
+					local pkt = buf:getPtpPacket()
+					local seq = self.udp and expectedSeq or pkt.ptp:getSequenceID()
+					-- not sure if checking :hasTimestamp is worth it
+					-- the flag seems to be quite pointless
+					if buf:hasTimestamp() and seq == expectedSeq and seq == timestampedPkt then
+						-- yay!
+						local rxTs = self.rxQueue:getTimestamp() 
+						if not rxTs then
+							-- can happen if you hotplug cables
+							return nil
+						end
+						local delay = (rxTs - tx) * self.rxDev:getTimestampScale()
+						self.rxBufs:freeAll()
+						return delay
+					elseif buf:hasTimestamp() and seq == timestampedPkt then
+						-- we got a timestamp but the wrong sequence number. meh.
+						self.rxQueue:getTimestamp() -- clears the register
+						-- continue, we may still get our packet :)
+					elseif seq == expectedSeq and seq ~= timestampedPkt then
+						-- we got our packet back but it wasn't timestamped
+						-- we likely ran into the previous case earlier and cleared the ts register too late
+						self.rxBufs:freeAll()
+						return
 					end
-					local delay = (rxTs - tx) * self.rxDev:getTimestampScale()
-					self.rxBufs:freeAll()
-					return delay
-				elseif buf:hasTimestamp() then
-					-- we got a timestamp but the wrong sequence number. meh.
-					self.rxQueue:getTimestamp() -- clears the register
-					-- continue, we may still get our packet :)
-				elseif seq == expectedSeq then
-					-- we got our packet back but it wasn't timestamped
-					-- we likely ran into the previous case earlier and cleared the ts register too late
-					self.rxBufs:freeAll()
-					return
 				end
 			end
 		end
