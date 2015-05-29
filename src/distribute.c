@@ -110,6 +110,19 @@ int mg_distribute_send(
 }
 
 
+// I was thinking hard about using the dpdk provided timer modules.
+// I decided to implement my own system here because
+// - dpdk uses one shared timer list for all cores
+//  -> we do not want shared timers and the resulting locking overhead
+// - dpdk only supports callback functions
+//  -> we do not want to have a callback function for every queue...
+//  -> it is hard to pass userdata (which queue to flush) to this function
+// - we still can use dpdk timers to call this handle_timeout function
+//  in fixed intervals, to reduce load/latency in the case the dpdk timer is used
+//  somewhere in the future
+
+// Call frequency of this function defines the resolution of timeouts for
+// queue flushes.
 void mg_distribute_handle_timeouts(
   struct mg_distribute_config *cfg,
   ){
