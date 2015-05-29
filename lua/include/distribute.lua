@@ -1,5 +1,5 @@
-
 local ffi = require "ffi"
+local dpdk = require "dpdk"
 
 ffi.cdef [[
 struct mg_distribute_queue{
@@ -103,10 +103,21 @@ end
 
 
 function mg_distribute:send(packets, bitMask, routingEntries)
-  return ffi.C.mg_distribute_send(self.cfg, packets.array, bitMask.bitmask, routingEntries.array)
+  return ffi.C.mg_distribute_send(self.cfg, packets.array, bitMask.bitmask, ffi.cast("void **", routingEntries.array))
+end
+
+function mg_distribute:registerOutput(outputNumber, portID, queueID, bufferSize, timeout)
+  -- FIXME: is this a good idea, to use uint64_t bit integers in lua??
+  local f_cpu = dpdk.getCyclesFrequency()
+  local cycles_timeout = tonumber(f_cpu * timeout)
+
+  print ("register output NR " .. tostring(outputNumber) .. " -> port = " .. tostring(portID) .. " queue = " .. tostring(queueID) .. " timeout = " .. tostring(cycles_timeout))
+  ffi.C.mg_distribute_register_output(self.cfg, outputNumber, portID, queueID, bufferSize, timeout)
 end
 
 function mg_distribute:handleTimeouts()
   ffi.C.mg_distribute_handle_timeouts(self.cfg)
   return
 end
+
+return mod
