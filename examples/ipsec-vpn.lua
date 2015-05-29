@@ -2,6 +2,7 @@ local dpdk	= require "dpdk"
 local ipsec	= require "ipsec"
 local memory	= require "memory"
 local device	= require "device"
+local ffi	= require "ffi"
 
 function master(txPort, rxPort)
 	if not txPort or not rxPort then
@@ -23,6 +24,9 @@ function txSlave(port, srcQueue, dstQueue)
 	ipsec.enable(port)
 
 	local count = 0
+	local iv = ffi.new("union ipsec_iv")
+	iv.uint32[0] = 0x01020304
+	iv.uint32[1] = 0x05060708
 	local mem = memory.createMemPool(function(buf)
 		buf:getEspPacket():fill{
 			pktLength = 64,
@@ -31,9 +35,9 @@ function txSlave(port, srcQueue, dstQueue)
 			ip4Protocol = 0x32, --ESP, 0x33=AH
 			ip4Src = "10.0.0.1",
 			ip4Dst = "192.168.1.1",
-			espSPI = 17,
-			espSQN = 18,	
-			espIV = 19,	
+			espSPI = 0x01020304,
+			espSQN = 0xbbbbbbbb,
+			espIV  = iv,
 		}
 	end)
 	bufs = mem:bufArray(128)
@@ -45,12 +49,12 @@ function txSlave(port, srcQueue, dstQueue)
 	print("Salt: 0x"..salt)
 
 	while dpdk.running() do
-		bufs:alloc(60)
+		bufs:alloc(64)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getEspPacket()
-			pkt.payload.uint32[0] = 0xdeadbeef
+			pkt.payload.uint32[0] = 0xffffffff
 			pkt.payload.uint32[1] = count
-			pkt.payload.uint32[2] = 0xdeadbeef
+			pkt.payload.uint32[2] = 0xffffffff
 			count = (count+1) % 0xffffffff
 		end
 		bufs:offloadIPChecksums()

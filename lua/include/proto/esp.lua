@@ -10,6 +10,40 @@ require "headers"
 
 local esp = {}
 
+-------------------------------------------------------------------------------------
+--- IPsec IV
+-------------------------------------------------------------------------------------
+
+local ipsecIV = {}
+ipsecIV.__index = ipsecIV
+local ipsecIVType = ffi.typeof("union ipsec_iv")
+
+--- Retrieve the IPsec IV.
+--- Set the IPsec IV.
+-- @param iv IPsec IV in 'union ipsec_iv' format.
+function ipsecIV:set(iv)
+	self.uint32[0] = hton(iv.uint32[1])
+	self.uint32[1] = hton(iv.uint32[0])
+end
+
+-- @return IV in 'union ipsec_iv' format.
+function ipsecIV:get()
+	local iv = ipsecIVType()
+	iv.uint32[0] = hton(self.uint32[1])
+	iv.uint32[1] = hton(self.uint32[0])
+	return iv
+end
+
+--- Get the IPsec string.
+-- @param iv IPsec IV in string format.
+function ipsecIV:getString(doByteSwap)
+	doByteSwap = doByteSwap or false
+	if doByteSwap then
+		self = self:get()
+	end
+
+	return ("%08x%08x"):format(self.uint32[0], self.uint32[1])
+end
 
 ---------------------------------------------------------------------------
 --- esp header
@@ -22,13 +56,13 @@ espHeader.__index = espHeader
 -- @param int SPI of the esp header as A bit integer.
 function espHeader:setSPI(int)
 	int = int or 0
-	self.spi = hton(int) --TODO: hton needed?
+	self.spi = hton(int)
 end
 
 --- Retrieve the SPI.
 -- @return SPI as A bit integer.
 function espHeader:getSPI()
-	return hton(self.spi) --TODO: hton needed?
+	return hton(self.spi)
 end
 
 --- Retrieve the SPI as string.
@@ -41,13 +75,13 @@ end
 -- @param int SQN of the esp header as A bit integer.
 function espHeader:setSQN(int)
 	int = int or 0
-	self.sqn = hton(int) --TODO: hton needed?
+	self.sqn = hton(int)
 end
 
 --- Retrieve the SQN.
 -- @return SQN as A bit integer.
 function espHeader:getSQN()
-	return hton(self.sqn) --TODO: hton needed?
+	return hton(self.sqn)
 end
 
 --- Retrieve the SQN as string.
@@ -57,24 +91,21 @@ function espHeader:getSQNString()
 end
 
 --- Set the IV.
--- @param int IV of the esp header as A bit integer.
-function espHeader:setIV(int)
-	int = int or 0
-	--FIXME: does it work for 64bit
-	self.iv = hton(int) --TODO: hton needed?
+-- @param int IV of the esp header as 'union ipsec_iv'.
+function espHeader:setIV(iv)
+	self.iv:set(iv)
 end
 
 --- Retrieve the IV.
--- @return SPI as A bit integer.
+-- @return SPI as 'union ipsec_iv'.
 function espHeader:getIV()
-	--FIXME: does it work for 64bit
-	return hton(self.iv) --TODO: hton needed?
+	return self.iv:get()
 end
 
 --- Retrieve the IV as string.
 -- @return IV as string.
 function espHeader:getIVString()
-	return self:getIV() --TODO: doesn't seem to work for uint64_t
+	return self.iv:getString(true)
 end
 
 --- Set all members of the esp header.
@@ -112,7 +143,7 @@ end
 -- @return Values in string format.
 function espHeader:getString()
 	--TODO: add data from ESP trailer
-	return "ESP spi " .. self:getSPIString() .. " sqn " .. self:getSQNString() --.. " iv " .. self:getIVString()
+	return "ESP spi " .. self:getSPIString() .. " sqn " .. self:getSQNString() .. " iv " .. self:getIVString()
 end
 
 --- Resolve which header comes after this one (in a packet)
@@ -150,6 +181,7 @@ pkt.getEspPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then retur
 --- Metatypes
 ------------------------------------------------------------------------
 
+ffi.metatype("union ipsec_iv", ipsecIV)
 ffi.metatype("struct esp_header", espHeader)
 
 
