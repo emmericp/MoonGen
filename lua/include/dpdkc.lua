@@ -29,6 +29,7 @@ ffi.cdef[[
 			} fdir;
 			uint32_t sched;
 		} hash;
+		uint16_t encryption_type_saidx; //4bit unused, Encryption 1bit, Type 1bit, SA Idx 10bit
 	};
 
 	struct rte_mbuf {

@@ -21,6 +21,8 @@ local ip = {}
 ip.PROTO_ICMP	= 0x01
 ip.PROTO_TCP	= 0x06
 ip.PROTO_UDP	= 0x11
+ip.PROTO_ESP	= 0x32
+ip.PROTO_AH	= 0x33
 
 
 ----------------------------------------------------------------------------------
@@ -308,6 +310,10 @@ function ip4Header:getProtocolString()
 		cleartext = "(UDP)"
 	elseif proto == ip.PROTO_TCP then
 		cleartext = "(TCP)"
+	elseif proto == ip.PROTO_ESP then
+		cleartext = "(ESP)"
+	elseif proto == ip.PROTO_AH then
+		cleartext = "(AH)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -469,6 +475,8 @@ local mapNameProto = {
 	icmp = ip.PROTO_ICMP,
 	udp = ip.PROTO_UDP,
 	tcp = ip.PROTO_TCP,
+	esp = ip.PROTO_ESP,
+	ah = ip.PROTO_AH,
 }
 
 function ip4Header:resolveNextHeader()

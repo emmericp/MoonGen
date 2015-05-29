@@ -118,6 +118,12 @@ ffi.cdef[[
 		uint16_t	urg;
 		uint32_t	options[];
 	};
+
+	struct __attribute__((__packed__)) esp_header {
+		uint32_t	spi;
+		uint32_t	sqn;
+		uint64_t	iv;
+	};
 ]]
 
 return ffi.C
