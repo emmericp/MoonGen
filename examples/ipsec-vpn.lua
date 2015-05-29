@@ -29,7 +29,7 @@ function txSlave(port, srcQueue, dstQueue)
 	iv.uint32[1] = 0x05060708
 	local mem = memory.createMemPool(function(buf)
 		buf:getEspPacket():fill{
-			pktLength = 64,
+			pktLength = 74,
 			ethSrc = srcQueue,
 			ethDst = dstQueue,
 			ip4Protocol = 0x32, --ESP, 0x33=AH
@@ -40,7 +40,7 @@ function txSlave(port, srcQueue, dstQueue)
 			espIV  = iv,
 		}
 	end)
-	bufs = mem:bufArray(128)
+	bufs = mem:bufArray(128) --Array of 128 pkts
 
 	--SA_IDX 42 is hard coded in TX context descriptor
 	ipsec.tx_set_key(port, 42, "77777777deadbeef77777777DEADBEEF", "ff0000ff")
@@ -49,16 +49,20 @@ function txSlave(port, srcQueue, dstQueue)
 	print("Salt: 0x"..salt)
 
 	while dpdk.running() do
-		bufs:alloc(64)
+		bufs:alloc(74)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getEspPacket()
-			pkt.payload.uint32[0] = 0xffffffff
-			pkt.payload.uint32[1] = count
-			pkt.payload.uint32[2] = 0xffffffff
+			pkt.payload.uint32[0] = 0xeeeeeeee -- real payload
+			--pkt.payload.uint32[1] = count
+			pkt.payload.uint32[1] = 0x00000211 -- padding 0x0000, pad_len 0x02, next_hdr 0x11 (UDP)
+			pkt.payload.uint32[2] = 0x0 -- ICV n-3
+			pkt.payload.uint32[3] = 0x0 -- ICV n-2
+			pkt.payload.uint32[4] = 0x0 -- ICV n-1
+			pkt.payload.uint32[5] = 0x0 -- ICV n-0
 			count = (count+1) % 0xffffffff
 		end
 		bufs:offloadIPChecksums()
-		--bufs:offloadIPSec()
+		bufs:offloadIPSec()
 		srcQueue:send(bufs)
 	end
 	ipsec.disable(port)
@@ -97,7 +101,7 @@ function rxSlave(port, queue)
 		-- Dump only one packet per second
 		local buf = bufs[rx]
 		local pkt = buf:getEspPacket()
-		buf:dump(64) -- hexdump of received packet (incl. header)
+		buf:dump(74) -- hexdump of received packet (incl. header)
 		printf("H: 0x%x", pkt.payload.uint32[0])
 		printf("C: 0x%x (%u)", pkt.payload.uint32[1], pkt.payload.uint32[1])
 		printf("T: 0x%x", pkt.payload.uint32[2])
