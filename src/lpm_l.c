@@ -345,6 +345,7 @@ mg_table_lpm_lookup(
 	uint64_t *lookup_hit_mask,
 	void **entries)
 {
+  //printf("ENTRIES = %p\n", entries);
 	struct rte_table_lpm *lpm = (struct rte_table_lpm *) table;
 	uint64_t pkts_out_mask = 0;
 	uint32_t i;
@@ -391,7 +392,12 @@ mg_table_lpm_lookup(
       }else{
         entries[i] = NULL;
       }
+      //printf("r: entries[%d\t] = %p\n", i, entries[i]);
+      //printf("r: entries pp[%d\t] = %p\n", i, entries+i);
+      //printf("r: entries[%d\t] = %p\n", i, *(entries+i));
+      //printf("  iface = %d\n", ((uint8_t*)(entries[i]))[4]);
 		}
+    // FIXME: if input mask does not match should we also set entry ptr to NULL?
 	}
 
 	*lookup_hit_mask = pkts_out_mask;

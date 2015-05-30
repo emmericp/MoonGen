@@ -72,34 +72,52 @@ int mg_distribute_send(
   struct mg_bitmask* pkts_mask,
   void **entries
   ){
+  // XXX: IDEA: only store time for buffer, when this function ends.
+  //  as a timeout during runtime of this function will never occur anyways.
+  //  this would make the loop and enqueue much faster
   
+  //printf("ENTRIES = %p\n", entries);
+  //printf("  d iface = %d\n", ((uint8_t*)(entries[0]))[4]);
+  //printf("  d iface = %d\n", ((uint8_t*)(*entries))[4]);
+  //printf("offset = %d\n", cfg->entry_offset);
+  //printf("i am in send\n");
   // TODO: performance considerations:
   //  - loop unrolling (is compiler doing that?)
   //  - we always iterate multiple of 64...
   //    -> maybe save cycles, when burst is not multiple of 64?
   int i;
   for(i = 0; i < pkts_mask->n_blocks; i++){
+    //printf(" block %d\n", i);
     uint64_t mask = 1ULL;
     while(mask){
-      mask = mask<<1;
+      //printf("while LOOP\n");
       if(mask & pkts_mask->mask[i]){
+        //printf(" pkt mask true\n");
         // determine output, to send the packet to
+        // printf(" entry = %p\n", *entries);
+        // printf("  d iface = %d\n", ((uint8_t*)(entries[0]))[4]);
+        // printf("  d iface = %d\n", ((uint8_t*)(*entries))[4]);
         uint8_t output = ((uint8_t*)(*entries))[cfg->entry_offset];
+        //printf(" send out to %d\n", output);
         // send pkt to the corresponding output...
         int8_t status = mg_distribute_enqueue(cfg->outputs[output].queue, *pkts);
         if( unlikely( status  == 2  ) ){
+          //printf("  full\n");
           // packet was enqueued, but queue is full
           // flush queue
           mg_distribute_output_flush(cfg, output);
         }
         if( unlikely( status  == 1  ) ){
+          //printf("  empty\n");
           // packet was enqueued, queue was empty
           // record the time, for possible future timeout
           cfg->outputs[output].time_first_added = rte_rdtsc();
+          //printf("  stored_time\n");
         }
       }
       pkts++;
       entries++;
+      mask = mask<<1;
     }
   }
 
@@ -138,9 +156,13 @@ void mg_distribute_handle_timeouts(
   for (i = 0; i < cfg->nr_outputs; i++){
     if(likely(output->valid)){
       if(output->time_first_added + output->timeout < time){
+        //printf("added = %lu, timeout = %lu, current time = %lu\n", output->time_first_added, output->timeout, time);
         // timeout hit -> flush queue
-        printf("timeout of output %d was hit\n", i);
+        //printf("timeout of output %d was hit\n", i);
         mg_distribute_output_flush(cfg, i);
+        // prevent timeout from occuring again
+        // (will work for a runtime <199 years on 3GHz CPUs)
+        output->time_first_added = 0xffffffffffffffff - output->timeout;
       }
     }
     output++;
