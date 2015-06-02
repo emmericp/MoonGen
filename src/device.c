@@ -113,6 +113,9 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	hlReg0 &= ~(1 << 10); // TXPADEN
 	hlReg0 |= (1 << 2); // JUMBOEN
 	write_reg32(port, 0x4240, hlReg0);
+	uint32_t tctl = read_reg32(port, 0x0400);
+	tctl &= ~(1 << 3); // PSP
+	write_reg32(port, 0x0400, tctl);
 	return rc; 
 }
 
