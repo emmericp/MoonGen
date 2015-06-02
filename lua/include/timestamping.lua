@@ -424,11 +424,11 @@ timestamper.__index = timestamper
 --- Create a new timestamper.
 function mod:newTimestamper(txQueue, rxQueue, mem, udp)
 	mem = mem or memory.createMemPool(function(buf)
+		-- defaults are good enough for us here
 		if udp then
-			-- TODO: use pkt:fill{}
-			mod.fillPacket(buf, 1234, 124)
+			buf:getUdpPtpPacket():fill{}
 		else
-			buf:getPtpPacket():fill{} -- defaults are good enough for us
+			buf:getPtpPacket():fill{}
 		end
 	end)
 	txQueue:enableTimestamps()
@@ -465,8 +465,9 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 	buf:enableTimestamps()
 	local expectedSeq = self.seq
 	self.seq = (self.seq + 1) % 2^16
-	-- FIXME: implement sequence numbers for UDP
-	if not self.udp then
+	if self.udp then
+		buf:getUdpPtpPacket().ptp:setSequenceID(expectedSeq)
+	else
 		buf:getPtpPacket().ptp:setSequenceID(expectedSeq)
 	end
 	if packetModifier then
@@ -500,8 +501,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 				-- running on a shared core and no filters are set), this case isn't handled here
 				for i = 1, rx do
 					local buf = self.rxBufs[i]
-					local pkt = buf:getPtpPacket()
-					local seq = self.udp and expectedSeq or pkt.ptp:getSequenceID()
+					local seq = (self.udp and buf:getUdpPtpPacket() or buf:getPtpPacket()).ptp:getSequenceID()
 					-- not sure if checking :hasTimestamp is worth it
 					-- the flag seems to be quite pointless
 					if buf:hasTimestamp() and seq == expectedSeq and seq == timestampedPkt then
