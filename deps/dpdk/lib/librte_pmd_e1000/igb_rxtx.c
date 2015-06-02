@@ -476,8 +476,9 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * are only set in the last Data Descriptor:
 		 *   - E1000_TXD_CMD_RS
 		 */
-		cmd_type_len = txq->txd_type |
-			E1000_ADVTXD_DCMD_IFCS | E1000_ADVTXD_DCMD_DEXT;
+		cmd_type_len = txq->txd_type | E1000_ADVTXD_DCMD_DEXT;
+		if (!(ol_flags & PKT_TX_NO_CRC_CSUM))
+			cmd_type_len |= E1000_ADVTXD_DCMD_IFCS;
 		olinfo_status = (pkt_len << E1000_ADVTXD_PAYLEN_SHIFT);
 #if defined(RTE_LIBRTE_IEEE1588)
 		if (ol_flags & PKT_TX_IEEE1588_TMST)
