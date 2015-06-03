@@ -1205,6 +1205,27 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		rxdp = &rx_ring[rx_id];
 		staterr = rxdp->wb.upper.status_error;
+
+		//0x2c445240 seems to be some kind of default/empty value
+		if(staterr != 0x2c445240) {
+			int dd = 0; //descriptor done
+			int eop = 0; //end of packet
+			int secp = 0; //security offload processed
+
+			if(staterr & IXGBE_RXDADV_STAT_DD)
+				dd = 1;
+			if(staterr & IXGBE_RXDADV_STAT_EOP)
+				eop = 1;
+			if(staterr & IXGBE_RXDADV_IPSEC_STATUS_SECP)
+				secp = 1;
+
+			//TODO: read out IPSEC status/error and report via pkt_flags
+			printf("========== HELLO DPDK ==========\n");
+			printf("RXADV: Status Error 0x%x\n", staterr);
+			printf("RXADV: DD(%d), EOP(%d), SECP(%d)\n", dd, eop, secp);
+			printf("=========== END DPDK ===========\n");
+		}
+
 		if (! (staterr & rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD)))
 			break;
 		rxd = *rxdp;
