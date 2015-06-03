@@ -135,6 +135,17 @@ union rte_vlan_macip {
 	} f;
 };
 
+union rte_ipsec {
+	uint32_t data;
+	struct {
+		uint16_t sa_idx:10;
+		uint16_t esp_len:9;
+		uint8_t type:1;
+		uint8_t mode:1;
+		uint16_t unused:11; /**< These 11 bits are unused. */
+	} sec;
+};
+
 /*
  * Compare mask for vlan_macip_len.data,
  * should be in sync with rte_vlan_macip.f layout.
@@ -218,6 +229,7 @@ struct rte_mbuf {
 		uint32_t metadata32[0];
 		uint64_t metadata64[0];
 	};
+	union rte_ipsec ol_ipsec;
 } __rte_cache_aligned;
 
 #define RTE_MBUF_METADATA_UINT8(mbuf, offset)              \

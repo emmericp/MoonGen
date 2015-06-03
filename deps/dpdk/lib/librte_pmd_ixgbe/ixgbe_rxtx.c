@@ -358,7 +358,7 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 static inline void
 ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		volatile struct ixgbe_adv_tx_context_desc *ctx_txd,
-		uint16_t ol_flags, uint32_t vlan_macip_lens)
+		uint16_t ol_flags, uint32_t vlan_macip_lens, uint32_t ipsec)
 {
 	//cf. table 7-35 (chapter 7.2.3.2.3 Advanced Transmit Context Descriptor)
 	uint32_t type_tucmd_mlhl;
@@ -366,6 +366,8 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	uint32_t mss_l4len_idx;
 	uint32_t ctx_idx;
 	uint32_t cmp_mask;
+	union rte_ipsec myipsec;
+	myipsec.data = ipsec;
 
 	ctx_idx = txq->ctx_curr;
 	cmp_mask = 0;
@@ -381,15 +383,30 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	}
 
 	if (ol_flags & PKT_TX_IPSEC) {
-		//TODO: set SA_IDX, TUCMD(Encryption) and TUCMD(IPSEC_TYPE) dynamically
-		//but where do we get those infos from?!
+		printf("========== Hello DPDK ==========\n");
+		printf("IPSEC:  0x%x\n", ipsec);
+		printf("SAIDX:  %d\n", myipsec.sec.sa_idx);
+		printf("ESPLEN: %d\n", myipsec.sec.esp_len);
+		printf("TYPE:   %d\n", myipsec.sec.type);
+		printf("MODE:   %d\n", myipsec.sec.mode);
+		printf("=========== End DPDK ===========\n");
+
+		//Set SA_IDX, TUCMD(Encryption) and TUCMD(IPSEC_TYPE) dynamically
 		//TUCMD is 11 bits, Encryption (bit 5) 1=ESP-encryption 0=ESP-auth, IPSEC_TYPE (bit 4) 1=ESP 0=AH
-		#define IXGBE_ADVTXD_IPS_ESP_LEN_20 0x14
-		#define IXGBE_ADVTXD_SA_IDX_42 0x2a
-		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_ENCRYPT_EN; //enable ESP encryption (hard coded)
-		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_TYPE_ESP; //IPsec type = ESP (hard coded)
-		type_tucmd_mlhl |= IXGBE_ADVTXD_IPS_ESP_LEN_20; //ESP trailer length = 20 (hard coded), only relevant for single send ESP packets.
-		seqnum_seed |= IXGBE_ADVTXD_SA_IDX_42; //SA_IDX = 42 (hard coded)
+
+		//TODO: this should be possible to be set for each packet
+
+		//If set IPSec type is ESP, otherwise AH
+		if(myipsec.sec.type == 1) {
+			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_TYPE_ESP;
+			//If set ESP shall also be encrypted, otherwise just authenticated
+			if(myipsec.sec.mode)
+				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_ENCRYPT_EN;
+			//Set length of the ESP trailer
+			type_tucmd_mlhl |= myipsec.sec.esp_len;
+		}
+		//Set Idx into the SA table
+		seqnum_seed |= myipsec.sec.sa_idx;
 	}
 
 	/* Specify which HW CTX to upload. */
@@ -573,6 +590,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_used;
 	uint16_t tx_ol_req;
 	uint32_t vlan_macip_lens;
+	uint32_t ipsec;
 	uint32_t ctx = 0;
 	uint32_t new_ctx;
 
@@ -601,6 +619,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		ol_flags = tx_pkt->ol_flags;
 		vlan_macip_lens = tx_pkt->pkt.vlan_macip.data;
+		ipsec = tx_pkt->ol_ipsec.data;
 
 		/* If hardware offload required */
 		tx_ol_req = (uint16_t)(ol_flags & PKT_TX_OFFLOAD_MASK);
@@ -751,7 +770,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				}
 
 				ixgbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
-				    vlan_macip_lens);
+				    vlan_macip_lens, ipsec);
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;

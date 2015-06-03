@@ -80,19 +80,19 @@ function pkt:offloadIPSec(idx, sec_type, esp_mode)
 	if idx < 0 or idx > 1023 then
 		error("SA_IDX has to be in range 0-2013")
 	end
-	self.pkt.sa_idx = idx
+	self.ol_ipsec.sec.sa_idx = idx
 
 	-- Set ESP enc/auth mode
 	if mode ~= 0 and mode ~= 1 then
 		error("Wrong IPSec mode")
 	end
-	self.pkt.ipsec_mode = mode
+	self.ol_ipsec.sec.mode = mode
 
 	-- Set IPSec ESP/AH type
 	if sec_type == "esp" then
-		self.pkt.ipsec_type = 1
+		self.ol_ipsec.sec.type = 1
 	else if sec_type == "ah" then
-		self.pkt.ipsec_type = 0
+		self.ol_ipsec.sec.type = 0
 	else
 		error("Wrong IPSec type (esp/ah)")
 	end
@@ -104,7 +104,7 @@ function pkt:setESPTrailerLength(len)
 	if len < 0 or len > 511 then
 		error("ESP trailer length has to be in range 0-511")
 	end
-	self.pkt.esp_length = len
+	self.ol_ipsec.sec.esp_len = len
 end
 
 -------------------------------------------------------------------------------------------------------
