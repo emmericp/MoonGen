@@ -54,11 +54,11 @@ function txSlave(port, srcQueue, dstQueue)
 			local pkt = buf:getEspPacket()
 			pkt.payload.uint8[0] = 0xee -- real payload
 			--pkt.payload.uint32[0] = 0xeeeeeeee -- real payload
-			ipsec.add_esp_trailer(pkt, 1) -- add 20 byte ESP trailer
+			ipsec.add_esp_trailer(buf, 1) -- add 20 byte ESP trailer
 			count = (count+1) % 0xffffffff
 		end
 		bufs:offloadIPChecksums()
-		bufs:offloadIPSec(42, 1, "esp")
+		bufs:offloadIPSec(42, "esp", 1)
 		srcQueue:send(bufs)
 	end
 	ipsec.disable(port)

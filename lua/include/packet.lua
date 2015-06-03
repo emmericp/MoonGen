@@ -67,7 +67,12 @@ end
 --- IPSec offloading
 -------------------------------------------------------------------------------------------------------
 
-function pkt:offloadIPSec(idx, mode, sec_type)
+-- @idx SA_IDX to use
+-- @sec_type IPSec type to use ("esp"/"ah")
+-- @esp_mode ESP mode to use encrypt(1) or authenticate(0)
+function pkt:offloadIPSec(idx, sec_type, esp_mode)
+	local mode = esp_mode or 0
+
 	-- Set IPSec offload flag in advanced data transmit descriptor.
 	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPSEC)
 
@@ -92,6 +97,14 @@ function pkt:offloadIPSec(idx, mode, sec_type)
 		error("Wrong IPSec type (esp/ah)")
 	end
 	end
+end
+
+-- @len ESP Trailer length in bytes
+function pkt:setESPTrailerLength(len)
+	if len < 0 or len > 511 then
+		error("ESP trailer length has to be in range 0-511")
+	end
+	self.pkt.esp_length = len
 end
 
 -------------------------------------------------------------------------------------------------------

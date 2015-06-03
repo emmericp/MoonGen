@@ -384,11 +384,11 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		//TODO: set SA_IDX, TUCMD(Encryption) and TUCMD(IPSEC_TYPE) dynamically
 		//but where do we get those infos from?!
 		//TUCMD is 11 bits, Encryption (bit 5) 1=ESP-encryption 0=ESP-auth, IPSEC_TYPE (bit 4) 1=ESP 0=AH
-		#define IXGBE_ADVTXD_IPS_ESP_LEN_64 0x40
+		#define IXGBE_ADVTXD_IPS_ESP_LEN_20 0x14
 		#define IXGBE_ADVTXD_SA_IDX_42 0x2a
 		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_ENCRYPT_EN; //enable ESP encryption (hard coded)
 		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_TYPE_ESP; //IPsec type = ESP (hard coded)
-		type_tucmd_mlhl |= IXGBE_ADVTXD_IPS_ESP_LEN_64; //IPS_ESP_LEN = 64 (hard coded), only relevant for single send ESP packets. TODO: does this make sense?
+		type_tucmd_mlhl |= IXGBE_ADVTXD_IPS_ESP_LEN_20; //ESP trailer length = 20 (hard coded), only relevant for single send ESP packets.
 		seqnum_seed |= IXGBE_ADVTXD_SA_IDX_42; //SA_IDX = 42 (hard coded)
 	}
 

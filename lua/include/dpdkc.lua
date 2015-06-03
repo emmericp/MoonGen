@@ -30,6 +30,7 @@ ffi.cdef[[
 			uint32_t sched;
 		} hash;
 		uint16_t sa_idx; //IPSec SA Idx, 10bit
+		uint16_t esp_length; // ESP Trailer length, 9bit
 		uint8_t ipsec_mode; // ESP Encryption enable, 1bit
 		uint8_t ipsec_type; // IPSec Type (ESP/AH), 1bit
 	};
