@@ -67,10 +67,31 @@ end
 --- IPSec offloading
 -------------------------------------------------------------------------------------------------------
 
-function pkt:offloadIPSec()
+function pkt:offloadIPSec(idx, mode, sec_type)
 	-- Set IPSec offload flag in advanced data transmit descriptor.
-	self.pkt.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPSEC)
-	-- TODO: Set SA_IDX, Encryption, IPSEC_TYPE in advanced context transmit descriptor
+	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPSEC)
+
+	-- Set 10 bit SA_IDX
+	if idx < 0 or idx > 1023 then
+		error("SA_IDX has to be in range 0-2013")
+	end
+	self.pkt.sa_idx = idx
+
+	-- Set ESP enc/auth mode
+	if mode ~= 0 and mode ~= 1 then
+		error("Wrong IPSec mode")
+	end
+	self.pkt.ipsec_mode = mode
+
+	-- Set IPSec ESP/AH type
+	if sec_type == "esp" then
+		self.pkt.ipsec_type = 1
+	else if sec_type == "ah" then
+		self.pkt.ipsec_type = 0
+	else
+		error("Wrong IPSec type (esp/ah)")
+	end
+	end
 end
 
 -------------------------------------------------------------------------------------------------------

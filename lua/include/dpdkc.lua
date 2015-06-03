@@ -29,7 +29,9 @@ ffi.cdef[[
 			} fdir;
 			uint32_t sched;
 		} hash;
-		uint16_t encryption_type_saidx; //4bit unused, Encryption 1bit, Type 1bit, SA Idx 10bit
+		uint16_t sa_idx; //IPSec SA Idx, 10bit
+		uint8_t ipsec_mode; // ESP Encryption enable, 1bit
+		uint8_t ipsec_type; // IPSec Type (ESP/AH), 1bit
 	};
 
 	struct rte_mbuf {

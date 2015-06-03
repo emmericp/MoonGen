@@ -52,17 +52,13 @@ function txSlave(port, srcQueue, dstQueue)
 		bufs:alloc(74)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getEspPacket()
-			pkt.payload.uint32[0] = 0xeeeeeeee -- real payload
-			--pkt.payload.uint32[1] = count
-			pkt.payload.uint32[1] = 0x00000211 -- padding 0x0000, pad_len 0x02, next_hdr 0x11 (UDP)
-			pkt.payload.uint32[2] = 0x0 -- ICV n-3
-			pkt.payload.uint32[3] = 0x0 -- ICV n-2
-			pkt.payload.uint32[4] = 0x0 -- ICV n-1
-			pkt.payload.uint32[5] = 0x0 -- ICV n-0
+			pkt.payload.uint8[0] = 0xee -- real payload
+			--pkt.payload.uint32[0] = 0xeeeeeeee -- real payload
+			ipsec.add_esp_trailer(pkt, 1) -- add 20 byte ESP trailer
 			count = (count+1) % 0xffffffff
 		end
 		bufs:offloadIPChecksums()
-		bufs:offloadIPSec()
+		bufs:offloadIPSec(42, 1, "esp")
 		srcQueue:send(bufs)
 	end
 	ipsec.disable(port)
@@ -101,7 +97,7 @@ function rxSlave(port, queue)
 		-- Dump only one packet per second
 		local buf = bufs[rx]
 		local pkt = buf:getEspPacket()
-		buf:dump(74) -- hexdump of received packet (incl. header)
+		buf:dump(128) -- hexdump of received packet (incl. header)
 		printf("H: 0x%x", pkt.payload.uint32[0])
 		printf("C: 0x%x (%u)", pkt.payload.uint32[1], pkt.payload.uint32[1])
 		printf("T: 0x%x", pkt.payload.uint32[2])

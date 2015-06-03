@@ -221,10 +221,10 @@ function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
 	end
 end
 
-function bufArray:offloadIPSec()
+function bufArray:offloadIPSec(idx, mode, sec_type)
 	for i = 0, self.size - 1 do
 		local buf = self.array[i]
-		buf.ol_flags = bit.bor(buf.ol_flags, dpdk.PKT_TX_IPSEC)
+		buf:offloadIPSec(idx, mode, sec_type)
 	end
 end
 
