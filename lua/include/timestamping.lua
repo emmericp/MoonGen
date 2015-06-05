@@ -426,9 +426,13 @@ function mod:newTimestamper(txQueue, rxQueue, mem, udp)
 	mem = mem or memory.createMemPool(function(buf)
 		-- defaults are good enough for us here
 		if udp then
-			buf:getUdpPtpPacket():fill{}
+			buf:getUdpPtpPacket():fill{
+				ethSrc = txQueue,
+			}
 		else
-			buf:getPtpPacket():fill{}
+			buf:getPtpPacket():fill{
+				ethSrc = txQueue,
+			}
 		end
 	end)
 	txQueue:enableTimestamps()
