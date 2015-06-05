@@ -7,6 +7,7 @@ local stats		= require "stats"
 local hist		= require "histogram"
 
 local PKT_SIZE	= 60
+local ETH_DST	= "11:12:13:14:15:16"
 
 function master(...)
 	local txPort, rxPort, rate = tonumberall(...)
@@ -59,7 +60,7 @@ function timerSlave(txQueue, rxQueue)
 	local hist = hist:new()
 	dpdk.sleepMillis(1000) -- ensure that the load task is running
 	while dpdk.running() do
-		hist:update(timestamper:measureLatency())
+		hist:update(timestamper:measureLatency(function(buf) buf:getEthernetPacket().eth.dst:setString(ETH_DST) end))
 	end
 	hist:print()
 	hist:save("histogram.csv")
