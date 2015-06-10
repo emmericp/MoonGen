@@ -35,7 +35,7 @@ function txSlave(port, srcQueue, dstQueue)
 			ip4Protocol = 0x32, --ESP, 0x33=AH
 			ip4Src = "10.0.0.1",
 			ip4Dst = "192.168.1.1",
-			espSPI = 0xdeadbeef,
+			espSPI = 0x2a,
 			espSQN = 0,
 			espIV  = iv,
 		}
@@ -48,17 +48,19 @@ function txSlave(port, srcQueue, dstQueue)
 	--print("Salt: 0x"..salt)
 
 	--while dpdk.running() do
-		bufs:alloc(74)
+		bufs:alloc(128)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getEspPacket()
-			pkt.payload.uint8[0] = 0xaa -- real payload
-			pkt.payload.uint8[1] = 0xbb -- real payload
-			pkt.payload.uint8[2] = 0xcc -- real payload
-			ipsec.add_esp_trailer(buf, 3) -- add 20 byte ESP trailer
+			pkt.payload.uint32[0] = 0xaabbccdd -- real payload
+			pkt.payload.uint32[1] = 0xaabbccdd -- real payload
+			pkt.payload.uint32[2] = 0xaabbccdd -- real payload
+			pkt.payload.uint32[3] = 0xaabbccdd -- real payload
+			pkt.payload.uint32[4] = 0xaabbccdd -- real payload
+			ipsec.add_esp_trailer(buf, 20) -- add 20 byte ESP trailer
 			count = (count+1) % 0xffffffff
 		end
 		bufs:offloadIPChecksums()
-		--bufs:offloadIPSec(0, "esp", 1)
+		bufs:offloadIPSec(0, "esp", 1)
 		srcQueue:send(bufs)
 	--end
 	ipsec.disable(port)
@@ -81,7 +83,7 @@ function rxSlave(port, queue)
 	--local ip = ipsec.rx_get_ip(port, 1, false)
 	--print("IP: "..ip)
 
-	ipsec.rx_set_spi(port, 0, 0xdeadbeef, 0)
+	ipsec.rx_set_spi(port, 0, 0x2a, 0)
 	--local spi, ip_idx = ipsec.rx_get_spi(port, 0)
 	--print("SPI:    0x"..bit.tohex(spi, 8))
 	--print("IP_IDX: "..ip_idx)
@@ -94,7 +96,7 @@ function rxSlave(port, queue)
 		for i = 1, rx do
 			local buf  = bufs[i]
 			local pkt = buf:getEspPacket()
-			buf:dump(128) -- hexdump of received packet (incl. header)
+			buf:dump(150) -- hexdump of received packet (incl. header)
 			printf("uint8[0]: %x", pkt.payload.uint8[0])
 			printf("uint8[1]: %x", pkt.payload.uint8[1])
 			printf("uint8[2]: %x", pkt.payload.uint8[2])
