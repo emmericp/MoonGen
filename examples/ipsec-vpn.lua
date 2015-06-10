@@ -29,7 +29,7 @@ function txSlave(port, srcQueue, dstQueue)
 	iv.uint32[1] = 0x05060708
 	local mem = memory.createMemPool(function(buf)
 		buf:getEspPacket():fill{
-			pktLength = 74,
+			pktLength = 90,
 			ethSrc = srcQueue,
 			ethDst = dstQueue,
 			ip4Protocol = 0x32, --ESP, 0x33=AH
@@ -48,7 +48,7 @@ function txSlave(port, srcQueue, dstQueue)
 	--print("Salt: 0x"..salt)
 
 	--while dpdk.running() do
-		bufs:alloc(128)
+		bufs:alloc(90)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getEspPacket()
 			pkt.payload.uint32[0] = 0xaabbccdd -- real payload
