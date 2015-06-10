@@ -1220,10 +1220,14 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				secp = 1;
 
 			uint16_t packet_type = rxdp->wb.lower.lo_dword.hs_rss.pkt_info >> 4; //Bit 13 missing (but unused)
+			uint32_t exterr = staterr >> 20;
+			uint16_t secerr = exterr & 0x180; //only bits 7 & 8, i.e. SECERR
+			secerr = secerr >> 7; //move to left
 			//TODO: read out IPSEC status/error and report via pkt_flags
 			printf("========== HELLO DPDK ==========\n");
 			printf("Paket Type: 0x%x\n", packet_type); //Bit 11 should be 0 (non L2 pkt), Bit 8 = ESP, Bit 9 = AH (p. 304)
 			printf("RXADV: Status Error 0x%x\n", staterr);
+			printf("RXADV: SECERR 0x%x\n", secerr);
 			printf("RXADV: DD(%d), EOP(%d), SECP(%d)\n", dd, eop, secp);
 			printf("=========== END DPDK ===========\n");
 		}
