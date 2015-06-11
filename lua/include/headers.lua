@@ -33,6 +33,10 @@ ffi.cdef[[
 	union ipsec_iv {
 		uint32_t	uint32[2];
 	};
+
+	union ipsec_icv {
+		uint32_t	uint32[4];
+	};
 	
 
 	// -----------------------------------------------------
@@ -127,6 +131,27 @@ ffi.cdef[[
 		uint32_t	spi;
 		uint32_t	sqn;
 		union ipsec_iv	iv;
+	};
+
+	struct __attribute__((__packed__)) ah4_header {
+		uint8_t		nextHeader;
+		uint8_t		len;
+		uint16_t	reserved;
+		uint32_t	spi;
+		uint32_t	sqn;
+		union ipsec_iv	iv;
+		union ipsec_icv	icv;
+	};
+
+	struct __attribute__((__packed__)) ah6_header {
+		uint8_t		nextHeader;
+		uint8_t		len;
+		uint16_t	reserved;
+		uint32_t	spi;
+		uint32_t	sqn;
+		union ipsec_iv	iv;
+		union ipsec_icv	icv;
+		uint32_t	icv_padding;
 	};
 ]]
 

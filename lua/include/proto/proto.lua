@@ -8,5 +8,6 @@ proto.udp = require "proto.udp"
 proto.tcp = require "proto.tcp"
 proto.ptp = require "proto.ptp"
 proto.esp = require "proto.esp"
+proto.ah = require "proto.ah"
 
 return proto
