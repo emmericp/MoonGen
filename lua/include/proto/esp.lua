@@ -173,7 +173,9 @@ end
 --- Packets
 ----------------------------------------------------------------------------------
 
+-- Esp4 packets should not be shorter than 70 bytes (cf. x540 datasheet page 308: SECP field)
 pkt.getEsp4Packet = packetCreate("eth", "ip4", "esp")
+-- Esp6 packets should not be shorter than 90 bytes (cf. x540 datasheet page 308: SECP field)
 pkt.getEsp6Packet = packetCreate("eth", "ip6", "esp") 
 pkt.getEspPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getEsp4Packet(self) else return pkt.getEsp6Packet(self) end end
 

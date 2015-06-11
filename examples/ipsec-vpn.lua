@@ -38,7 +38,7 @@ function txSlave(port, srcQueue, dstQueue)
 	iv.uint32[1] = 0x05060708
 
 	-- Create a packet Blueprint
-	local pkt_len = 90
+	local pkt_len = 86 -- for ESP the packet must be 4 bytes aligned
 	local mem = memory.createMemPool(function(buf)
 		buf:getEspPacket():fill{
 			pktLength = pkt_len,
@@ -65,9 +65,8 @@ function txSlave(port, srcQueue, dstQueue)
 			pkt.payload.uint32[0] = count -- real payload
 			pkt.payload.uint32[1] = 0xffffffff -- real payload
 			pkt.payload.uint32[2] = 0xdeadbeef -- real payload
-			pkt.payload.uint32[3] = 0xdeadbeef -- real payload
-			pkt.payload.uint32[4] = 0xffffffff -- real payload
-			ipsec.add_esp_trailer(buf, 20) -- add 20 byte ESP trailer
+			pkt.payload.uint32[3] = 0xffffffff -- real payload
+			ipsec.add_esp_trailer(buf, 16) -- add 20 byte ESP trailer
 			buf:offloadIPSec(0, "esp", 1) -- enable hw IPSec in ESP/Encrypted mode, with SA/Key at index 0
 			count = count+1
 		end
@@ -110,12 +109,11 @@ function rxSlave(port, queue)
 		for i = 1, rx do
 			local buf  = bufs[i]
 			local pkt = buf:getEspPacket()
-			buf:dump(150) -- hexdump of received packet (incl. header)
+			buf:dump(128) -- hexdump of received packet (incl. header)
 			printf("counter:   %d", pkt.payload.uint32[0])
 			printf("uint32[1]: %x", pkt.payload.uint32[1])
 			printf("uint32[2]: %x", pkt.payload.uint32[2])
 			printf("uint32[3]: %x", pkt.payload.uint32[3])
-			printf("uint32[4]: %x", pkt.payload.uint32[4])
 		end
 		bufs:freeAll()
 
