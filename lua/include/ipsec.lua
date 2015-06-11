@@ -94,9 +94,12 @@ function dump_regs(port)
 	--print("SECTXBUFFAF: 0x"..uhex32(reg))
 end
 
+-- Enable the Hardware Crypto Engine
+-- This function must be called before using any other IPSec functions
+-- @port The port/interface to use
 function mod.enable(port)
-	print("IPsec enable, port: "..port)
-	dump_regs(port)
+	--print("IPsec enable, port: "..port)
+	--dump_regs(port)
 
 	-- Stop TX data path (set TX_DIS bit)
 	local SECTXCTRL__VALUE = set_bit32(dpdkc.read_reg32(port, SECTXCTRL), 1) --set TX_DIS
@@ -148,9 +151,12 @@ function mod.enable(port)
 	local SECRXCTRL__VALUE = clear_bit32(dpdkc.read_reg32(port, SECRXCTRL), 1) --clear RX_DIS
 	dpdkc.write_reg32(port, SECRXCTRL, SECRXCTRL__VALUE)
 
-	dump_regs(port)
+	--dump_regs(port)
 end
 
+-- Disable the Hardware Crypto Engine
+-- This function should be called after using the other IPSec functions
+-- @port The port/interface to use
 function mod.disable(port)
 	print("IPsec disable, port: "..port)
 	dump_regs(port)
@@ -206,8 +212,9 @@ function mod.disable(port)
 	dump_regs(port)
 end
 
--- Write AES 128 bit SA into hw SA TX table
--- @idx: Index into SA TX table (0-1023)
+-- Write AES 128 bit Key and Salt into the Hardware TX SA table
+-- @port: The port/interface to use
+-- @idx: Index into TX SA table (0-1023)
 -- @key: 128 bit AES key  (as hex string)
 -- @salt: 32 bit AES salt (as hex string)
 function mod.tx_set_key(port, idx, key, salt)
@@ -244,6 +251,10 @@ function mod.tx_set_key(port, idx, key, salt)
 	--pass SA_IDX via 'TX context descriptor' to use this SA!
 end
 
+-- Read AES 128 bit Key and Salt from the Hardware TX SA table
+-- @port: The port/interface to use
+-- @idx: Index into the TX SA table (0-1023)
+-- @return: Key and Salt (as hex string)
 function mod.tx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
 		error("Idx must be in range 0-1023")
@@ -270,10 +281,14 @@ function mod.tx_get_key(port, idx)
 	return key, uhex32(_salt)
 end
 
--- Write AES 128 bit SA into hw SA RX table
+-- Write AES 128 bit Key and Salt into the Hardware RX SA table
+-- @port: the port/interface to use
 -- @idx: Index into SA RX table (0-1023)
 -- @key: 128 bit AES key  (as hex string)
 -- @salt: 32 bit AES salt (as hex string)
+-- @ip_ver: IP Version for which this SA is valid (4 or 6)
+-- @proto: IPSec protocol type to use ("esp" or "ah")
+-- @decrypt: ESP mode (1=ESP decrypt and authenticate, 0=ESP authenticate only)
 function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	if idx > 1023 or idx < 0 then
 		error("Idx must be in range 0-1023")
@@ -340,6 +355,14 @@ function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	dpdkc.write_reg32(port, IPSRXIDX, value)
 end
 
+-- Read AES 128 bit Key and Salt from the Hardware RX SA table
+-- @port: The port/interface to use
+-- @idx: Index into the RX SA table (0-1023)
+-- @return: Key and Salt (as hex string),
+--          Valid Flag (1=SA is valid, 0=SA is invalid)
+--          Proto Flag (1=ESP, 0=AH)
+--          Decrypt Flag (1=ESP decrypt and authenticate, 0=ESP authenticate only)
+--          IPv6 Flag (1=SA is valid for IPv6, 0=SA is valid for IPv4)
 function mod.rx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
 		error("Idx must be in range 0-1023")
@@ -372,6 +395,10 @@ function mod.rx_get_key(port, idx)
 	return key, uhex32(_salt), valid, proto, decrypt, ipv6
 end
 
+-- Write IP-Address into the Hardware RX IP table
+-- @port: The port/interface to use
+-- @idx: Index into the RX IP table (0-127).
+-- @ip_addr: IP(v4/v6)-Address to set (as string)
 function mod.rx_set_ip(port, idx, ip_addr)
 	if idx > 127 or idx < 0 then
 		error("Idx must be in range 0-127")
@@ -409,6 +436,11 @@ function mod.rx_set_ip(port, idx, ip_addr)
         dpdkc.write_reg32(port, IPSRXIDX, value)
 end
 
+-- Read IP-Address from the Hardware RX IP table
+-- @port: The port/interface to use
+-- @idx: Index into the RX IP table (0-127)
+-- @is_ipv4: IP Version expected (true/false)
+-- @return: The IP(v4/v6)-Address (as string) and a IP Version Flag (true=IPv4, false=IPv6)
 function mod.rx_get_ip(port, idx, is_ipv4)
 	if idx > 127 or idx < 0 then
 		error("Idx must be in range 0-127")
@@ -449,6 +481,12 @@ function mod.rx_get_ip(port, idx, is_ipv4)
 	return ip, is_ipv4
 end
 
+-- Write SPI into the Hardware RX SPI table
+-- This table functions as 'glue' between the received packet (SPI), IP and KEY table.
+-- @port: The port/interface to use
+-- @idx: Index into the RX SPI table (0-1023). This must match the idx of the corresponding KEY table entry.
+-- @spi: SPI to write (0-0xFFFFFFFF)
+-- @ip_idx: Reference to the IP table. This must match the idx of the corresponding IP table entry.
 function mod.rx_set_spi(port, idx, spi, ip_idx)
 	if idx > 1023 or idx < 0 then
 		error("Idx must be in range 0-1023")
@@ -477,6 +515,10 @@ function mod.rx_set_spi(port, idx, spi, ip_idx)
         dpdkc.write_reg32(port, IPSRXIDX, value)
 end
 
+-- Read SPI from the Hardware RX SPI table
+-- @port: The port/interface to use
+-- @idx: Index into the RX SPI table (0-1023)
+-- @return: The SPI and the corresponding Index into the IP table
 function mod.rx_get_spi(port, idx)
 	if idx > 1023 or idx < 0 then
 		error("Idx must be in range 0-1023")
@@ -498,6 +540,8 @@ function mod.rx_get_spi(port, idx)
 	return bswap(spi), ip_idx
 end
 
+-- Calculate a ESP Trailer and the corresponding Padding and append to the packet payload.
+-- Only relevant for ESP/Ecryption mode
 -- @buf rte_mbuf to add esp trailer to
 -- @payload_len real payload length in bytes
 -- @next_hdr type of encapsulated packet
@@ -514,7 +558,6 @@ function mod.add_esp_trailer(buf, payload_len, next_hdr)
 	pkt.payload.uint8[idx8+1] = 0x00
 	pkt.payload.uint8[idx8+2] = pad_len
 	pkt.payload.uint8[idx8+3] = hdr
-	--pkt.payload.uint32[idx+0] = 0x00000211 -- padding 0x0000, pad_len 0x02, next_hdr 0x11 (UDP)
 
 	pkt.payload.uint32[idx+1] = 0x00 -- ICV n-3
 	pkt.payload.uint32[idx+2] = 0x00 -- ICV n-2

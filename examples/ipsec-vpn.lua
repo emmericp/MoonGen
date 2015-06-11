@@ -21,71 +21,86 @@ end
 
 -- txSlave sends out (ipsec crypto) packages
 function txSlave(port, srcQueue, dstQueue)
+	-- Enable hw crypto engine
 	ipsec.enable(port)
 
-	local count = 0
+	-- Install TX Security Association (SA), here only Key and Salt.
+	-- SPI, Mode and Type are set in the packet
+	ipsec.tx_set_key(port, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff")
+
+	--local key, salt = ipsec.tx_get_key(port, 0)
+	--print("Key:  0x"..key)
+	--print("Salt: 0x"..salt)
+
+	-- Prepare Initialization Vector for the packet
 	local iv = ffi.new("union ipsec_iv")
 	iv.uint32[0] = 0x01020304
 	iv.uint32[1] = 0x05060708
+
+	-- Create a packet Blueprint
+	local pkt_len = 90
 	local mem = memory.createMemPool(function(buf)
 		buf:getEspPacket():fill{
-			pktLength = 90,
+			pktLength = pkt_len,
 			ethSrc = srcQueue,
 			ethDst = dstQueue,
 			ip4Protocol = 0x32, --ESP, 0x33=AH
 			ip4Src = "10.0.0.1",
 			ip4Dst = "192.168.1.1",
-			espSPI = 0x2a,
+			espSPI = 0xdeadbeef,
 			espSQN = 0,
 			espIV  = iv,
 		}
 	end)
-	bufs = mem:bufArray(10) --Array of 10 pkts
 
-	ipsec.tx_set_key(port, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff")
-	local key, salt = ipsec.tx_get_key(port, 0)
-	print("Key:  0x"..key)
-	print("Salt: 0x"..salt)
+	-- Prepare an Array of packets
+	bufs = mem:bufArray(10)
 
+	local count = 0
 	--while dpdk.running() do
-		bufs:alloc(90)
+		bufs:alloc(pkt_len)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getEspPacket()
-			pkt.payload.uint32[0] = 0xaabbccdd -- real payload
-			pkt.payload.uint32[1] = 0xaabbccdd -- real payload
-			pkt.payload.uint32[2] = 0xaabbccdd -- real payload
-			pkt.payload.uint32[3] = 0xaabbccdd -- real payload
-			pkt.payload.uint32[4] = 0xaabbccdd -- real payload
+			pkt.esp:setSQN(count) -- increment ESP-SQN with each packet
+			pkt.payload.uint32[0] = count -- real payload
+			pkt.payload.uint32[1] = 0xffffffff -- real payload
+			pkt.payload.uint32[2] = 0xdeadbeef -- real payload
+			pkt.payload.uint32[3] = 0xdeadbeef -- real payload
+			pkt.payload.uint32[4] = 0xffffffff -- real payload
 			ipsec.add_esp_trailer(buf, 20) -- add 20 byte ESP trailer
-			count = (count+1) % 0xffffffff
+			buf:offloadIPSec(0, "esp", 1) -- enable hw IPSec in ESP/Encrypted mode, with SA/Key at index 0
+			count = count+1
 		end
 		bufs:offloadIPChecksums()
-		bufs:offloadIPSec(0, "esp", 1)
 		srcQueue:send(bufs)
 	--end
+
+	-- Disable hw crypto engine
 	ipsec.disable(port)
 end
 
 -- rxSlave logs received packages
 function rxSlave(port, queue)
+	-- Enable hw crypto engine
 	ipsec.enable(port)
+
+	-- Install RX Security Association (SA)
+	ipsec.rx_set_ip(port, 127, "192.168.1.1")
+	ipsec.rx_set_spi(port, 0, 0xdeadbeef, 127)
 	ipsec.rx_set_key(port, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff", 4, "esp", 1)
-	local key, salt, valid, proto, decrypt, ipv6 = ipsec.rx_get_key(port, 0)
-	print("Key:  0x"..key)
-	print("Salt: 0x"..salt)
-	print("Valid ("..valid.."), Proto ("..proto.."), Decrypt ("..decrypt.."), IPv6 ("..ipv6..")")
 
-	ipsec.rx_set_ip(port, 0, "192.168.1.1")
-	local ip  = ipsec.rx_get_ip(port, 0)
-	print("IP: "..ip)
-	ipsec.rx_set_ip(port, 1, "0123:4567:89AB:CDEF:1011:1213:1415:1617")
-	local ip = ipsec.rx_get_ip(port, 1, false)
-	print("IP: "..ip)
-
-	ipsec.rx_set_spi(port, 0, 0x2a, 0)
-	local spi, ip_idx = ipsec.rx_get_spi(port, 0)
-	print("SPI:    0x"..bit.tohex(spi, 8))
-	print("IP_IDX: "..ip_idx)
+	--local key, salt, valid, proto, decrypt, ipv6 = ipsec.rx_get_key(port, 0)
+	--print("Key:  0x"..key)
+	--print("Salt: 0x"..salt)
+	--print("Valid ("..valid.."), Proto ("..proto.."), Decrypt ("..decrypt.."), IPv6 ("..ipv6..")")
+	--local ip  = ipsec.rx_get_ip(port, 0)
+	--print("IP: "..ip)
+	--ipsec.rx_set_ip(port, 1, "0123:4567:89AB:CDEF:1011:1213:1415:1617")
+	--local ip = ipsec.rx_get_ip(port, 1, false)
+	--print("IP: "..ip)
+	--local spi, ip_idx = ipsec.rx_get_spi(port, 0)
+	--print("SPI:    0x"..bit.tohex(spi, 8))
+	--print("IP_IDX: "..ip_idx)
 
 	local dev = device.get(port)
 	local bufs = memory.bufArray()
@@ -96,10 +111,11 @@ function rxSlave(port, queue)
 			local buf  = bufs[i]
 			local pkt = buf:getEspPacket()
 			buf:dump(150) -- hexdump of received packet (incl. header)
-			printf("uint8[0]: %x", pkt.payload.uint8[0])
-			printf("uint8[1]: %x", pkt.payload.uint8[1])
-			printf("uint8[2]: %x", pkt.payload.uint8[2])
-			printf("uint8[3]: %x", pkt.payload.uint8[3])
+			printf("counter:   %d", pkt.payload.uint32[0])
+			printf("uint32[1]: %x", pkt.payload.uint32[1])
+			printf("uint32[2]: %x", pkt.payload.uint32[2])
+			printf("uint32[3]: %x", pkt.payload.uint32[3])
+			printf("uint32[4]: %x", pkt.payload.uint32[4])
 		end
 		bufs:freeAll()
 
@@ -111,6 +127,8 @@ function rxSlave(port, queue)
 		printf("Received %d packets, current rate %.2f Mpps\n", total, pkts / elapsed / 10^6)
 	end
 	print("Received "..total.." packets")
+
+	-- Disable hw crypto engine
 	ipsec.disable(port)
 end
 
