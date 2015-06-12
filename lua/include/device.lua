@@ -60,6 +60,7 @@ local devices = {}
 -- TODO: use a table/named arguments as this is becoming excessive
 function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
 	if not mempool or type(mempool) == "number" then
+    -- FIXME: this totally destroys readability. Variable names do not correspond with their meaning anymore
 		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
 	end
 	if devices[port] and devices[port].initialized then

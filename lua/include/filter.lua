@@ -31,6 +31,9 @@ end
 local dev = device.__devicePrototype
 
 function dev:l2Filter(etype, queue)
+  -- XXX ASK: why not use dpdk:
+  --  int rte_eth_dev_add_ethertype_filter(...)
+  --  instead of register mashup?
 	if type(queue) == "table" then
 		if queue.dev ~= self then
 			error("Queue must belong to the device being configured")

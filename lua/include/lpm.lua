@@ -50,6 +50,14 @@ int mg_table_lpm_entry_delete(
 void ** mg_lpm_table_allocate_entry_prts(uint16_t n_entries);
 int printf(const char *fmt, ...);
 
+int mg_table_lpm_apply_route(
+	struct rte_mbuf **pkts,
+	uint64_t pkts_mask,
+	void **entries,
+  uint16_t offset_entry,
+  uint16_t offset_pkt,
+  uint16_t size);
+
 ]]
 
 
@@ -141,6 +149,11 @@ function mg_lpm4EntryPtrs:__index(k)
   else
     return mg_lpm4EntryPtrs[k]
   end
+end
+
+function mod.applyRoute(pkts, mask, entries, entryOffset)
+  entryOffset = entryOffset or 1
+  return ffi.C.mg_table_lpm_apply_route(pkts.array, mask.bitmask, ffi.cast("void **", entries.array), entryOffset, 128, 6)
 end
 
 return mod

@@ -41,6 +41,7 @@
 #include <rte_byteorder.h>
 #include <rte_log.h>
 #include <rte_lpm.h>
+#include <rte_memcpy.h>
 
 #include "lpm_l.h"
 #include "bitmask.h"
@@ -403,6 +404,29 @@ mg_table_lpm_lookup(
 	*lookup_hit_mask = pkts_out_mask;
 
 	return 0;
+}
+
+int mg_table_lpm_apply_route(
+	struct rte_mbuf **pkts,
+	uint64_t pkts_mask,
+	void **entries,
+  uint16_t offset_entry,
+  uint16_t offset_pkt,
+  uint16_t size)
+{
+  uint16_t i;
+  for(i=0;i<pkts_mask->size;i++){
+    if(mg_bitmask_get_bit(pkts_mask, i)){
+      // TODO: check if just 6 byte direct assignment is faster here (more parallel)
+      // TODO: we could also do this in LUA, check if performance is affected...
+      // TODO: we could also do this already on lookup. Check if performance is affected
+      // copy data to packet
+      rte_memcpy((*pkts)->buf_addr + offset_pkt, *entries + offset_entry, size);
+    }
+    pkts++;
+    entries++;
+  }
+  return 0;
 }
 
 void ** mg_lpm_table_allocate_entry_prts(uint16_t n_entries){
