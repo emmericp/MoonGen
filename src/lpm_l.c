@@ -408,7 +408,7 @@ mg_table_lpm_lookup(
 
 int mg_table_lpm_apply_route(
 	struct rte_mbuf **pkts,
-	uint64_t pkts_mask,
+  struct mg_bitmask* pkts_mask,
 	void **entries,
   uint16_t offset_entry,
   uint16_t offset_pkt,
