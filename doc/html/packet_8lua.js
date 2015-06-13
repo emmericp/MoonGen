@@ -1,7 +1,6 @@
 var packet_8lua =
 [
     [ "dump", "packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a", null ],
-    [ "enableTimestamps", "packet_8lua.html#ac0443a417cdc375adfd2b90ff442596a", null ],
     [ "get", "packet_8lua.html#abf539eaa6742ff5dc815282767ca303e", null ],
     [ "getTimestamp", "packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84", null ],
     [ "hasTimestamp", "packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1", null ],
@@ -18,19 +17,5 @@ var packet_8lua =
     [ "packetMakeStruct", "packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64", null ],
     [ "packetResolveLastHeader", "packet_8lua.html#acf6e8135b9fcdfa8b19c81b2e462c1d2", null ],
     [ "packetSetLength", "packet_8lua.html#ad2182ba21f29223467ceb5d2858c0a20", null ],
-    [ "setDelay", "packet_8lua.html#a6b57d15d38741b7878ad8d06b88ebbb2", null ],
-    [ "setRate", "packet_8lua.html#a04e10ab9efc9f793fb8125de25bc1605", null ],
-    [ "setSize", "packet_8lua.html#a51ce788acb683d3a0690599805e480dc", null ],
-    [ "__index", "packet_8lua.html#a20ba3042c622079927ef927900eb9541", null ],
-    [ "band", "packet_8lua.html#ad7b51ea9fc3c6bfe1054e5861625cb1d", null ],
-    [ "bnot", "packet_8lua.html#a9bb9fa0add9f41d56bf1ea1b00f0f29f", null ],
-    [ "bor", "packet_8lua.html#a598fc3fdee6e78605879e83c3b20c199", null ],
-    [ "dpdk", "packet_8lua.html#a182d7c970afe1f08283d11aec035eac0", null ],
-    [ "dpdkc", "packet_8lua.html#a66da5271812f687b7927ee29b251cb1b", null ],
-    [ "ffi", "packet_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b", null ],
-    [ "istype", "packet_8lua.html#a77d4b79aafb10a09a5da9240164a59e8", null ],
-    [ "lshift", "packet_8lua.html#acaae1371dbd709eaf17514ccc770fd13", null ],
-    [ "pkt", "packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51", null ],
-    [ "rshift", "packet_8lua.html#a84d1e4c164c7cf777a943d26a07b2e4b", null ],
-    [ "write", "packet_8lua.html#a4dd81335a2d7c7076c85564a0493853a", null ]
+    [ "setDelay", "packet_8lua.html#a6b57d15d38741b7878ad8d06b88ebbb2", null ]
 ];

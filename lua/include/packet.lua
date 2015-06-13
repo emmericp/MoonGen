@@ -1,7 +1,10 @@
 ---------------------------------
---- @file
---- @brief Operations on packets
---- TBD
+--- @file packet.lua
+--- @brief Utility functions for packets (rte_mbuf).
+--- Includes:
+--- - General functions (timestamping, rate control, ...)
+--- - Offloading
+--- - Create packet types
 ---------------------------------
 
 local ffi = require "ffi"

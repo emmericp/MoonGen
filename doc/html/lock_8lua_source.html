@@ -31,6 +31,7 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
+   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -90,7 +91,7 @@ $(document).ready(function(){initNavTree('lock_8lua_source.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -104,91 +105,80 @@ $(document).ready(function(){initNavTree('lock_8lua_source.html','');});
 <div class="title">lock.lua</div>  </div>
 </div><!--header-->
 <div class="contents">
-<a href="lock_8lua.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno"><a class="line" href="lock_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">    1</a></span>&#160;local <a class="code" href="lock_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> = {}</div>
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;local mod = {}</div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;</div>
-<div class="line"><a name="l00003"></a><span class="lineno"><a class="line" href="lock_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">    3</a></span>&#160;local <a class="code" href="lock_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>   = require <span class="stringliteral">&quot;ffi&quot;</span></div>
-<div class="line"><a name="l00004"></a><span class="lineno"><a class="line" href="lock_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">    4</a></span>&#160;local <a class="code" href="lock_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a>   = require <span class="stringliteral">&quot;StackTracePlus&quot;</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;local ffi   = require <span class="stringliteral">&quot;ffi&quot;</span></div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;local stp   = require <span class="stringliteral">&quot;StackTracePlus&quot;</span></div>
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;</div>
-<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<a class="code" href="lock_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.cdef [[</div>
-<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;    <span class="keyword">struct </span><a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a> { };</div>
-<div class="line"><a name="l00008"></a><span class="lineno"><a class="line" href="lock_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">    8</a></span>&#160;</div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;    <span class="keyword">struct </span><a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>* make_lock();</div>
-<div class="line"><a name="l00010"></a><span class="lineno"><a class="line" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">   10</a></span>&#160;    <span class="keywordtype">void</span> lock_lock(<span class="keyword">struct</span> <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>* <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>);</div>
-<div class="line"><a name="l00011"></a><span class="lineno"><a class="line" href="lock_8lua.html#a7886770f3f19d37665cd5a90fa80f973">   11</a></span>&#160;    <span class="keywordtype">void</span> lock_unlock(<span class="keyword">struct</span> <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>* <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>);</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;    uint32_t lock_try_lock(<span class="keyword">struct</span> <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>* <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>);</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;    uint32_t lock_try_lock_for(<span class="keyword">struct</span> <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>* <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>, uint32_t us);</div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;ffi.cdef [[</div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;    <span class="keyword">struct </span>lock { };</div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;</div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;    <span class="keyword">struct </span>lock* make_lock();</div>
+<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;    <span class="keywordtype">void</span> lock_lock(<span class="keyword">struct</span> lock* lock);</div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;    <span class="keywordtype">void</span> lock_unlock(<span class="keyword">struct</span> lock* lock);</div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;    uint32_t lock_try_lock(<span class="keyword">struct</span> lock* lock);</div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;    uint32_t lock_try_lock_for(<span class="keyword">struct</span> lock* lock, uint32_t us);</div>
 <div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;]]</div>
 <div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;</div>
-<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;local <a class="code" href="lock_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a> = <a class="code" href="lock_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.C</div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;local C = ffi.C</div>
 <div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;</div>
-<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;local <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a> = {}</div>
-<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>.__index = <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a></div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;local lock = {}</div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;lock.__index = lock</div>
 <div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;</div>
-<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="keyword">function</span> <a class="code" href="lock_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>:<span class="keyword">new</span>()</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;    <span class="keywordflow">return</span> <a class="code" href="lock_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a>.make_lock()</div>
+<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="keyword">function</span> mod:<span class="keyword">new</span>()</div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;    <span class="keywordflow">return</span> C.make_lock()</div>
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;end</div>
 <div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;</div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="keyword">function</span> <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>:<a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>()</div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;    <a class="code" href="lock_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a>.lock_lock(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>)</div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="keyword">function</span> lock:lock()</div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;    C.lock_lock(self)</div>
 <div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;end</div>
 <div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;</div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;function <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>:<a class="code" href="lock_8lua.html#ab96dfa917e677d101852c488274d0efa">unlock</a>()</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;    <a class="code" href="lock_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a>.lock_unlock(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>)</div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;function lock:unlock()</div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;    C.lock_unlock(self)</div>
 <div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;end</div>
 <div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;</div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;--- Try to acquire the <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>, blocking for max &lt;timeout&gt; microseconds.</div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;--- Try to acquire the lock, blocking for max &lt;timeout&gt; microseconds.</div>
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;-- This function does not block if timeout is &lt;= 0.</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;-- This function may fail spuriously, <a class="code" href="filter_8lua.html#a6f6ccfcf58b31cb6412107d9d5281426">i</a>.e. return early or fail to acquire the lock.</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;-- @param timeout max time to <a class="code" href="device_8lua.html#a5a4c3ca053c3a76caffe2b62df860938">wait</a> in us</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;-- This function may fail spuriously, i.e. return early or fail to acquire the lock.</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;-- @param timeout max time to wait in us</div>
 <div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;-- @returns true if the lock was acquired, false otherwise</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;function lock:<a class="code" href="lock_8lua.html#a70aeb0f2439beea2170e7e200eb3e235">tryLock</a>(timeout)</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    return <a class="code" href="lock_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a>.lock_try_lock_for(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>, timeout) == 1</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;function lock:tryLock(timeout)</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    return C.lock_try_lock_for(self, timeout) == 1</div>
 <div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;end</div>
 <div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;</div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;--- Wrap a function call in lock/<a class="code" href="lock_8lua.html#ab96dfa917e677d101852c488274d0efa">unlock</a> calls.</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;--- Wrap a function call in lock/unlock calls.</div>
 <div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;-- Calling this is equivalent to the following pseudo-code:</div>
 <div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;--   lock:lock()</div>
 <div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;--   try {</div>
 <div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;--     func(...)</div>
 <div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;--   } <span class="keywordflow">finally</span> {</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;--     <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>:<a class="code" href="lock_8lua.html#ab96dfa917e677d101852c488274d0efa">unlock</a>()</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;--     lock:unlock()</div>
 <div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;--   }</div>
 <div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;-- @param func the <span class="keyword">function</span> to call</div>
 <div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;-- @param ... arguments passed to the <span class="keyword">function</span></div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="keyword">function</span> <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>:<a class="code" href="lock_8lua.html#ae7bdaeb5df12d0563dee13a197a3d9e7">__call</a>(func, ...)</div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>:<a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>()</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="keyword">function</span> lock:__call(func, ...)</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    self:lock()</div>
 <div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    local ok, err = xpcall(func, function(err)</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;        return <a class="code" href="lock_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a>.stacktrace(err)</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;        return stp.stacktrace(err)</div>
 <div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;    end, ...)</div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>:<a class="code" href="lock_8lua.html#ab96dfa917e677d101852c488274d0efa">unlock</a>()</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    self:unlock()</div>
 <div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;    if not ok then</div>
 <div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;        -- FIXME: this output is going to be ugly because it will output the local err as well :&gt;</div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;        error(&quot;caught error in <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>-wrapped call, inner error: &quot; .. err, 2)</div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;        error(&quot;caught error in lock-wrapped call, inner error: &quot; .. err, 2)</div>
 <div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;    end</div>
 <div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;end</div>
 <div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;</div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<a class="code" href="lock_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.metatype(&quot;struct <a class="code" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>&quot;, lock)</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;ffi.metatype(&quot;struct lock&quot;, lock)</div>
 <div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;</div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;return <a class="code" href="lock_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;return mod</div>
 <div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;</div>
-<div class="ttc" id="lock_8lua_html_a70aeb0f2439beea2170e7e200eb3e235"><div class="ttname"><a href="lock_8lua.html#a70aeb0f2439beea2170e7e200eb3e235">tryLock</a></div><div class="ttdeci">function lock tryLock(timeout)</div><div class="ttdoc">Try to acquire the lock, blocking for max &lt;timeout&gt; microseconds. </div></div>
-<div class="ttc" id="lock_8lua_html_ab0fe2c273d26b897ce8facde43ddda0b"><div class="ttname"><a href="lock_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a></div><div class="ttdeci">local ffi</div><div class="ttdef"><b>Definition:</b> <a href="lock_8lua_source.html#l00003">lock.lua:3</a></div></div>
-<div class="ttc" id="lock_8lua_html_ae7bdaeb5df12d0563dee13a197a3d9e7"><div class="ttname"><a href="lock_8lua.html#ae7bdaeb5df12d0563dee13a197a3d9e7">__call</a></div><div class="ttdeci">function lock __call(func,...)</div><div class="ttdoc">Wrap a function call in lock/unlock calls. </div></div>
-<div class="ttc" id="lock_8lua_html_ab96dfa917e677d101852c488274d0efa"><div class="ttname"><a href="lock_8lua.html#ab96dfa917e677d101852c488274d0efa">unlock</a></div><div class="ttdeci">function lock unlock()</div></div>
-<div class="ttc" id="device_8lua_html_a5a4c3ca053c3a76caffe2b62df860938"><div class="ttname"><a href="device_8lua.html#a5a4c3ca053c3a76caffe2b62df860938">wait</a></div><div class="ttdeci">function dev wait()</div><div class="ttdoc">Wait until the device is fully initialized and up to 9 seconds to establish a link. </div></div>
-<div class="ttc" id="filter_8lua_html_a6f6ccfcf58b31cb6412107d9d5281426"><div class="ttname"><a href="filter_8lua.html#a6f6ccfcf58b31cb6412107d9d5281426">i</a></div><div class="ttdeci">for i</div><div class="ttdef"><b>Definition:</b> <a href="filter_8lua_source.html#l00019">filter.lua:19</a></div></div>
-<div class="ttc" id="tcp_8lua_html_a9a04aa327fd016eb962c5799377e1f29"><div class="ttname"><a href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a></div><div class="ttdeci">self</div><div class="ttdef"><b>Definition:</b> <a href="tcp_8lua_source.html#l00140">tcp.lua:140</a></div></div>
-<div class="ttc" id="lock_8lua_html_a93cc9d5f326c929f86fabf7a33c1bb65"><div class="ttname"><a href="lock_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div><div class="ttdeci">local mod</div><div class="ttdef"><b>Definition:</b> <a href="lock_8lua_source.html#l00001">lock.lua:1</a></div></div>
-<div class="ttc" id="lock_8lua_html_a670b95f722f2010f60dfdb69fe5e4743"><div class="ttname"><a href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a></div><div class="ttdeci">local lock</div><div class="ttdef"><b>Definition:</b> <a href="lock_8lua_source.html#l00010">lock.lua:10</a></div></div>
-<div class="ttc" id="lock_8lua_html_adae593e557057ea9bc7c0fcb9c8588fb"><div class="ttname"><a href="lock_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a></div><div class="ttdeci">local stp</div><div class="ttdef"><b>Definition:</b> <a href="lock_8lua_source.html#l00004">lock.lua:4</a></div></div>
-<div class="ttc" id="lock_8lua_html_ada5f7a2f7477e942da190f5f12a6f57c"><div class="ttname"><a href="lock_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a></div><div class="ttdeci">local C</div><div class="ttdef"><b>Definition:</b> <a href="lock_8lua_source.html#l00008">lock.lua:8</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="lock_8lua.html">lock.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 13:48:41 for MoonGen by
+    <li class="navelem"><b>lock.lua</b></li>
+    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

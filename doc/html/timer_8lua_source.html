@@ -31,6 +31,7 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
+   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -90,7 +91,7 @@ $(document).ready(function(){initNavTree('timer_8lua_source.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -104,71 +105,60 @@ $(document).ready(function(){initNavTree('timer_8lua_source.html','');});
 <div class="title">timer.lua</div>  </div>
 </div><!--header-->
 <div class="contents">
-<a href="timer_8lua.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno"><a class="line" href="timer_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">    1</a></span>&#160;local <a class="code" href="timer_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> = {}</div>
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;local mod = {}</div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;</div>
-<div class="line"><a name="l00003"></a><span class="lineno"><a class="line" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">    3</a></span>&#160;local <a class="code" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a> = require <span class="stringliteral">&quot;dpdk&quot;</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;local dpdk = require <span class="stringliteral">&quot;dpdk&quot;</span></div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;</div>
-<div class="line"><a name="l00005"></a><span class="lineno"><a class="line" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">    5</a></span>&#160;local <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a> = {}</div>
-<div class="line"><a name="l00006"></a><span class="lineno"><a class="line" href="timer_8lua.html#a01cda7269f215b1076d575eb0336b180">    6</a></span>&#160;<a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>.__index = <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a></div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;local timer = {}</div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;timer.__index = timer</div>
 <div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;</div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="keyword">function</span> <a class="code" href="timer_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>:<span class="keyword">new</span>(time)</div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;    <span class="keywordflow">return</span> <a class="code" href="histogram_8lua.html#a381745c9f46e12020a07f7f198e5fc7b">setmetatable</a>({</div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="keyword">function</span> mod:<span class="keyword">new</span>(time)</div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;    <span class="keywordflow">return</span> setmetatable({</div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;        time = time or 0,</div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;        <a class="code" href="dpdk_8lua.html#a05bdf7eb4a252e1e3560365b1506f28b">stop</a> = <a class="code" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.getTime() + (time or 0)</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;    }, <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>)</div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;        stop = dpdk.getTime() + (time or 0)</div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;    }, timer)</div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;end</div>
 <div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;</div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="keyword">function</span> <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>:<a class="code" href="timer_8lua.html#a47a0480dc6caa7579c80f7fbdbd57fab">running</a>()</div>
-<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;    <span class="keywordflow">return</span> <span class="keyword">self</span>.stop &gt; <a class="code" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.getTime()</div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="keyword">function</span> timer:running()</div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;    return self.stop &gt; dpdk.getTime()</div>
 <div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;end</div>
 <div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;</div>
-<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="keyword">function</span> <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>:<a class="code" href="timer_8lua.html#a8fc336a90851975d21b86b223fc59196">expired</a>()</div>
-<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;    <span class="keywordflow">return</span> <span class="keyword">self</span>.stop &lt;= <a class="code" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.getTime()</div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;function timer:expired()</div>
+<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;    return self.stop &lt;= dpdk.getTime()</div>
 <div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;end</div>
 <div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;</div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="keyword">function</span> <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>:<a class="code" href="timer_8lua.html#adfe3026654da4213e4a9c65944f15267">timeLeft</a>()</div>
-<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;    <span class="keywordflow">return</span> <span class="keyword">self</span>.stop - <a class="code" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.getTime()</div>
+<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;function timer:timeLeft()</div>
+<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;    return self.stop - dpdk.getTime()</div>
 <div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;end</div>
 <div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="keyword">function</span> <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>:<a class="code" href="timer_8lua.html#ad87b20911f306f0cd835fe9ca69704df">reset</a>(time)</div>
-<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;    <span class="keyword">self</span>.stop = <a class="code" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.getTime() + (time or <span class="keyword">self</span>.time)</div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;function timer:reset(time)</div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;    self.stop = dpdk.getTime() + (time or self.time)</div>
 <div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;end</div>
 <div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;</div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;--- Perform a busy <a class="code" href="timer_8lua.html#a112daeb10653b706c345db3d608618cc">wait</a> on the <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>.</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;-- Returns early <span class="keywordflow">if</span> MoonGen is stopped (mg.running() == <span class="keyword">false</span>).</div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;<span class="keyword">function</span> <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>:<a class="code" href="timer_8lua.html#a20626a5199024e05229c3a5e25b81a49">busyWait</a>()</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;    <span class="keywordflow">while</span> not <span class="keyword">self</span>:<a class="code" href="timer_8lua.html#a8fc336a90851975d21b86b223fc59196">expired</a>() and <a class="code" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.running() <span class="keywordflow">do</span></div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;--- Perform a busy wait on the timer.</div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;-- Returns early if MoonGen is stopped (mg.running() == false).</div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;function timer:busyWait()</div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;    while not self:expired() and dpdk.running() do</div>
 <div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;    end</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;    <span class="keywordflow">return</span> <a class="code" href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.running()</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;    return dpdk.running()</div>
 <div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;end</div>
 <div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;--- Perform a non-busy <a class="code" href="timer_8lua.html#a112daeb10653b706c345db3d608618cc">wait</a> on the <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>.</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;-- Might be less accurate than <a class="code" href="timer_8lua.html#a20626a5199024e05229c3a5e25b81a49">busyWait</a>()</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;<span class="keyword">function</span> <a class="code" href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>:<a class="code" href="timer_8lua.html#a112daeb10653b706c345db3d608618cc">wait</a>()</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;--- Perform a non-busy wait on the timer.</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;-- Might be less accurate than busyWait()</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;function timer:wait()</div>
 <div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;    -- TODO: implement</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;    <span class="keywordflow">return</span> <span class="keyword">self</span>:<a class="code" href="timer_8lua.html#a20626a5199024e05229c3a5e25b81a49">busyWait</a>()</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;    return self:busyWait()</div>
 <div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;end</div>
 <div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;<span class="keywordflow">return</span> <a class="code" href="timer_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;return mod</div>
 <div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;</div>
-<div class="ttc" id="timer_8lua_html_a47a0480dc6caa7579c80f7fbdbd57fab"><div class="ttname"><a href="timer_8lua.html#a47a0480dc6caa7579c80f7fbdbd57fab">running</a></div><div class="ttdeci">function timer running()</div></div>
-<div class="ttc" id="timer_8lua_html_a93cc9d5f326c929f86fabf7a33c1bb65"><div class="ttname"><a href="timer_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div><div class="ttdeci">local mod</div><div class="ttdef"><b>Definition:</b> <a href="timer_8lua_source.html#l00001">timer.lua:1</a></div></div>
-<div class="ttc" id="timer_8lua_html_a182d7c970afe1f08283d11aec035eac0"><div class="ttname"><a href="timer_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a></div><div class="ttdeci">local dpdk</div><div class="ttdef"><b>Definition:</b> <a href="timer_8lua_source.html#l00003">timer.lua:3</a></div></div>
-<div class="ttc" id="timer_8lua_html_a8fc336a90851975d21b86b223fc59196"><div class="ttname"><a href="timer_8lua.html#a8fc336a90851975d21b86b223fc59196">expired</a></div><div class="ttdeci">function timer expired()</div></div>
-<div class="ttc" id="timer_8lua_html_a20626a5199024e05229c3a5e25b81a49"><div class="ttname"><a href="timer_8lua.html#a20626a5199024e05229c3a5e25b81a49">busyWait</a></div><div class="ttdeci">function timer busyWait()</div><div class="ttdoc">Perform a busy wait on the timer. </div></div>
-<div class="ttc" id="timer_8lua_html_a8e4c3a3dca95a8646decc890066bd9f0"><div class="ttname"><a href="timer_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a></div><div class="ttdeci">local timer</div><div class="ttdef"><b>Definition:</b> <a href="timer_8lua_source.html#l00005">timer.lua:5</a></div></div>
-<div class="ttc" id="histogram_8lua_html_a381745c9f46e12020a07f7f198e5fc7b"><div class="ttname"><a href="histogram_8lua.html#a381745c9f46e12020a07f7f198e5fc7b">setmetatable</a></div><div class="ttdeci">setmetatable(histogram,{__call=histogram.create})</div></div>
-<div class="ttc" id="dpdk_8lua_html_a05bdf7eb4a252e1e3560365b1506f28b"><div class="ttname"><a href="dpdk_8lua.html#a05bdf7eb4a252e1e3560365b1506f28b">stop</a></div><div class="ttdeci">function mod stop()</div><div class="ttdoc">request all tasks to exit </div></div>
-<div class="ttc" id="timer_8lua_html_a112daeb10653b706c345db3d608618cc"><div class="ttname"><a href="timer_8lua.html#a112daeb10653b706c345db3d608618cc">wait</a></div><div class="ttdeci">function timer wait()</div><div class="ttdoc">Perform a non-busy wait on the timer. </div></div>
-<div class="ttc" id="timer_8lua_html_adfe3026654da4213e4a9c65944f15267"><div class="ttname"><a href="timer_8lua.html#adfe3026654da4213e4a9c65944f15267">timeLeft</a></div><div class="ttdeci">function timer timeLeft()</div></div>
-<div class="ttc" id="timer_8lua_html_ad87b20911f306f0cd835fe9ca69704df"><div class="ttname"><a href="timer_8lua.html#ad87b20911f306f0cd835fe9ca69704df">reset</a></div><div class="ttdeci">function timer reset(time)</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="timer_8lua.html">timer.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 13:48:42 for MoonGen by
+    <li class="navelem"><b>timer.lua</b></li>
+    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

@@ -31,6 +31,7 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
+   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -90,7 +91,7 @@ $(document).ready(function(){initNavTree('device_8lua_source.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -104,101 +105,101 @@ $(document).ready(function(){initNavTree('device_8lua_source.html','');});
 <div class="title">device.lua</div>  </div>
 </div><!--header-->
 <div class="contents">
-<a href="device_8lua.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno"><a class="line" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">    1</a></span>&#160;local <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> = {}</div>
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;local mod = {}</div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;</div>
-<div class="line"><a name="l00003"></a><span class="lineno"><a class="line" href="device_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">    3</a></span>&#160;local <a class="code" href="device_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>       = require <span class="stringliteral">&quot;ffi&quot;</span></div>
-<div class="line"><a name="l00004"></a><span class="lineno"><a class="line" href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">    4</a></span>&#160;local <a class="code" href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>     = require <span class="stringliteral">&quot;dpdkc&quot;</span></div>
-<div class="line"><a name="l00005"></a><span class="lineno"><a class="line" href="device_8lua.html#a182d7c970afe1f08283d11aec035eac0">    5</a></span>&#160;local <a class="code" href="device_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>      = require <span class="stringliteral">&quot;dpdk&quot;</span></div>
-<div class="line"><a name="l00006"></a><span class="lineno"><a class="line" href="device_8lua.html#aebc2282c5e51597731e110f98501f470">    6</a></span>&#160;local <a class="code" href="device_8lua.html#aebc2282c5e51597731e110f98501f470">memory</a>    = require <span class="stringliteral">&quot;memory&quot;</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;local ffi       = require <span class="stringliteral">&quot;ffi&quot;</span></div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;local dpdkc     = require <span class="stringliteral">&quot;dpdkc&quot;</span></div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;local dpdk      = require <span class="stringliteral">&quot;dpdk&quot;</span></div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;local memory    = require <span class="stringliteral">&quot;memory&quot;</span></div>
 <div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;</div>
-<div class="line"><a name="l00008"></a><span class="lineno"><a class="line" href="device_8lua.html#a35c3d2fcddae34b6bf8f3417bdc29c70">    8</a></span>&#160;<a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.PCI_ID_X540     = 0x80861528</div>
-<div class="line"><a name="l00009"></a><span class="lineno"><a class="line" href="device_8lua.html#a716f938807a8e2ee7397bff81a61e5d6">    9</a></span>&#160;<a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.PCI_ID_82599    = 0x808610FB</div>
-<div class="line"><a name="l00010"></a><span class="lineno"><a class="line" href="device_8lua.html#a591e139067ac66d5a932ba6b1fce14bc">   10</a></span>&#160;<a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.PCI_ID_82580    = 0x8086150E</div>
-<div class="line"><a name="l00011"></a><span class="lineno"><a class="line" href="device_8lua.html#a3bf77519c3605016b2bc3fb612659c55">   11</a></span>&#160;<a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.PCI_ID_82576    = 0x80861526</div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;mod.PCI_ID_X540     = 0x80861528</div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;mod.PCI_ID_82599    = 0x808610FB</div>
+<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;mod.PCI_ID_82580    = 0x8086150E</div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;mod.PCI_ID_82576    = 0x80861526</div>
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="keyword">function</span> <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.init()</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;    <a class="code" href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>.rte_pmd_init_all_export();</div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;    <a class="code" href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>.rte_eal_pci_probe();</div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="keyword">function</span> mod.init()</div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;    dpdkc.rte_pmd_init_all_export();</div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;    dpdkc.rte_eal_pci_probe();</div>
 <div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;end</div>
-<div class="line"><a name="l00017"></a><span class="lineno"><a class="line" href="device_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">   17</a></span>&#160;</div>
-<div class="line"><a name="l00018"></a><span class="lineno"><a class="line" href="device_8lua.html#ab4ffd42975bba4f643d565d5897d190b">   18</a></span>&#160;<span class="keyword">function</span> <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.numDevices()</div>
-<div class="line"><a name="l00019"></a><span class="lineno"><a class="line" href="device_8lua.html#af31e33d97859420e77716ef26d08d68e">   19</a></span>&#160;    <span class="keywordflow">return</span> <a class="code" href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>.rte_eth_dev_count();</div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;</div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="keyword">function</span> mod.numDevices()</div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;    <span class="keywordflow">return</span> dpdkc.rte_eth_dev_count();</div>
 <div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;end</div>
 <div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;local <a class="code" href="device_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">dev</a> = {}</div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;local dev = {}</div>
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;dev.__index = dev</div>
 <div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;dev.__type = <span class="stringliteral">&quot;device&quot;</span></div>
-<div class="line"><a name="l00025"></a><span class="lineno"><a class="line" href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">   25</a></span>&#160;</div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="keyword">function</span> dev:<a class="code" href="device_8lua.html#a43a5916f06bb44dc07014d793384bc96">__tostring</a>()</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;    return (&quot;[Device: <span class="keywordtype">id</span>=%d]&quot;):<a class="code" href="arp_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a>(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<span class="keywordtype">id</span>)</div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;</div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="keyword">function</span> dev:__tostring()</div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;    return (&quot;[Device: <span class="keywordtype">id</span>=%d]&quot;):format(self.<span class="keywordtype">id</span>)</div>
 <div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;end</div>
 <div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;function dev:<a class="code" href="device_8lua.html#af737411721604db02a672be7dc3ebbc5">__serialize</a>()</div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    return (&#39;local dev = require &quot;<a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a>&quot; return dev.<a class="code" href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a>(%d)&#39;):<a class="code" href="arp_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a>(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<span class="keywordtype">id</span>), true</div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;function dev:__serialize()</div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    return (&#39;local dev = require &quot;device&quot; return dev.<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(%d)&#39;):format(self.<span class="keywordtype">id</span>), true</div>
 <div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;end</div>
-<div class="line"><a name="l00033"></a><span class="lineno"><a class="line" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">   33</a></span>&#160;</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;local <a class="code" href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">txQueue</a> = {}</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<a class="code" href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">txQueue</a>.__index = <a class="code" href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">txQueue</a></div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<a class="code" href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">txQueue</a>.__type = <span class="stringliteral">&quot;txQueue&quot;</span></div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;</div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;local txQueue = {}</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;txQueue.__index = txQueue</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;txQueue.__type = <span class="stringliteral">&quot;txQueue&quot;</span></div>
 <div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;<span class="keyword">function</span> <a class="code" href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">txQueue</a>:<a class="code" href="device_8lua.html#a43a5916f06bb44dc07014d793384bc96">__tostring</a>()</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    return (&quot;[TxQueue: <span class="keywordtype">id</span>=%d, qid=%d]&quot;):<a class="code" href="arp_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a>(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<span class="keywordtype">id</span>, <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.qid)</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;<span class="keyword">function</span> txQueue:__tostring()</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    return (&quot;[TxQueue: <span class="keywordtype">id</span>=%d, qid=%d]&quot;):format(self.<span class="keywordtype">id</span>, self.qid)</div>
 <div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;end</div>
-<div class="line"><a name="l00041"></a><span class="lineno"><a class="line" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">   41</a></span>&#160;</div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;function <a class="code" href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">txQueue</a>:<a class="code" href="device_8lua.html#af737411721604db02a672be7dc3ebbc5">__serialize</a>()</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;    return (&#39;local dev = require &quot;<a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a>&quot; return dev.<a class="code" href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a>(%d):<a class="code" href="device_8lua.html#afc5a34069cfef8eaa83805d6c9abf08f">getTxQueue</a>(%d)&#39;):<a class="code" href="arp_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a>(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<span class="keywordtype">id</span>, <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.qid), true</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;function txQueue:__serialize()</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;    return (&#39;local dev = require &quot;device&quot; return dev.<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(%d):getTxQueue(%d)&#39;):format(self.<span class="keywordtype">id</span>, self.qid), true</div>
 <div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;end</div>
 <div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;local <a class="code" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a> = {}</div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;<a class="code" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a>.__index = <a class="code" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a></div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;<a class="code" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a>.__type = <span class="stringliteral">&quot;rxQueue&quot;</span></div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;local rxQueue = {}</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;rxQueue.__index = rxQueue</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;rxQueue.__type = <span class="stringliteral">&quot;rxQueue&quot;</span></div>
 <div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="keyword">function</span> <a class="code" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a>:<a class="code" href="device_8lua.html#a43a5916f06bb44dc07014d793384bc96">__tostring</a>()</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;    return (&quot;[RxQueue: <span class="keywordtype">id</span>=%d, qid=%d]&quot;):<a class="code" href="arp_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a>(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<span class="keywordtype">id</span>, <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.qid)</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="keyword">function</span> rxQueue:__tostring()</div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;    return (&quot;[RxQueue: <span class="keywordtype">id</span>=%d, qid=%d]&quot;):format(self.<span class="keywordtype">id</span>, self.qid)</div>
 <div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;end</div>
 <div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;function <a class="code" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a>:<a class="code" href="device_8lua.html#af737411721604db02a672be7dc3ebbc5">__serialize</a>()</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    return (&#39;local dev = require &quot;<a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a>&quot; return dev.<a class="code" href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a>(%d):<a class="code" href="device_8lua.html#a36e7058ed37919b0317d055ad2da56a8">getRxQueue</a>(%d)&#39;):<a class="code" href="arp_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a>(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<span class="keywordtype">id</span>, <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.qid), true</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;function rxQueue:__serialize()</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    return (&#39;local dev = require &quot;device&quot; return dev.<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(%d):getRxQueue(%d)&#39;):format(self.<span class="keywordtype">id</span>, self.qid), true</div>
 <div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;end</div>
 <div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;local <a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a> = {}</div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;local devices = {}</div>
 <div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;</div>
 <div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;-- TODO: use a table/named arguments as <span class="keyword">this</span> is becoming excessive</div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="keyword">function</span> <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.config(port, <a class="code" href="memory_8lua.html#ae3570e4c672384851422cd1c8bce88b4">mempool</a>, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;    <span class="keywordflow">if</span> not <a class="code" href="memory_8lua.html#ae3570e4c672384851422cd1c8bce88b4">mempool</a> or type(<a class="code" href="memory_8lua.html#ae3570e4c672384851422cd1c8bce88b4">mempool</a>) == <span class="stringliteral">&quot;number&quot;</span> then</div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;        <span class="keywordflow">return</span> <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.config(port, <a class="code" href="device_8lua.html#aebc2282c5e51597731e110f98501f470">memory</a>.createMemPool(nil, <a class="code" href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>.get_socket(port)), <a class="code" href="memory_8lua.html#ae3570e4c672384851422cd1c8bce88b4">mempool</a>, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)</div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="keyword">function</span> mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;    <span class="keywordflow">if</span> not mempool or type(mempool) == <span class="stringliteral">&quot;number&quot;</span> then</div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;        <span class="keywordflow">return</span> mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)</div>
 <div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;    end</div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;    <span class="keywordflow">if</span> <a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a>[port] and <a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a>[port].initialized then</div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;        <a class="code" href="utils_8lua.html#ae54683ab3fdfbeb0a0f010986338a73e">printf</a>(<span class="stringliteral">&quot;[WARNING] Device %d already configured, skipping initilization&quot;</span>, port)</div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;        return <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.<a class="code" href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a>(port)</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;    <span class="keywordflow">if</span> devices[port] and devices[port].initialized then</div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;        printf(<span class="stringliteral">&quot;[WARNING] Device %d already configured, skipping initilization&quot;</span>, port)</div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;        return mod.<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(port)</div>
 <div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;    end</div>
 <div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;    speed = speed or 0</div>
 <div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;    dropEnable = dropEnable == nil and true</div>
 <div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;    if rxQueues == 0 or txQueues == 0 then</div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;        -- <a class="code" href="device_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a> does not like <a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a> without rx/tx queues :(</div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;        <a class="code" href="utils_8lua.html#aaa76710deef1f005bf87a55d0e496046">errorf</a>(&quot;cannot initialize <a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a> without %s queues&quot;, rxQueues == 0 and txQueues == 0 and &quot;rx and tx&quot; or rxQueues == 0 and &quot;rx&quot; or &quot;tx&quot;)</div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;        -- dpdk does not like devices without rx/tx queues :(</div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;        errorf(&quot;cannot initialize device without %s queues&quot;, rxQueues == 0 and txQueues == 0 and &quot;rx and tx&quot; or rxQueues == 0 and &quot;rx&quot; or &quot;tx&quot;)</div>
 <div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;    end</div>
 <div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;    rxQueues = rxQueues or 1</div>
 <div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;    txQueues = txQueues or 1</div>
 <div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;    rxDescs = rxDescs or 0</div>
 <div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;    txDescs = txDescs or 0</div>
 <div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;    -- TODO: support options</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;    local rc = <a class="code" href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, speed, <a class="code" href="memory_8lua.html#ae3570e4c672384851422cd1c8bce88b4">mempool</a>, dropEnable)</div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;    local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, speed, mempool, dropEnable)</div>
 <div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;    if rc ~= 0 then</div>
-<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;        <a class="code" href="utils_8lua.html#aaa76710deef1f005bf87a55d0e496046">errorf</a>(&quot;could not configure <a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a> %d: error %d&quot;, port, rc)</div>
+<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;        errorf(&quot;could not configure device %d: error %d&quot;, port, rc)</div>
 <div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;    end</div>
-<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;    local dev = <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.<a class="code" href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a>(port)</div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;    local dev = mod.<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(port)</div>
 <div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;    dev.initialized = true</div>
 <div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;    return dev</div>
 <div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;end</div>
 <div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;</div>
-<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;function <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.<a class="code" href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a>(<span class="keywordtype">id</span>)</div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;    if <a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a>[<span class="keywordtype">id</span>] then</div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;        return <a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a>[<span class="keywordtype">id</span>]</div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;function mod.<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(<span class="keywordtype">id</span>)</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;    if devices[<span class="keywordtype">id</span>] then</div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;        return devices[<span class="keywordtype">id</span>]</div>
 <div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;    end</div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;    <a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a>[<span class="keywordtype">id</span>] = <a class="code" href="histogram_8lua.html#a381745c9f46e12020a07f7f198e5fc7b">setmetatable</a>({ <span class="keywordtype">id</span> = id, rxQueues = {}, txQueues = {} }, <a class="code" href="device_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">dev</a>)</div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;    devices[<span class="keywordtype">id</span>] = setmetatable({ <span class="keywordtype">id</span> = id, rxQueues = {}, txQueues = {} }, dev)</div>
 <div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;    <span class="keywordflow">if</span> MOONGEN_TASK_NAME ~= <span class="stringliteral">&quot;master&quot;</span> and not MOONGEN_IGNORE_BAD_NUMA_MAPPING then</div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;        -- check the NUMA association <span class="keywordflow">if</span> we are <a class="code" href="dpdk_8lua.html#a9c3302b6465084549f626875f203ff39">running</a> in a worker thread</div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;        -- check the NUMA association <span class="keywordflow">if</span> we are running in a worker thread</div>
 <div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;        -- (it<span class="stringliteral">&#39;s okay to do the initial config from the wrong socket, but sending packets from it is a bad idea)</span></div>
 <div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="stringliteral">        local devSocket = devices[id]:getSocket()</span></div>
 <div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;<span class="stringliteral">        local core, threadSocket = dpdk.getCore()</span></div>
@@ -501,17 +502,17 @@ $(document).ready(function(){initNavTree('device_8lua_source.html','');});
 <div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;        <span class="keywordflow">if</span> maxWait &lt; 0 then</div>
 <div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;            <span class="keywordflow">break</span></div>
 <div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160;        end</div>
-<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;        <a class="code" href="device_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.sleepMicros(1)</div>
+<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;        dpdk.sleepMicros(1)</div>
 <div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160;    end</div>
 <div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;    <span class="keywordflow">return</span> 0</div>
 <div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;end</div>
 <div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;</div>
 <div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;--- Receive packets from a rx queue with a timeout.</div>
-<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;-- Does not perform a busy <a class="code" href="device_8lua.html#a5a4c3ca053c3a76caffe2b62df860938">wait</a>, <span class="keyword">this</span> is not suitable <span class="keywordflow">for</span> high-throughput applications.</div>
-<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;function <a class="code" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a>:tryRecvIdle(<a class="code" href="memory_8lua.html#a2bda44114ecf29934d14d7111d113c41">bufArray</a>, maxWait)</div>
+<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;-- Does not perform a busy wait, <span class="keyword">this</span> is not suitable <span class="keywordflow">for</span> high-throughput applications.</div>
+<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;function rxQueue:tryRecvIdle(bufArray, maxWait)</div>
 <div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160;    maxWait = maxWait or math.huge</div>
-<div class="line"><a name="l00407"></a><span class="lineno">  407</span>&#160;    while maxWait &gt;= 0 <a class="code" href="filter_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a></div>
-<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;        local rx = <a class="code" href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>.rte_eth_rx_burst_export(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<span class="keywordtype">id</span>, <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.qid, <a class="code" href="memory_8lua.html#a2bda44114ecf29934d14d7111d113c41">bufArray</a>.<a class="code" href="memory_8lua.html#a41ab4b8b4e6b05e8489555b1bbc7f845">array</a>, <a class="code" href="memory_8lua.html#a2bda44114ecf29934d14d7111d113c41">bufArray</a>.<a class="code" href="memory_8lua.html#aa3d6656320f1a7278c0c2c7fdf07617c">size</a>)</div>
+<div class="line"><a name="l00407"></a><span class="lineno">  407</span>&#160;    while maxWait &gt;= 0 do</div>
+<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;        local rx = dpdkc.rte_eth_rx_burst_export(self.<span class="keywordtype">id</span>, self.qid, bufArray.array, bufArray.size)</div>
 <div class="line"><a name="l00409"></a><span class="lineno">  409</span>&#160;        if rx &gt; 0 then</div>
 <div class="line"><a name="l00410"></a><span class="lineno">  410</span>&#160;            return rx</div>
 <div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;        end</div>
@@ -520,53 +521,26 @@ $(document).ready(function(){initNavTree('device_8lua_source.html','');});
 <div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;        if maxWait &lt; 0 then</div>
 <div class="line"><a name="l00415"></a><span class="lineno">  415</span>&#160;            break</div>
 <div class="line"><a name="l00416"></a><span class="lineno">  416</span>&#160;        end</div>
-<div class="line"><a name="l00417"></a><span class="lineno">  417</span>&#160;        <a class="code" href="device_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.<a class="code" href="dpdk_8lua.html#a44ab9c82fb663ef97dc859154d6293a2">sleepMicrosIdle</a>(1)</div>
+<div class="line"><a name="l00417"></a><span class="lineno">  417</span>&#160;        dpdk.sleepMicrosIdle(1)</div>
 <div class="line"><a name="l00418"></a><span class="lineno">  418</span>&#160;    end</div>
 <div class="line"><a name="l00419"></a><span class="lineno">  419</span>&#160;    return 0</div>
 <div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160;end</div>
 <div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;</div>
 <div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;-- export prototypes to extend them in other modules (TODO: use a proper &#39;class&#39; system with mix-ins or something)</div>
-<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;<a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.__devicePrototype = dev</div>
-<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;<a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.__txQueuePrototype = <a class="code" href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">txQueue</a></div>
-<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;<a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>.__rxQueuePrototype = <a class="code" href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a></div>
+<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;mod.__devicePrototype = dev</div>
+<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;mod.__txQueuePrototype = txQueue</div>
+<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;mod.__rxQueuePrototype = rxQueue</div>
 <div class="line"><a name="l00426"></a><span class="lineno">  426</span>&#160;</div>
-<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;return <a class="code" href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div>
+<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;return mod</div>
 <div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160;</div>
-<div class="ttc" id="device_8lua_html_a6229fea663a92298ddd8223a8564fbf4"><div class="ttname"><a href="device_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a></div><div class="ttdeci">local rxQueue</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00033">device.lua:33</a></div></div>
-<div class="ttc" id="device_8lua_html_aebc2282c5e51597731e110f98501f470"><div class="ttname"><a href="device_8lua.html#aebc2282c5e51597731e110f98501f470">memory</a></div><div class="ttdeci">local memory</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00006">device.lua:6</a></div></div>
-<div class="ttc" id="dpdk_8lua_html_a44ab9c82fb663ef97dc859154d6293a2"><div class="ttname"><a href="dpdk_8lua.html#a44ab9c82fb663ef97dc859154d6293a2">sleepMicrosIdle</a></div><div class="ttdeci">function mod sleepMicrosIdle(t)</div><div class="ttdoc">Sleep by t microseconds by calling usleep(). </div></div>
-<div class="ttc" id="device_8lua_html_ab0fe2c273d26b897ce8facde43ddda0b"><div class="ttname"><a href="device_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a></div><div class="ttdeci">local ffi</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00003">device.lua:3</a></div></div>
-<div class="ttc" id="memory_8lua_html_aa3d6656320f1a7278c0c2c7fdf07617c"><div class="ttname"><a href="memory_8lua.html#aa3d6656320f1a7278c0c2c7fdf07617c">size</a></div><div class="ttdeci">size</div><div class="ttdef"><b>Definition:</b> <a href="memory_8lua_source.html#l00056">memory.lua:56</a></div></div>
-<div class="ttc" id="device_8lua_html_ac75d5f2c515f82d7974df69b9d6ef822"><div class="ttname"><a href="device_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">dev</a></div><div class="ttdeci">local dev</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00017">device.lua:17</a></div></div>
-<div class="ttc" id="arp_8lua_html_a58ea6e9644da54b65f48bf1158205fd0"><div class="ttname"><a href="arp_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a></div><div class="ttdeci">local format</div><div class="ttdef"><b>Definition:</b> <a href="arp_8lua_source.html#l00015">arp.lua:15</a></div></div>
-<div class="ttc" id="device_8lua_html_a36e7058ed37919b0317d055ad2da56a8"><div class="ttname"><a href="device_8lua.html#a36e7058ed37919b0317d055ad2da56a8">getRxQueue</a></div><div class="ttdeci">function dev getRxQueue(id)</div></div>
-<div class="ttc" id="memory_8lua_html_ae3570e4c672384851422cd1c8bce88b4"><div class="ttname"><a href="memory_8lua.html#ae3570e4c672384851422cd1c8bce88b4">mempool</a></div><div class="ttdeci">local mempool</div><div class="ttdef"><b>Definition:</b> <a href="memory_8lua_source.html#l00039">memory.lua:39</a></div></div>
-<div class="ttc" id="device_8lua_html_a182d7c970afe1f08283d11aec035eac0"><div class="ttname"><a href="device_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a></div><div class="ttdeci">local dpdk</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00005">device.lua:5</a></div></div>
-<div class="ttc" id="memory_8lua_html_a41ab4b8b4e6b05e8489555b1bbc7f845"><div class="ttname"><a href="memory_8lua.html#a41ab4b8b4e6b05e8489555b1bbc7f845">array</a></div><div class="ttdeci">array</div><div class="ttdef"><b>Definition:</b> <a href="memory_8lua_source.html#l00057">memory.lua:57</a></div></div>
-<div class="ttc" id="device_8lua_html_a5a4c3ca053c3a76caffe2b62df860938"><div class="ttname"><a href="device_8lua.html#a5a4c3ca053c3a76caffe2b62df860938">wait</a></div><div class="ttdeci">function dev wait()</div><div class="ttdoc">Wait until the device is fully initialized and up to 9 seconds to establish a link. </div></div>
-<div class="ttc" id="utils_8lua_html_ae54683ab3fdfbeb0a0f010986338a73e"><div class="ttname"><a href="utils_8lua.html#ae54683ab3fdfbeb0a0f010986338a73e">printf</a></div><div class="ttdeci">function printf(str,...)</div></div>
-<div class="ttc" id="tcp_8lua_html_a9a04aa327fd016eb962c5799377e1f29"><div class="ttname"><a href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a></div><div class="ttdeci">self</div><div class="ttdef"><b>Definition:</b> <a href="tcp_8lua_source.html#l00140">tcp.lua:140</a></div></div>
-<div class="ttc" id="filter_8lua_html_a0deccd2ae9923ae4a3a3b6862040b153"><div class="ttname"><a href="filter_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a></div><div class="ttdeci">for do</div><div class="ttdef"><b>Definition:</b> <a href="filter_8lua_source.html#l00019">filter.lua:19</a></div></div>
-<div class="ttc" id="histogram_8lua_html_a381745c9f46e12020a07f7f198e5fc7b"><div class="ttname"><a href="histogram_8lua.html#a381745c9f46e12020a07f7f198e5fc7b">setmetatable</a></div><div class="ttdeci">setmetatable(histogram,{__call=histogram.create})</div></div>
-<div class="ttc" id="memory_8lua_html_a2bda44114ecf29934d14d7111d113c41"><div class="ttname"><a href="memory_8lua.html#a2bda44114ecf29934d14d7111d113c41">bufArray</a></div><div class="ttdeci">local bufArray</div><div class="ttdef"><b>Definition:</b> <a href="memory_8lua_source.html#l00047">memory.lua:47</a></div></div>
-<div class="ttc" id="filter_8lua_html_aa1171be720c6c0b5c5e54d4e04a7e1e8"><div class="ttname"><a href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a></div><div class="ttdeci">local device</div><div class="ttdef"><b>Definition:</b> <a href="filter_8lua_source.html#l00004">filter.lua:4</a></div></div>
-<div class="ttc" id="device_8lua_html_ad9255685addb4d67647d20b8fcd042fa"><div class="ttname"><a href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a></div><div class="ttdeci">function mod get(id)</div></div>
-<div class="ttc" id="device_8lua_html_a43a5916f06bb44dc07014d793384bc96"><div class="ttname"><a href="device_8lua.html#a43a5916f06bb44dc07014d793384bc96">__tostring</a></div><div class="ttdeci">function dev __tostring()</div></div>
-<div class="ttc" id="device_8lua_html_a93cc9d5f326c929f86fabf7a33c1bb65"><div class="ttname"><a href="device_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div><div class="ttdeci">local mod</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00001">device.lua:1</a></div></div>
-<div class="ttc" id="device_8lua_html_a66da5271812f687b7927ee29b251cb1b"><div class="ttname"><a href="device_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a></div><div class="ttdeci">local dpdkc</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00004">device.lua:4</a></div></div>
-<div class="ttc" id="device_8lua_html_afc5a34069cfef8eaa83805d6c9abf08f"><div class="ttname"><a href="device_8lua.html#afc5a34069cfef8eaa83805d6c9abf08f">getTxQueue</a></div><div class="ttdeci">function dev getTxQueue(id)</div></div>
-<div class="ttc" id="device_8lua_html_abb94952e918972ec9f2e9752a8881be6"><div class="ttname"><a href="device_8lua.html#abb94952e918972ec9f2e9752a8881be6">txQueue</a></div><div class="ttdeci">local txQueue</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00025">device.lua:25</a></div></div>
-<div class="ttc" id="utils_8lua_html_aaa76710deef1f005bf87a55d0e496046"><div class="ttname"><a href="utils_8lua.html#aaa76710deef1f005bf87a55d0e496046">errorf</a></div><div class="ttdeci">function errorf(str,...)</div></div>
-<div class="ttc" id="dpdk_8lua_html_a9c3302b6465084549f626875f203ff39"><div class="ttname"><a href="dpdk_8lua.html#a9c3302b6465084549f626875f203ff39">running</a></div><div class="ttdeci">function mod running(extraTime)</div><div class="ttdoc">Returns false once the app receives SIGTERM or SIGINT, the time set via setRuntime expires...</div></div>
-<div class="ttc" id="device_8lua_html_af737411721604db02a672be7dc3ebbc5"><div class="ttname"><a href="device_8lua.html#af737411721604db02a672be7dc3ebbc5">__serialize</a></div><div class="ttdeci">function dev __serialize()</div></div>
-<div class="ttc" id="device_8lua_html_a805049dccb45fd5ee14d760fa5ca1c6f"><div class="ttname"><a href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a></div><div class="ttdeci">local devices</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00041">device.lua:41</a></div></div>
+<div class="ttc" id="packet_8lua_html_abf539eaa6742ff5dc815282767ca303e"><div class="ttname"><a href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a></div><div class="ttdeci">function pkt get()</div><div class="ttdoc">Returns the packet data cast to the best fitting packet struct. </div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="device_8lua.html">device.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 13:48:41 for MoonGen by
+    <li class="navelem"><b>device.lua</b></li>
+    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

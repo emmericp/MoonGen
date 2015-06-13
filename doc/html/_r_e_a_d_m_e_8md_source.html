@@ -31,6 +31,7 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
+   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -90,7 +91,7 @@ $(document).ready(function(){initNavTree('_r_e_a_d_m_e_8md.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -104,13 +105,13 @@ $(document).ready(function(){initNavTree('_r_e_a_d_m_e_8md.html','');});
 <div class="title">/home/dominik/MoonGen/README.md</div>  </div>
 </div><!--header-->
 <div class="contents">
-<a href="_r_e_a_d_m_e_8md.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;\mainpage</div>
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;\mainpage</div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="preprocessor">### TL;DR</span></div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="preprocessor"></span>LuaJIT + DPDK = fast and flexible packet generator <span class="keywordflow">for</span> 10 GBit Ethernet and beyond.</div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;</div>
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;MoonGen uses hardware features <span class="keywordflow">for</span> accurate and precise latency measurements and rate control.</div>
 <div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;</div>
-<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;You have to <a class="code" href="packet_8lua.html#a4dd81335a2d7c7076c85564a0493853a">write</a> a simple script <span class="keywordflow">for</span> your use <span class="keywordflow">case</span>.</div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;You have to write a simple script <span class="keywordflow">for</span> your use <span class="keywordflow">case</span>.</div>
 <div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;Read [quality-of-service-test.lua](https:<span class="comment">//github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua) to get started.</span></div>
 <div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;</div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;Detailed evaluation: [Paper](http:<span class="comment">//arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) ([BibTeX entry](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2014arXiv1410.3322E&amp;data_type=BIBTEX&amp;db_key=PRE&amp;nocookieset=1))</span></div>
@@ -143,7 +144,7 @@ $(document).ready(function(){initNavTree('_r_e_a_d_m_e_8md.html','');});
 <div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;# Architecture</div>
 <div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;</div>
 <div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;MoonGen is basically a Lua wrapper around DPDK with utility functions <span class="keywordflow">for</span> packet generation.</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;Users <a class="code" href="packet_8lua.html#a4dd81335a2d7c7076c85564a0493853a">write</a> custom scripts <span class="keywordflow">for</span> their experiments. It is recommended to make use of hard-coded setup-specific constants in your scripts. The script is the configuration, it is beside the point to <a class="code" href="packet_8lua.html#a4dd81335a2d7c7076c85564a0493853a">write</a> a complicated configuration <span class="keyword">interface </span>for a script.</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;Users write custom scripts <span class="keywordflow">for</span> their experiments. It is recommended to make use of hard-coded setup-specific constants in your scripts. The script is the configuration, it is beside the point to write a complicated configuration <span class="keyword">interface </span>for a script.</div>
 <div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;</div>
 <div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;The following diagram shows the architecture and how multi-core support is handled.</div>
 <div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;</div>
@@ -151,7 +152,7 @@ $(document).ready(function(){initNavTree('_r_e_a_d_m_e_8md.html','');});
 <div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;&lt;img alt=<span class="stringliteral">&quot;Architecture&quot;</span> src=<span class="stringliteral">&quot;https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png&quot;</span> srcset=<span class="stringliteral">&quot;https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png 1x, https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture@2x.png 2x&quot;</span>/&gt;</div>
 <div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;&lt;/p&gt;</div>
 <div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;Execution begins in the *<a class="code" href="main_8lua.html#aaf14d6febf6550b2597754cfb08e6c02">master</a> <a class="code" href="dpdk_8lua.html#a5fde3abbd58f00ef9197bbc0d4cca69e">task</a>* that must be defined in the user<span class="stringliteral">&#39;s script.</span></div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;Execution begins in the *master task* that must be defined in the user<span class="stringliteral">&#39;s script.</span></div>
 <div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;<span class="stringliteral">This task configures queues and filters on the used NICs and then starts one or more *slave tasks*.</span></div>
 <div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;<span class="stringliteral">Note that Lua does not have any native support for multi threading.</span></div>
@@ -220,7 +221,7 @@ $(document).ready(function(){initNavTree('_r_e_a_d_m_e_8md.html','');});
 <div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;<span class="stringliteral">This does not affect the running software.</span></div>
 <div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;<span class="stringliteral">[Our paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) contains a measurement which shows that this is the case.</span></div>
 <div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;<span class="stringliteral">If the DuT&#39;</span>s NIC does not <span class="keywordflow">do</span> <span class="keyword">this</span> or <span class="keywordflow">if</span> a hardware <a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a> is to be tested, then a <span class="keywordflow">switch</span> can be used to <span class="keyword">remove</span> these packets from the stream to generate <span class="stringliteral">&#39;real&#39;</span> space on the wire.</div>
+<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;<span class="stringliteral">If the DuT&#39;</span>s NIC does not <span class="keywordflow">do</span> <span class="keyword">this</span> or <span class="keywordflow">if</span> a hardware device is to be tested, then a <span class="keywordflow">switch</span> can be used to <span class="keyword">remove</span> these packets from the stream to generate <span class="stringliteral">&#39;real&#39;</span> space on the wire.</div>
 <div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;The effects of the <span class="keywordflow">switch</span> on the packet spacing needs to be analyzed carefully, e.g. with MoonGen<span class="stringliteral">&#39;s inter-arrival.lua example script.</span></div>
 <div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;<span class="stringliteral"></span></div>
@@ -294,17 +295,13 @@ $(document).ready(function(){initNavTree('_r_e_a_d_m_e_8md.html','');});
 <div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;<span class="stringliteral">[2] Alessio Botta, Alberto Dainotti, and Antonio Pescapé. Do you trust your software-based traffic generator? In *IEEE Communications Magazine*, 48(9):158–165, 2010.</span></div>
 <div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;<span class="stringliteral">[3] Luigi Rizzo. netmap: a novel framework for fast packet I/O. In *USENIX Annual Technical Conference*, pages 101–112, 2012.</span></div>
-<div class="ttc" id="packet_8lua_html_a4dd81335a2d7c7076c85564a0493853a"><div class="ttname"><a href="packet_8lua.html#a4dd81335a2d7c7076c85564a0493853a">write</a></div><div class="ttdeci">local write</div><div class="ttdef"><b>Definition:</b> <a href="packet_8lua_source.html#l00012">packet.lua:12</a></div></div>
-<div class="ttc" id="main_8lua_html_aaf14d6febf6550b2597754cfb08e6c02"><div class="ttname"><a href="main_8lua.html#aaf14d6febf6550b2597754cfb08e6c02">master</a></div><div class="ttdeci">local function master(_, file,...)</div></div>
-<div class="ttc" id="filter_8lua_html_aa1171be720c6c0b5c5e54d4e04a7e1e8"><div class="ttname"><a href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a></div><div class="ttdeci">local device</div><div class="ttdef"><b>Definition:</b> <a href="filter_8lua_source.html#l00004">filter.lua:4</a></div></div>
-<div class="ttc" id="dpdk_8lua_html_a5fde3abbd58f00ef9197bbc0d4cca69e"><div class="ttname"><a href="dpdk_8lua.html#a5fde3abbd58f00ef9197bbc0d4cca69e">task</a></div><div class="ttdeci">local task</div><div class="ttdef"><b>Definition:</b> <a href="dpdk_8lua_source.html#l00024">dpdk.lua:24</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="_r_e_a_d_m_e_8md.html">README.md</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 13:48:42 for MoonGen by
+    <li class="navelem"><b>README.md</b></li>
+    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

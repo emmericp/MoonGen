@@ -31,6 +31,7 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
+   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -90,7 +91,7 @@ $(document).ready(function(){initNavTree('timestamping_8lua_source.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -104,87 +105,87 @@ $(document).ready(function(){initNavTree('timestamping_8lua_source.html','');});
 <div class="title">timestamping.lua</div>  </div>
 </div><!--header-->
 <div class="contents">
-<a href="timestamping_8lua.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">    1</a></span>&#160;-- FIXME: <span class="keyword">this</span> file is ugly because it doesn<span class="stringliteral">&#39;t abstract anything properly</span></div>
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;-- FIXME: <span class="keyword">this</span> file is ugly because it doesn<span class="stringliteral">&#39;t abstract anything properly</span></div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="stringliteral">local mod = {}</span></div>
-<div class="line"><a name="l00003"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">    3</a></span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00004"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a66da5271812f687b7927ee29b251cb1b">    4</a></span>&#160;<span class="stringliteral">local ffi       = require &quot;ffi&quot;</span></div>
-<div class="line"><a name="l00005"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a182d7c970afe1f08283d11aec035eac0">    5</a></span>&#160;<span class="stringliteral">local dpdkc     = require &quot;dpdkc&quot;</span></div>
-<div class="line"><a name="l00006"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">    6</a></span>&#160;<span class="stringliteral">local dpdk      = require &quot;dpdk&quot;</span></div>
-<div class="line"><a name="l00007"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">    7</a></span>&#160;<span class="stringliteral">local device    = require &quot;device&quot;</span></div>
-<div class="line"><a name="l00008"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#aebc2282c5e51597731e110f98501f470">    8</a></span>&#160;<span class="stringliteral">local eth       = require &quot;proto.ethernet&quot;</span></div>
-<div class="line"><a name="l00009"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">    9</a></span>&#160;<span class="stringliteral">local memory    = require &quot;memory&quot;</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="stringliteral">local ffi       = require &quot;ffi&quot;</span></div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="stringliteral">local dpdkc     = require &quot;dpdkc&quot;</span></div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="stringliteral">local dpdk      = require &quot;dpdk&quot;</span></div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="stringliteral">local device    = require &quot;device&quot;</span></div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="stringliteral">local eth       = require &quot;proto.ethernet&quot;</span></div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="stringliteral">local memory    = require &quot;memory&quot;</span></div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="stringliteral">local timer     = require &quot;timer&quot;</span></div>
 <div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00012"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">   12</a></span>&#160;<span class="stringliteral">require &quot;proto.ptp&quot;</span></div>
-<div class="line"><a name="l00013"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a6229fea663a92298ddd8223a8564fbf4">   13</a></span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00014"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#abb94952e918972ec9f2e9752a8881be6">   14</a></span>&#160;<span class="stringliteral">local dev = device.__devicePrototype</span></div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="stringliteral">require &quot;proto.ptp&quot;</span></div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="stringliteral">local dev = device.__devicePrototype</span></div>
 <div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="stringliteral">local rxQueue = device.__rxQueuePrototype</span></div>
-<div class="line"><a name="l00016"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#ac07689b667b888236cbb0d7b0e1bd766">   16</a></span>&#160;<span class="stringliteral">local txQueue = device.__txQueuePrototype</span></div>
-<div class="line"><a name="l00017"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a7c6681e135cf397cb010ba3281f8c9d7">   17</a></span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00018"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a4c43da24461ce397bceef7b9389e2751">   18</a></span>&#160;<span class="stringliteral">-- registers, mostly 82599/X540-specific</span></div>
-<div class="line"><a name="l00019"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a2cc84f274a3c0e5797265630e939fef4">   19</a></span>&#160;<span class="stringliteral">local RXMTRL            = 0x00005120</span></div>
-<div class="line"><a name="l00020"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a961135a9d01bb4b1cfdeaaab6804dfac">   20</a></span>&#160;<span class="stringliteral">local TSYNCRXCTL        = 0x00005188</span></div>
-<div class="line"><a name="l00021"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a4b0cdf4088992a5ef0907628c9496ce7">   21</a></span>&#160;<span class="stringliteral">local RXSTMPL           = 0x000051E8</span></div>
-<div class="line"><a name="l00022"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#ab15d1baabaa39b1f3c24a8387744ce93">   22</a></span>&#160;<span class="stringliteral">local RXSTMPH           = 0x000051A4</span></div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="stringliteral">local txQueue = device.__txQueuePrototype</span></div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="stringliteral">-- registers, mostly 82599/X540-specific</span></div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="stringliteral">local RXMTRL            = 0x00005120</span></div>
+<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="stringliteral">local TSYNCRXCTL        = 0x00005188</span></div>
+<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="stringliteral">local RXSTMPL           = 0x000051E8</span></div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="stringliteral">local RXSTMPH           = 0x000051A4</span></div>
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="stringliteral">local RXSATRH           = 0x000051A8</span></div>
-<div class="line"><a name="l00024"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a7a79ca399b7b7a2cbc05bf35c96b38bd">   24</a></span>&#160;<span class="stringliteral">local ETQF_0            = 0x00005128</span></div>
-<div class="line"><a name="l00025"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a358e3daa6efde19eb35b8e3d51f7e0d8">   25</a></span>&#160;<span class="stringliteral">local ETQS_0            = 0x0000EC00</span></div>
-<div class="line"><a name="l00026"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a5e32a0e336e32ab5b47c15a50138ba24">   26</a></span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00027"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#abbb7169d603ebbef046ce9bdbe9fabd3">   27</a></span>&#160;<span class="stringliteral">local TSYNCTXCTL        = 0x00008C00</span></div>
-<div class="line"><a name="l00028"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a499fe192038ba0b0be82f55998a0900f">   28</a></span>&#160;<span class="stringliteral">local TXSTMPL           = 0x00008C04</span></div>
+<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="stringliteral">local ETQF_0            = 0x00005128</span></div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="stringliteral">local ETQS_0            = 0x0000EC00</span></div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="stringliteral">local TSYNCTXCTL        = 0x00008C00</span></div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<span class="stringliteral">local TXSTMPL           = 0x00008C04</span></div>
 <div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;<span class="stringliteral">local TXSTMPH           = 0x00008C08</span></div>
-<div class="line"><a name="l00030"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a1689bc5ff1c85a61ea9dd5bc141062b2">   30</a></span>&#160;<span class="stringliteral">local TIMEINCA          = 0x00008C14 -- X540 only</span></div>
-<div class="line"><a name="l00031"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a2168adb969e3aec9e890723e52ba2fdd">   31</a></span>&#160;<span class="stringliteral">local TIMINCA           = 0x00008C14 -- 82599 only (yes, the datasheets actually uses two different names)</span></div>
-<div class="line"><a name="l00032"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a23527e3845b98698dddaf8a402a64dfc">   32</a></span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00033"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a3f1b1071451e502332c0ed706b527e15">   33</a></span>&#160;<span class="stringliteral">local SYSTIMEL          = 0x00008C0C</span></div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;<span class="stringliteral">local TIMEINCA          = 0x00008C14 -- X540 only</span></div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="stringliteral">local TIMINCA           = 0x00008C14 -- 82599 only (yes, the datasheets actually uses two different names)</span></div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;<span class="stringliteral">local SYSTIMEL          = 0x00008C0C</span></div>
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="stringliteral">local SYSTIMEH          = 0x00008C10</span></div>
-<div class="line"><a name="l00035"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a778b1dfc82dca808b9461833e779c760">   35</a></span>&#160;<span class="stringliteral">local TIMEADJL          = 0x00008C18</span></div>
-<div class="line"><a name="l00036"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a29ba18dd31e097e838bd875ca3d645a0">   36</a></span>&#160;<span class="stringliteral">local TIMEADJH          = 0x00008C1C</span></div>
-<div class="line"><a name="l00037"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a36ca6ea17a0976723744896ec6c657e2">   37</a></span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00038"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a8a87d6825f7a7b01f8e630305abff376">   38</a></span>&#160;<span class="stringliteral">-- 82580 (and others gbit cards?) registers</span></div>
-<div class="line"><a name="l00039"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a78e5d413d797f9c26b7001e7331780a0">   39</a></span>&#160;<span class="stringliteral">local TSAUXC            = 0x0000B640</span></div>
-<div class="line"><a name="l00040"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a165956d4c4199108666762d987e34c4f">   40</a></span>&#160;<span class="stringliteral">local TIMINCA_82580     = 0x0000B608</span></div>
-<div class="line"><a name="l00041"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a1f991fdf8d1645cf0e8799eb0a2c55c3">   41</a></span>&#160;<span class="stringliteral">local TSYNCRXCTL_82580  = 0x0000B620</span></div>
-<div class="line"><a name="l00042"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a9e296606f42b6b58154f0d7a0e203d1b">   42</a></span>&#160;<span class="stringliteral">local TSYNCTXCTL_82580  = 0x0000B614</span></div>
-<div class="line"><a name="l00043"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a0ab9ec94dca70282e9fcb8e18272adf6">   43</a></span>&#160;<span class="stringliteral">local TXSTMPL_82580     = 0x0000B618</span></div>
-<div class="line"><a name="l00044"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a10e5f5b41d09ac415b672de0c1e5cd05">   44</a></span>&#160;<span class="stringliteral">local TXSTMPH_82580     = 0x0000B61C</span></div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<span class="stringliteral">local TIMEADJL          = 0x00008C18</span></div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<span class="stringliteral">local TIMEADJH          = 0x00008C1C</span></div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;<span class="stringliteral">-- 82580 (and others gbit cards?) registers</span></div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;<span class="stringliteral">local TSAUXC            = 0x0000B640</span></div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;<span class="stringliteral">local TIMINCA_82580     = 0x0000B608</span></div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;<span class="stringliteral">local TSYNCRXCTL_82580  = 0x0000B620</span></div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;<span class="stringliteral">local TSYNCTXCTL_82580  = 0x0000B614</span></div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;<span class="stringliteral">local TXSTMPL_82580     = 0x0000B618</span></div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;<span class="stringliteral">local TXSTMPH_82580     = 0x0000B61C</span></div>
 <div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;<span class="stringliteral">local RXSTMPL_82580     = 0x0000B624</span></div>
-<div class="line"><a name="l00046"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a7375b91f3be7f96c805893948e3eb5f9">   46</a></span>&#160;<span class="stringliteral">local RXSTMPH_82580     = 0x0000B628</span></div>
-<div class="line"><a name="l00047"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#aff68763a7c2c3183a6a24ac35f1f96c7">   47</a></span>&#160;<span class="stringliteral">local RXSATRH_82580     = 0x0000B630</span></div>
-<div class="line"><a name="l00048"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#aa7c7027f5193555205dab603023f0f43">   48</a></span>&#160;<span class="stringliteral">local ETQF_82580_0      = 0x00005CB0</span></div>
-<div class="line"><a name="l00049"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#ace12c17d03dcd1f7ceebf6ba2036ef18">   49</a></span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;<span class="stringliteral">local RXSTMPH_82580     = 0x0000B628</span></div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;<span class="stringliteral">local RXSATRH_82580     = 0x0000B630</span></div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;<span class="stringliteral">local ETQF_82580_0      = 0x00005CB0</span></div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="stringliteral">local SYSTIMEL_82580    = 0x0000B600</span></div>
 <div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;<span class="stringliteral">local SYSTIMEH_82580    = 0x0000B604</span></div>
-<div class="line"><a name="l00052"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a6d666f85486391611b94ae001d8bfae8">   52</a></span>&#160;<span class="stringliteral">local TIMEADJL_82580    = 0x0000B60C</span></div>
-<div class="line"><a name="l00053"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a6f6ccfcf58b31cb6412107d9d5281426">   53</a></span>&#160;<span class="stringliteral">local TIMEADJH_82580    = 0x0000B610</span></div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="stringliteral">local TIMEADJL_82580    = 0x0000B60C</span></div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="stringliteral">local TIMEADJH_82580    = 0x0000B610</span></div>
 <div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;<span class="stringliteral">local SRRCTL_82580      = {}</span></div>
-<div class="line"><a name="l00057"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a6e412420a939fab6ced139e32255e650">   57</a></span>&#160;<span class="stringliteral">for i = 0, 7 do</span></div>
-<div class="line"><a name="l00058"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#ac02027230ad05b13ac5afea7779fa1ca">   58</a></span>&#160;<span class="stringliteral">    SRRCTL_82580[i] = 0x0000C00C + 0x40 * i</span></div>
-<div class="line"><a name="l00059"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a471319676dd78b8fd1bb3ac00fec5c62">   59</a></span>&#160;<span class="stringliteral">end</span></div>
-<div class="line"><a name="l00060"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#aba310d9063618170460fa5ea550f57d4">   60</a></span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;<span class="stringliteral">for i = 0, 7 do</span></div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;<span class="stringliteral">    SRRCTL_82580[i] = 0x0000C00C + 0x40 * i</span></div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;<span class="stringliteral">end</span></div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="stringliteral">-- TODO: support for more registers</span></div>
-<div class="line"><a name="l00062"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#ad1a2e49c4cf3e78bee68450945c2f898">   62</a></span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00063"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a34fedd16a6a9316dbd7936d837172b9d">   63</a></span>&#160;<span class="stringliteral">-- bit names in registers</span></div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;<span class="stringliteral">-- bit names in registers</span></div>
 <div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<span class="stringliteral">local TSYNCRXCTL_RXTT       = 1</span></div>
-<div class="line"><a name="l00065"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a3dd7d037fd048627dd22c0b59efe1806">   65</a></span>&#160;<span class="stringliteral">local TSYNCRXCTL_TYPE_OFFS  = 1</span></div>
-<div class="line"><a name="l00066"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a70752b7606db9bbc76b0bc8848ac3340">   66</a></span>&#160;<span class="stringliteral">local TSYNCRXCTL_TYPE_MASK  = bit.lshift(7, TSYNCRXCTL_TYPE_OFFS)</span></div>
-<div class="line"><a name="l00067"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a598e9f49906a4de41f4fa74984a5297e">   67</a></span>&#160;<span class="stringliteral">local TSYNCRXCTL_EN     = bit.lshift(1, 4)</span></div>
-<div class="line"><a name="l00068"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a7d3c19f2099656759a7a00d0e842ac91">   68</a></span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;<span class="stringliteral">local TSYNCRXCTL_TYPE_OFFS  = 1</span></div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;<span class="stringliteral">local TSYNCRXCTL_TYPE_MASK  = bit.lshift(7, TSYNCRXCTL_TYPE_OFFS)</span></div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;<span class="stringliteral">local TSYNCRXCTL_EN     = bit.lshift(1, 4)</span></div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;<span class="stringliteral">local TSYNCTXCTL_TXTT       = 1</span></div>
-<div class="line"><a name="l00070"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a555d42c2f9c68c06afac3be474cf8db4">   70</a></span>&#160;<span class="stringliteral">local TSYNCTXCTL_EN     = bit.lshift(1, 4)</span></div>
-<div class="line"><a name="l00071"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a31c168e1e1765bb39ba81a769e7f06df">   71</a></span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;<span class="stringliteral">local TSYNCTXCTL_EN     = bit.lshift(1, 4)</span></div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;<span class="stringliteral">local ETQF_FILTER_ENABLE        = bit.lshift(1, 31)</span></div>
-<div class="line"><a name="l00073"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a22675734e246397bd138201b9bfca468">   73</a></span>&#160;<span class="stringliteral">local ETQF_FILTER_ENABLE_82580  = bit.lshift(1, 26)</span></div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;<span class="stringliteral">local ETQF_FILTER_ENABLE_82580  = bit.lshift(1, 26)</span></div>
 <div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;<span class="stringliteral">local ETQF_QUEUE_ENABLE_82580   = bit.lshift(1, 31)</span></div>
-<div class="line"><a name="l00075"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#aacc7ba8de6166e0085d37ecfb44f6023">   75</a></span>&#160;<span class="stringliteral">local ETQF_IEEE_1588_TIME_STAMP = bit.lshift(1, 30)</span></div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;<span class="stringliteral">local ETQF_IEEE_1588_TIME_STAMP = bit.lshift(1, 30)</span></div>
 <div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00077"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a60971134402fd1d974a868666c068355">   77</a></span>&#160;<span class="stringliteral">local ETQS_RX_QUEUE_OFFS    = 16</span></div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;<span class="stringliteral">local ETQS_RX_QUEUE_OFFS    = 16</span></div>
 <div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;<span class="stringliteral">local ETQS_QUEUE_ENABLE     = bit.lshift(1, 31)</span></div>
-<div class="line"><a name="l00079"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#a469ea872f4ab7bc9936dcbcecdc6f9fa">   79</a></span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00080"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#ad9a93a21461eb508a200bc2bb7bc254a">   80</a></span>&#160;<span class="stringliteral">local TIMINCA_IP_OFFS       = 24 -- 82599 only</span></div>
-<div class="line"><a name="l00081"></a><span class="lineno"><a class="line" href="timestamping_8lua.html#aaf42f91c20dd5b8b5b021bb352543686">   81</a></span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;<span class="stringliteral">local TIMINCA_IP_OFFS       = 24 -- 82599 only</span></div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;<span class="stringliteral">local TSAUXC_DISABLE        = bit.lshift(1, 31)</span></div>
 <div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;<span class="stringliteral">local SRRCTL_TIMESTAMP      = bit.lshift(1, 30)</span></div>
@@ -602,36 +603,36 @@ $(document).ready(function(){initNavTree('timestamping_8lua_source.html','');});
 <div class="line"><a name="l00496"></a><span class="lineno">  496</span>&#160;<span class="stringliteral">            local rx = self.rxQueue:tryRecv(self.rxBufs, 1000)</span></div>
 <div class="line"><a name="l00497"></a><span class="lineno">  497</span>&#160;<span class="stringliteral">            local timestampedPkt = self.rxDev:hasTimestamp()</span></div>
 <div class="line"><a name="l00498"></a><span class="lineno">  498</span>&#160;<span class="stringliteral">            if not timestampedPkt then</span></div>
-<div class="line"><a name="l00499"></a><span class="lineno">  499</span>&#160;<span class="stringliteral">                -- NIC didn&#39;</span>t <a class="code" href="histogram_8lua.html#a1f8786ef68a810a21c8427c7026822c0">save</a> a timestamp yet, just <span class="keywordflow">throw</span> away the packets</div>
-<div class="line"><a name="l00500"></a><span class="lineno">  500</span>&#160;                <span class="keyword">self</span>.rxBufs:<a class="code" href="memory_8lua.html#ab45e0285d4e972a6358f4548c1965a17">freeAll</a>()</div>
+<div class="line"><a name="l00499"></a><span class="lineno">  499</span>&#160;<span class="stringliteral">                -- NIC didn&#39;</span>t save a timestamp yet, just <span class="keywordflow">throw</span> away the packets</div>
+<div class="line"><a name="l00500"></a><span class="lineno">  500</span>&#160;                <span class="keyword">self</span>.rxBufs:freeAll()</div>
 <div class="line"><a name="l00501"></a><span class="lineno">  501</span>&#160;            else</div>
 <div class="line"><a name="l00502"></a><span class="lineno">  502</span>&#160;                -- received a timestamped packet (not necessarily in this batch)</div>
-<div class="line"><a name="l00503"></a><span class="lineno">  503</span>&#160;                -- FIXME: this loop may <a class="code" href="main_8lua.html#a308223a0fd02912dd7c19e9f9b5c169b">run</a> into an ugly edge-case where we somehow</div>
+<div class="line"><a name="l00503"></a><span class="lineno">  503</span>&#160;                -- FIXME: this loop may run into an ugly edge-case where we somehow</div>
 <div class="line"><a name="l00504"></a><span class="lineno">  504</span>&#160;                -- lose the timestamped packet during reception (e.g. when this is</div>
-<div class="line"><a name="l00505"></a><span class="lineno">  505</span>&#160;                -- <a class="code" href="dpdk_8lua.html#a9c3302b6465084549f626875f203ff39">running</a> on a shared core and no filters are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a>), this case isn&#39;t handled here</div>
-<div class="line"><a name="l00506"></a><span class="lineno">  506</span>&#160;                for <a class="code" href="timestamping_8lua.html#a6f6ccfcf58b31cb6412107d9d5281426">i</a> = 1, rx <a class="code" href="timestamping_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a></div>
-<div class="line"><a name="l00507"></a><span class="lineno">  507</span>&#160;                    local buf = <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.rxBufs[i]</div>
-<div class="line"><a name="l00508"></a><span class="lineno">  508</span>&#160;                    local seq = (<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<a class="code" href="proto_8lua.html#a065284fdf2ebe3503eca1364cde9c1aa">udp</a> and buf:<a class="code" href="ptp_8lua.html#a634fc78084825bb0033f6149e9369d71">getUdpPtpPacket</a>() or buf:<a class="code" href="ptp_8lua.html#a8238ca28a144aa2ef925c608074c0ff4">getPtpPacket</a>()).<a class="code" href="proto_8lua.html#a684ea53c1cd1eb8f9c96ae623077dc84">ptp</a>:<a class="code" href="ptp_8lua.html#a87f3efe88189d567cf97ecc8c1928d91">getSequenceID</a>()</div>
+<div class="line"><a name="l00505"></a><span class="lineno">  505</span>&#160;                -- running on a shared core and no filters are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a>), this case isn&#39;t handled here</div>
+<div class="line"><a name="l00506"></a><span class="lineno">  506</span>&#160;                for i = 1, rx do</div>
+<div class="line"><a name="l00507"></a><span class="lineno">  507</span>&#160;                    local buf = self.rxBufs[i]</div>
+<div class="line"><a name="l00508"></a><span class="lineno">  508</span>&#160;                    local seq = (self.udp and buf:getUdpPtpPacket() or buf:getPtpPacket()).ptp:getSequenceID()</div>
 <div class="line"><a name="l00509"></a><span class="lineno">  509</span>&#160;                    -- not sure if checking :<a class="code" href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a> is worth it</div>
 <div class="line"><a name="l00510"></a><span class="lineno">  510</span>&#160;                    -- the flag seems to be quite pointless</div>
 <div class="line"><a name="l00511"></a><span class="lineno">  511</span>&#160;                    if buf:<a class="code" href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a>() and seq == expectedSeq and seq == timestampedPkt then</div>
 <div class="line"><a name="l00512"></a><span class="lineno">  512</span>&#160;                        -- yay!</div>
-<div class="line"><a name="l00513"></a><span class="lineno">  513</span>&#160;                        local rxTs = <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<a class="code" href="timestamping_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a>:<a class="code" href="packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84">getTimestamp</a>() </div>
+<div class="line"><a name="l00513"></a><span class="lineno">  513</span>&#160;                        local rxTs = self.rxQueue:<a class="code" href="packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84">getTimestamp</a>() </div>
 <div class="line"><a name="l00514"></a><span class="lineno">  514</span>&#160;                        if not rxTs then</div>
 <div class="line"><a name="l00515"></a><span class="lineno">  515</span>&#160;                            -- can happen if you hotplug cables</div>
 <div class="line"><a name="l00516"></a><span class="lineno">  516</span>&#160;                            return nil</div>
 <div class="line"><a name="l00517"></a><span class="lineno">  517</span>&#160;                        end</div>
-<div class="line"><a name="l00518"></a><span class="lineno">  518</span>&#160;                        local delay = (rxTs - tx) * <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.rxDev:getTimestampScale()</div>
-<div class="line"><a name="l00519"></a><span class="lineno">  519</span>&#160;                        <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.rxBufs:<a class="code" href="memory_8lua.html#ab45e0285d4e972a6358f4548c1965a17">freeAll</a>()</div>
+<div class="line"><a name="l00518"></a><span class="lineno">  518</span>&#160;                        local delay = (rxTs - tx) * self.rxDev:getTimestampScale()</div>
+<div class="line"><a name="l00519"></a><span class="lineno">  519</span>&#160;                        self.rxBufs:freeAll()</div>
 <div class="line"><a name="l00520"></a><span class="lineno">  520</span>&#160;                        return delay</div>
 <div class="line"><a name="l00521"></a><span class="lineno">  521</span>&#160;                    elseif buf:<a class="code" href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a>() and seq == timestampedPkt then</div>
 <div class="line"><a name="l00522"></a><span class="lineno">  522</span>&#160;                        -- we got a timestamp but the wrong sequence number. meh.</div>
-<div class="line"><a name="l00523"></a><span class="lineno">  523</span>&#160;                        <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.<a class="code" href="timestamping_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a>:<a class="code" href="packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84">getTimestamp</a>() -- clears the register</div>
-<div class="line"><a name="l00524"></a><span class="lineno">  524</span>&#160;                        -- continue, we may still <a class="code" href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a> our packet :)</div>
+<div class="line"><a name="l00523"></a><span class="lineno">  523</span>&#160;                        self.rxQueue:<a class="code" href="packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84">getTimestamp</a>() -- clears the register</div>
+<div class="line"><a name="l00524"></a><span class="lineno">  524</span>&#160;                        -- continue, we may still <a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a> our packet :)</div>
 <div class="line"><a name="l00525"></a><span class="lineno">  525</span>&#160;                    elseif seq == expectedSeq and seq ~= timestampedPkt then</div>
 <div class="line"><a name="l00526"></a><span class="lineno">  526</span>&#160;                        -- we got our packet back but it wasn&#39;t timestamped</div>
 <div class="line"><a name="l00527"></a><span class="lineno">  527</span>&#160;                        -- we likely ran into the previous case earlier and cleared the ts register too late</div>
-<div class="line"><a name="l00528"></a><span class="lineno">  528</span>&#160;                        <a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>.rxBufs:<a class="code" href="memory_8lua.html#ab45e0285d4e972a6358f4548c1965a17">freeAll</a>()</div>
+<div class="line"><a name="l00528"></a><span class="lineno">  528</span>&#160;                        self.rxBufs:freeAll()</div>
 <div class="line"><a name="l00529"></a><span class="lineno">  529</span>&#160;                        return</div>
 <div class="line"><a name="l00530"></a><span class="lineno">  530</span>&#160;                    end</div>
 <div class="line"><a name="l00531"></a><span class="lineno">  531</span>&#160;                end</div>
@@ -641,44 +642,26 @@ $(document).ready(function(){initNavTree('timestamping_8lua_source.html','');});
 <div class="line"><a name="l00535"></a><span class="lineno">  535</span>&#160;        return</div>
 <div class="line"><a name="l00536"></a><span class="lineno">  536</span>&#160;    else</div>
 <div class="line"><a name="l00537"></a><span class="lineno">  537</span>&#160;        -- uhm, how did this happen? an unsupported NIC should throw an error earlier</div>
-<div class="line"><a name="l00538"></a><span class="lineno">  538</span>&#160;        <a class="code" href="histogram_8lua.html#a5cc50c417972cce553d8850f566fb97e">print</a>(&quot;Warning: failed to timestamp packet on transmission&quot;)</div>
-<div class="line"><a name="l00539"></a><span class="lineno">  539</span>&#160;        <a class="code" href="timestamping_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a>:<a class="code" href="histogram_8lua.html#ab215d95e536babccf6a062a224265522">new</a>(maxWait):<a class="code" href="device_8lua.html#a5a4c3ca053c3a76caffe2b62df860938">wait</a>()</div>
+<div class="line"><a name="l00538"></a><span class="lineno">  538</span>&#160;        print(&quot;Warning: failed to timestamp packet on transmission&quot;)</div>
+<div class="line"><a name="l00539"></a><span class="lineno">  539</span>&#160;        timer:new(maxWait):wait()</div>
 <div class="line"><a name="l00540"></a><span class="lineno">  540</span>&#160;    end</div>
 <div class="line"><a name="l00541"></a><span class="lineno">  541</span>&#160;end</div>
 <div class="line"><a name="l00542"></a><span class="lineno">  542</span>&#160;</div>
 <div class="line"><a name="l00543"></a><span class="lineno">  543</span>&#160;</div>
 <div class="line"><a name="l00544"></a><span class="lineno">  544</span>&#160;</div>
-<div class="line"><a name="l00545"></a><span class="lineno">  545</span>&#160;return <a class="code" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div>
+<div class="line"><a name="l00545"></a><span class="lineno">  545</span>&#160;return mod</div>
 <div class="line"><a name="l00546"></a><span class="lineno">  546</span>&#160;</div>
-<div class="ttc" id="ptp_8lua_html_a87f3efe88189d567cf97ecc8c1928d91"><div class="ttname"><a href="ptp_8lua.html#a87f3efe88189d567cf97ecc8c1928d91">getSequenceID</a></div><div class="ttdeci">function ptpHeader getSequenceID()</div></div>
-<div class="ttc" id="timestamping_8lua_html_a93cc9d5f326c929f86fabf7a33c1bb65"><div class="ttname"><a href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div><div class="ttdeci">local mod</div><div class="ttdef"><b>Definition:</b> <a href="timestamping_8lua_source.html#l00001">timestamping.lua:1</a></div></div>
-<div class="ttc" id="proto_8lua_html_a684ea53c1cd1eb8f9c96ae623077dc84"><div class="ttname"><a href="proto_8lua.html#a684ea53c1cd1eb8f9c96ae623077dc84">ptp</a></div><div class="ttdeci">proto ptp</div><div class="ttdef"><b>Definition:</b> <a href="proto_8lua_source.html#l00009">proto.lua:9</a></div></div>
-<div class="ttc" id="proto_8lua_html_a065284fdf2ebe3503eca1364cde9c1aa"><div class="ttname"><a href="proto_8lua.html#a065284fdf2ebe3503eca1364cde9c1aa">udp</a></div><div class="ttdeci">proto udp</div><div class="ttdef"><b>Definition:</b> <a href="proto_8lua_source.html#l00007">proto.lua:7</a></div></div>
-<div class="ttc" id="ptp_8lua_html_a8238ca28a144aa2ef925c608074c0ff4"><div class="ttname"><a href="ptp_8lua.html#a8238ca28a144aa2ef925c608074c0ff4">getPtpPacket</a></div><div class="ttdeci">pkt getPtpPacket</div><div class="ttdoc">Packets. </div><div class="ttdef"><b>Definition:</b> <a href="ptp_8lua_source.html#l00136">ptp.lua:136</a></div></div>
-<div class="ttc" id="timestamping_8lua_html_a6229fea663a92298ddd8223a8564fbf4"><div class="ttname"><a href="timestamping_8lua.html#a6229fea663a92298ddd8223a8564fbf4">rxQueue</a></div><div class="ttdeci">local rxQueue</div><div class="ttdef"><b>Definition:</b> <a href="timestamping_8lua_source.html#l00013">timestamping.lua:13</a></div></div>
-<div class="ttc" id="timestamping_8lua_html_a6f6ccfcf58b31cb6412107d9d5281426"><div class="ttname"><a href="timestamping_8lua.html#a6f6ccfcf58b31cb6412107d9d5281426">i</a></div><div class="ttdeci">for i</div><div class="ttdef"><b>Definition:</b> <a href="timestamping_8lua_source.html#l00053">timestamping.lua:53</a></div></div>
-<div class="ttc" id="histogram_8lua_html_a5cc50c417972cce553d8850f566fb97e"><div class="ttname"><a href="histogram_8lua.html#a5cc50c417972cce553d8850f566fb97e">print</a></div><div class="ttdeci">function histogram print()</div></div>
-<div class="ttc" id="histogram_8lua_html_ab215d95e536babccf6a062a224265522"><div class="ttname"><a href="histogram_8lua.html#ab215d95e536babccf6a062a224265522">new</a></div><div class="ttdeci">histogram new</div><div class="ttdef"><b>Definition:</b> <a href="histogram_8lua_source.html#l00008">histogram.lua:8</a></div></div>
-<div class="ttc" id="main_8lua_html_a308223a0fd02912dd7c19e9f9b5c169b"><div class="ttname"><a href="main_8lua.html#a308223a0fd02912dd7c19e9f9b5c169b">run</a></div><div class="ttdeci">local function run(file,...)</div></div>
-<div class="ttc" id="timestamping_8lua_html_a0deccd2ae9923ae4a3a3b6862040b153"><div class="ttname"><a href="timestamping_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a></div><div class="ttdeci">for do</div><div class="ttdef"><b>Definition:</b> <a href="timestamping_8lua_source.html#l00053">timestamping.lua:53</a></div></div>
-<div class="ttc" id="device_8lua_html_a5a4c3ca053c3a76caffe2b62df860938"><div class="ttname"><a href="device_8lua.html#a5a4c3ca053c3a76caffe2b62df860938">wait</a></div><div class="ttdeci">function dev wait()</div><div class="ttdoc">Wait until the device is fully initialized and up to 9 seconds to establish a link. </div></div>
-<div class="ttc" id="ptp_8lua_html_a634fc78084825bb0033f6149e9369d71"><div class="ttname"><a href="ptp_8lua.html#a634fc78084825bb0033f6149e9369d71">getUdpPtpPacket</a></div><div class="ttdeci">pkt getUdpPtpPacket</div><div class="ttdef"><b>Definition:</b> <a href="ptp_8lua_source.html#l00137">ptp.lua:137</a></div></div>
-<div class="ttc" id="tcp_8lua_html_a9a04aa327fd016eb962c5799377e1f29"><div class="ttname"><a href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a></div><div class="ttdeci">self</div><div class="ttdef"><b>Definition:</b> <a href="tcp_8lua_source.html#l00140">tcp.lua:140</a></div></div>
+<div class="ttc" id="packet_8lua_html_abf539eaa6742ff5dc815282767ca303e"><div class="ttname"><a href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a></div><div class="ttdeci">function pkt get()</div><div class="ttdoc">Returns the packet data cast to the best fitting packet struct. </div></div>
 <div class="ttc" id="packet_8lua_html_af10789b2c53556d4a523c5cd60680ee1"><div class="ttname"><a href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a></div><div class="ttdeci">function pkt hasTimestamp()</div><div class="ttdoc">Check if the PKT_RX_IEEE1588_TMST flag is set. </div></div>
-<div class="ttc" id="histogram_8lua_html_a1f8786ef68a810a21c8427c7026822c0"><div class="ttname"><a href="histogram_8lua.html#a1f8786ef68a810a21c8427c7026822c0">save</a></div><div class="ttdeci">function histogram save(file)</div></div>
-<div class="ttc" id="timestamping_8lua_html_a8e4c3a3dca95a8646decc890066bd9f0"><div class="ttname"><a href="timestamping_8lua.html#a8e4c3a3dca95a8646decc890066bd9f0">timer</a></div><div class="ttdeci">local timer</div><div class="ttdef"><b>Definition:</b> <a href="timestamping_8lua_source.html#l00009">timestamping.lua:9</a></div></div>
-<div class="ttc" id="device_8lua_html_ad9255685addb4d67647d20b8fcd042fa"><div class="ttname"><a href="device_8lua.html#ad9255685addb4d67647d20b8fcd042fa">get</a></div><div class="ttdeci">function mod get(id)</div></div>
 <div class="ttc" id="packet_8lua_html_a5b0d50eb797ef2b260c50724fe3a3d84"><div class="ttname"><a href="packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84">getTimestamp</a></div><div class="ttdeci">function pkt getTimestamp()</div><div class="ttdoc">Retrieve the time stamp information. </div></div>
-<div class="ttc" id="memory_8lua_html_ab45e0285d4e972a6358f4548c1965a17"><div class="ttname"><a href="memory_8lua.html#ab45e0285d4e972a6358f4548c1965a17">freeAll</a></div><div class="ttdeci">function bufArray freeAll()</div><div class="ttdoc">Free all buffers in the array. Stops when it encounters the first one that is null. </div></div>
 <div class="ttc" id="ethernet_8lua_html_a77e75ae36313b17315d8ced823089f9e"><div class="ttname"><a href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a></div><div class="ttdeci">function macAddr set(addr)</div><div class="ttdoc">Set the MAC address. </div></div>
-<div class="ttc" id="dpdk_8lua_html_a9c3302b6465084549f626875f203ff39"><div class="ttname"><a href="dpdk_8lua.html#a9c3302b6465084549f626875f203ff39">running</a></div><div class="ttdeci">function mod running(extraTime)</div><div class="ttdoc">Returns false once the app receives SIGTERM or SIGINT, the time set via setRuntime expires...</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="timestamping_8lua.html">timestamping.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 13:48:42 for MoonGen by
+    <li class="navelem"><b>timestamping.lua</b></li>
+    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

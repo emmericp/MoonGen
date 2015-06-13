@@ -31,6 +31,7 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
+   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -90,7 +91,7 @@ $(document).ready(function(){initNavTree('main_8lua_source.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -104,83 +105,83 @@ $(document).ready(function(){initNavTree('main_8lua_source.html','');});
 <div class="title">main.lua</div>  </div>
 </div><!--header-->
 <div class="contents">
-<a href="main_8lua.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;-- globally available utility functions</div>
-<div class="line"><a name="l00002"></a><span class="lineno"><a class="line" href="main_8lua.html#a182d7c970afe1f08283d11aec035eac0">    2</a></span>&#160;require <span class="stringliteral">&quot;utils&quot;</span></div>
-<div class="line"><a name="l00003"></a><span class="lineno"><a class="line" href="main_8lua.html#a66da5271812f687b7927ee29b251cb1b">    3</a></span>&#160;-- all available headers, packets, ... and their utility functions</div>
-<div class="line"><a name="l00004"></a><span class="lineno"><a class="line" href="main_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">    4</a></span>&#160;require <span class="stringliteral">&quot;proto.proto&quot;</span></div>
-<div class="line"><a name="l00005"></a><span class="lineno"><a class="line" href="main_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">    5</a></span>&#160;</div>
-<div class="line"><a name="l00006"></a><span class="lineno"><a class="line" href="main_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">    6</a></span>&#160;local <a class="code" href="main_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>      = require <span class="stringliteral">&quot;dpdk&quot;</span></div>
-<div class="line"><a name="l00007"></a><span class="lineno"><a class="line" href="main_8lua.html#aebc2282c5e51597731e110f98501f470">    7</a></span>&#160;local <a class="code" href="main_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>     = require <span class="stringliteral">&quot;dpdkc&quot;</span></div>
-<div class="line"><a name="l00008"></a><span class="lineno"><a class="line" href="main_8lua.html#ae87b659ea59b715da044f7184ea39700">    8</a></span>&#160;local <a class="code" href="main_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">dev</a>       = require <span class="stringliteral">&quot;device&quot;</span></div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;local <a class="code" href="main_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a>       = require <span class="stringliteral">&quot;StackTracePlus&quot;</span></div>
-<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;local <a class="code" href="main_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>       = require <span class="stringliteral">&quot;ffi&quot;</span></div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;local <a class="code" href="main_8lua.html#aebc2282c5e51597731e110f98501f470">memory</a>    = require <span class="stringliteral">&quot;memory&quot;</span></div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;local <a class="code" href="main_8lua.html#ae87b659ea59b715da044f7184ea39700">serpent</a>   = require <span class="stringliteral">&quot;Serpent&quot;</span></div>
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;-- globally available utility functions</div>
+<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;require <span class="stringliteral">&quot;utils&quot;</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;-- all available headers, packets, ... and their utility functions</div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;require <span class="stringliteral">&quot;proto.proto&quot;</span></div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;</div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;local dpdk      = require <span class="stringliteral">&quot;dpdk&quot;</span></div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;local dpdkc     = require <span class="stringliteral">&quot;dpdkc&quot;</span></div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;local dev       = require <span class="stringliteral">&quot;device&quot;</span></div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;local stp       = require <span class="stringliteral">&quot;StackTracePlus&quot;</span></div>
+<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;local ffi       = require <span class="stringliteral">&quot;ffi&quot;</span></div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;local memory    = require <span class="stringliteral">&quot;memory&quot;</span></div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;local serpent   = require <span class="stringliteral">&quot;Serpent&quot;</span></div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;-- TODO: <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> command line switches <span class="keywordflow">for</span> <span class="keyword">this</span> and other luajit-debugging features</div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;-- TODO: add command line switches <span class="keywordflow">for</span> <span class="keyword">this</span> and other luajit-debugging features</div>
 <div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;--require(<span class="stringliteral">&quot;jit.v&quot;</span>).on()</div>
 <div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;</div>
-<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;local <span class="keyword">function</span> <a class="code" href="main_8lua.html#a751692ecf4f7f06daca2b6e1d80f39d6">getStackTrace</a>(err)</div>
-<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;    <a class="code" href="utils_8lua.html#ae54683ab3fdfbeb0a0f010986338a73e">printf</a>(&quot;[ERROR] Lua error in <a class="code" href="dpdk_8lua.html#a5fde3abbd58f00ef9197bbc0d4cca69e">task</a> %s&quot;, MOONGEN_TASK_NAME)</div>
-<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;    <a class="code" href="histogram_8lua.html#a5cc50c417972cce553d8850f566fb97e">print</a>(<a class="code" href="main_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a>.stacktrace(err, 2))</div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;local <span class="keyword">function</span> getStackTrace(err)</div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;    printf(&quot;[ERROR] Lua error in task %s&quot;, MOONGEN_TASK_NAME)</div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;    print(stp.stacktrace(err, 2))</div>
 <div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;end</div>
 <div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;local function <a class="code" href="main_8lua.html#a308223a0fd02912dd7c19e9f9b5c169b">run</a>(file, ...)</div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;local function run(file, ...)</div>
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;    local script, err = loadfile(file)</div>
 <div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;    if not script then</div>
 <div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;        error(err)</div>
 <div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;    end</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;    xpcall(script, <a class="code" href="main_8lua.html#a751692ecf4f7f06daca2b6e1d80f39d6">getStackTrace</a>, ...)</div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;    xpcall(script, getStackTrace, ...)</div>
 <div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;end</div>
 <div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;local function <a class="code" href="main_8lua.html#a3e55eda399827d8201076ef97a062996">parseCommandLineArgs</a>(...)</div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;local function parseCommandLineArgs(...)</div>
 <div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    local args = { ... }</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    <span class="keywordflow">for</span> <a class="code" href="filter_8lua.html#a6f6ccfcf58b31cb6412107d9d5281426">i</a>, v in ipairs(args) <a class="code" href="filter_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a></div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    <span class="keywordflow">for</span> i, v in ipairs(args) do</div>
 <div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;        -- is it just a simple number?</div>
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;        if tonumber(v) then</div>
 <div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;            v = tonumber(v)</div>
 <div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;        end</div>
 <div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;        -- currently not supported as we can&#39;t pass structs to slaves</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;        -- <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a>?</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;        -- local <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> = <a class="code" href="utils_8lua.html#a70410fc00bc98caf32a7fffc9623ed02">parseIPAddress</a>(v)</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;        -- if <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> then</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        --  v = <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a></div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;        -- ip?</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;        -- local ip = parseIPAddress(v)</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;        -- if ip then</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        --  v = ip</div>
 <div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;        -- end</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;        args[<a class="code" href="filter_8lua.html#a6f6ccfcf58b31cb6412107d9d5281426">i</a>] = v</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;        args[i] = v</div>
 <div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;    end</div>
 <div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;    return args</div>
 <div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;end</div>
 <div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;local function <a class="code" href="main_8lua.html#aaf14d6febf6550b2597754cfb08e6c02">master</a>(_, file, ...)</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;    MOONGEN_TASK_NAME = &quot;<a class="code" href="main_8lua.html#aaf14d6febf6550b2597754cfb08e6c02">master</a>&quot;</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    if not <a class="code" href="main_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.<a class="code" href="device_8lua.html#a53cd08c0378f1d00cdd624fbbe676790">init</a>() then</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;        <a class="code" href="histogram_8lua.html#a5cc50c417972cce553d8850f566fb97e">print</a>(&quot;Could not initialize DPDK&quot;)</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;local function master(_, file, ...)</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;    MOONGEN_TASK_NAME = &quot;master&quot;</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    if not dpdk.init() then</div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;        print(&quot;Could not initialize DPDK&quot;)</div>
 <div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;        return</div>
 <div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    end</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    local <a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a> = <a class="code" href="main_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">dev</a>.getDevices()</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    <a class="code" href="utils_8lua.html#ae54683ab3fdfbeb0a0f010986338a73e">printf</a>(&quot;Found %d usable ports:&quot;, <span class="preprocessor">#devices)</span></div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;<span class="preprocessor"></span>    <span class="keywordflow">for</span> _, <a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a> in ipairs(<a class="code" href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a>) <a class="code" href="filter_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a></div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;        <a class="code" href="utils_8lua.html#ae54683ab3fdfbeb0a0f010986338a73e">printf</a>(&quot;   Ports %d: %s (%s)&quot;, <a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a>.<span class="keywordtype">id</span>, <a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a>.mac, <a class="code" href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a>.name)</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    local devices = dev.getDevices()</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    printf(&quot;Found %d usable ports:&quot;, <span class="preprocessor">#devices)</span></div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;<span class="preprocessor"></span>    <span class="keywordflow">for</span> _, device in ipairs(devices) do</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;        printf(&quot;   Ports %d: %s (%s)&quot;, device.<span class="keywordtype">id</span>, device.mac, device.name)</div>
 <div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;    end</div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;    <a class="code" href="main_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.userScript = file -- needs to be passed to <a class="code" href="main_8lua.html#aee8b4d4393f2e7a4274e1d573ac016f6">slave</a> cores</div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;    local args = <a class="code" href="main_8lua.html#a3e55eda399827d8201076ef97a062996">parseCommandLineArgs</a>(...)</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;    dpdk.userScript = file -- needs to be passed to slave cores</div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;    local args = parseCommandLineArgs(...)</div>
 <div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;    arg = args -- for cliargs in busted</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;    <a class="code" href="main_8lua.html#a308223a0fd02912dd7c19e9f9b5c169b">run</a>(file) -- should define a global called &quot;<a class="code" href="main_8lua.html#aaf14d6febf6550b2597754cfb08e6c02">master</a>&quot;</div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;    xpcall(_G[&quot;<a class="code" href="main_8lua.html#aaf14d6febf6550b2597754cfb08e6c02">master</a>&quot;], <a class="code" href="main_8lua.html#a751692ecf4f7f06daca2b6e1d80f39d6">getStackTrace</a>, unpack(args))</div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;    -- exit program once the master <a class="code" href="dpdk_8lua.html#a5fde3abbd58f00ef9197bbc0d4cca69e">task</a> finishes</div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;    -- it is up to the user program to <a class="code" href="device_8lua.html#a5a4c3ca053c3a76caffe2b62df860938">wait</a> for slaves to finish, e.g. by calling <a class="code" href="main_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a>.<a class="code" href="dpdk_8lua.html#ab81defaf645bb7af7841899472acef9e">waitForSlaves</a>()</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;    run(file) -- should define a global called &quot;master&quot;</div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;    xpcall(_G[&quot;master&quot;], getStackTrace, unpack(args))</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;    -- exit program once the master task finishes</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;    -- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()</div>
 <div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;end</div>
 <div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;</div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;local function <a class="code" href="main_8lua.html#aee8b4d4393f2e7a4274e1d573ac016f6">slave</a>(taskId, userscript, args)</div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;local function slave(taskId, userscript, args)</div>
 <div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;    -- must be done before parsing the args as they might rely on deserializers defined in the script</div>
-<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;    <a class="code" href="main_8lua.html#a308223a0fd02912dd7c19e9f9b5c169b">run</a>(userscript)</div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;    run(userscript)</div>
 <div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;    args = loadstring(args)()</div>
 <div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;    func = args[1]</div>
 <div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;    if func == &quot;master&quot; then</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;        <a class="code" href="histogram_8lua.html#a5cc50c417972cce553d8850f566fb97e">print</a>(&quot;[WARNING] Calling master as <a class="code" href="main_8lua.html#aee8b4d4393f2e7a4274e1d573ac016f6">slave</a>. This is probably a bug.&quot;)</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;        print(&quot;[WARNING] Calling master as slave. This is probably a bug.&quot;)</div>
 <div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;    end</div>
 <div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;    if not _G[func] then</div>
-<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;        <a class="code" href="utils_8lua.html#aaa76710deef1f005bf87a55d0e496046">errorf</a>(&quot;<a class="code" href="main_8lua.html#aee8b4d4393f2e7a4274e1d573ac016f6">slave</a> function %s not found&quot;, func)</div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;        errorf(&quot;slave function %s not found&quot;, func)</div>
 <div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;    end</div>
 <div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;    --require(&quot;jit.p&quot;).start(&quot;l&quot;)</div>
 <div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;    --require(&quot;jit.<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>&quot;).on()</div>
@@ -188,60 +189,31 @@ $(document).ready(function(){initNavTree('main_8lua_source.html','');});
 <div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;    MOONGEN_TASK_ID = taskId</div>
 <div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;    -- decode args</div>
 <div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;    local results = { select(2, xpcall(_G[func], getStackTrace, select(2, unpackAll(args)))) }</div>
-<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;    local vals = <a class="code" href="main_8lua.html#ae87b659ea59b715da044f7184ea39700">serpent</a>.dump(results)</div>
-<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;    local buf = <a class="code" href="main_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.new(<span class="stringliteral">&quot;char[?]&quot;</span>, #vals + 1)</div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;    <a class="code" href="main_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.copy(buf, vals)</div>
-<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;    <a class="code" href="main_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a>.store_result(taskId, buf)</div>
-<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;    local ok, err = pcall(<a class="code" href="main_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">dev</a>.reclaimTxBuffers)</div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;    local vals = serpent.dump(results)</div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;    local buf = ffi.new(<span class="stringliteral">&quot;char[?]&quot;</span>, #vals + 1)</div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;    ffi.copy(buf, vals)</div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;    dpdkc.store_result(taskId, buf)</div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;    local ok, err = pcall(dev.reclaimTxBuffers)</div>
 <div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;    if ok then</div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;        <a class="code" href="main_8lua.html#aebc2282c5e51597731e110f98501f470">memory</a>.<a class="code" href="memory_8lua.html#acfac6fb6c4752eea72b85603d61f0d9f">freeMemPools</a>()</div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;        memory.freeMemPools()</div>
 <div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;    else</div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;        <a class="code" href="utils_8lua.html#ae54683ab3fdfbeb0a0f010986338a73e">printf</a>(&quot;Could not reclaim tx <a class="code" href="main_8lua.html#aebc2282c5e51597731e110f98501f470">memory</a>: %s&quot;, err)</div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;        printf(&quot;Could not reclaim tx memory: %s&quot;, err)</div>
 <div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;    end</div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;    --require(&quot;jit.p&quot;).<a class="code" href="dpdk_8lua.html#a05bdf7eb4a252e1e3560365b1506f28b">stop</a>()</div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;    --require(&quot;jit.p&quot;).stop()</div>
 <div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;end</div>
 <div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;</div>
-<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;function <a class="code" href="main_8lua.html#a3d8c074b81909e936bb1dbc0a6847f34">main</a>(<a class="code" href="dpdk_8lua.html#a5fde3abbd58f00ef9197bbc0d4cca69e">task</a>, ...)</div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;    (task == &quot;master&quot; and master or <a class="code" href="main_8lua.html#aee8b4d4393f2e7a4274e1d573ac016f6">slave</a>)(...)</div>
+<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;function main(task, ...)</div>
+<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;    (task == &quot;master&quot; and master or slave)(...)</div>
 <div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;end</div>
 <div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;</div>
-<div class="ttc" id="dpdk_8lua_html_ab81defaf645bb7af7841899472acef9e"><div class="ttname"><a href="dpdk_8lua.html#ab81defaf645bb7af7841899472acef9e">waitForSlaves</a></div><div class="ttdeci">function mod waitForSlaves()</div><div class="ttdoc">waits until all slave cores have finished their jobs </div></div>
-<div class="ttc" id="main_8lua_html_ac75d5f2c515f82d7974df69b9d6ef822"><div class="ttname"><a href="main_8lua.html#ac75d5f2c515f82d7974df69b9d6ef822">dev</a></div><div class="ttdeci">local dev</div><div class="ttdef"><b>Definition:</b> <a href="main_8lua_source.html#l00004">main.lua:4</a></div></div>
-<div class="ttc" id="main_8lua_html_a66da5271812f687b7927ee29b251cb1b"><div class="ttname"><a href="main_8lua.html#a66da5271812f687b7927ee29b251cb1b">dpdkc</a></div><div class="ttdeci">local dpdkc</div><div class="ttdef"><b>Definition:</b> <a href="main_8lua_source.html#l00003">main.lua:3</a></div></div>
-<div class="ttc" id="utils_8lua_html_a70410fc00bc98caf32a7fffc9623ed02"><div class="ttname"><a href="utils_8lua.html#a70410fc00bc98caf32a7fffc9623ed02">parseIPAddress</a></div><div class="ttdeci">function parseIPAddress(ip)</div><div class="ttdoc">Parse a string to an IP address. </div></div>
 <div class="ttc" id="packet_8lua_html_a2635156d751e509e4b4f607a2b045c5a"><div class="ttname"><a href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div><div class="ttdeci">function pkt dump(bytes)</div><div class="ttdoc">Dumps the packet data cast to the best fitting packet struct. </div></div>
-<div class="ttc" id="histogram_8lua_html_a5cc50c417972cce553d8850f566fb97e"><div class="ttname"><a href="histogram_8lua.html#a5cc50c417972cce553d8850f566fb97e">print</a></div><div class="ttdeci">function histogram print()</div></div>
-<div class="ttc" id="main_8lua_html_a182d7c970afe1f08283d11aec035eac0"><div class="ttname"><a href="main_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a></div><div class="ttdeci">local dpdk</div><div class="ttdef"><b>Definition:</b> <a href="main_8lua_source.html#l00002">main.lua:2</a></div></div>
-<div class="ttc" id="main_8lua_html_ab0fe2c273d26b897ce8facde43ddda0b"><div class="ttname"><a href="main_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a></div><div class="ttdeci">local ffi</div><div class="ttdef"><b>Definition:</b> <a href="main_8lua_source.html#l00006">main.lua:6</a></div></div>
-<div class="ttc" id="main_8lua_html_a308223a0fd02912dd7c19e9f9b5c169b"><div class="ttname"><a href="main_8lua.html#a308223a0fd02912dd7c19e9f9b5c169b">run</a></div><div class="ttdeci">local function run(file,...)</div></div>
-<div class="ttc" id="main_8lua_html_aee8b4d4393f2e7a4274e1d573ac016f6"><div class="ttname"><a href="main_8lua.html#aee8b4d4393f2e7a4274e1d573ac016f6">slave</a></div><div class="ttdeci">local function slave(taskId, userscript, args)</div></div>
-<div class="ttc" id="device_8lua_html_a5a4c3ca053c3a76caffe2b62df860938"><div class="ttname"><a href="device_8lua.html#a5a4c3ca053c3a76caffe2b62df860938">wait</a></div><div class="ttdeci">function dev wait()</div><div class="ttdoc">Wait until the device is fully initialized and up to 9 seconds to establish a link. </div></div>
-<div class="ttc" id="filter_8lua_html_a6f6ccfcf58b31cb6412107d9d5281426"><div class="ttname"><a href="filter_8lua.html#a6f6ccfcf58b31cb6412107d9d5281426">i</a></div><div class="ttdeci">for i</div><div class="ttdef"><b>Definition:</b> <a href="filter_8lua_source.html#l00019">filter.lua:19</a></div></div>
-<div class="ttc" id="main_8lua_html_aaf14d6febf6550b2597754cfb08e6c02"><div class="ttname"><a href="main_8lua.html#aaf14d6febf6550b2597754cfb08e6c02">master</a></div><div class="ttdeci">local function master(_, file,...)</div></div>
-<div class="ttc" id="main_8lua_html_adae593e557057ea9bc7c0fcb9c8588fb"><div class="ttname"><a href="main_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a></div><div class="ttdeci">local stp</div><div class="ttdef"><b>Definition:</b> <a href="main_8lua_source.html#l00005">main.lua:5</a></div></div>
-<div class="ttc" id="utils_8lua_html_ae54683ab3fdfbeb0a0f010986338a73e"><div class="ttname"><a href="utils_8lua.html#ae54683ab3fdfbeb0a0f010986338a73e">printf</a></div><div class="ttdeci">function printf(str,...)</div></div>
-<div class="ttc" id="ip4_8lua_html_a747e5bfca42c9077e8be3a084cbcd30d"><div class="ttname"><a href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a></div><div class="ttdeci">function ip4Addr add(val)</div><div class="ttdoc">Add a number to an IPv4 address in-place. </div></div>
-<div class="ttc" id="filter_8lua_html_a0deccd2ae9923ae4a3a3b6862040b153"><div class="ttname"><a href="filter_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a></div><div class="ttdeci">for do</div><div class="ttdef"><b>Definition:</b> <a href="filter_8lua_source.html#l00019">filter.lua:19</a></div></div>
-<div class="ttc" id="dpdk_8lua_html_a05bdf7eb4a252e1e3560365b1506f28b"><div class="ttname"><a href="dpdk_8lua.html#a05bdf7eb4a252e1e3560365b1506f28b">stop</a></div><div class="ttdeci">function mod stop()</div><div class="ttdoc">request all tasks to exit </div></div>
-<div class="ttc" id="filter_8lua_html_aa1171be720c6c0b5c5e54d4e04a7e1e8"><div class="ttname"><a href="filter_8lua.html#aa1171be720c6c0b5c5e54d4e04a7e1e8">device</a></div><div class="ttdeci">local device</div><div class="ttdef"><b>Definition:</b> <a href="filter_8lua_source.html#l00004">filter.lua:4</a></div></div>
-<div class="ttc" id="main_8lua_html_a751692ecf4f7f06daca2b6e1d80f39d6"><div class="ttname"><a href="main_8lua.html#a751692ecf4f7f06daca2b6e1d80f39d6">getStackTrace</a></div><div class="ttdeci">local function getStackTrace(err)</div></div>
-<div class="ttc" id="main_8lua_html_ae87b659ea59b715da044f7184ea39700"><div class="ttname"><a href="main_8lua.html#ae87b659ea59b715da044f7184ea39700">serpent</a></div><div class="ttdeci">local serpent</div><div class="ttdef"><b>Definition:</b> <a href="main_8lua_source.html#l00008">main.lua:8</a></div></div>
-<div class="ttc" id="ip4_8lua_html_a47df415387eb6f4fdd5752c3b5de89a7"><div class="ttname"><a href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a></div><div class="ttdeci">local ip</div><div class="ttdoc">IPv4 constants. </div><div class="ttdef"><b>Definition:</b> <a href="ip4_8lua_source.html#l00015">ip4.lua:15</a></div></div>
-<div class="ttc" id="main_8lua_html_a3e55eda399827d8201076ef97a062996"><div class="ttname"><a href="main_8lua.html#a3e55eda399827d8201076ef97a062996">parseCommandLineArgs</a></div><div class="ttdeci">local function parseCommandLineArgs(...)</div></div>
-<div class="ttc" id="utils_8lua_html_aaa76710deef1f005bf87a55d0e496046"><div class="ttname"><a href="utils_8lua.html#aaa76710deef1f005bf87a55d0e496046">errorf</a></div><div class="ttdeci">function errorf(str,...)</div></div>
-<div class="ttc" id="dpdk_8lua_html_a5fde3abbd58f00ef9197bbc0d4cca69e"><div class="ttname"><a href="dpdk_8lua.html#a5fde3abbd58f00ef9197bbc0d4cca69e">task</a></div><div class="ttdeci">local task</div><div class="ttdef"><b>Definition:</b> <a href="dpdk_8lua_source.html#l00024">dpdk.lua:24</a></div></div>
-<div class="ttc" id="device_8lua_html_a53cd08c0378f1d00cdd624fbbe676790"><div class="ttname"><a href="device_8lua.html#a53cd08c0378f1d00cdd624fbbe676790">init</a></div><div class="ttdeci">function mod init()</div></div>
-<div class="ttc" id="memory_8lua_html_acfac6fb6c4752eea72b85603d61f0d9f"><div class="ttname"><a href="memory_8lua.html#acfac6fb6c4752eea72b85603d61f0d9f">freeMemPools</a></div><div class="ttdeci">function mod freeMemPools()</div><div class="ttdoc">Free all memory pools owned by this task. </div></div>
-<div class="ttc" id="main_8lua_html_a3d8c074b81909e936bb1dbc0a6847f34"><div class="ttname"><a href="main_8lua.html#a3d8c074b81909e936bb1dbc0a6847f34">main</a></div><div class="ttdeci">function main(task,...)</div></div>
-<div class="ttc" id="main_8lua_html_aebc2282c5e51597731e110f98501f470"><div class="ttname"><a href="main_8lua.html#aebc2282c5e51597731e110f98501f470">memory</a></div><div class="ttdeci">local memory</div><div class="ttdef"><b>Definition:</b> <a href="main_8lua_source.html#l00007">main.lua:7</a></div></div>
-<div class="ttc" id="device_8lua_html_a805049dccb45fd5ee14d760fa5ca1c6f"><div class="ttname"><a href="device_8lua.html#a805049dccb45fd5ee14d760fa5ca1c6f">devices</a></div><div class="ttdeci">local devices</div><div class="ttdef"><b>Definition:</b> <a href="device_8lua_source.html#l00041">device.lua:41</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="main_8lua.html">main.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 13:48:41 for MoonGen by
+    <li class="navelem"><b>main.lua</b></li>
+    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

@@ -31,6 +31,7 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
+   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -90,7 +91,7 @@ $(document).ready(function(){initNavTree('ethernet_8lua.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -107,6 +108,9 @@ $(document).ready(function(){initNavTree('ethernet_8lua.html','');});
 <div class="title">ethernet.lua File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Ethernet protocol utility.  
+<a href="#details">More...</a></p>
 
 <p><a href="ethernet_8lua_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -151,7 +155,7 @@ Functions</h2></td></tr>
 <tr class="memitem:af1923ae694c032f99fcf4ccd529285fc"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#af1923ae694c032f99fcf4ccd529285fc">getSrcString</a> ()</td></tr>
 <tr class="memdesc:af1923ae694c032f99fcf4ccd529285fc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the source MAC address.  <a href="#af1923ae694c032f99fcf4ccd529285fc">More...</a><br/></td></tr>
 <tr class="separator:af1923ae694c032f99fcf4ccd529285fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a40c81c1a5a41366b0cb15434139df1bc"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a40c81c1a5a41366b0cb15434139df1bc">setType</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:a40c81c1a5a41366b0cb15434139df1bc"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a40c81c1a5a41366b0cb15434139df1bc">setType</a> (int)</td></tr>
 <tr class="memdesc:a40c81c1a5a41366b0cb15434139df1bc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the EtherType.  <a href="#a40c81c1a5a41366b0cb15434139df1bc">More...</a><br/></td></tr>
 <tr class="separator:a40c81c1a5a41366b0cb15434139df1bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab948b0bf0cd3136191030aabae5e569e"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#ab948b0bf0cd3136191030aabae5e569e">getType</a> ()</td></tr>
@@ -169,57 +173,52 @@ Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a> = require &quot;ffi&quot;</td></tr>
-<tr class="separator:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af8027fe3e9f1acfedd960d3c9b8b6b51"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> = require &quot;packet&quot;</td></tr>
-<tr class="separator:af8027fe3e9f1acfedd960d3c9b8b6b51"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaf8e711f16a7d6e8ef717b7dd98bddb4"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#aaf8e711f16a7d6e8ef717b7dd98bddb4">ntoh</a></td></tr>
-<tr class="separator:aaf8e711f16a7d6e8ef717b7dd98bddb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d4747c3e612b4ad43514af6fb0e9066"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a0d4747c3e612b4ad43514af6fb0e9066">hton</a> = <a class="el" href="utils_8lua.html#a3052ad371f84e15f49734d329b0b4d30">ntoh</a></td></tr>
-<tr class="separator:a0d4747c3e612b4ad43514af6fb0e9066"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adaa08fe03b3d576df466a17d1b512a58"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#adaa08fe03b3d576df466a17d1b512a58">ntoh16</a></td></tr>
-<tr class="separator:adaa08fe03b3d576df466a17d1b512a58"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a45daf24a47a55b28a467372f68091fd3"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a45daf24a47a55b28a467372f68091fd3">hton16</a> = <a class="el" href="utils_8lua.html#a52477e85393b2d01ffe22da322716b2b">ntoh16</a></td></tr>
-<tr class="separator:a45daf24a47a55b28a467372f68091fd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a598fc3fdee6e78605879e83c3b20c199"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bor</a></td></tr>
-<tr class="separator:a598fc3fdee6e78605879e83c3b20c199"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad7b51ea9fc3c6bfe1054e5861625cb1d"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#ad7b51ea9fc3c6bfe1054e5861625cb1d">band</a></td></tr>
-<tr class="separator:ad7b51ea9fc3c6bfe1054e5861625cb1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9bb9fa0add9f41d56bf1ea1b00f0f29f"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a9bb9fa0add9f41d56bf1ea1b00f0f29f">bnot</a></td></tr>
-<tr class="separator:a9bb9fa0add9f41d56bf1ea1b00f0f29f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a84d1e4c164c7cf777a943d26a07b2e4b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a84d1e4c164c7cf777a943d26a07b2e4b">rshift</a></td></tr>
-<tr class="separator:a84d1e4c164c7cf777a943d26a07b2e4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acaae1371dbd709eaf17514ccc770fd13"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#acaae1371dbd709eaf17514ccc770fd13">lshift</a> = <a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bit.bor</a></td></tr>
-<tr class="separator:acaae1371dbd709eaf17514ccc770fd13"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a77d4b79aafb10a09a5da9240164a59e8"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a77d4b79aafb10a09a5da9240164a59e8">istype</a> = ffi.istype</td></tr>
-<tr class="separator:a77d4b79aafb10a09a5da9240164a59e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a58ea6e9644da54b65f48bf1158205fd0"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a> = string.format</td></tr>
-<tr class="separator:a58ea6e9644da54b65f48bf1158205fd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abd4d16011dee203ba12fc0b0cb1df914"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> = {}</td></tr>
-<tr class="memdesc:abd4d16011dee203ba12fc0b0cb1df914"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ethernet constants.  <a href="#abd4d16011dee203ba12fc0b0cb1df914">More...</a><br/></td></tr>
+<tr class="memitem:abd4d16011dee203ba12fc0b0cb1df914"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="abd4d16011dee203ba12fc0b0cb1df914"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> = {}</td></tr>
+<tr class="memdesc:abd4d16011dee203ba12fc0b0cb1df914"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ethernet protocol constants. <br/></td></tr>
 <tr class="separator:abd4d16011dee203ba12fc0b0cb1df914"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7854d8660c75a74ab1961ecc8435a501"><td class="memItemLeft" align="right" valign="top"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a7854d8660c75a74ab1961ecc8435a501">TYPE_IP</a> = 0x0800</td></tr>
+<tr class="memitem:a7854d8660c75a74ab1961ecc8435a501"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7854d8660c75a74ab1961ecc8435a501"></a>
+<a class="el" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a7854d8660c75a74ab1961ecc8435a501">TYPE_IP</a> = 0x0800</td></tr>
+<tr class="memdesc:a7854d8660c75a74ab1961ecc8435a501"><td class="mdescLeft">&#160;</td><td class="mdescRight">EtherType for IP4. <br/></td></tr>
 <tr class="separator:a7854d8660c75a74ab1961ecc8435a501"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac44bf7e3e27d6fe66b53b7278a9209b6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#ac44bf7e3e27d6fe66b53b7278a9209b6">TYPE_ARP</a> = 0x0806</td></tr>
+<tr class="memitem:ac44bf7e3e27d6fe66b53b7278a9209b6"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ac44bf7e3e27d6fe66b53b7278a9209b6"></a>
+<a class="el" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#ac44bf7e3e27d6fe66b53b7278a9209b6">TYPE_ARP</a> = 0x0806</td></tr>
+<tr class="memdesc:ac44bf7e3e27d6fe66b53b7278a9209b6"><td class="mdescLeft">&#160;</td><td class="mdescRight">EtherType for Arp. <br/></td></tr>
 <tr class="separator:ac44bf7e3e27d6fe66b53b7278a9209b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1e62b109f01062908e85f51bf5f5ce77"><td class="memItemLeft" align="right" valign="top"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a1e62b109f01062908e85f51bf5f5ce77">TYPE_IP6</a> = 0x86dd</td></tr>
+<tr class="memitem:a1e62b109f01062908e85f51bf5f5ce77"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a1e62b109f01062908e85f51bf5f5ce77"></a>
+<a class="el" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a1e62b109f01062908e85f51bf5f5ce77">TYPE_IP6</a> = 0x86dd</td></tr>
+<tr class="memdesc:a1e62b109f01062908e85f51bf5f5ce77"><td class="mdescLeft">&#160;</td><td class="mdescRight">EtherType for IP6. <br/></td></tr>
 <tr class="separator:a1e62b109f01062908e85f51bf5f5ce77"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a94c3f96c5a6351c392b324930ed1e68c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a94c3f96c5a6351c392b324930ed1e68c">TYPE_PTP</a> = 0x88f7</td></tr>
+<tr class="memitem:a94c3f96c5a6351c392b324930ed1e68c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a94c3f96c5a6351c392b324930ed1e68c"></a>
+<a class="el" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a94c3f96c5a6351c392b324930ed1e68c">TYPE_PTP</a> = 0x88f7</td></tr>
+<tr class="memdesc:a94c3f96c5a6351c392b324930ed1e68c"><td class="mdescLeft">&#160;</td><td class="mdescRight">EtherType for Ptp. <br/></td></tr>
 <tr class="separator:a94c3f96c5a6351c392b324930ed1e68c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7668ff032d08761202742af04398e717"><td class="memItemLeft" align="right" valign="top"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a7668ff032d08761202742af04398e717">BROADCAST</a> = &quot;ff:ff:ff:ff:ff:ff&quot;</td></tr>
+<tr class="memitem:a7668ff032d08761202742af04398e717"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7668ff032d08761202742af04398e717"></a>
+<a class="el" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a7668ff032d08761202742af04398e717">BROADCAST</a> = &quot;ff:ff:ff:ff:ff:ff&quot;</td></tr>
+<tr class="memdesc:a7668ff032d08761202742af04398e717"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ethernet broadcast address. <br/></td></tr>
 <tr class="separator:a7668ff032d08761202742af04398e717"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a638f489ebfbe480570a1d95ce6ef4162"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a> = {}</td></tr>
-<tr class="memdesc:a638f489ebfbe480570a1d95ce6ef4162"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mac addresses.  <a href="#a638f489ebfbe480570a1d95ce6ef4162">More...</a><br/></td></tr>
+<tr class="memitem:a638f489ebfbe480570a1d95ce6ef4162"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a638f489ebfbe480570a1d95ce6ef4162"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a> = {}</td></tr>
+<tr class="memdesc:a638f489ebfbe480570a1d95ce6ef4162"><td class="mdescLeft">&#160;</td><td class="mdescRight">Module for mac_address struct (see <a class="el" href="headers_8lua.html">headers.lua</a>). <br/></td></tr>
 <tr class="separator:a638f489ebfbe480570a1d95ce6ef4162"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a055cad12397404f77865a66ff8c4010a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a055cad12397404f77865a66ff8c4010a">__index</a> = <a class="el" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a></td></tr>
-<tr class="separator:a055cad12397404f77865a66ff8c4010a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a860c224e23b935bc8ba9ed33c8be1306"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a860c224e23b935bc8ba9ed33c8be1306">macAddrType</a> = ffi.typeof(&quot;struct mac_address&quot;)</td></tr>
-<tr class="separator:a860c224e23b935bc8ba9ed33c8be1306"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab53fc06c7d7dcce606e1a23673d1f83f"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a> = {}</td></tr>
-<tr class="memdesc:ab53fc06c7d7dcce606e1a23673d1f83f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ethernet header.  <a href="#ab53fc06c7d7dcce606e1a23673d1f83f">More...</a><br/></td></tr>
+<tr class="memitem:ab53fc06c7d7dcce606e1a23673d1f83f"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab53fc06c7d7dcce606e1a23673d1f83f"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a> = {}</td></tr>
+<tr class="memdesc:ab53fc06c7d7dcce606e1a23673d1f83f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Module for ethernet_header struct (see <a class="el" href="headers_8lua.html">headers.lua</a>). <br/></td></tr>
 <tr class="separator:ab53fc06c7d7dcce606e1a23673d1f83f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Ethernet protocol utility. </p>
+<p>Utility functions for the mac_address and ethernet_header structs defined in <a class="el" href="headers_8lua.html">headers.lua</a> . <br/>
+Includes:</p>
+<ul>
+<li>Ethernet constants</li>
+<li>Mac address utility</li>
+<li>Ethernet header utility</li>
+<li>Definition of ethernet packets </li>
+</ul>
+
+<p>Definition in file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
+</div><h2 class="groupheader">Function Documentation</h2>
 <a class="anchor" id="ab3581f6196a55541e67bed4a805831e9"></a>
 <div class="memitem">
 <div class="memproto">
@@ -245,6 +244,14 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Test equality of two MAC addresses. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">lhs</td><td>Address in 'struct mac_address' format. </td></tr>
+    <tr><td class="paramname">rhs</td><td>Address in 'struct mac_address' format. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if equal, false otherwise. </dd></dl>
 
 </div>
 </div>
@@ -273,6 +280,17 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set all members of the ethernet header. </p>
+<p>Per default, all members are set to default values specified in the respective set function. Optional named arguments can be used to set a member to a user-provided value. <br/>
+Exemplary invocations: </p>
+<div class="fragment"><div class="line"><a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>() --- only <span class="keywordflow">default</span> values</div>
+<div class="line"><a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>{ ethSrc=<span class="stringliteral">&quot;12:23:34:45:56:67&quot;</span>, ethType=0x137 } --- <span class="keywordflow">default</span> value <span class="keywordflow">for</span> ethDst; ethSrc and ethType user-specified</div>
+</div><!-- fragment --> <dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">args</td><td>Table of named arguments. Available arguments: Src, Dst, Type </td></tr>
+    <tr><td class="paramname">pre</td><td>Prefix for namedArgs. Default 'eth'. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -290,6 +308,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the MAC address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in 'struct mac_address' format. </dd></dl>
 
 </div>
 </div>
@@ -308,6 +327,14 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the values of all members. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">pre</td><td>Prefix for namedArgs. Default 'eth'. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Table of named arguments. For a list of arguments see "See Also". </dd></dl>
+<dl class="section see"><dt>See Also</dt><dd><a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f" title="Module for ethernet_header struct (see headers.lua). ">etherHeader</a>:<a class="el" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655" title="Set all members of the ethernet header. ">fill</a> </dd></dl>
 
 </div>
 </div>
@@ -326,6 +353,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the destination MAC address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in 'struct mac_address' format. </dd></dl>
 
 </div>
 </div>
@@ -343,6 +371,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the destination MAC address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in string format. </dd></dl>
 
 </div>
 </div>
@@ -361,6 +390,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the source MAC address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in 'struct mac_address' format. </dd></dl>
 
 </div>
 </div>
@@ -378,6 +408,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the source MAC address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in string format. </dd></dl>
 
 </div>
 </div>
@@ -395,7 +426,10 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the string representation of a MAC address. </p>
-<p>Retrieve the values of all members. </p>
+<p>Retrieve the values of all members.</p>
+<dl class="section return"><dt>Returns</dt><dd>Address in string format.</dd>
+<dd>
+Values in string format. </dd></dl>
 
 </div>
 </div>
@@ -413,6 +447,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the EtherType. </p>
+<dl class="section return"><dt>Returns</dt><dd>EtherType as 16 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -430,6 +465,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the ether type. </p>
+<dl class="section return"><dt>Returns</dt><dd>EtherType as string. </dd></dl>
 
 </div>
 </div>
@@ -448,6 +484,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the MAC address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">addr</td><td>Address in 'struct mac_address' format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -466,6 +508,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the destination MAC address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">addr</td><td>Address in 'struct mac_address' format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -484,6 +532,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the destination MAC address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">str</td><td>Address in string format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -502,6 +556,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the source MAC address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">addr</td><td>Address in 'struct mac_address' format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -520,6 +580,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the source MAC address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">str</td><td>Address in string format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -538,6 +604,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the MAC address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mac</td><td>Address in string format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -548,7 +620,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a> setType </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -556,335 +628,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the EtherType. </p>
-
-</div>
-</div>
-<h2 class="groupheader">Variable Documentation</h2>
-<a class="anchor" id="a055cad12397404f77865a66ff8c4010a"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a> __index = <a class="el" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00026">26</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ad7b51ea9fc3c6bfe1054e5861625cb1d"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit band</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00007">7</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a9bb9fa0add9f41d56bf1ea1b00f0f29f"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bnot</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00007">7</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a598fc3fdee6e78605879e83c3b20c199"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bor</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00007">7</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a7668ff032d08761202742af04398e717"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> BROADCAST = &quot;ff:ff:ff:ff:ff:ff&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00021">21</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="abd4d16011dee203ba12fc0b0cb1df914"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local eth = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Ethernet constants. </p>
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00014">14</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ab53fc06c7d7dcce606e1a23673d1f83f"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local etherHeader = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Ethernet header. </p>
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00047">47</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ab0fe2c273d26b897ce8facde43ddda0b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ffi = require &quot;ffi&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00001">1</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a58ea6e9644da54b65f48bf1158205fd0"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local format = string.format</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00009">9</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a0d4747c3e612b4ad43514af6fb0e9066"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local hton = <a class="el" href="utils_8lua.html#a3052ad371f84e15f49734d329b0b4d30">ntoh</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00005">5</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a45daf24a47a55b28a467372f68091fd3"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local hton16 = <a class="el" href="utils_8lua.html#a52477e85393b2d01ffe22da322716b2b">ntoh16</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00006">6</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a77d4b79aafb10a09a5da9240164a59e8"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local istype = ffi.istype</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00008">8</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="acaae1371dbd709eaf17514ccc770fd13"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bit bit lshift = <a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bit.bor</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00007">7</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a638f489ebfbe480570a1d95ce6ef4162"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local macAddr = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Mac addresses. </p>
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00025">25</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a860c224e23b935bc8ba9ed33c8be1306"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local macAddrType = ffi.typeof(&quot;struct mac_address&quot;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00027">27</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="aaf8e711f16a7d6e8ef717b7dd98bddb4"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ntoh</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00005">5</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="adaa08fe03b3d576df466a17d1b512a58"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ntoh16</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00006">6</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="af8027fe3e9f1acfedd960d3c9b8b6b51"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local pkt = require &quot;packet&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00002">2</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a84d1e4c164c7cf777a943d26a07b2e4b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bit rshift</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00007">7</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ac44bf7e3e27d6fe66b53b7278a9209b6"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> TYPE_ARP = 0x0806</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00017">17</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a7854d8660c75a74ab1961ecc8435a501"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> TYPE_IP = 0x0800</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00016">16</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a1e62b109f01062908e85f51bf5f5ce77"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> TYPE_IP6 = 0x86dd</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00018">18</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a94c3f96c5a6351c392b324930ed1e68c"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="timestamping_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> TYPE_PTP = 0x88f7</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ethernet_8lua_source.html#l00019">19</a> of file <a class="el" href="ethernet_8lua_source.html">ethernet.lua</a>.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>EtherType as 16 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -894,7 +643,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_008ba6cb71e2c02d515844436773d74d.html">proto</a></li><li class="navelem"><a class="el" href="ethernet_8lua.html">ethernet.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 13:48:42 for MoonGen by
+    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

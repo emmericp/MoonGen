@@ -31,6 +31,7 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
+   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -90,7 +91,7 @@ $(document).ready(function(){initNavTree('namespaces_8lua_source.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -104,77 +105,77 @@ $(document).ready(function(){initNavTree('namespaces_8lua_source.html','');});
 <div class="title">namespaces.lua</div>  </div>
 </div><!--header-->
 <div class="contents">
-<a href="namespaces_8lua.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno"><a class="line" href="namespaces_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">    1</a></span>&#160;local <a class="code" href="namespaces_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> = {}</div>
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;local mod = {}</div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;</div>
-<div class="line"><a name="l00003"></a><span class="lineno"><a class="line" href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">    3</a></span>&#160;local <a class="code" href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>       = require <span class="stringliteral">&quot;ffi&quot;</span></div>
-<div class="line"><a name="l00004"></a><span class="lineno"><a class="line" href="namespaces_8lua.html#ae87b659ea59b715da044f7184ea39700">    4</a></span>&#160;local <a class="code" href="namespaces_8lua.html#ae87b659ea59b715da044f7184ea39700">serpent</a>   = require <span class="stringliteral">&quot;Serpent&quot;</span></div>
-<div class="line"><a name="l00005"></a><span class="lineno"><a class="line" href="namespaces_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">    5</a></span>&#160;local <a class="code" href="namespaces_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a>       = require <span class="stringliteral">&quot;StackTracePlus&quot;</span></div>
-<div class="line"><a name="l00006"></a><span class="lineno"><a class="line" href="namespaces_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">    6</a></span>&#160;local <a class="code" href="namespaces_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>      = require <span class="stringliteral">&quot;lock&quot;</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;local ffi       = require <span class="stringliteral">&quot;ffi&quot;</span></div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;local serpent   = require <span class="stringliteral">&quot;Serpent&quot;</span></div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;local stp       = require <span class="stringliteral">&quot;StackTracePlus&quot;</span></div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;local lock      = require <span class="stringliteral">&quot;lock&quot;</span></div>
 <div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;</div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<a class="code" href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.cdef [[</div>
-<div class="line"><a name="l00009"></a><span class="lineno"><a class="line" href="namespaces_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">    9</a></span>&#160;    <span class="keyword">struct </span>namespace { };</div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;ffi.cdef [[</div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;    <span class="keyword">struct </span>namespace { };</div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;    <span class="keyword">struct </span>namespace* create_or_get_namespace(<span class="keyword">const</span> <span class="keywordtype">char</span>* name);</div>
-<div class="line"><a name="l00011"></a><span class="lineno"><a class="line" href="namespacelocal.html">   11</a></span>&#160;    <span class="keywordtype">void</span> namespace_store(<span class="keyword">struct</span> <span class="keyword">namespace</span>* <a class="code" href="memory_8lua.html#ac7f567d8269b9f32b4aea015a37f0ff5">ns</a>, <span class="keyword">const</span> <span class="keywordtype">char</span>* key, <span class="keyword">const</span> <span class="keywordtype">char</span>* value);</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;    <span class="keywordtype">void</span> namespace_delete(<span class="keyword">struct</span> <span class="keyword">namespace</span>* <a class="code" href="memory_8lua.html#ac7f567d8269b9f32b4aea015a37f0ff5">ns</a>, <span class="keyword">const</span> <span class="keywordtype">char</span>* key);</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">char</span>* namespace_retrieve(<span class="keyword">struct</span> <span class="keyword">namespace</span>* <a class="code" href="memory_8lua.html#ac7f567d8269b9f32b4aea015a37f0ff5">ns</a>, <span class="keyword">const</span> <span class="keywordtype">char</span>* key);</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;    <span class="keywordtype">void</span> namespace_iterate(<span class="keyword">struct</span> <span class="keyword">namespace</span>* <a class="code" href="memory_8lua.html#ac7f567d8269b9f32b4aea015a37f0ff5">ns</a>, <span class="keywordtype">void</span> (*func)(<span class="keyword">const</span> <span class="keywordtype">char</span>* key, <span class="keyword">const</span> <span class="keywordtype">char</span>* val));</div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;    <span class="keyword">struct </span><a class="code" href="namespaces_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>* namespace_get_lock(<span class="keyword">struct</span> <span class="keyword">namespace</span>* <a class="code" href="memory_8lua.html#ac7f567d8269b9f32b4aea015a37f0ff5">ns</a>);</div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;    <span class="keywordtype">void</span> namespace_store(<span class="keyword">struct</span> <span class="keyword">namespace</span>* ns, <span class="keyword">const</span> <span class="keywordtype">char</span>* key, <span class="keyword">const</span> <span class="keywordtype">char</span>* value);</div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;    <span class="keywordtype">void</span> namespace_delete(<span class="keyword">struct</span> <span class="keyword">namespace</span>* ns, <span class="keyword">const</span> <span class="keywordtype">char</span>* key);</div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">char</span>* namespace_retrieve(<span class="keyword">struct</span> <span class="keyword">namespace</span>* ns, <span class="keyword">const</span> <span class="keywordtype">char</span>* key);</div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;    <span class="keywordtype">void</span> namespace_iterate(<span class="keyword">struct</span> <span class="keyword">namespace</span>* ns, <span class="keywordtype">void</span> (*func)(<span class="keyword">const</span> <span class="keywordtype">char</span>* key, <span class="keyword">const</span> <span class="keywordtype">char</span>* val));</div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;    <span class="keyword">struct </span>lock* namespace_get_lock(<span class="keyword">struct</span> <span class="keyword">namespace</span>* ns);</div>
 <div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;]]</div>
 <div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;</div>
-<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;local <a class="code" href="namespaces_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a> = <a class="code" href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.C</div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;local C = ffi.C</div>
 <div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;</div>
 <div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;local <span class="keyword">namespace </span>= {}</div>
 <div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="keyword">namespace</span>.__index = <span class="keyword">namespace</span></div>
 <div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;</div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;local <span class="keyword">function</span> <a class="code" href="namespaces_8lua.html#a77eacb2dff33a9826284c3b4c8e3c97d">getNameFromTrace</a>()</div>
-<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;    return debug.traceback():match(&quot;\<a class="code" href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a>.-\<a class="code" href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a>.-\<a class="code" href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a>(.-)\<a class="code" href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a>&quot;)</div>
+<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;local <span class="keyword">function</span> getNameFromTrace()</div>
+<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;    return debug.traceback():match(&quot;\n.-\n.-\n(.-)\n&quot;)</div>
 <div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;end</div>
 <div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;</div>
 <div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;--- Get a namespace by its name creating it if necessary.</div>
 <div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;-- @param name the name, defaults to an auto-generated <span class="keywordtype">string</span> consisting of the caller&#39;s filename and line number</div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;function <a class="code" href="namespaces_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>:<a class="code" href="namespaces_8lua.html#adac3b997ac260319d3cefc53ca065988">get</a>(name)</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;    name = name or <a class="code" href="namespaces_8lua.html#a77eacb2dff33a9826284c3b4c8e3c97d">getNameFromTrace</a>()</div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;function mod:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(name)</div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;    name = name or getNameFromTrace()</div>
 <div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    return C.create_or_get_namespace(name)</div>
 <div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;end</div>
 <div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;</div>
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;--- Retrieve a *copy* of a value in the namespace.</div>
 <div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;-- @param key the key, must be a <span class="keywordtype">string</span></div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;function namespace:<a class="code" href="namespaces_8lua.html#a077c70ae686b04ed3b2b20ece428c2ef">__index</a>(key)</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;function namespace:__index(key)</div>
 <div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;    if type(key) ~= &quot;<span class="keywordtype">string</span>&quot; then</div>
 <div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;        error(&quot;table index must be a <span class="keywordtype">string</span>&quot;)</div>
 <div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    end</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;    if key == &quot;<a class="code" href="namespaces_8lua.html#a59dc3c1d76241a35b2c8f6a928238220">forEach</a>&quot; then</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        return namespace.<a class="code" href="namespaces_8lua.html#a59dc3c1d76241a35b2c8f6a928238220">forEach</a></div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;    elseif key == &quot;<a class="code" href="namespaces_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>&quot; then</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;        return C.namespace_get_lock(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>)</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;    if key == &quot;forEach&quot; then</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        return namespace.forEach</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;    elseif key == &quot;lock&quot; then</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;        return C.namespace_get_lock(self)</div>
 <div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;    end</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;    local val = C.namespace_retrieve(<a class="code" href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a>, key)</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;    return val ~= nil and loadstring(<a class="code" href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.<span class="keywordtype">string</span>(val))() or nil</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;    local val = C.namespace_retrieve(self, key)</div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;    return val ~= nil and loadstring(ffi.<span class="keywordtype">string</span>(val))() or nil</div>
 <div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;end</div>
 <div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;</div>
 <div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;--- Store a value in the namespace.</div>
 <div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;-- @param key the key, must be a <span class="keywordtype">string</span></div>
 <div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;-- @param val the value to store, will be serialized</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;function namespace:<a class="code" href="namespaces_8lua.html#a01f0e4e365ce45599ce539729d1767c5">__newindex</a>(key, val)</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;function namespace:__newindex(key, val)</div>
 <div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    if type(key) ~= &quot;<span class="keywordtype">string</span>&quot; then</div>
 <div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;        error(&quot;table index must be a <span class="keywordtype">string</span>&quot;)</div>
 <div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    end</div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;    if key == &quot;<a class="code" href="namespaces_8lua.html#a59dc3c1d76241a35b2c8f6a928238220">forEach</a>&quot; or key == &quot;<a class="code" href="namespaces_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a>&quot; then</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;    if key == &quot;forEach&quot; or key == &quot;lock&quot; then</div>
 <div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;        error(key .. &quot; is reserved&quot;, 2)</div>
 <div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;    end</div>
 <div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;    if val == nil then</div>
 <div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;        C.namespace_delete(self, key)</div>
 <div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;    else</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;        C.namespace_store(self, key, <a class="code" href="namespaces_8lua.html#ae87b659ea59b715da044f7184ea39700">serpent</a>.<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>(val))</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;        C.namespace_store(self, key, serpent.<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>(val))</div>
 <div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;    end</div>
 <div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;end</div>
 <div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;</div>
 <div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;--- Iterate over all keys/values in a namespace</div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;-- Note: namespaces <a class="code" href="filter_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a> not offer a &#39;normal&#39; iterator (e.g. through a __pair metamethod) due to locking.</div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;-- Iterating over a table requires a <a class="code" href="namespaces_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a> on the whole table; ensuring that the <a class="code" href="namespaces_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a> is released is</div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;-- easier with a <a class="code" href="namespaces_8lua.html#a59dc3c1d76241a35b2c8f6a928238220">forEach</a> method than with a regular iterator.</div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;-- Note: namespaces do not offer a &#39;normal&#39; iterator (e.g. through a __pair metamethod) due to locking.</div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;-- Iterating over a table requires a lock on the whole table; ensuring that the lock is released is</div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;-- easier with a forEach method than with a regular iterator.</div>
 <div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;-- @param cb function to call, receives (key, value) as arguments</div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;function namespace:<a class="code" href="namespaces_8lua.html#a59dc3c1d76241a35b2c8f6a928238220">forEach</a>(cb)</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;function namespace:forEach(cb)</div>
 <div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;    local caughtError</div>
 <div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;    C.namespace_iterate(self, function(key, val)</div>
 <div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;        if caughtError then</div>
@@ -183,45 +184,31 @@ $(document).ready(function(){initNavTree('namespaces_8lua_source.html','');});
 <div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;        -- avoid throwing an error across the C++ frame unnecessarily</div>
 <div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;        -- not sure if this would work properly when compiled with clang instead of gcc</div>
 <div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;        local ok, err = xpcall(cb, function(err)</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;            return <a class="code" href="namespaces_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a>.stacktrace(err)</div>
-<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        end, <a class="code" href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.<span class="keywordtype">string</span>(key), loadstring(<a class="code" href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.<span class="keywordtype">string</span>(val))())</div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;            return stp.stacktrace(err)</div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        end, ffi.<span class="keywordtype">string</span>(key), loadstring(ffi.<span class="keywordtype">string</span>(val))())</div>
 <div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;        if not ok then</div>
 <div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;            caughtError = err</div>
 <div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;        end</div>
 <div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;    end)</div>
 <div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;    if caughtError then</div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;        -- this is gonna be an ugly error message, but at least we <a class="code" href="namespaces_8lua.html#adac3b997ac260319d3cefc53ca065988">get</a> the full call stack</div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;        -- this is gonna be an ugly error message, but at least we <a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a> the full call stack</div>
 <div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;        error(&quot;error while calling callback, inner error: &quot; .. caughtError)</div>
 <div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;    end</div>
 <div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;end</div>
 <div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;</div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;<a class="code" href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.metatype(&quot;struct namespace&quot;, namespace)</div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;ffi.metatype(&quot;struct namespace&quot;, namespace)</div>
 <div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;</div>
-<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;return <a class="code" href="namespaces_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;return mod</div>
 <div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;</div>
-<div class="ttc" id="namespaces_8lua_html_a77eacb2dff33a9826284c3b4c8e3c97d"><div class="ttname"><a href="namespaces_8lua.html#a77eacb2dff33a9826284c3b4c8e3c97d">getNameFromTrace</a></div><div class="ttdeci">local function getNameFromTrace()</div></div>
-<div class="ttc" id="namespaces_8lua_html_a01f0e4e365ce45599ce539729d1767c5"><div class="ttname"><a href="namespaces_8lua.html#a01f0e4e365ce45599ce539729d1767c5">__newindex</a></div><div class="ttdeci">namespace __newindex(key, val)</div><div class="ttdoc">Store a value in the namespace. </div></div>
-<div class="ttc" id="namespaces_8lua_html_ada5f7a2f7477e942da190f5f12a6f57c"><div class="ttname"><a href="namespaces_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a></div><div class="ttdeci">local C</div><div class="ttdef"><b>Definition:</b> <a href="namespaces_8lua_source.html#l00009">namespaces.lua:9</a></div></div>
 <div class="ttc" id="packet_8lua_html_a2635156d751e509e4b4f607a2b045c5a"><div class="ttname"><a href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div><div class="ttdeci">function pkt dump(bytes)</div><div class="ttdoc">Dumps the packet data cast to the best fitting packet struct. </div></div>
-<div class="ttc" id="namespaces_8lua_html_a077c70ae686b04ed3b2b20ece428c2ef"><div class="ttname"><a href="namespaces_8lua.html#a077c70ae686b04ed3b2b20ece428c2ef">__index</a></div><div class="ttdeci">namespace __index(key)</div><div class="ttdoc">Retrieve a copy of a value in the namespace. </div></div>
-<div class="ttc" id="namespaces_8lua_html_a93cc9d5f326c929f86fabf7a33c1bb65"><div class="ttname"><a href="namespaces_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a></div><div class="ttdeci">local mod</div><div class="ttdef"><b>Definition:</b> <a href="namespaces_8lua_source.html#l00001">namespaces.lua:1</a></div></div>
-<div class="ttc" id="namespaces_8lua_html_a670b95f722f2010f60dfdb69fe5e4743"><div class="ttname"><a href="namespaces_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a></div><div class="ttdeci">local lock</div><div class="ttdef"><b>Definition:</b> <a href="namespaces_8lua_source.html#l00006">namespaces.lua:6</a></div></div>
-<div class="ttc" id="namespaces_8lua_html_ae87b659ea59b715da044f7184ea39700"><div class="ttname"><a href="namespaces_8lua.html#ae87b659ea59b715da044f7184ea39700">serpent</a></div><div class="ttdeci">local serpent</div><div class="ttdef"><b>Definition:</b> <a href="namespaces_8lua_source.html#l00004">namespaces.lua:4</a></div></div>
-<div class="ttc" id="namespaces_8lua_html_adae593e557057ea9bc7c0fcb9c8588fb"><div class="ttname"><a href="namespaces_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a></div><div class="ttdeci">local stp</div><div class="ttdef"><b>Definition:</b> <a href="namespaces_8lua_source.html#l00005">namespaces.lua:5</a></div></div>
-<div class="ttc" id="tcp_8lua_html_a9a04aa327fd016eb962c5799377e1f29"><div class="ttname"><a href="tcp_8lua.html#a9a04aa327fd016eb962c5799377e1f29">self</a></div><div class="ttdeci">self</div><div class="ttdef"><b>Definition:</b> <a href="tcp_8lua_source.html#l00140">tcp.lua:140</a></div></div>
-<div class="ttc" id="filter_8lua_html_a0deccd2ae9923ae4a3a3b6862040b153"><div class="ttname"><a href="filter_8lua.html#a0deccd2ae9923ae4a3a3b6862040b153">do</a></div><div class="ttdeci">for do</div><div class="ttdef"><b>Definition:</b> <a href="filter_8lua_source.html#l00019">filter.lua:19</a></div></div>
-<div class="ttc" id="namespaces_8lua_html_adac3b997ac260319d3cefc53ca065988"><div class="ttname"><a href="namespaces_8lua.html#adac3b997ac260319d3cefc53ca065988">get</a></div><div class="ttdeci">function mod get(name)</div><div class="ttdoc">Get a namespace by its name creating it if necessary. </div></div>
-<div class="ttc" id="memory_8lua_html_aeab71244afb687f16d8c4f5ee9d6ef0e"><div class="ttname"><a href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a></div><div class="ttdeci">n</div><div class="ttdoc">Create a new array of memory buffers (initialized to nil). </div><div class="ttdef"><b>Definition:</b> <a href="memory_8lua_source.html#l00054">memory.lua:54</a></div></div>
-<div class="ttc" id="namespaces_8lua_html_ab0fe2c273d26b897ce8facde43ddda0b"><div class="ttname"><a href="namespaces_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a></div><div class="ttdeci">local ffi</div><div class="ttdef"><b>Definition:</b> <a href="namespaces_8lua_source.html#l00003">namespaces.lua:3</a></div></div>
-<div class="ttc" id="memory_8lua_html_ac7f567d8269b9f32b4aea015a37f0ff5"><div class="ttname"><a href="memory_8lua.html#ac7f567d8269b9f32b4aea015a37f0ff5">ns</a></div><div class="ttdeci">local ns</div><div class="ttdef"><b>Definition:</b> <a href="memory_8lua_source.html#l00006">memory.lua:6</a></div></div>
-<div class="ttc" id="namespaces_8lua_html_a59dc3c1d76241a35b2c8f6a928238220"><div class="ttname"><a href="namespaces_8lua.html#a59dc3c1d76241a35b2c8f6a928238220">forEach</a></div><div class="ttdeci">namespace forEach(cb)</div><div class="ttdoc">Iterate over all keys/values in a namespace. </div></div>
+<div class="ttc" id="packet_8lua_html_abf539eaa6742ff5dc815282767ca303e"><div class="ttname"><a href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a></div><div class="ttdeci">function pkt get()</div><div class="ttdoc">Returns the packet data cast to the best fitting packet struct. </div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="namespaces_8lua.html">namespaces.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 13:48:41 for MoonGen by
+    <li class="navelem"><b>namespaces.lua</b></li>
+    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>
