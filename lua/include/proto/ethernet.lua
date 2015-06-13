@@ -42,6 +42,7 @@ eth.TYPE_PTP = 0x88f7
 --- Ethernet broadcast address
 eth.BROADCAST = "ff:ff:ff:ff:ff:ff"
 
+
 ------------------------------------------------------------------------
 ---- Mac addresses
 ------------------------------------------------------------------------
@@ -246,13 +247,12 @@ function etherHeader:getString()
 end
 
 -- Maps headers to respective types.
--- This list should be extended whenever a new type is added to 'Ethernet constants' 
+-- This list should be extended whenever a new type is added to 'Ethernet constants'. 
 local mapNameType = {
 	ip4 = eth.TYPE_IP,
 	ip6 = eth.TYPE_IP6,
 	arp = eth.TYPE_ARP,
-	ptp = eth.TYPE_PTP,
-}
+	ptp = eth.TYPE_PTP, }
 
 --- Resolve which header comes after this one (in a packet).
 --- For instance: in tcp/udp based on the ports.
@@ -296,9 +296,9 @@ end
 ---- Packets
 ----------------------------------------------------------------------------------
 
---- An ethernet packet
+--- Cast the packet to an ethernet packet
 pkt.getEthernetPacket = packetCreate("eth")
---- An ethernet packet (alias for pkt.getEthernetPacket)
+--- Cast the packet to an ethernet packet (alias for pkt.getEthernetPacket)
 pkt.getEthPacket = pkt.getEthernetPacket
 
 

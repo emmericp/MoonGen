@@ -23,6 +23,7 @@ local write = io.write
 ---- General functions
 -------------------------------------------------------------------------------------------
 
+--- Module for packets (rte_mbuf)
 local pkt = {}
 pkt.__index = pkt
 
@@ -56,10 +57,12 @@ function pkt:setDelay(delay)
 	self.pkt.hash.rss = delay
 end
 
+--- TODO
 function pkt:setRate(rate)
 	self.pkt.hash.rss = 10^10 / 8 / (rate * 10^6) - self.pkt.pkt_len - 24
 end
 
+--- TODO
 function pkt:setSize(size)
 	self.pkt.pkt_len = size
 	self.pkt.data_len = size
@@ -145,6 +148,7 @@ function pkt:offloadTcpChecksum(ipv4, l2_len, l3_len)
 	end
 end
 
+--- TODO
 function pkt:enableTimestamps()
 	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IEEE1588_TMST)
 end
@@ -269,7 +273,6 @@ function packetDump(self, bytes)
 end
 	
 --- Set all members of all headers.
---- @note This function is slow. If you want to modify members of a header during a time critical section of your script use the respective setters.
 --- Per default, all members are set to default values specified in the respective set function.
 --- Optional named arguments can be used to set a member to a user-provided value.
 --- The argument 'pktLength' can be used to automatically calculate and set the length member of headers (e.g. ip header).
@@ -280,6 +283,7 @@ end
 --- @endcode
 --- @param self The packet
 --- @param args Table of named arguments. For a list of available arguments see "See also"
+--- @note This function is slow. If you want to modify members of a header during a time critical section of your script use the respective setters.
 function packetFill(self, namedArgs) 
 	-- fill headers
 	local headers = self:getHeaders()
@@ -343,9 +347,9 @@ end
 
 --- Set length for all headers.
 --- Necessary when sending variable sized packets.
---- @todo Runtime critical function: this has to be fast (check with benchmark)
 --- @param self The packet
 --- @param length Length of the packet. Value for respective length member of headers get calculated using this value.
+--- @todo Runtime critical function: this has to be fast (check with benchmark).
 function packetSetLength(self, length)
 	local accumulatedLength = 0
 	for _, v in ipairs(self:getArgs()) do

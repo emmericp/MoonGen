@@ -90,7 +90,7 @@ $(document).ready(function(){initNavTree('proto_8lua.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -100,154 +100,26 @@ $(document).ready(function(){initNavTree('proto_8lua.html','');});
 </div>
 
 <div class="header">
-  <div class="summary">
-<a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
 <div class="title">proto.lua File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
 
+<p>Includes all protocol modules in one place.  
+<a href="#details">More...</a></p>
+
 <p><a href="proto_8lua_source.html">Go to the source code of this file.</a></p>
-<table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
-Variables</h2></td></tr>
-<tr class="memitem:a38c49bf59c74da03fe62f40d3313293b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a> = {}</td></tr>
-<tr class="separator:a38c49bf59c74da03fe62f40d3313293b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a089f80e10ef279e4e20488db6726fc62"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proto_8lua.html#a089f80e10ef279e4e20488db6726fc62">arp</a> = require &quot;proto.arp&quot;</td></tr>
-<tr class="separator:a089f80e10ef279e4e20488db6726fc62"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac14d2f57d5e3348199eb098925c5ccca"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proto_8lua.html#ac14d2f57d5e3348199eb098925c5ccca">ip4</a> = require &quot;proto.ip4&quot;</td></tr>
-<tr class="separator:ac14d2f57d5e3348199eb098925c5ccca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8eac1eef5041e816fd6e633367d46dc7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a> = require &quot;proto.ip6&quot;</td></tr>
-<tr class="separator:a8eac1eef5041e816fd6e633367d46dc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a088019b868e563adb2108fcd5c058f91"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a> = require &quot;proto.icmp&quot;</td></tr>
-<tr class="separator:a088019b868e563adb2108fcd5c058f91"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a065284fdf2ebe3503eca1364cde9c1aa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proto_8lua.html#a065284fdf2ebe3503eca1364cde9c1aa">udp</a> = require &quot;proto.udp&quot;</td></tr>
-<tr class="separator:a065284fdf2ebe3503eca1364cde9c1aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a497ab548e6c5c40e950f864f4a6330a9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proto_8lua.html#a497ab548e6c5c40e950f864f4a6330a9">tcp</a> = require &quot;proto.tcp&quot;</td></tr>
-<tr class="separator:a497ab548e6c5c40e950f864f4a6330a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a684ea53c1cd1eb8f9c96ae623077dc84"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proto_8lua.html#a684ea53c1cd1eb8f9c96ae623077dc84">ptp</a> = require &quot;proto.ptp&quot;</td></tr>
-<tr class="separator:a684ea53c1cd1eb8f9c96ae623077dc84"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table>
-<h2 class="groupheader">Variable Documentation</h2>
-<a class="anchor" id="a089f80e10ef279e4e20488db6726fc62"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a> arp = require &quot;proto.arp&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Includes all protocol modules in one place. </p>
 
-<p>Definition at line <a class="el" href="proto_8lua_source.html#l00003">3</a> of file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a088019b868e563adb2108fcd5c058f91"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a> icmp = require &quot;proto.icmp&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="proto_8lua_source.html#l00006">6</a> of file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ac14d2f57d5e3348199eb098925c5ccca"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a> ip4 = require &quot;proto.ip4&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="proto_8lua_source.html#l00004">4</a> of file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a8eac1eef5041e816fd6e633367d46dc7"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a> ip6 = require &quot;proto.ip6&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="proto_8lua_source.html#l00005">5</a> of file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a38c49bf59c74da03fe62f40d3313293b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local proto = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="proto_8lua_source.html#l00001">1</a> of file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a684ea53c1cd1eb8f9c96ae623077dc84"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a> ptp = require &quot;proto.ptp&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="proto_8lua_source.html#l00009">9</a> of file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a497ab548e6c5c40e950f864f4a6330a9"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a> tcp = require &quot;proto.tcp&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="proto_8lua_source.html#l00008">8</a> of file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a065284fdf2ebe3503eca1364cde9c1aa"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a38c49bf59c74da03fe62f40d3313293b">proto</a> udp = require &quot;proto.udp&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="proto_8lua_source.html#l00007">7</a> of file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
-
-</div>
-</div>
-</div><!-- contents -->
+<p>Definition in file <a class="el" href="proto_8lua_source.html">proto.lua</a>.</p>
+</div></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_008ba6cb71e2c02d515844436773d74d.html">proto</a></li><li class="navelem"><a class="el" href="proto_8lua.html">proto.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:21:32 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 13:53:58 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

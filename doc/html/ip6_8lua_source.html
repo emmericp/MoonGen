@@ -31,7 +31,6 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
-   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -106,7 +105,7 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 </div><!--header-->
 <div class="contents">
 <div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;local ffi = require <span class="stringliteral">&quot;ffi&quot;</span></div>
-<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;local pkt = require <span class="stringliteral">&quot;packet&quot;</span></div>
+<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;local <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> = require <span class="stringliteral">&quot;packet&quot;</span></div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;</div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;require <span class="stringliteral">&quot;utils&quot;</span></div>
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;require <span class="stringliteral">&quot;headers&quot;</span></div>
@@ -159,9 +158,9 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;end</div>
 <div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;</div>
 <div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;--- Set the IPv6 address.</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;-- @param ip Address in <span class="keywordtype">string</span> format.</div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;function ip6Addr:<a class="code" href="ethernet_8lua.html#a4afb06117eaa384c192769ea5dff8697">setString</a>(ip)</div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    self:<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a>(parseIP6Address(ip))</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;-- @param <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> Address in <span class="keywordtype">string</span> format.</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;function ip6Addr:<a class="code" href="ethernet_8lua.html#a4afb06117eaa384c192769ea5dff8697">setString</a>(<a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a>)</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    self:<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a>(parseIP6Address(<a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a>))</div>
 <div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;end</div>
 <div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;</div>
 <div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;--- Test equality of two IPv6 addresses.</div>
@@ -175,19 +174,19 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;--- Add a number to an IPv6 address.</div>
 <div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;-- Max. 64bit, commutative.</div>
 <div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;-- @param lhs Address in &#39;union ip6_address&#39; format.</div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;-- @param rhs Number to add (64 bit integer).</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;-- @param rhs Number to <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> (64 bit integer).</div>
 <div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;-- @return Resulting address in &#39;union ip6_address&#39; format.</div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;function ip6Addr.__add(lhs, rhs)</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;    -- calc ip (self) + number (val)</div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;function ip6Addr.<a class="code" href="ip4_8lua.html#a9f5b3fe8a695e3bfad5eec1cfb041ca2">__add</a>(lhs, rhs)</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;    -- calc <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> (self) + number (val)</div>
 <div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;    local self, val</div>
 <div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;    if istype(ip6AddrType, lhs) then</div>
 <div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;        self = lhs</div>
 <div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;        val = rhs</div>
 <div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;    else</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;        -- commutative for number + ip</div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;        -- commutative for number + <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a></div>
 <div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        self = rhs</div>
 <div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;        val = lhs</div>
-<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;    end -- TODO: ip + ip?</div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;    end -- TODO: <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> + <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a>?</div>
 <div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;    local addr = ip6AddrType()</div>
 <div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;    local low, high = self.uint64[0], self.uint64[1]</div>
 <div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;    low = low + val</div>
@@ -205,9 +204,9 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;</div>
 <div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;--- Add a number to an IPv6 address in-place.</div>
 <div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;-- Max 64 bit.</div>
-<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;-- @param val Number to add (64 bit integer).</div>
-<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;function ip6Addr:add(val)</div>
-<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;    -- calc ip (self) + number (val)</div>
+<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;-- @param val Number to <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> (64 bit integer).</div>
+<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;function ip6Addr:<a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a>(val)</div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;    -- calc <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> (self) + number (val)</div>
 <div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;    local low, high = bswap(self.uint64[1]), bswap(self.uint64[0])</div>
 <div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;    low = low + val</div>
 <div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;    -- handle overflow</div>
@@ -225,7 +224,7 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;-- Max. 64 bit.</div>
 <div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;-- @param val Number to substract (64 bit integer).</div>
 <div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;-- @return Resulting address in &#39;union ip6_address&#39; format.</div>
-<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;function ip6Addr:__sub(val)</div>
+<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;function ip6Addr:<a class="code" href="ip4_8lua.html#a35fae410a73a44a52b8650208b84e1c5">__sub</a>(val)</div>
 <div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;    return self + -val</div>
 <div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;end</div>
 <div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;</div>
@@ -257,7 +256,7 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;</div>
 <div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;--- Set the version. </div>
 <div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;-- @param <span class="keywordtype">int</span> IP6 header version as 4 bit integer. Should always be <span class="charliteral">&#39;6&#39;</span>.</div>
-<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;function ip6Header:setVersion(<span class="keywordtype">int</span>)</div>
+<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#aa8a4f3e9acc8bb09033fa03e372912d0">setVersion</a>(<span class="keywordtype">int</span>)</div>
 <div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;    int = <span class="keywordtype">int</span> or 6</div>
 <div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;    <span class="keywordtype">int</span> = band(lshift(<span class="keywordtype">int</span>, 28), 0xf0000000) -- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a> to 32 bits</div>
 <div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;    </div>
@@ -269,14 +268,14 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;</div>
 <div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;--- Retrieve the version.</div>
 <div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;-- @return Version as 4 bit integer.</div>
-<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;function ip6Header:getVersion()</div>
+<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#a1a2f1c0fbf5d6775fbcee2136136a56d">getVersion</a>()</div>
 <div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;    return band(rshift(bswap(self.vtf), 28), 0x0000000f)</div>
 <div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;end</div>
 <div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;</div>
 <div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;--- Retrieve the version.</div>
 <div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;-- @return Version as <span class="keywordtype">string</span>.</div>
-<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;function ip6Header:getVersionString()</div>
-<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;    return self:getVersion()</div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#a6cb39a6ca4cc210099e610664979ec3e">getVersionString</a>()</div>
+<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;    return self:<a class="code" href="ip4_8lua.html#a1a2f1c0fbf5d6775fbcee2136136a56d">getVersion</a>()</div>
 <div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;end</div>
 <div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;</div>
 <div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;--- Set the traffic class.</div>
@@ -329,27 +328,27 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00222"></a><span class="lineno">  222</span>&#160;</div>
 <div class="line"><a name="l00223"></a><span class="lineno">  223</span>&#160;--- Set the payload length.</div>
 <div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;-- @param <span class="keywordtype">int</span> Length of the ip6 header payload (hence, excluding l2 and l3 headers). 16 bit integer.</div>
-<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160;function ip6Header:setLength(<span class="keywordtype">int</span>)</div>
+<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#aad67eee9c45fb930f74be8ba6d7114d8">setLength</a>(<span class="keywordtype">int</span>)</div>
 <div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;    <span class="keywordtype">int</span> = <span class="keywordtype">int</span> or 8  -- with <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> + UDP -&gt; minimum 66</div>
 <div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;    self.len = hton16(<span class="keywordtype">int</span>)</div>
 <div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;end</div>
 <div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;</div>
 <div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;--- Retrieve the length.</div>
 <div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;-- @return Length as 16 bit integer.</div>
-<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;function ip6Header:getLength()</div>
+<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#a7fe955c5f4600f5e3cde1c914e3237b0">getLength</a>()</div>
 <div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;    return hton16(self.len)</div>
 <div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;end</div>
 <div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;</div>
 <div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;--- Retrieve the length.</div>
 <div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;-- @return Length as <span class="keywordtype">string</span>.</div>
-<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;function ip6Header:getLengthString()</div>
-<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;    return self:getLength()</div>
+<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#a0721eace2bf0ab85dd6c9cb0652a43ee">getLengthString</a>()</div>
+<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;    return self:<a class="code" href="ip4_8lua.html#a7fe955c5f4600f5e3cde1c914e3237b0">getLength</a>()</div>
 <div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;end</div>
 <div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;</div>
 <div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;--- Set the next header.</div>
 <div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;-- @param <span class="keywordtype">int</span> Next header of the ip6 header as 8 bit integer.</div>
 <div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;function ip6Header:setNextHeader(<span class="keywordtype">int</span>)</div>
-<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;    <span class="keywordtype">int</span> = <span class="keywordtype">int</span> or ip6.PROTO_UDP</div>
+<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;    <span class="keywordtype">int</span> = <span class="keywordtype">int</span> or ip6.<a class="code" href="ip4_8lua.html#a8c7fb5a2fba60839b490d21a99aabcf7">PROTO_UDP</a></div>
 <div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;    self.nextHeader = <span class="keywordtype">int</span></div>
 <div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;end</div>
 <div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;</div>
@@ -365,11 +364,11 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;    local proto = self:getNextHeader()</div>
 <div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;    local cleartext = &quot;&quot;</div>
 <div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;</div>
-<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;    if proto == ip6.PROTO_ICMP then</div>
+<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;    if proto == ip6.<a class="code" href="ip4_8lua.html#ac3c2261f9840d1606c21b7b21fbc5f17">PROTO_ICMP</a> then</div>
 <div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;        cleartext = &quot;(ICMP)&quot;</div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;    elseif proto == ip6.PROTO_UDP then</div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;    elseif proto == ip6.<a class="code" href="ip4_8lua.html#a8c7fb5a2fba60839b490d21a99aabcf7">PROTO_UDP</a> then</div>
 <div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;        cleartext = &quot;(UDP)&quot;</div>
-<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;    elseif proto == ip6.PROTO_TCP then</div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;    elseif proto == ip6.<a class="code" href="ip4_8lua.html#aa4fa7aae805dd701474f3d73d96b3221">PROTO_TCP</a> then</div>
 <div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;        cleartext = &quot;(TCP)&quot;</div>
 <div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;    else</div>
 <div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;        cleartext = &quot;(unknown)&quot;</div>
@@ -380,21 +379,21 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;</div>
 <div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;--- Set the time-to-live (TTL).</div>
 <div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;-- @param <span class="keywordtype">int</span> TTL of the ip6 header as 8 bit integer.</div>
-<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;function ip6Header:setTTL(<span class="keywordtype">int</span>)</div>
+<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#aa18390c0e639f4d5dfc84fb781f09ee6">setTTL</a>(<span class="keywordtype">int</span>)</div>
 <div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;    <span class="keywordtype">int</span> = <span class="keywordtype">int</span> or 64</div>
 <div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;    self.ttl = <span class="keywordtype">int</span></div>
 <div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;end</div>
 <div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;</div>
 <div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;--- Retrieve the time-to-live.</div>
 <div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;-- @return TTL as 8 bit integer.</div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;function ip6Header:getTTL()</div>
+<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#a389bf4086f09c78f97536b2f7dfceab7">getTTL</a>()</div>
 <div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;    return self.ttl</div>
 <div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;end</div>
 <div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;</div>
 <div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;--- Retrieve the time-to-live.</div>
 <div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;-- @return TTL as <span class="keywordtype">string</span>.</div>
-<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;function ip6Header:getTTLString()</div>
-<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;    return self:getTTL()</div>
+<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;function ip6Header:<a class="code" href="ip4_8lua.html#ae90726a71e3e916c9e7e11ffc2e0d0d3">getTTLString</a>()</div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;    return self:<a class="code" href="ip4_8lua.html#a389bf4086f09c78f97536b2f7dfceab7">getTTL</a>()</div>
 <div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;end</div>
 <div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;</div>
 <div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;--- Set the destination address.</div>
@@ -456,12 +455,12 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;    args = args or {}</div>
 <div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;    pre = pre or <span class="stringliteral">&quot;ip6&quot;</span></div>
 <div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;</div>
-<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;    <span class="keyword">self</span>:setVersion(args[pre .. <span class="stringliteral">&quot;Version&quot;</span>])</div>
+<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;    <span class="keyword">self</span>:<a class="code" href="ip4_8lua.html#aa8a4f3e9acc8bb09033fa03e372912d0">setVersion</a>(args[pre .. <span class="stringliteral">&quot;Version&quot;</span>])</div>
 <div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;    <span class="keyword">self</span>:setTrafficClass(args[pre .. <span class="stringliteral">&quot;TrafficClass&quot;</span>])</div>
 <div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;    <span class="keyword">self</span>:setFlowLabel(args[pre .. <span class="stringliteral">&quot;FlowLabel&quot;</span>])</div>
-<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;    <span class="keyword">self</span>:setLength(args[pre .. <span class="stringliteral">&quot;Length&quot;</span>])</div>
+<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;    <span class="keyword">self</span>:<a class="code" href="ip4_8lua.html#aad67eee9c45fb930f74be8ba6d7114d8">setLength</a>(args[pre .. <span class="stringliteral">&quot;Length&quot;</span>])</div>
 <div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;    <span class="keyword">self</span>:setNextHeader(args[pre .. <span class="stringliteral">&quot;NextHeader&quot;</span>])</div>
-<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;    <span class="keyword">self</span>:setTTL(args[pre .. <span class="stringliteral">&quot;TTL&quot;</span>])</div>
+<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;    <span class="keyword">self</span>:<a class="code" href="ip4_8lua.html#aa18390c0e639f4d5dfc84fb781f09ee6">setTTL</a>(args[pre .. <span class="stringliteral">&quot;TTL&quot;</span>])</div>
 <div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;    </div>
 <div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;    local src = pre .. <span class="stringliteral">&quot;Src&quot;</span></div>
 <div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;    local dst = pre .. <span class="stringliteral">&quot;Dst&quot;</span></div>
@@ -491,12 +490,12 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160;    local args = {}</div>
 <div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160;    args[pre .. <span class="stringliteral">&quot;Src&quot;</span>] = <span class="keyword">self</span>:<a class="code" href="ethernet_8lua.html#af1923ae694c032f99fcf4ccd529285fc">getSrcString</a>()</div>
 <div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;    args[pre .. &quot;Dst&quot;] = self:<a class="code" href="ethernet_8lua.html#aa8c94964db8a504483c8180ba0fbc761">getDstString</a>()</div>
-<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;    args[pre .. &quot;Version&quot;] = self:getVersion()</div>
+<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;    args[pre .. &quot;Version&quot;] = self:<a class="code" href="ip4_8lua.html#a1a2f1c0fbf5d6775fbcee2136136a56d">getVersion</a>()</div>
 <div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160;    args[pre .. &quot;TrafficClass&quot;] = self:getTrafficClass()</div>
 <div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;    args[pre .. &quot;FlowLabel&quot;] = self:getFlowLabel()</div>
-<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;    args[pre .. &quot;Length&quot;] = self:getLength()</div>
+<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;    args[pre .. &quot;Length&quot;] = self:<a class="code" href="ip4_8lua.html#a7fe955c5f4600f5e3cde1c914e3237b0">getLength</a>()</div>
 <div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;    args[pre .. &quot;NextHeader&quot;] = self:getNextHeader()</div>
-<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160;    args[pre .. &quot;TTL&quot;] = self:getTTL()</div>
+<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160;    args[pre .. &quot;TTL&quot;] = self:<a class="code" href="ip4_8lua.html#a389bf4086f09c78f97536b2f7dfceab7">getTTL</a>()</div>
 <div class="line"><a name="l00393"></a><span class="lineno">  393</span>&#160;</div>
 <div class="line"><a name="l00394"></a><span class="lineno">  394</span>&#160;    return args</div>
 <div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;end</div>
@@ -504,9 +503,9 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160;--- Retrieve the values of all members.</div>
 <div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;-- @return Values in <span class="keywordtype">string</span> format.</div>
 <div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160;function ip6Header:<a class="code" href="ethernet_8lua.html#ab762a74003764fe46985fcdba9b61ae8">getString</a>()</div>
-<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;    return &quot;IP6 &quot; .. self:<a class="code" href="ethernet_8lua.html#af1923ae694c032f99fcf4ccd529285fc">getSrcString</a>() .. &quot; &gt; &quot; .. self:<a class="code" href="ethernet_8lua.html#aa8c94964db8a504483c8180ba0fbc761">getDstString</a>() .. &quot; ver &quot; .. self:getVersionString() </div>
-<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;           .. &quot; tc &quot; .. self:getTrafficClassString() .. &quot; fl &quot; .. self:getFlowLabelString() .. &quot; len &quot; .. self:getLengthString() </div>
-<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;           .. &quot; next &quot; .. self:getNextHeaderString() .. &quot; ttl &quot; .. self:getTTLString()</div>
+<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;    return &quot;IP6 &quot; .. self:<a class="code" href="ethernet_8lua.html#af1923ae694c032f99fcf4ccd529285fc">getSrcString</a>() .. &quot; &gt; &quot; .. self:<a class="code" href="ethernet_8lua.html#aa8c94964db8a504483c8180ba0fbc761">getDstString</a>() .. &quot; ver &quot; .. self:<a class="code" href="ip4_8lua.html#a6cb39a6ca4cc210099e610664979ec3e">getVersionString</a>() </div>
+<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;           .. &quot; tc &quot; .. self:getTrafficClassString() .. &quot; fl &quot; .. self:getFlowLabelString() .. &quot; len &quot; .. self:<a class="code" href="ip4_8lua.html#a0721eace2bf0ab85dd6c9cb0652a43ee">getLengthString</a>() </div>
+<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;           .. &quot; next &quot; .. self:getNextHeaderString() .. &quot; ttl &quot; .. self:<a class="code" href="ip4_8lua.html#ae90726a71e3e916c9e7e11ffc2e0d0d3">getTTLString</a>()</div>
 <div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;end</div>
 <div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;</div>
 <div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;local mapNameProto = {</div>
@@ -515,7 +514,7 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;    tcp = ip6.PROTO_TCP,</div>
 <div class="line"><a name="l00409"></a><span class="lineno">  409</span>&#160;}</div>
 <div class="line"><a name="l00410"></a><span class="lineno">  410</span>&#160;</div>
-<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;<span class="keyword">function</span> ip6Header:resolveNextHeader()</div>
+<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;<span class="keyword">function</span> ip6Header:<a class="code" href="ethernet_8lua.html#a090e429971793a6f0c1a8ab2a32fd980">resolveNextHeader</a>()</div>
 <div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;    local proto = self:getNextHeader()</div>
 <div class="line"><a name="l00413"></a><span class="lineno">  413</span>&#160;    for name, _proto in pairs(mapNameProto) do</div>
 <div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;        if proto == _proto then</div>
@@ -525,8 +524,8 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00418"></a><span class="lineno">  418</span>&#160;    return nil</div>
 <div class="line"><a name="l00419"></a><span class="lineno">  419</span>&#160;end</div>
 <div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160;</div>
-<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;-- TODO do not use static &gt;ip&lt;Length etc, instead use &gt;member&lt;Length (e.g. if member is &#39;innerIP&#39; -&gt; innerIPLength)</div>
-<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;function ip6Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)</div>
+<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;-- TODO do not use static &gt;<a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a>&lt;Length etc, instead use &gt;member&lt;Length (e.g. if member is &#39;innerIP&#39; -&gt; innerIPLength)</div>
+<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;function ip6Header:<a class="code" href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a>(pre, namedArgs, nextHeader, accumulatedLength)</div>
 <div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;    -- <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> length</div>
 <div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;    if not namedArgs[pre .. &quot;Length&quot;] and namedArgs[&quot;pktLength&quot;] then</div>
 <div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;        namedArgs[pre .. &quot;Length&quot;] = namedArgs[&quot;pktLength&quot;] - (accumulatedLength + 40)</div>
@@ -548,7 +547,7 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;--- Packets</div>
 <div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160;----------------------------------------------------------------------------------</div>
 <div class="line"><a name="l00443"></a><span class="lineno">  443</span>&#160;</div>
-<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;pkt.getIP6Packet = <a class="code" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;<a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&quot;, &quot;ip6&quot;)</div>
+<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.getIP6Packet = <a class="code" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;<a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&quot;, &quot;ip6&quot;)</div>
 <div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160;</div>
 <div class="line"><a name="l00446"></a><span class="lineno">  446</span>&#160;</div>
 <div class="line"><a name="l00447"></a><span class="lineno">  447</span>&#160;------------------------------------------------------------------------</div>
@@ -563,25 +562,44 @@ $(document).ready(function(){initNavTree('ip6_8lua_source.html','');});
 <div class="ttc" id="ethernet_8lua_html_ab36bb02a7cfb87486cbf6b10e1668e06"><div class="ttname"><a href="ethernet_8lua.html#ab36bb02a7cfb87486cbf6b10e1668e06">setDst</a></div><div class="ttdeci">function etherHeader setDst(addr)</div><div class="ttdoc">Set the destination MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_a15e9422439fdc27e2ccac9e0328370fd"><div class="ttname"><a href="ethernet_8lua.html#a15e9422439fdc27e2ccac9e0328370fd">setSrc</a></div><div class="ttdeci">function etherHeader setSrc(addr)</div><div class="ttdoc">Set the source MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_a69302ff5ede5ea0391e94f76c071d5f5"><div class="ttname"><a href="ethernet_8lua.html#a69302ff5ede5ea0391e94f76c071d5f5">getSrc</a></div><div class="ttdeci">function etherHeader getSrc(addr)</div><div class="ttdoc">Retrieve the source MAC address. </div></div>
+<div class="ttc" id="ip4_8lua_html_a6cb39a6ca4cc210099e610664979ec3e"><div class="ttname"><a href="ip4_8lua.html#a6cb39a6ca4cc210099e610664979ec3e">getVersionString</a></div><div class="ttdeci">function ip4Header getVersionString()</div><div class="ttdoc">Retrieve the version. </div></div>
 <div class="ttc" id="packet_8lua_html_a9ec741ec046b38ff23624e841a2ec3da"><div class="ttname"><a href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a></div><div class="ttdeci">function packetCreate(...)</div><div class="ttdoc">Create struct and functions for a new packet. </div></div>
 <div class="ttc" id="ethernet_8lua_html_a4afb06117eaa384c192769ea5dff8697"><div class="ttname"><a href="ethernet_8lua.html#a4afb06117eaa384c192769ea5dff8697">setString</a></div><div class="ttdeci">function macAddr setString(mac)</div><div class="ttdoc">Set the MAC address. </div></div>
+<div class="ttc" id="ip4_8lua_html_ae90726a71e3e916c9e7e11ffc2e0d0d3"><div class="ttname"><a href="ip4_8lua.html#ae90726a71e3e916c9e7e11ffc2e0d0d3">getTTLString</a></div><div class="ttdeci">function ip4Header getTTLString()</div><div class="ttdoc">Retrieve the time-to-live. </div></div>
 <div class="ttc" id="ethernet_8lua_html_ab762a74003764fe46985fcdba9b61ae8"><div class="ttname"><a href="ethernet_8lua.html#ab762a74003764fe46985fcdba9b61ae8">getString</a></div><div class="ttdeci">function macAddr getString()</div><div class="ttdoc">Retrieve the string representation of a MAC address. </div></div>
+<div class="ttc" id="ip4_8lua_html_a0721eace2bf0ab85dd6c9cb0652a43ee"><div class="ttname"><a href="ip4_8lua.html#a0721eace2bf0ab85dd6c9cb0652a43ee">getLengthString</a></div><div class="ttdeci">function ip4Header getLengthString()</div><div class="ttdoc">Retrieve the length. </div></div>
+<div class="ttc" id="ip4_8lua_html_a7fe955c5f4600f5e3cde1c914e3237b0"><div class="ttname"><a href="ip4_8lua.html#a7fe955c5f4600f5e3cde1c914e3237b0">getLength</a></div><div class="ttdeci">function ip4Header getLength()</div><div class="ttdoc">Retrieve the length. </div></div>
 <div class="ttc" id="ethernet_8lua_html_a242d4477b0be3196f10cf6c8bb6da9d9"><div class="ttname"><a href="ethernet_8lua.html#a242d4477b0be3196f10cf6c8bb6da9d9">setDstString</a></div><div class="ttdeci">function etherHeader setDstString(str)</div><div class="ttdoc">Set the destination MAC address. </div></div>
+<div class="ttc" id="ip4_8lua_html_aa8a4f3e9acc8bb09033fa03e372912d0"><div class="ttname"><a href="ip4_8lua.html#aa8a4f3e9acc8bb09033fa03e372912d0">setVersion</a></div><div class="ttdeci">function ip4Header setVersion(int)</div><div class="ttdoc">Set the version. </div></div>
+<div class="ttc" id="ethernet_8lua_html_afc273c5659e952cbe7ed4a5d5eb1876d"><div class="ttname"><a href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a></div><div class="ttdeci">function etherHeader setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)</div><div class="ttdoc">Change the default values for namedArguments (for fill/get). </div></div>
+<div class="ttc" id="ip4_8lua_html_ac3c2261f9840d1606c21b7b21fbc5f17"><div class="ttname"><a href="ip4_8lua.html#ac3c2261f9840d1606c21b7b21fbc5f17">PROTO_ICMP</a></div><div class="ttdeci">ip PROTO_ICMP</div><div class="ttdoc">Protocol field value for Icmp. </div><div class="ttdef"><b>Definition:</b> <a href="ip4_8lua_source.html#l00027">ip4.lua:27</a></div></div>
+<div class="ttc" id="ip4_8lua_html_aad67eee9c45fb930f74be8ba6d7114d8"><div class="ttname"><a href="ip4_8lua.html#aad67eee9c45fb930f74be8ba6d7114d8">setLength</a></div><div class="ttdeci">function ip4Header setLength(int)</div><div class="ttdoc">Set the total length. </div></div>
+<div class="ttc" id="ip4_8lua_html_aa4fa7aae805dd701474f3d73d96b3221"><div class="ttname"><a href="ip4_8lua.html#aa4fa7aae805dd701474f3d73d96b3221">PROTO_TCP</a></div><div class="ttdeci">ip PROTO_TCP</div><div class="ttdoc">Protocol field value for Tcp. </div><div class="ttdef"><b>Definition:</b> <a href="ip4_8lua_source.html#l00029">ip4.lua:29</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_acf626fe45ca4177b3fa2994ed5f12655"><div class="ttname"><a href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a></div><div class="ttdeci">function etherHeader fill(args, pre)</div><div class="ttdoc">Set all members of the ethernet header. </div></div>
 <div class="ttc" id="ethernet_8lua_html_aa8c94964db8a504483c8180ba0fbc761"><div class="ttname"><a href="ethernet_8lua.html#aa8c94964db8a504483c8180ba0fbc761">getDstString</a></div><div class="ttdeci">function etherHeader getDstString()</div><div class="ttdoc">Retrieve the destination MAC address. </div></div>
 <div class="ttc" id="packet_8lua_html_abf539eaa6742ff5dc815282767ca303e"><div class="ttname"><a href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a></div><div class="ttdeci">function pkt get()</div><div class="ttdoc">Returns the packet data cast to the best fitting packet struct. </div></div>
+<div class="ttc" id="ip4_8lua_html_a35fae410a73a44a52b8650208b84e1c5"><div class="ttname"><a href="ip4_8lua.html#a35fae410a73a44a52b8650208b84e1c5">__sub</a></div><div class="ttdeci">function ip4Addr __sub(val)</div><div class="ttdoc">Subtract a number from an IPv4 address. </div></div>
+<div class="ttc" id="ip4_8lua_html_a747e5bfca42c9077e8be3a084cbcd30d"><div class="ttname"><a href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a></div><div class="ttdeci">function ip4Addr add(val)</div><div class="ttdoc">Add a number to an IPv4 address in-place. </div></div>
 <div class="ttc" id="ethernet_8lua_html_a0453f2332a7ee5df8f3416932bc8f468"><div class="ttname"><a href="ethernet_8lua.html#a0453f2332a7ee5df8f3416932bc8f468">setSrcString</a></div><div class="ttdeci">function etherHeader setSrcString(str)</div><div class="ttdoc">Set the source MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_abd4d16011dee203ba12fc0b0cb1df914"><div class="ttname"><a href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a></div><div class="ttdeci">local eth</div><div class="ttdoc">Ethernet protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00024">ethernet.lua:24</a></div></div>
+<div class="ttc" id="ethernet_8lua_html_a090e429971793a6f0c1a8ab2a32fd980"><div class="ttname"><a href="ethernet_8lua.html#a090e429971793a6f0c1a8ab2a32fd980">resolveNextHeader</a></div><div class="ttdeci">function etherHeader resolveNextHeader()</div><div class="ttdoc">Resolve which header comes after this one (in a packet). </div></div>
+<div class="ttc" id="ip4_8lua_html_a8c7fb5a2fba60839b490d21a99aabcf7"><div class="ttname"><a href="ip4_8lua.html#a8c7fb5a2fba60839b490d21a99aabcf7">PROTO_UDP</a></div><div class="ttdeci">ip PROTO_UDP</div><div class="ttdoc">Protocol field value for Udp. </div><div class="ttdef"><b>Definition:</b> <a href="ip4_8lua_source.html#l00031">ip4.lua:31</a></div></div>
+<div class="ttc" id="ip4_8lua_html_a47df415387eb6f4fdd5752c3b5de89a7"><div class="ttname"><a href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a></div><div class="ttdeci">local ip</div><div class="ttdoc">IP4 protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ip4_8lua_source.html#l00024">ip4.lua:24</a></div></div>
+<div class="ttc" id="packet_8lua_html_af8027fe3e9f1acfedd960d3c9b8b6b51"><div class="ttname"><a href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a></div><div class="ttdeci">local pkt</div><div class="ttdoc">Module for packets (rte_mbuf) </div><div class="ttdef"><b>Definition:</b> <a href="packet_8lua_source.html#l00020">packet.lua:20</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a2c70a5b7caf728b65cab21ead54c1e8f"><div class="ttname"><a href="ethernet_8lua.html#a2c70a5b7caf728b65cab21ead54c1e8f">getDst</a></div><div class="ttdeci">function etherHeader getDst(addr)</div><div class="ttdoc">Retrieve the destination MAC address. </div></div>
+<div class="ttc" id="ip4_8lua_html_a389bf4086f09c78f97536b2f7dfceab7"><div class="ttname"><a href="ip4_8lua.html#a389bf4086f09c78f97536b2f7dfceab7">getTTL</a></div><div class="ttdeci">function ip4Header getTTL()</div><div class="ttdoc">Retrieve the time-to-live. </div></div>
+<div class="ttc" id="ip4_8lua_html_aa18390c0e639f4d5dfc84fb781f09ee6"><div class="ttname"><a href="ip4_8lua.html#aa18390c0e639f4d5dfc84fb781f09ee6">setTTL</a></div><div class="ttdeci">function ip4Header setTTL(int)</div><div class="ttdoc">Set the time-to-live (TTL). </div></div>
 <div class="ttc" id="ethernet_8lua_html_a77e75ae36313b17315d8ced823089f9e"><div class="ttname"><a href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a></div><div class="ttdeci">function macAddr set(addr)</div><div class="ttdoc">Set the MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_af1923ae694c032f99fcf4ccd529285fc"><div class="ttname"><a href="ethernet_8lua.html#af1923ae694c032f99fcf4ccd529285fc">getSrcString</a></div><div class="ttdeci">function etherHeader getSrcString()</div><div class="ttdoc">Retrieve the source MAC address. </div></div>
+<div class="ttc" id="ip4_8lua_html_a1a2f1c0fbf5d6775fbcee2136136a56d"><div class="ttname"><a href="ip4_8lua.html#a1a2f1c0fbf5d6775fbcee2136136a56d">getVersion</a></div><div class="ttdeci">function ip4Header getVersion()</div><div class="ttdoc">Retrieve the version. </div></div>
+<div class="ttc" id="ip4_8lua_html_a9f5b3fe8a695e3bfad5eec1cfb041ca2"><div class="ttname"><a href="ip4_8lua.html#a9f5b3fe8a695e3bfad5eec1cfb041ca2">__add</a></div><div class="ttdeci">function ip4Addr __add(lhs, rhs)</div><div class="ttdoc">Add a number to an IPv4 address. </div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_008ba6cb71e2c02d515844436773d74d.html">proto</a></li><li class="navelem"><b>ip6.lua</b></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 13:53:58 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

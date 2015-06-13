@@ -1,3 +1,7 @@
+------------------------------------------------------------------------
+--- @file proto.lua
+--- @brief Includes all protocol modules in one place.
+------------------------------------------------------------------------
 local proto = {}
 
 proto.arp = require "proto.arp"

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['hastimestamp',['hasTimestamp',['../packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1',1,'packet.lua']]]
+  ['enabletimestamps',['enableTimestamps',['../packet_8lua.html#ac0443a417cdc375adfd2b90ff442596a',1,'packet.lua']]]
 ];

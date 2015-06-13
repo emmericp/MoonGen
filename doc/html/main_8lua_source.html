@@ -31,7 +31,6 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
-   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -118,7 +117,7 @@ $(document).ready(function(){initNavTree('main_8lua_source.html','');});
 <div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;local memory    = require <span class="stringliteral">&quot;memory&quot;</span></div>
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;local serpent   = require <span class="stringliteral">&quot;Serpent&quot;</span></div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;-- TODO: add command line switches <span class="keywordflow">for</span> <span class="keyword">this</span> and other luajit-debugging features</div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;-- TODO: <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> command line switches <span class="keywordflow">for</span> <span class="keyword">this</span> and other luajit-debugging features</div>
 <div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;--require(<span class="stringliteral">&quot;jit.v&quot;</span>).on()</div>
 <div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;</div>
 <div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;local <span class="keyword">function</span> getStackTrace(err)</div>
@@ -142,10 +141,10 @@ $(document).ready(function(){initNavTree('main_8lua_source.html','');});
 <div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;            v = tonumber(v)</div>
 <div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;        end</div>
 <div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;        -- currently not supported as we can&#39;t pass structs to slaves</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;        -- ip?</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;        -- local ip = parseIPAddress(v)</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;        -- if ip then</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        --  v = ip</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;        -- <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a>?</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;        -- local <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> = parseIPAddress(v)</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;        -- if <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> then</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        --  v = <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a></div>
 <div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;        -- end</div>
 <div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;        args[i] = v</div>
 <div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;    end</div>
@@ -207,13 +206,15 @@ $(document).ready(function(){initNavTree('main_8lua_source.html','');});
 <div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;end</div>
 <div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;</div>
 <div class="ttc" id="packet_8lua_html_a2635156d751e509e4b4f607a2b045c5a"><div class="ttname"><a href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div><div class="ttdeci">function pkt dump(bytes)</div><div class="ttdoc">Dumps the packet data cast to the best fitting packet struct. </div></div>
+<div class="ttc" id="ip4_8lua_html_a747e5bfca42c9077e8be3a084cbcd30d"><div class="ttname"><a href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a></div><div class="ttdeci">function ip4Addr add(val)</div><div class="ttdoc">Add a number to an IPv4 address in-place. </div></div>
+<div class="ttc" id="ip4_8lua_html_a47df415387eb6f4fdd5752c3b5de89a7"><div class="ttname"><a href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a></div><div class="ttdeci">local ip</div><div class="ttdoc">IP4 protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ip4_8lua_source.html#l00024">ip4.lua:24</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><b>main.lua</b></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 13:53:58 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

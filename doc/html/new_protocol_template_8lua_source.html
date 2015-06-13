@@ -31,7 +31,6 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
-   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -110,13 +109,13 @@ $(document).ready(function(){initNavTree('new_protocol_template_8lua_source.html
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;-- Replace all occurrences of PROTO with your protocol (e.g. sctp)</div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;-- Remove unnecessary comments in <span class="keyword">this</span> file (comments inbetween [[...]])</div>
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;-- Necessary changes to other files:</div>
-<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;-- - header.lua: add the header <span class="keyword">struct</span> (and other structs, e.g. address), named PROTO_header</div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;-- - header.lua: <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> the header <span class="keyword">struct</span> (and other structs, e.g. address), named PROTO_header</div>
 <div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;-- - packet.lua: <span class="keywordflow">if</span> the header has a length member, adapt <a class="code" href="packet_8lua.html#ad2182ba21f29223467ceb5d2858c0a20">packetSetLength</a>; </div>
 <div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;--               <span class="keywordflow">if</span> the packet has a checksum, adapt <a class="code" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a> (loop at end of <span class="keyword">function</span>) and <a class="code" href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a></div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;-- - proto/proto.lua: add PROTO.lua to the list so it gets loaded</div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;-- - proto/proto.lua: <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> PROTO.lua to the list so it gets loaded</div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;--]]</div>
 <div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;local ffi = require <span class="stringliteral">&quot;ffi&quot;</span></div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;local pkt = require <span class="stringliteral">&quot;packet&quot;</span></div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;local <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> = require <span class="stringliteral">&quot;packet&quot;</span></div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;</div>
 <div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;require <span class="stringliteral">&quot;headers&quot;</span></div>
 <div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;</div>
@@ -194,20 +193,20 @@ $(document).ready(function(){initNavTree('new_protocol_template_8lua_source.html
 <div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;-- This function must exist and is only used when <a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>/<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a> is executed on </div>
 <div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;-- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)</div>
 <div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;-- @return String next header (e.g. &#39;<a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#39;, &#39;ip4&#39;, nil)</div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;function PROTOHeader:resolveNextHeader()</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;function PROTOHeader:<a class="code" href="ethernet_8lua.html#a090e429971793a6f0c1a8ab2a32fd980">resolveNextHeader</a>()</div>
 <div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;    return nil</div>
 <div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;end </div>
 <div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;</div>
 <div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;--- Change the default values for namedArguments (for <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>/<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>)</div>
 <div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;-- This can be used to for instance calculate a length value based on the total packet length</div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;-- See proto/ip4.setDefaultNamedArgs as an example</div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;-- See proto/ip4.<a class="code" href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a> as an example</div>
 <div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;-- This function must exist and is only used by packet.<a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a></div>
 <div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;-- @param pre The prefix used for the namedArgs, e.g. &#39;PROTO&#39;</div>
 <div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;-- @param namedArgs Table of named arguments (see See more)</div>
 <div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;-- @param nextHeader The header following after this header in a packet</div>
 <div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;-- @param accumulatedLength The so far accumulated length for previous headers in a packet</div>
 <div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;-- @see PROTOHeader:<a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a></div>
-<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;function PROTOHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)</div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;function PROTOHeader:<a class="code" href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a>(pre, namedArgs, nextHeader, accumulatedLength)</div>
 <div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;    return namedArgs</div>
 <div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;end</div>
 <div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;</div>
@@ -216,8 +215,8 @@ $(document).ready(function(){initNavTree('new_protocol_template_8lua_source.html
 <div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;----------------------------------------------------------------------------------</div>
 <div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;</div>
 <div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;--[[ define how a packet with this header looks like</div>
-<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;-- e.g. &#39;ip4&#39; will add a member ip4 of type struct ip4_header to the packet</div>
-<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;-- e.g. {<span class="stringliteral">&#39;ip4&#39;</span>, <span class="stringliteral">&#39;innerIP&#39;</span>} will add a member innerIP of type <span class="keyword">struct </span>ip4_header to the packet</div>
+<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;-- e.g. &#39;ip4&#39; will <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> a member ip4 of type struct ip4_header to the packet</div>
+<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;-- e.g. {<span class="stringliteral">&#39;ip4&#39;</span>, <span class="stringliteral">&#39;innerIP&#39;</span>} will <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> a member innerIP of type <span class="keyword">struct </span>ip4_header to the packet</div>
 <div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;--]]</div>
 <div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;pkt.getPROTOPacket = <a class="code" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(<span class="stringliteral">&#39;eth&#39;</span>, <span class="stringliteral">&#39;ip4&#39;</span>, <span class="stringliteral">&#39;PROTO&#39;</span>)</div>
 <div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;</div>
@@ -233,11 +232,15 @@ $(document).ready(function(){initNavTree('new_protocol_template_8lua_source.html
 <div class="ttc" id="packet_8lua_html_a9ec741ec046b38ff23624e841a2ec3da"><div class="ttname"><a href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a></div><div class="ttdeci">function packetCreate(...)</div><div class="ttdoc">Create struct and functions for a new packet. </div></div>
 <div class="ttc" id="packet_8lua_html_a2635156d751e509e4b4f607a2b045c5a"><div class="ttname"><a href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div><div class="ttdeci">function pkt dump(bytes)</div><div class="ttdoc">Dumps the packet data cast to the best fitting packet struct. </div></div>
 <div class="ttc" id="ethernet_8lua_html_ab762a74003764fe46985fcdba9b61ae8"><div class="ttname"><a href="ethernet_8lua.html#ab762a74003764fe46985fcdba9b61ae8">getString</a></div><div class="ttdeci">function macAddr getString()</div><div class="ttdoc">Retrieve the string representation of a MAC address. </div></div>
+<div class="ttc" id="ethernet_8lua_html_afc273c5659e952cbe7ed4a5d5eb1876d"><div class="ttname"><a href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a></div><div class="ttdeci">function etherHeader setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)</div><div class="ttdoc">Change the default values for namedArguments (for fill/get). </div></div>
 <div class="ttc" id="ethernet_8lua_html_acf626fe45ca4177b3fa2994ed5f12655"><div class="ttname"><a href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a></div><div class="ttdeci">function etherHeader fill(args, pre)</div><div class="ttdoc">Set all members of the ethernet header. </div></div>
 <div class="ttc" id="packet_8lua_html_a40b03d76e322aea890f56cb62e081749"><div class="ttname"><a href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a></div><div class="ttdeci">function packetCalculateChecksums(self)</div><div class="ttdoc">Calculate all checksums manually (not offloading them). </div></div>
 <div class="ttc" id="packet_8lua_html_abf539eaa6742ff5dc815282767ca303e"><div class="ttname"><a href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a></div><div class="ttdeci">function pkt get()</div><div class="ttdoc">Returns the packet data cast to the best fitting packet struct. </div></div>
+<div class="ttc" id="ip4_8lua_html_a747e5bfca42c9077e8be3a084cbcd30d"><div class="ttname"><a href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a></div><div class="ttdeci">function ip4Addr add(val)</div><div class="ttdoc">Add a number to an IPv4 address in-place. </div></div>
 <div class="ttc" id="packet_8lua_html_ad2182ba21f29223467ceb5d2858c0a20"><div class="ttname"><a href="packet_8lua.html#ad2182ba21f29223467ceb5d2858c0a20">packetSetLength</a></div><div class="ttdeci">function packetSetLength(self, length)</div><div class="ttdoc">Set length for all headers. </div></div>
 <div class="ttc" id="ethernet_8lua_html_abd4d16011dee203ba12fc0b0cb1df914"><div class="ttname"><a href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a></div><div class="ttdeci">local eth</div><div class="ttdoc">Ethernet protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00024">ethernet.lua:24</a></div></div>
+<div class="ttc" id="ethernet_8lua_html_a090e429971793a6f0c1a8ab2a32fd980"><div class="ttname"><a href="ethernet_8lua.html#a090e429971793a6f0c1a8ab2a32fd980">resolveNextHeader</a></div><div class="ttdeci">function etherHeader resolveNextHeader()</div><div class="ttdoc">Resolve which header comes after this one (in a packet). </div></div>
+<div class="ttc" id="packet_8lua_html_af8027fe3e9f1acfedd960d3c9b8b6b51"><div class="ttname"><a href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a></div><div class="ttdeci">local pkt</div><div class="ttdoc">Module for packets (rte_mbuf) </div><div class="ttdef"><b>Definition:</b> <a href="packet_8lua_source.html#l00020">packet.lua:20</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a77e75ae36313b17315d8ced823089f9e"><div class="ttname"><a href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a></div><div class="ttdeci">function macAddr set(addr)</div><div class="ttdoc">Set the MAC address. </div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
@@ -245,7 +248,7 @@ $(document).ready(function(){initNavTree('new_protocol_template_8lua_source.html
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_008ba6cb71e2c02d515844436773d74d.html">proto</a></li><li class="navelem"><b>newProtocolTemplate.lua</b></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 13:53:58 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

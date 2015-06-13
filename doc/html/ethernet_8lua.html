@@ -31,7 +31,6 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
-   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -170,6 +169,12 @@ Functions</h2></td></tr>
 <tr class="memitem:a8451b2a47d86a3a1ba6f6f3b9d66088a"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a8451b2a47d86a3a1ba6f6f3b9d66088a">get</a> (pre)</td></tr>
 <tr class="memdesc:a8451b2a47d86a3a1ba6f6f3b9d66088a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the values of all members.  <a href="#a8451b2a47d86a3a1ba6f6f3b9d66088a">More...</a><br/></td></tr>
 <tr class="separator:a8451b2a47d86a3a1ba6f6f3b9d66088a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a090e429971793a6f0c1a8ab2a32fd980"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a090e429971793a6f0c1a8ab2a32fd980">resolveNextHeader</a> ()</td></tr>
+<tr class="memdesc:a090e429971793a6f0c1a8ab2a32fd980"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resolve which header comes after this one (in a packet).  <a href="#a090e429971793a6f0c1a8ab2a32fd980">More...</a><br/></td></tr>
+<tr class="separator:a090e429971793a6f0c1a8ab2a32fd980"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afc273c5659e952cbe7ed4a5d5eb1876d"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a> (pre, namedArgs, nextHeader, accumulatedLength)</td></tr>
+<tr class="memdesc:afc273c5659e952cbe7ed4a5d5eb1876d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Change the default values for namedArguments (for fill/get).  <a href="#afc273c5659e952cbe7ed4a5d5eb1876d">More...</a><br/></td></tr>
+<tr class="separator:afc273c5659e952cbe7ed4a5d5eb1876d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
@@ -205,6 +210,14 @@ local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="eth
 local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a> = {}</td></tr>
 <tr class="memdesc:ab53fc06c7d7dcce606e1a23673d1f83f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Module for ethernet_header struct (see <a class="el" href="headers_8lua.html">headers.lua</a>). <br/></td></tr>
 <tr class="separator:ab53fc06c7d7dcce606e1a23673d1f83f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1965649109f35d5fb6b9198773792cc2"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a1965649109f35d5fb6b9198773792cc2"></a>
+<a class="el" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a1965649109f35d5fb6b9198773792cc2">getEthernetPacket</a> = <a class="el" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;eth&quot;)</td></tr>
+<tr class="memdesc:a1965649109f35d5fb6b9198773792cc2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cast the packet to an ethernet packet. <br/></td></tr>
+<tr class="separator:a1965649109f35d5fb6b9198773792cc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80ccfed2de871fd712e54ae6551c8f5d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a80ccfed2de871fd712e54ae6551c8f5d"></a>
+<a class="el" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ethernet_8lua.html#a80ccfed2de871fd712e54ae6551c8f5d">getEthPacket</a> = <a class="el" href="ethernet_8lua.html#a1965649109f35d5fb6b9198773792cc2">pkt.getEthernetPacket</a></td></tr>
+<tr class="memdesc:a80ccfed2de871fd712e54ae6551c8f5d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cast the packet to an ethernet packet (alias for pkt.getEthernetPacket) <br/></td></tr>
+<tr class="separator:a80ccfed2de871fd712e54ae6551c8f5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Ethernet protocol utility. </p>
@@ -469,6 +482,25 @@ Values in string format. </dd></dl>
 
 </div>
 </div>
+<a class="anchor" id="a090e429971793a6f0c1a8ab2a32fd980"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a> resolveNextHeader </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Resolve which header comes after this one (in a packet). </p>
+<p>For instance: in tcp/udp based on the ports. This function must exist and is only used when get/dump is executed on an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf) </p>
+<dl class="section return"><dt>Returns</dt><dd>String next header (e.g. 'eth', 'ip4', nil) </dd></dl>
+
+</div>
+</div>
 <a class="anchor" id="a77e75ae36313b17315d8ced823089f9e"></a>
 <div class="memitem">
 <div class="memproto">
@@ -490,6 +522,57 @@ Values in string format. </dd></dl>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a class="anchor" id="afc273c5659e952cbe7ed4a5d5eb1876d"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">function <a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a> setDefaultNamedArgs </td>
+          <td>(</td>
+          <td class="paramtype">pre&#160;</td>
+          <td class="paramname">, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">namedArgs&#160;</td>
+          <td class="paramname">, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">nextHeader&#160;</td>
+          <td class="paramname">, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">accumulatedLength&#160;</td>
+          <td class="paramname">&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Change the default values for namedArguments (for fill/get). </p>
+<p>This can be used to for instance calculate a length value based on the total packet length. See proto/ip4.setDefaultNamedArgs as an example. This function must exist and is only used by packet.fill. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">pre</td><td>The prefix used for the namedArgs, e.g. 'eth' </td></tr>
+    <tr><td class="paramname">namedArgs</td><td>Table of named arguments (see See Also) </td></tr>
+    <tr><td class="paramname">nextHeader</td><td>The header following after this header in a packet </td></tr>
+    <tr><td class="paramname">accumulatedLength</td><td>The so far accumulated length for previous headers in a packet </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section see"><dt>See Also</dt><dd><a class="el" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f" title="Module for ethernet_header struct (see headers.lua). ">etherHeader</a>:<a class="el" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655" title="Set all members of the ethernet header. ">fill</a> </dd></dl>
 
 </div>
 </div>
@@ -643,7 +726,7 @@ Values in string format. </dd></dl>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_008ba6cb71e2c02d515844436773d74d.html">proto</a></li><li class="navelem"><a class="el" href="ethernet_8lua.html">ethernet.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 13:53:58 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

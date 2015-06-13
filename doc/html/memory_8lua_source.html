@@ -31,7 +31,6 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
-   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -136,7 +135,7 @@ $(document).ready(function(){initNavTree('memory_8lua_source.html','');});
 <div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;</div>
 <div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;--- Off-heap allocation on huge pages, not garbage-collected.</div>
 <div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;-- See memory.alloc.</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;-- TODO: add a free <span class="keyword">function</span> <span class="keywordflow">for</span> <span class="keyword">this</span></div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;-- TODO: <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> a free <span class="keyword">function</span> <span class="keywordflow">for</span> <span class="keyword">this</span></div>
 <div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;<span class="keyword">function</span> mod.allocHuge(ctype, size)</div>
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;    <span class="keywordflow">return</span> cast(ctype, C.alloc_huge(size))</div>
 <div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;end</div>
@@ -418,13 +417,14 @@ $(document).ready(function(){initNavTree('memory_8lua_source.html','');});
 <div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;<span class="stringliteral"></span></div>
 <div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;<span class="stringliteral">return mod</span></div>
 <div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;<span class="stringliteral"></span></div>
+<div class="ttc" id="ip4_8lua_html_a747e5bfca42c9077e8be3a084cbcd30d"><div class="ttname"><a href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a></div><div class="ttdeci">function ip4Addr add(val)</div><div class="ttdoc">Add a number to an IPv4 address in-place. </div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><b>memory.lua</b></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 13:53:58 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

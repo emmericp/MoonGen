@@ -31,7 +31,6 @@
   <td style="padding-left: 0.5em;">
    <div id="projectname">MoonGen
    </div>
-   <div id="projectbrief">A\shigh-speed\sscriptable\spacket\sgenerator.</div>
   </td>
  </tr>
  </tbody>
@@ -124,462 +123,476 @@ $(document).ready(function(){initNavTree('packet_8lua_source.html','');});
 <div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift</div>
 <div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;local istype = ffi.istype</div>
 <div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;local write = io.write</div>
-<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;</div>
+<div class="line"><a name="l00020"></a><span class="lineno"><a class="line" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">   20</a></span>&#160;</div>
 <div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;</div>
 <div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;-------------------------------------------------------------------------------------------</div>
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;---- General functions</div>
 <div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;-------------------------------------------------------------------------------------------</div>
 <div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;</div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;local pkt = {}</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;pkt.__index = pkt</div>
-<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;</div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;--- Retrieve the time stamp information.</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;--- @<span class="keywordflow">return</span> The timestamp or nil <span class="keywordflow">if</span> the packet was not time stamped.</div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;function pkt:<a class="code" href="packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84">getTimestamp</a>()</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    if bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0 then</div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;        -- TODO: support timestamps that are stored in registers instead of the rx buffer</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;        local data = ffi.cast(&quot;uint32_t* &quot;, self.pkt.data)</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;        -- TODO: this is only tested with the Intel 82580 NIC at the moment</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;        -- the datasheet claims that low and high are swapped, but this doesn&#39;t seem to be the case</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;        -- TODO: check other NICs</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;        local low = data[2]</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;        local high = data[3]</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;        return high * 2^32 + low</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;    end</div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;end</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;</div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;--- Check if the PKT_RX_IEEE1588_TMST flag is <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a>.</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;--- Turns out that this flag is pretty pointless, it does not indicate</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;--- if the packet was actually timestamped, just that it came from a</div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;--- queue/filter with timestamping enabled.</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;--- You probably want to use device:<a class="code" href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a>() and check the sequence number.</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;function pkt:<a class="code" href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a>()</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    return bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;end</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;</div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;--- Set the time to wait before the packet is sent for software rate-controlled send methods.</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;--- @param delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;function pkt:<a class="code" href="packet_8lua.html#a6b57d15d38741b7878ad8d06b88ebbb2">setDelay</a>(delay)</div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;    self.pkt.hash.rss = delay</div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;end</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;</div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;function pkt:setRate(rate)</div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;    self.pkt.hash.rss = 10^10 / 8 / (rate * 10^6) - self.pkt.pkt_len - 24</div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;end</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;</div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;function pkt:setSize(size)</div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;    self.pkt.pkt_len = size</div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;    self.pkt.data_len = size</div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;end</div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;</div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;--- Returns the packet data cast to the best fitting packet struct. </div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;--- Starting with ethernet header.</div>
-<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;--- @return packet data as cdata of best fitting packet</div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;function pkt:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>()</div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;    return self:getEthernetPacket():resolveLastHeader()</div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;end</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;</div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;--- Dumps the packet data cast to the best fitting packet struct.</div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;--- @param bytes number of bytes to <a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div>
-<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;function pkt:<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>(bytes)</div>
-<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;    self:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>():<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>(bytes)</div>
-<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;end</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;</div>
-<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;</div>
-<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;-------------------------------------------------------------------------------------------------------</div>
-<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;---- Checksum offloading</div>
-<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;-------------------------------------------------------------------------------------------------------</div>
-<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;</div>
-<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;--- Instruct the NIC to calculate the IP checksum for this packet.</div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;--- @param ipv4 Boolean to decide whether the packet uses IPv4 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to nil/true) or IPv6 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to anything else).</div>
-<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;---                In case it is an IPv6 packet, do nothing (the header has no checksum).</div>
-<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;--- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).</div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;--- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4).</div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;function pkt:<a class="code" href="packet_8lua.html#a07b89b4064afceae93179acfa2c91d78">offloadIPChecksum</a>(ipv4, l2_len, l3_len)</div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;    -- NOTE: this method cannot be moved to the udpPacket class because it doesn&#39;t (and can&#39;t) know the pktbuf it belongs to</div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;    ipv4 = ipv4 == nil or ipv4</div>
-<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;    if ipv4 then</div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;        l2_len = l2_len or 14</div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;        l3_len = l3_len or 20</div>
-<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM)</div>
-<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;        self.pkt.header_lengths = l2_len * 512 + l3_len</div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;    end</div>
-<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;end</div>
-<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;</div>
-<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;--- Instruct the NIC to calculate the IP and UDP checksum for this packet.</div>
-<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;--- @param ipv4 Boolean to decide whether the packet uses IPv4 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to nil/true) or IPv6 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to anything else).</div>
-<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;--- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).</div>
-<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;--- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4, 40 bytes for IPv6).</div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;function pkt:<a class="code" href="packet_8lua.html#ab00540dd9e039f047b33ee4bf066a0bc">offloadUdpChecksum</a>(ipv4, l2_len, l3_len)</div>
-<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;    -- NOTE: this method cannot be moved to the udpPacket class because it doesn&#39;t (and can&#39;t) know the pktbuf it belongs to</div>
-<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;    ipv4 = ipv4 == nil or ipv4</div>
-<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;    l2_len = l2_len or 14</div>
-<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;    if ipv4 then</div>
-<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;        l3_len = l3_len or 20</div>
-<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)</div>
-<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;        self.pkt.header_lengths = l2_len * 512 + l3_len</div>
-<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;        -- calculate pseudo header checksum because the NIC doesn&#39;t do this...</div>
-<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;        dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data, 20)</div>
-<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;    else </div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;        l3_len = l3_len or 40</div>
-<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_UDP_CKSUM)</div>
-<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;        self.pkt.header_lengths = l2_len * 512 + l3_len</div>
-<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;        -- calculate pseudo header checksum because the NIC doesn&#39;t do this...</div>
-<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;        dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data, 30)</div>
-<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;    end</div>
-<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;end</div>
-<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;</div>
-<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;--- Instruct the NIC to calculate the IP and TCP checksum for this packet.</div>
-<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;--- @param ipv4 Boolean to decide whether the packet uses IPv4 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to nil/true) or IPv6 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to anything else).</div>
-<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;--- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).</div>
-<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;--- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4, 40 bytes for IPv6).</div>
-<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;function pkt:<a class="code" href="packet_8lua.html#a2bcf3c64f8c48891a26a5541de496f65">offloadTcpChecksum</a>(ipv4, l2_len, l3_len)</div>
-<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;    -- NOTE: this method cannot be moved to the udpPacket class because it doesn&#39;t (and can&#39;t) know the pktbuf it belongs to</div>
-<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;    ipv4 = ipv4 == nil or ipv4</div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;    l2_len = l2_len or 14</div>
-<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;    if ipv4 then</div>
-<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;        l3_len = l3_len or 20</div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_TCP_CKSUM)</div>
-<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;        self.pkt.header_lengths = l2_len * 512 + l3_len</div>
-<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;        -- calculate pseudo header checksum because the NIC doesn&#39;t do this...</div>
-<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;        dpdkc.calc_ipv4_pseudo_header_checksum(self.pkt.data, 25)</div>
-<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;    else </div>
-<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;        l3_len = l3_len or 40</div>
-<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_TCP_CKSUM)</div>
-<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;        self.pkt.header_lengths = l2_len * 512 + l3_len</div>
-<div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160;        -- calculate pseudo header checksum because the NIC doesn&#39;t do this...</div>
-<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;        dpdkc.calc_ipv6_pseudo_header_checksum(self.pkt.data, 35)</div>
-<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160;    end</div>
-<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;end</div>
-<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;</div>
-<div class="line"><a name="l00148"></a><span class="lineno">  148</span>&#160;function pkt:enableTimestamps()</div>
-<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;    self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IEEE1588_TMST)</div>
-<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;end</div>
-<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;</div>
-<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;</div>
-<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;----------------------------------------------------------------------------------</div>
-<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;---- Create new packet type</div>
-<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;----------------------------------------------------------------------------------</div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;--- Module <span class="keywordflow">for</span> packets (rte_mbuf)</div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;local <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> = {}</div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.__index = <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a></div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;</div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;--- Retrieve the time stamp information.</div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;--- @<span class="keywordflow">return</span> The timestamp or nil <span class="keywordflow">if</span> the packet was not time stamped.</div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84">getTimestamp</a>()</div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;    if bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0 then</div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;        -- TODO: support timestamps that are stored in registers instead of the rx buffer</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;        local data = ffi.cast(&quot;uint32_t* &quot;, self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.data)</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;        -- TODO: this is only tested with the Intel 82580 NIC at the moment</div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;        -- the datasheet claims that low and high are swapped, but this doesn&#39;t seem to be the case</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;        -- TODO: check other NICs</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;        local low = data[2]</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;        local high = data[3]</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        return high * 2^32 + low</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;    end</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;end</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;--- Check if the PKT_RX_IEEE1588_TMST flag is <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a>.</div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;--- Turns out that this flag is pretty pointless, it does not indicate</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;--- if the packet was actually timestamped, just that it came from a</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;--- queue/filter with timestamping enabled.</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;--- You probably want to use device:<a class="code" href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a>() and check the sequence number.</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a>()</div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;    return bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;end</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;--- Set the time to wait before the packet is sent for software rate-controlled send methods.</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;--- @param delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#a6b57d15d38741b7878ad8d06b88ebbb2">setDelay</a>(delay)</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.hash.rss = delay</div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;end</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;</div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;--- TODO</div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#a04e10ab9efc9f793fb8125de25bc1605">setRate</a>(rate)</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;    self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.hash.rss = 10^10 / 8 / (rate * 10^6) - self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.pkt_len - 24</div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;end</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;--- TODO</div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#a51ce788acb683d3a0690599805e480dc">setSize</a>(size)</div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;    self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.pkt_len = size</div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;    self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.data_len = size</div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;end</div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;--- Returns the packet data cast to the best fitting packet struct. </div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;--- Starting with ethernet header.</div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;--- @return packet data as cdata of best fitting packet</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>()</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;    return self:<a class="code" href="ethernet_8lua.html#a1965649109f35d5fb6b9198773792cc2">getEthernetPacket</a>():resolveLastHeader()</div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;end</div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;</div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;--- Dumps the packet data cast to the best fitting packet struct.</div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;--- @param bytes number of bytes to <a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>(bytes)</div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;    self:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>():<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>(bytes)</div>
+<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;end</div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;</div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;</div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;-------------------------------------------------------------------------------------------------------</div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;---- Checksum offloading</div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;-------------------------------------------------------------------------------------------------------</div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;</div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;--- Instruct the NIC to calculate the IP checksum for this packet.</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;--- @param ipv4 Boolean to decide whether the packet uses IPv4 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to nil/true) or IPv6 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to anything else).</div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;---                In case it is an IPv6 packet, do nothing (the header has no checksum).</div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;--- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).</div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;--- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4).</div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#a07b89b4064afceae93179acfa2c91d78">offloadIPChecksum</a>(ipv4, l2_len, l3_len)</div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;    -- NOTE: this method cannot be moved to the udpPacket class because it doesn&#39;t (and can&#39;t) know the pktbuf it belongs to</div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;    ipv4 = ipv4 == nil or ipv4</div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;    if ipv4 then</div>
+<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;        l2_len = l2_len or 14</div>
+<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;        l3_len = l3_len or 20</div>
+<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM)</div>
+<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;        self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.header_lengths = l2_len * 512 + l3_len</div>
+<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;    end</div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;end</div>
+<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;</div>
+<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;--- Instruct the NIC to calculate the IP and UDP checksum for this packet.</div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;--- @param ipv4 Boolean to decide whether the packet uses IPv4 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to nil/true) or IPv6 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to anything else).</div>
+<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;--- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).</div>
+<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;--- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4, 40 bytes for IPv6).</div>
+<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#ab00540dd9e039f047b33ee4bf066a0bc">offloadUdpChecksum</a>(ipv4, l2_len, l3_len)</div>
+<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;    -- NOTE: this method cannot be moved to the udpPacket class because it doesn&#39;t (and can&#39;t) know the pktbuf it belongs to</div>
+<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;    ipv4 = ipv4 == nil or ipv4</div>
+<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;    l2_len = l2_len or 14</div>
+<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;    if ipv4 then</div>
+<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;        l3_len = l3_len or 20</div>
+<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)</div>
+<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;        self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.header_lengths = l2_len * 512 + l3_len</div>
+<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;        -- calculate pseudo header checksum because the NIC doesn&#39;t do this...</div>
+<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;        dpdkc.calc_ipv4_pseudo_header_checksum(self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.data, 20)</div>
+<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;    else </div>
+<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;        l3_len = l3_len or 40</div>
+<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_UDP_CKSUM)</div>
+<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;        self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.header_lengths = l2_len * 512 + l3_len</div>
+<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;        -- calculate pseudo header checksum because the NIC doesn&#39;t do this...</div>
+<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;        dpdkc.calc_ipv6_pseudo_header_checksum(self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.data, 30)</div>
+<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;    end</div>
+<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;end</div>
+<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;</div>
+<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;--- Instruct the NIC to calculate the IP and TCP checksum for this packet.</div>
+<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;--- @param ipv4 Boolean to decide whether the packet uses IPv4 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to nil/true) or IPv6 (<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to anything else).</div>
+<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;--- @param l2_len Length of the layer 2 header in bytes (default 14 bytes for ethernet).</div>
+<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;--- @param l3_len Length of the layer 3 header in bytes (default 20 bytes for IPv4, 40 bytes for IPv6).</div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#a2bcf3c64f8c48891a26a5541de496f65">offloadTcpChecksum</a>(ipv4, l2_len, l3_len)</div>
+<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;    -- NOTE: this method cannot be moved to the udpPacket class because it doesn&#39;t (and can&#39;t) know the pktbuf it belongs to</div>
+<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;    ipv4 = ipv4 == nil or ipv4</div>
+<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;    l2_len = l2_len or 14</div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;    if ipv4 then</div>
+<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;        l3_len = l3_len or 20</div>
+<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_TCP_CKSUM)</div>
+<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;        self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.header_lengths = l2_len * 512 + l3_len</div>
+<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;        -- calculate pseudo header checksum because the NIC doesn&#39;t do this...</div>
+<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;        dpdkc.calc_ipv4_pseudo_header_checksum(self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.data, 25)</div>
+<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;    else </div>
+<div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160;        l3_len = l3_len or 40</div>
+<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;        self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_TCP_CKSUM)</div>
+<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160;        self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.header_lengths = l2_len * 512 + l3_len</div>
+<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;        -- calculate pseudo header checksum because the NIC doesn&#39;t do this...</div>
+<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;        dpdkc.calc_ipv6_pseudo_header_checksum(self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.data, 35)</div>
+<div class="line"><a name="l00148"></a><span class="lineno">  148</span>&#160;    end</div>
+<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;end</div>
+<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;</div>
+<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;--- TODO</div>
+<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;function <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:<a class="code" href="packet_8lua.html#ac0443a417cdc375adfd2b90ff442596a">enableTimestamps</a>()</div>
+<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;    self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IEEE1588_TMST)</div>
+<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;end</div>
+<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;</div>
 <div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;</div>
-<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;-- functions of the packet</div>
-<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;local <a class="code" href="packet_8lua.html#ac3637a202dd87b6f65ed3a0f2e580360">packetGetHeaders</a></div>
-<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;local <a class="code" href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a></div>
-<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;local <a class="code" href="packet_8lua.html#a7b16486a2c3acbb96327174375464b14">packetDump</a></div>
-<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;local <a class="code" href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a></div>
-<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;local <a class="code" href="packet_8lua.html#a9184100d6f5e1a29c8e6b580c40c6a3a">packetGet</a></div>
-<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;local <a class="code" href="packet_8lua.html#acf6e8135b9fcdfa8b19c81b2e462c1d2">packetResolveLastHeader</a></div>
-<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;local <a class="code" href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a></div>
-<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;local <a class="code" href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a></div>
-<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;</div>
-<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;--- Create struct and functions for a new packet.</div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;--- For implemented headers (see proto/) these packets are defined in the section &#39;Packet struct&#39; of each protocol file</div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;--- @param args list of keywords (see makeStruct)</div>
-<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;--- @return returns the constructor/cast function for this packet</div>
-<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;--- @see <a class="code" href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a></div>
-<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;function <a class="code" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(...)</div>
-<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;    local args = { ... }</div>
-<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;    </div>
-<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;    local packet = {}</div>
-<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;    packet.__index = packet</div>
-<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;</div>
-<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;    -- create <span class="keyword">struct</span></div>
-<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;    local packetName, ctype = <a class="code" href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a>(args)</div>
-<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;</div>
-<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;    -- functions of the packet</div>
-<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;    packet.getArgs = <span class="keyword">function</span>() <span class="keywordflow">return</span> args end</div>
-<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;    </div>
-<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;    packet.getName = <span class="keyword">function</span>() <span class="keywordflow">return</span> packetName end</div>
-<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;</div>
-<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;    packet.getHeaders = <a class="code" href="packet_8lua.html#ac3637a202dd87b6f65ed3a0f2e580360">packetGetHeaders</a></div>
-<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;</div>
-<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;    packet.getHeader = <a class="code" href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a> </div>
+<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;----------------------------------------------------------------------------------</div>
+<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;---- Create new packet type</div>
+<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;----------------------------------------------------------------------------------</div>
+<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;</div>
+<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;-- functions of the packet</div>
+<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;local <a class="code" href="packet_8lua.html#ac3637a202dd87b6f65ed3a0f2e580360">packetGetHeaders</a></div>
+<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;local <a class="code" href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a></div>
+<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;local <a class="code" href="packet_8lua.html#a7b16486a2c3acbb96327174375464b14">packetDump</a></div>
+<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;local <a class="code" href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a></div>
+<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;local <a class="code" href="packet_8lua.html#a9184100d6f5e1a29c8e6b580c40c6a3a">packetGet</a></div>
+<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;local <a class="code" href="packet_8lua.html#acf6e8135b9fcdfa8b19c81b2e462c1d2">packetResolveLastHeader</a></div>
+<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;local <a class="code" href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a></div>
+<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;local <a class="code" href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a></div>
+<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;</div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;--- Create struct and functions for a new packet.</div>
+<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;--- For implemented headers (see proto/) these packets are defined in the section &#39;Packet struct&#39; of each protocol file</div>
+<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;--- @param args list of keywords (see makeStruct)</div>
+<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;--- @return returns the constructor/cast function for this packet</div>
+<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;--- @see <a class="code" href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a></div>
+<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;function <a class="code" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(...)</div>
+<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;    local args = { ... }</div>
+<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;    </div>
+<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;    local packet = {}</div>
+<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;    packet.__index = packet</div>
+<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;</div>
+<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;    -- create <span class="keyword">struct</span></div>
+<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;    local packetName, ctype = <a class="code" href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a>(args)</div>
+<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;</div>
+<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;    -- functions of the packet</div>
+<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;    packet.getArgs = <span class="keyword">function</span>() <span class="keywordflow">return</span> args end</div>
+<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;    </div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;    packet.getName = <span class="keyword">function</span>() <span class="keywordflow">return</span> packetName end</div>
 <div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;</div>
-<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;    packet.dump = <a class="code" href="packet_8lua.html#a7b16486a2c3acbb96327174375464b14">packetDump</a></div>
-<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;    </div>
-<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;    packet.fill = <a class="code" href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a></div>
+<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;    packet.getHeaders = <a class="code" href="packet_8lua.html#ac3637a202dd87b6f65ed3a0f2e580360">packetGetHeaders</a></div>
+<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;</div>
+<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;    packet.getHeader = <a class="code" href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a> </div>
 <div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;</div>
-<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;    packet.get = <a class="code" href="packet_8lua.html#a9184100d6f5e1a29c8e6b580c40c6a3a">packetGet</a></div>
-<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;</div>
-<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;    packet.resolveLastHeader = <a class="code" href="packet_8lua.html#acf6e8135b9fcdfa8b19c81b2e462c1d2">packetResolveLastHeader</a></div>
+<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;    packet.dump = <a class="code" href="packet_8lua.html#a7b16486a2c3acbb96327174375464b14">packetDump</a></div>
+<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;    </div>
+<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;    packet.fill = <a class="code" href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a></div>
 <div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;</div>
-<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;    packet.setLength = <a class="code" href="packet_8lua.html#ad2182ba21f29223467ceb5d2858c0a20">packetSetLength</a></div>
+<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;    packet.get = <a class="code" href="packet_8lua.html#a9184100d6f5e1a29c8e6b580c40c6a3a">packetGet</a></div>
 <div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160;</div>
-<div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;    -- functions <span class="keywordflow">for</span> manual (not offloaded) checksum calculations</div>
-<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;    packet.calculateChecksums = <a class="code" href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a></div>
-<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;    </div>
-<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;    <span class="keywordflow">for</span> _, v in ipairs(args) do</div>
-<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160;        local header, member</div>
-<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160;        if type(v) == &quot;table&quot; then</div>
-<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160;            header = v[1]</div>
-<div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;            member = v[2]</div>
-<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160;        else</div>
-<div class="line"><a name="l00209"></a><span class="lineno">  209</span>&#160;            header = v</div>
-<div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160;            member = v</div>
-<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160;        end</div>
-<div class="line"><a name="l00212"></a><span class="lineno">  212</span>&#160;        -- if the header has a checksum, add a function to calculate it</div>
-<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;        if header == &quot;ip4&quot; or header == &quot;icmp&quot; then -- FIXME NYI or header == &quot;udp&quot; or header == &quot;tcp&quot; then</div>
-<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;            local key = &#39;calculate&#39; .. member:gsub(&quot;^.&quot;, <span class="keywordtype">string</span>.upper) .. &#39;Checksum&#39;</div>
-<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;            packet[key] = function(self) self:getHeader(v):calculateChecksum() end</div>
-<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;        end</div>
-<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160;    end</div>
-<div class="line"><a name="l00218"></a><span class="lineno">  218</span>&#160;</div>
-<div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;</div>
-<div class="line"><a name="l00220"></a><span class="lineno">  220</span>&#160;    -- add functions to packet</div>
-<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;    ffi.metatype(packetName, packet)</div>
+<div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;    packet.resolveLastHeader = <a class="code" href="packet_8lua.html#acf6e8135b9fcdfa8b19c81b2e462c1d2">packetResolveLastHeader</a></div>
+<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;</div>
+<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;    packet.setLength = <a class="code" href="packet_8lua.html#ad2182ba21f29223467ceb5d2858c0a20">packetSetLength</a></div>
+<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;</div>
+<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160;    -- functions <span class="keywordflow">for</span> manual (not offloaded) checksum calculations</div>
+<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160;    packet.calculateChecksums = <a class="code" href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a></div>
+<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160;    </div>
+<div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;    <span class="keywordflow">for</span> _, v in ipairs(args) do</div>
+<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160;        local header, member</div>
+<div class="line"><a name="l00209"></a><span class="lineno">  209</span>&#160;        if type(v) == &quot;table&quot; then</div>
+<div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160;            header = v[1]</div>
+<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160;            member = v[2]</div>
+<div class="line"><a name="l00212"></a><span class="lineno">  212</span>&#160;        else</div>
+<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;            header = v</div>
+<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;            member = v</div>
+<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;        end</div>
+<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;        -- if the header has a checksum, <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> a function to calculate it</div>
+<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160;        if header == &quot;ip4&quot; or header == &quot;icmp&quot; then -- FIXME NYI or header == &quot;udp&quot; or header == &quot;tcp&quot; then</div>
+<div class="line"><a name="l00218"></a><span class="lineno">  218</span>&#160;            local key = &#39;calculate&#39; .. member:gsub(&quot;^.&quot;, <span class="keywordtype">string</span>.upper) .. &#39;Checksum&#39;</div>
+<div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;            packet[key] = function(self) self:getHeader(v):<a class="code" href="ip4_8lua.html#a32d6630a7a84455af5554e8b80df9047">calculateChecksum</a>() end</div>
+<div class="line"><a name="l00220"></a><span class="lineno">  220</span>&#160;        end</div>
+<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;    end</div>
 <div class="line"><a name="l00222"></a><span class="lineno">  222</span>&#160;</div>
-<div class="line"><a name="l00223"></a><span class="lineno">  223</span>&#160;    -- return &#39;<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>&#39;/&#39;cast&#39; for this kind of packet</div>
-<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;    return function(self) return ctype(self.pkt.data) end</div>
-<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160;end</div>
+<div class="line"><a name="l00223"></a><span class="lineno">  223</span>&#160;</div>
+<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;    -- <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> functions to packet</div>
+<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160;    ffi.metatype(packetName, packet)</div>
 <div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;</div>
-<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;--- Get all headers of a packet as list.</div>
-<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;--- @param self The packet</div>
-<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;--- @return Table of members of the packet</div>
-<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;function <a class="code" href="packet_8lua.html#ac3637a202dd87b6f65ed3a0f2e580360">packetGetHeaders</a>(self) </div>
-<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;    local headers = {} </div>
-<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;    <span class="keywordflow">for</span> i, v in ipairs(<span class="keyword">self</span>:getArgs()) do </div>
-<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;        headers[i] = <a class="code" href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a>(self, v) </div>
-<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;    end </div>
-<div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;    return headers </div>
-<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;end</div>
-<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;</div>
-<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;--- Get the specified header of a packet (e.g. self.<a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>).</div>
-<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;--- @param self the packet (cdata)</div>
-<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;--- @param h header to be returned</div>
-<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;--- @return The member of the packet</div>
-<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;function <a class="code" href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a>(self, h)</div>
-<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;    local proto, member</div>
-<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;    if type(h) == &quot;table&quot; then</div>
-<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;        member = h[2]</div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;    else</div>
-<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;        member = h</div>
-<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;    end</div>
-<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;    return self[member]</div>
-<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;end</div>
-<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;</div>
-<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;--- Print a hex <a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a> of a packet.</div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;--- @param self the packet</div>
-<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;--- @param bytes Number of bytes to <a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>. If no size is specified the payload is truncated.</div>
-<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;function <a class="code" href="packet_8lua.html#a7b16486a2c3acbb96327174375464b14">packetDump</a>(self, bytes) </div>
-<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;    bytes = bytes or ffi.sizeof(self:getName())</div>
-<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;</div>
-<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;    -- print timestamp</div>
-<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;    write(getTimeMicros())</div>
-<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;</div>
-<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;    -- headers in cleartext</div>
-<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;    for i, v in ipairs(self:getHeaders()) do</div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;        local str = v:<a class="code" href="ethernet_8lua.html#ab762a74003764fe46985fcdba9b61ae8">getString</a>()</div>
-<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;        if i == 1 then write(&quot; &quot; .. str .. &quot;\n&quot;) else print(str) end</div>
-<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;    end</div>
-<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;</div>
-<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;    -- hex <a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div>
-<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;    dumpHex(self, bytes)</div>
-<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;end</div>
-<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;    </div>
-<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;--- Set all members of all headers.</div>
-<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;--- @note This function is slow. If you want to modify members of a header during a time critical section of your script use the respective setters.</div>
-<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;--- Per default, all members are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to default values specified in the respective <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> function.</div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;--- Optional named arguments can be used to <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> a member to a user-provided value.</div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;--- The argument &#39;pktLength&#39; can be used to automatically calculate and <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> the length member of headers (e.g. ip header).</div>
-<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;--- @code </div>
-<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;--- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>() --- only default values</div>
-<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;--- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>{ ethSrc=<span class="stringliteral">&quot;12:23:34:45:56:67&quot;</span>, ipTTL=100 } --- all members are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to <span class="keywordflow">default</span> values with the exception of ethSrc and ipTTL</div>
-<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;--- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>{ pktLength=64 } --- only <span class="keywordflow">default</span> values, length members of the headers are adjusted</div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;--- <span class="keyword">@end</span>code</div>
-<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;--- @param <span class="keyword">self</span> The packet</div>
-<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;--- @param args Table of named arguments. For a list of available arguments see <span class="stringliteral">&quot;See also&quot;</span></div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;<span class="keyword">function</span> <a class="code" href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a>(<span class="keyword">self</span>, namedArgs) </div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;    -- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a> headers</div>
-<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;    local headers = <span class="keyword">self</span>:getHeaders()</div>
-<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;    local args = self:getArgs()</div>
-<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;    local accumulatedLength = 0</div>
-<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;    for i, v in ipairs(headers) do</div>
-<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;        local curMember = args[i]</div>
-<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;        if type(curMember) == &quot;table&quot; then</div>
-<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;            curMember = curMember[2]</div>
-<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;        end</div>
-<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;        local nextHeader = args[i + 1]</div>
-<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;        if type(nextHeader) == &quot;table&quot; then</div>
-<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;            nextHeader = nextHeader[1]</div>
+<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;    -- return &#39;<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>&#39;/&#39;cast&#39; for this kind of packet</div>
+<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;    return function(self) return ctype(self.<a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>.data) end</div>
+<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;end</div>
+<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;</div>
+<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;--- Get all headers of a packet as list.</div>
+<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;--- @param self The packet</div>
+<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;--- @return Table of members of the packet</div>
+<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;function <a class="code" href="packet_8lua.html#ac3637a202dd87b6f65ed3a0f2e580360">packetGetHeaders</a>(self) </div>
+<div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;    local headers = {} </div>
+<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;    <span class="keywordflow">for</span> i, v in ipairs(<span class="keyword">self</span>:getArgs()) do </div>
+<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;        headers[i] = <a class="code" href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a>(self, v) </div>
+<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;    end </div>
+<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;    return headers </div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;end</div>
+<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;</div>
+<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;--- Get the specified header of a packet (e.g. self.<a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>).</div>
+<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;--- @param self the packet (cdata)</div>
+<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;--- @param h header to be returned</div>
+<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;--- @return The member of the packet</div>
+<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;function <a class="code" href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a>(self, h)</div>
+<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;    local proto, member</div>
+<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;    if type(h) == &quot;table&quot; then</div>
+<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;        member = h[2]</div>
+<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;    else</div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;        member = h</div>
+<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;    end</div>
+<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;    return self[member]</div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;end</div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;</div>
+<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;--- Print a hex <a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a> of a packet.</div>
+<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;--- @param self the packet</div>
+<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;--- @param bytes Number of bytes to <a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a>. If no size is specified the payload is truncated.</div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;function <a class="code" href="packet_8lua.html#a7b16486a2c3acbb96327174375464b14">packetDump</a>(self, bytes) </div>
+<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;    bytes = bytes or ffi.sizeof(self:getName())</div>
+<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;</div>
+<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;    -- print timestamp</div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;    write(getTimeMicros())</div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;</div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;    -- headers in cleartext</div>
+<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;    for i, v in ipairs(self:getHeaders()) do</div>
+<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;        local str = v:<a class="code" href="ethernet_8lua.html#ab762a74003764fe46985fcdba9b61ae8">getString</a>()</div>
+<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;        if i == 1 then write(&quot; &quot; .. str .. &quot;\n&quot;) else print(str) end</div>
+<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;    end</div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;</div>
+<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;    -- hex <a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div>
+<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;    dumpHex(self, bytes)</div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;end</div>
+<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;    </div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;--- Set all members of all headers.</div>
+<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;--- Per default, all members are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to default values specified in the respective <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> function.</div>
+<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;--- Optional named arguments can be used to <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> a member to a user-provided value.</div>
+<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;--- The argument &#39;pktLength&#39; can be used to automatically calculate and <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> the length member of headers (e.g. <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a> header).</div>
+<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;--- @code </div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;--- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>() --- only default values</div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;--- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>{ ethSrc=<span class="stringliteral">&quot;12:23:34:45:56:67&quot;</span>, ipTTL=100 } --- all members are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to <span class="keywordflow">default</span> values with the exception of ethSrc and ipTTL</div>
+<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;--- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>{ pktLength=64 } --- only <span class="keywordflow">default</span> values, length members of the headers are adjusted</div>
+<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;--- <span class="keyword">@end</span>code</div>
+<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;--- @param <span class="keyword">self</span> The packet</div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;--- @param args Table of named arguments. For a list of available arguments see <span class="stringliteral">&quot;See also&quot;</span></div>
+<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;--- @note This <span class="keyword">function</span> is slow. If you want to modify members of a header during a time critical section of your script use the respective setters.</div>
+<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;function <a class="code" href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a>(<span class="keyword">self</span>, namedArgs) </div>
+<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;    -- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a> headers</div>
+<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;    local headers = <span class="keyword">self</span>:getHeaders()</div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;    local args = self:getArgs()</div>
+<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;    local accumulatedLength = 0</div>
+<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;    for i, v in ipairs(headers) do</div>
+<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;        local curMember = args[i]</div>
+<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;        if type(curMember) == &quot;table&quot; then</div>
+<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;            curMember = curMember[2]</div>
 <div class="line"><a name="l00296"></a><span class="lineno">  296</span>&#160;        end</div>
-<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160;        namedArgs = v:setDefaultNamedArgs(curMember, namedArgs, nextHeader, accumulatedLength)</div>
-<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;        v:<a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>(namedArgs, curMember) </div>
-<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160;</div>
-<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;        accumulatedLength = accumulatedLength + ffi.sizeof(v)</div>
-<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160;    end</div>
-<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;end</div>
+<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160;        local nextHeader = args[i + 1]</div>
+<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;        if type(nextHeader) == &quot;table&quot; then</div>
+<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160;            nextHeader = nextHeader[1]</div>
+<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;        end</div>
+<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160;        namedArgs = v:<a class="code" href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a>(curMember, namedArgs, nextHeader, accumulatedLength)</div>
+<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;        v:<a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>(namedArgs, curMember) </div>
 <div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160;</div>
-<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160;--- Retrieve the values of all members as list of named arguments.</div>
-<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;--- @param self The packet</div>
-<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;--- @return Table of named arguments. For a list of arguments see &quot;See also&quot;.</div>
-<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;--- @see <a class="code" href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a></div>
-<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;function <a class="code" href="packet_8lua.html#a9184100d6f5e1a29c8e6b580c40c6a3a">packetGet</a>(self) </div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;    local namedArgs = {} </div>
-<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;    local args = <span class="keyword">self</span>:getArgs()</div>
-<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;    for i, v in ipairs(self:getHeaders()) do </div>
-<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;        local member = args[i]</div>
-<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;        if type(member) == &quot;table&quot; then</div>
-<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;            member = member[2]</div>
-<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;        end</div>
-<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;        namedArgs = mergeTables(namedArgs, v:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(member)) </div>
-<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;    end </div>
-<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;    return namedArgs </div>
-<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;end</div>
-<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;</div>
-<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;--- Try to find out what the next header in the payload of this packet is.</div>
-<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;--- This function is only used for buf:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>/buf:<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div>
-<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;--- @param self The packet</div>
-<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;function <a class="code" href="packet_8lua.html#acf6e8135b9fcdfa8b19c81b2e462c1d2">packetResolveLastHeader</a>(self)</div>
-<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;    local name = self:getName()</div>
-<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;    local headers = self:getHeaders()</div>
-<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;    local next_header = headers[<span class="preprocessor">#headers]:resolveNextHeader()</span></div>
-<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;<span class="preprocessor"></span>    </div>
-<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;    <span class="keywordflow">if</span> not next_header then</div>
-<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;        <span class="keywordflow">return</span> <span class="keyword">self</span></div>
-<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;    <span class="keywordflow">else</span></div>
-<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;        next_member = next_header</div>
-<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;        </div>
-<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;        <span class="keywordflow">if</span> next_header == <span class="stringliteral">&quot;ethernet&quot;</span> then</div>
-<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;            next_member = <span class="stringliteral">&quot;eth&quot;</span></div>
-<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;        end</div>
-<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;        -- TODO <span class="keywordflow">if</span> same header exists multiple times rename member</div>
-<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;        name = name .. <span class="stringliteral">&quot;__&quot;</span> .. next_header .. <span class="stringliteral">&quot;_&quot;</span> .. next_member .. <span class="stringliteral">&quot;*&quot;</span></div>
-<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;        -- TODO <span class="keywordflow">if</span> packet does not exist, create it</div>
-<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;        <span class="keywordflow">return</span> ffi.cast(name, <span class="keyword">self</span>):resolveLastHeader()</div>
-<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;    end</div>
-<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;end</div>
-<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;</div>
-<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;--- Set length for all headers.</div>
-<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;--- Necessary when sending variable sized packets.</div>
-<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;--- @todo Runtime critical function: this has to be fast (check with benchmark)</div>
-<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;--- @param self The packet</div>
-<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;--- @param length Length of the packet. Value for respective length member of headers <a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a> calculated using this value.</div>
-<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;function <a class="code" href="packet_8lua.html#ad2182ba21f29223467ceb5d2858c0a20">packetSetLength</a>(self, length)</div>
-<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;    local accumulatedLength = 0</div>
-<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;    for _, v in ipairs(self:getArgs()) do</div>
-<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;        local header, member</div>
-<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;        if type(v) == &quot;table&quot; then</div>
-<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;            header = v[1]</div>
-<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;            member = v[2]</div>
-<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;        else</div>
-<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;            header = v</div>
-<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;            member = v</div>
-<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;        end</div>
-<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;        if header == &quot;ip4&quot; or header == &quot;udp&quot; or header == &quot;ptp&quot; then</div>
-<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;            self[member]:setLength(length - accumulatedLength)</div>
-<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;        elseif header == &quot;ip6&quot; then</div>
-<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160;            self[member]:setLength(length - (accumulatedLength + 40))</div>
-<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160;        end</div>
-<div class="line"><a name="l00365"></a><span class="lineno">  365</span>&#160;        accumulatedLength = accumulatedLength + ffi.sizeof(self[member])</div>
-<div class="line"><a name="l00366"></a><span class="lineno">  366</span>&#160;    end</div>
-<div class="line"><a name="l00367"></a><span class="lineno">  367</span>&#160;end</div>
-<div class="line"><a name="l00368"></a><span class="lineno">  368</span>&#160;</div>
-<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160;--- Calculate all checksums manually (not offloading them).</div>
-<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160;--- There also exist functions to calculate the checksum of only one header.</div>
-<div class="line"><a name="l00371"></a><span class="lineno">  371</span>&#160;--- Naming convention: pkt:calculate&lt;member&gt;Checksum() (for all existing packets member = {Ip, Tcp, Udp, Icmp})</div>
-<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160;--- @todo Runtime critical <span class="keyword">function</span>: <span class="keyword">this</span> has to be fast (check with benchmark)</div>
-<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;<span class="keyword">function</span> <a class="code" href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a>(<span class="keyword">self</span>)</div>
-<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160;    for _, v in ipairs(self:getArgs()) do</div>
-<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160;        local header, member</div>
-<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160;        if type(v) == &quot;table&quot; then</div>
-<div class="line"><a name="l00377"></a><span class="lineno">  377</span>&#160;            header = v[1]</div>
-<div class="line"><a name="l00378"></a><span class="lineno">  378</span>&#160;            member = v[2]</div>
-<div class="line"><a name="l00379"></a><span class="lineno">  379</span>&#160;        else</div>
-<div class="line"><a name="l00380"></a><span class="lineno">  380</span>&#160;            header = v</div>
-<div class="line"><a name="l00381"></a><span class="lineno">  381</span>&#160;            member = v</div>
-<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160;        end</div>
-<div class="line"><a name="l00383"></a><span class="lineno">  383</span>&#160;        </div>
-<div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160;        -- if the header has a checksum, call the function</div>
-<div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160;        if header == &quot;ip4&quot; or header == &quot;icmp&quot; then -- FIXME NYI or header == &quot;udp&quot; or header == &quot;tcp&quot; then</div>
-<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;            self:getHeader(v):calculateChecksum()</div>
-<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;        end</div>
-<div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160;    end</div>
-<div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;end</div>
-<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;</div>
-<div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;--- Creates a packet struct (cdata) consisting of different headers.</div>
-<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160;--- Simply list the headers in the order you want them to be in a packet.</div>
-<div class="line"><a name="l00393"></a><span class="lineno">  393</span>&#160;--- If you want the member to be named differently, use the following syntax:</div>
-<div class="line"><a name="l00394"></a><span class="lineno">  394</span>&#160;--- normal: &lt;header&gt; ; different membername: { &lt;header&gt;, &lt;member&gt; }.</div>
-<div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;--- Supported keywords: <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>, arp, ptp, ip, ip6, udp, tcp, icmp</div>
-<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;--- @code</div>
-<div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160;--- makeStruct(<span class="stringliteral">&#39;eth&#39;</span>, { <span class="stringliteral">&#39;ip4&#39;</span>, <span class="stringliteral">&#39;ip&#39;</span> }, <span class="stringliteral">&#39;udp&#39;</span>) --- creates an UDP packet <span class="keyword">struct</span></div>
-<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;--- --- the ip4 member of the packet is named <span class="stringliteral">&#39;ip&#39;</span></div>
-<div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160;--- @endcode</div>
-<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;--- @param args list of keywords/tables of keyword-member pairs</div>
-<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;--- @<span class="keywordflow">return</span> name name of the <span class="keyword">struct</span></div>
-<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;--- @<span class="keywordflow">return</span> ctype ctype of the <span class="keyword">struct</span></div>
-<div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;<span class="keyword">function</span> <a class="code" href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a>(...)</div>
-<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;    local name = &quot;&quot;</div>
-<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;    local str = &quot;&quot;</div>
-<div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160;    </div>
-<div class="line"><a name="l00407"></a><span class="lineno">  407</span>&#160;    -- add the specified headers and build the name</div>
-<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;    for _, v in ipairs(...) do</div>
-<div class="line"><a name="l00409"></a><span class="lineno">  409</span>&#160;        local header, member</div>
-<div class="line"><a name="l00410"></a><span class="lineno">  410</span>&#160;        if type(v) == &quot;table&quot; then</div>
-<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;            header = v[1]</div>
-<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;            member = v[2]</div>
-<div class="line"><a name="l00413"></a><span class="lineno">  413</span>&#160;        else</div>
-<div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;            header = v</div>
-<div class="line"><a name="l00415"></a><span class="lineno">  415</span>&#160;            member = v</div>
-<div class="line"><a name="l00416"></a><span class="lineno">  416</span>&#160;        end</div>
-<div class="line"><a name="l00417"></a><span class="lineno">  417</span>&#160;</div>
-<div class="line"><a name="l00418"></a><span class="lineno">  418</span>&#160;        -- alias for <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> -&gt; ethernet</div>
-<div class="line"><a name="l00419"></a><span class="lineno">  419</span>&#160;        if header == &#39;<a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#39; then</div>
-<div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160;            header = &#39;ethernet&#39;</div>
-<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;        end</div>
-<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;</div>
-<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;        -- add header</div>
-<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;        str = str .. [[</div>
-<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;        struct ]] .. header .. &#39;_header &#39; .. member .. [[;</div>
-<div class="line"><a name="l00426"></a><span class="lineno">  426</span>&#160;        ]]</div>
-<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;</div>
-<div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160;        -- build name</div>
-<div class="line"><a name="l00429"></a><span class="lineno">  429</span>&#160;        name = name .. &quot;__&quot; .. header .. &quot;_&quot; .. member</div>
-<div class="line"><a name="l00430"></a><span class="lineno">  430</span>&#160;    end</div>
+<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160;        accumulatedLength = accumulatedLength + ffi.sizeof(v)</div>
+<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;    end</div>
+<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;end</div>
+<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;</div>
+<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;--- Retrieve the values of all members as list of named arguments.</div>
+<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;--- @param self The packet</div>
+<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;--- @return Table of named arguments. For a list of arguments see &quot;See also&quot;.</div>
+<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;--- @see <a class="code" href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a></div>
+<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;function <a class="code" href="packet_8lua.html#a9184100d6f5e1a29c8e6b580c40c6a3a">packetGet</a>(self) </div>
+<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;    local namedArgs = {} </div>
+<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;    local args = <span class="keyword">self</span>:getArgs()</div>
+<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;    for i, v in ipairs(self:getHeaders()) do </div>
+<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;        local member = args[i]</div>
+<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;        if type(member) == &quot;table&quot; then</div>
+<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;            member = member[2]</div>
+<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;        end</div>
+<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;        namedArgs = mergeTables(namedArgs, v:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>(member)) </div>
+<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;    end </div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;    return namedArgs </div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;end</div>
+<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;</div>
+<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;--- Try to find out what the next header in the payload of this packet is.</div>
+<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;--- This function is only used for buf:<a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a>/buf:<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div>
+<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;--- @param self The packet</div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;function <a class="code" href="packet_8lua.html#acf6e8135b9fcdfa8b19c81b2e462c1d2">packetResolveLastHeader</a>(self)</div>
+<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;    local name = self:getName()</div>
+<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;    local headers = self:getHeaders()</div>
+<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;    local next_header = headers[<span class="preprocessor">#headers]:resolveNextHeader()</span></div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;<span class="preprocessor"></span>    </div>
+<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;    <span class="keywordflow">if</span> not next_header then</div>
+<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;        <span class="keywordflow">return</span> <span class="keyword">self</span></div>
+<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;    <span class="keywordflow">else</span></div>
+<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;        next_member = next_header</div>
+<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;        </div>
+<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;        <span class="keywordflow">if</span> next_header == <span class="stringliteral">&quot;ethernet&quot;</span> then</div>
+<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;            next_member = <span class="stringliteral">&quot;eth&quot;</span></div>
+<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;        end</div>
+<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;        -- TODO <span class="keywordflow">if</span> same header exists multiple times rename member</div>
+<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;        name = name .. <span class="stringliteral">&quot;__&quot;</span> .. next_header .. <span class="stringliteral">&quot;_&quot;</span> .. next_member .. <span class="stringliteral">&quot;*&quot;</span></div>
+<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;        -- TODO <span class="keywordflow">if</span> packet does not exist, create it</div>
+<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;        <span class="keywordflow">return</span> ffi.cast(name, <span class="keyword">self</span>):resolveLastHeader()</div>
+<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;    end</div>
+<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;end</div>
+<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;</div>
+<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;--- Set length for all headers.</div>
+<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;--- Necessary when sending variable sized packets.</div>
+<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;--- @param self The packet</div>
+<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;--- @param length Length of the packet. Value for respective length member of headers <a class="code" href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a> calculated using this value.</div>
+<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;--- @todo Runtime critical function: this has to be fast (check with benchmark).</div>
+<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;function <a class="code" href="packet_8lua.html#ad2182ba21f29223467ceb5d2858c0a20">packetSetLength</a>(self, length)</div>
+<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;    local accumulatedLength = 0</div>
+<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;    for _, v in ipairs(self:getArgs()) do</div>
+<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;        local header, member</div>
+<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;        if type(v) == &quot;table&quot; then</div>
+<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;            header = v[1]</div>
+<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;            member = v[2]</div>
+<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;        else</div>
+<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;            header = v</div>
+<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;            member = v</div>
+<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160;        end</div>
+<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160;        if header == &quot;ip4&quot; or header == &quot;udp&quot; or header == &quot;ptp&quot; then</div>
+<div class="line"><a name="l00365"></a><span class="lineno">  365</span>&#160;            self[member]:<a class="code" href="ip4_8lua.html#aad67eee9c45fb930f74be8ba6d7114d8">setLength</a>(length - accumulatedLength)</div>
+<div class="line"><a name="l00366"></a><span class="lineno">  366</span>&#160;        elseif header == &quot;ip6&quot; then</div>
+<div class="line"><a name="l00367"></a><span class="lineno">  367</span>&#160;            self[member]:<a class="code" href="ip4_8lua.html#aad67eee9c45fb930f74be8ba6d7114d8">setLength</a>(length - (accumulatedLength + 40))</div>
+<div class="line"><a name="l00368"></a><span class="lineno">  368</span>&#160;        end</div>
+<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160;        accumulatedLength = accumulatedLength + ffi.sizeof(self[member])</div>
+<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160;    end</div>
+<div class="line"><a name="l00371"></a><span class="lineno">  371</span>&#160;end</div>
+<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160;</div>
+<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;--- Calculate all checksums manually (not offloading them).</div>
+<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160;--- There also exist functions to calculate the checksum of only one header.</div>
+<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160;--- Naming convention: <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>:calculate&lt;member&gt;Checksum() (for all existing packets member = {Ip, Tcp, Udp, Icmp})</div>
+<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160;--- @todo Runtime critical <span class="keyword">function</span>: <span class="keyword">this</span> has to be fast (check with benchmark)</div>
+<div class="line"><a name="l00377"></a><span class="lineno">  377</span>&#160;<span class="keyword">function</span> <a class="code" href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a>(<span class="keyword">self</span>)</div>
+<div class="line"><a name="l00378"></a><span class="lineno">  378</span>&#160;    for _, v in ipairs(self:getArgs()) do</div>
+<div class="line"><a name="l00379"></a><span class="lineno">  379</span>&#160;        local header, member</div>
+<div class="line"><a name="l00380"></a><span class="lineno">  380</span>&#160;        if type(v) == &quot;table&quot; then</div>
+<div class="line"><a name="l00381"></a><span class="lineno">  381</span>&#160;            header = v[1]</div>
+<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160;            member = v[2]</div>
+<div class="line"><a name="l00383"></a><span class="lineno">  383</span>&#160;        else</div>
+<div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160;            header = v</div>
+<div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160;            member = v</div>
+<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;        end</div>
+<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;        </div>
+<div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160;        -- if the header has a checksum, call the function</div>
+<div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;        if header == &quot;ip4&quot; or header == &quot;icmp&quot; then -- FIXME NYI or header == &quot;udp&quot; or header == &quot;tcp&quot; then</div>
+<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;            self:getHeader(v):<a class="code" href="ip4_8lua.html#a32d6630a7a84455af5554e8b80df9047">calculateChecksum</a>()</div>
+<div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;        end</div>
+<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160;    end</div>
+<div class="line"><a name="l00393"></a><span class="lineno">  393</span>&#160;end</div>
+<div class="line"><a name="l00394"></a><span class="lineno">  394</span>&#160;</div>
+<div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;--- Creates a packet struct (cdata) consisting of different headers.</div>
+<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;--- Simply list the headers in the order you want them to be in a packet.</div>
+<div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160;--- If you want the member to be named differently, use the following syntax:</div>
+<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;--- normal: &lt;header&gt; ; different membername: { &lt;header&gt;, &lt;member&gt; }.</div>
+<div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160;--- Supported keywords: <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>, arp, ptp, <a class="code" href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a>, ip6, udp, tcp, icmp</div>
+<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;--- @code</div>
+<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;--- makeStruct(<span class="stringliteral">&#39;eth&#39;</span>, { <span class="stringliteral">&#39;ip4&#39;</span>, <span class="stringliteral">&#39;ip&#39;</span> }, <span class="stringliteral">&#39;udp&#39;</span>) --- creates an UDP packet <span class="keyword">struct</span></div>
+<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;--- --- the ip4 member of the packet is named <span class="stringliteral">&#39;ip&#39;</span></div>
+<div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;--- @endcode</div>
+<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;--- @param args list of keywords/tables of keyword-member pairs</div>
+<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;--- @<span class="keywordflow">return</span> name name of the <span class="keyword">struct</span></div>
+<div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160;--- @<span class="keywordflow">return</span> ctype ctype of the <span class="keyword">struct</span></div>
+<div class="line"><a name="l00407"></a><span class="lineno">  407</span>&#160;<span class="keyword">function</span> <a class="code" href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a>(...)</div>
+<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;    local name = &quot;&quot;</div>
+<div class="line"><a name="l00409"></a><span class="lineno">  409</span>&#160;    local str = &quot;&quot;</div>
+<div class="line"><a name="l00410"></a><span class="lineno">  410</span>&#160;    </div>
+<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;    -- <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> the specified headers and build the name</div>
+<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;    for _, v in ipairs(...) do</div>
+<div class="line"><a name="l00413"></a><span class="lineno">  413</span>&#160;        local header, member</div>
+<div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;        if type(v) == &quot;table&quot; then</div>
+<div class="line"><a name="l00415"></a><span class="lineno">  415</span>&#160;            header = v[1]</div>
+<div class="line"><a name="l00416"></a><span class="lineno">  416</span>&#160;            member = v[2]</div>
+<div class="line"><a name="l00417"></a><span class="lineno">  417</span>&#160;        else</div>
+<div class="line"><a name="l00418"></a><span class="lineno">  418</span>&#160;            header = v</div>
+<div class="line"><a name="l00419"></a><span class="lineno">  419</span>&#160;            member = v</div>
+<div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160;        end</div>
+<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;</div>
+<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;        -- alias for <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a> -&gt; ethernet</div>
+<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;        if header == &#39;<a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>&#39; then</div>
+<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;            header = &#39;ethernet&#39;</div>
+<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;        end</div>
+<div class="line"><a name="l00426"></a><span class="lineno">  426</span>&#160;</div>
+<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;        -- <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> header</div>
+<div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160;        str = str .. [[</div>
+<div class="line"><a name="l00429"></a><span class="lineno">  429</span>&#160;        struct ]] .. header .. &#39;_header &#39; .. member .. [[;</div>
+<div class="line"><a name="l00430"></a><span class="lineno">  430</span>&#160;        ]]</div>
 <div class="line"><a name="l00431"></a><span class="lineno">  431</span>&#160;</div>
-<div class="line"><a name="l00432"></a><span class="lineno">  432</span>&#160;    -- add rest of the struct</div>
-<div class="line"><a name="l00433"></a><span class="lineno">  433</span>&#160;    str = [[</div>
-<div class="line"><a name="l00434"></a><span class="lineno">  434</span>&#160;    struct __attribute__((__packed__)) ]] </div>
-<div class="line"><a name="l00435"></a><span class="lineno">  435</span>&#160;    .. name </div>
-<div class="line"><a name="l00436"></a><span class="lineno">  436</span>&#160;    .. [[ {</div>
-<div class="line"><a name="l00437"></a><span class="lineno">  437</span>&#160;        ]]</div>
-<div class="line"><a name="l00438"></a><span class="lineno">  438</span>&#160;    .. str </div>
-<div class="line"><a name="l00439"></a><span class="lineno">  439</span>&#160;    .. [[</div>
-<div class="line"><a name="l00440"></a><span class="lineno">  440</span>&#160;        <span class="keyword">union </span>payload_t payload;</div>
-<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;    };  </div>
-<div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160;    ]]</div>
-<div class="line"><a name="l00443"></a><span class="lineno">  443</span>&#160;    -- add <span class="keyword">struct </span>definition, return full name and typeof</div>
-<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;    ffi.cdef(str)</div>
-<div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160;    name = <span class="stringliteral">&quot;struct &quot;</span> .. name</div>
-<div class="line"><a name="l00446"></a><span class="lineno">  446</span>&#160;    <span class="keywordflow">return</span> name, ffi.typeof(name .. <span class="stringliteral">&quot;*&quot;</span>)</div>
-<div class="line"><a name="l00447"></a><span class="lineno">  447</span>&#160;end</div>
-<div class="line"><a name="l00448"></a><span class="lineno">  448</span>&#160;</div>
-<div class="line"><a name="l00449"></a><span class="lineno">  449</span>&#160;</div>
-<div class="line"><a name="l00450"></a><span class="lineno">  450</span>&#160;---------------------------------------------------------------------------</div>
-<div class="line"><a name="l00451"></a><span class="lineno">  451</span>&#160;---- Metatypes</div>
-<div class="line"><a name="l00452"></a><span class="lineno">  452</span>&#160;---------------------------------------------------------------------------</div>
+<div class="line"><a name="l00432"></a><span class="lineno">  432</span>&#160;        -- build name</div>
+<div class="line"><a name="l00433"></a><span class="lineno">  433</span>&#160;        name = name .. &quot;__&quot; .. header .. &quot;_&quot; .. member</div>
+<div class="line"><a name="l00434"></a><span class="lineno">  434</span>&#160;    end</div>
+<div class="line"><a name="l00435"></a><span class="lineno">  435</span>&#160;</div>
+<div class="line"><a name="l00436"></a><span class="lineno">  436</span>&#160;    -- <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> rest of the struct</div>
+<div class="line"><a name="l00437"></a><span class="lineno">  437</span>&#160;    str = [[</div>
+<div class="line"><a name="l00438"></a><span class="lineno">  438</span>&#160;    struct __attribute__((__packed__)) ]] </div>
+<div class="line"><a name="l00439"></a><span class="lineno">  439</span>&#160;    .. name </div>
+<div class="line"><a name="l00440"></a><span class="lineno">  440</span>&#160;    .. [[ {</div>
+<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;        ]]</div>
+<div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160;    .. str </div>
+<div class="line"><a name="l00443"></a><span class="lineno">  443</span>&#160;    .. [[</div>
+<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;        <span class="keyword">union </span>payload_t payload;</div>
+<div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160;    };  </div>
+<div class="line"><a name="l00446"></a><span class="lineno">  446</span>&#160;    ]]</div>
+<div class="line"><a name="l00447"></a><span class="lineno">  447</span>&#160;    -- <a class="code" href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a> <span class="keyword">struct </span>definition, return full name and typeof</div>
+<div class="line"><a name="l00448"></a><span class="lineno">  448</span>&#160;    ffi.cdef(str)</div>
+<div class="line"><a name="l00449"></a><span class="lineno">  449</span>&#160;    name = <span class="stringliteral">&quot;struct &quot;</span> .. name</div>
+<div class="line"><a name="l00450"></a><span class="lineno">  450</span>&#160;    <span class="keywordflow">return</span> name, ffi.typeof(name .. <span class="stringliteral">&quot;*&quot;</span>)</div>
+<div class="line"><a name="l00451"></a><span class="lineno">  451</span>&#160;end</div>
+<div class="line"><a name="l00452"></a><span class="lineno">  452</span>&#160;</div>
 <div class="line"><a name="l00453"></a><span class="lineno">  453</span>&#160;</div>
-<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;ffi.metatype(<span class="stringliteral">&quot;struct rte_mbuf&quot;</span>, pkt)</div>
-<div class="line"><a name="l00455"></a><span class="lineno">  455</span>&#160;</div>
-<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160;<span class="keywordflow">return</span> pkt</div>
+<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;---------------------------------------------------------------------------</div>
+<div class="line"><a name="l00455"></a><span class="lineno">  455</span>&#160;---- Metatypes</div>
+<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160;---------------------------------------------------------------------------</div>
+<div class="line"><a name="l00457"></a><span class="lineno">  457</span>&#160;</div>
+<div class="line"><a name="l00458"></a><span class="lineno">  458</span>&#160;ffi.metatype(<span class="stringliteral">&quot;struct rte_mbuf&quot;</span>, <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>)</div>
+<div class="line"><a name="l00459"></a><span class="lineno">  459</span>&#160;</div>
+<div class="line"><a name="l00460"></a><span class="lineno">  460</span>&#160;<span class="keywordflow">return</span> <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a></div>
 <div class="ttc" id="packet_8lua_html_ab00540dd9e039f047b33ee4bf066a0bc"><div class="ttname"><a href="packet_8lua.html#ab00540dd9e039f047b33ee4bf066a0bc">offloadUdpChecksum</a></div><div class="ttdeci">function pkt offloadUdpChecksum(ipv4, l2_len, l3_len)</div><div class="ttdoc">Instruct the NIC to calculate the IP and UDP checksum for this packet. </div></div>
 <div class="ttc" id="packet_8lua_html_a9ec741ec046b38ff23624e841a2ec3da"><div class="ttname"><a href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a></div><div class="ttdeci">function packetCreate(...)</div><div class="ttdoc">Create struct and functions for a new packet. </div></div>
+<div class="ttc" id="ethernet_8lua_html_a1965649109f35d5fb6b9198773792cc2"><div class="ttname"><a href="ethernet_8lua.html#a1965649109f35d5fb6b9198773792cc2">getEthernetPacket</a></div><div class="ttdeci">pkt getEthernetPacket</div><div class="ttdoc">Cast the packet to an ethernet packet. </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00172">ethernet.lua:172</a></div></div>
 <div class="ttc" id="packet_8lua_html_a2635156d751e509e4b4f607a2b045c5a"><div class="ttname"><a href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a></div><div class="ttdeci">function pkt dump(bytes)</div><div class="ttdoc">Dumps the packet data cast to the best fitting packet struct. </div></div>
 <div class="ttc" id="ethernet_8lua_html_ab762a74003764fe46985fcdba9b61ae8"><div class="ttname"><a href="ethernet_8lua.html#ab762a74003764fe46985fcdba9b61ae8">getString</a></div><div class="ttdeci">function macAddr getString()</div><div class="ttdoc">Retrieve the string representation of a MAC address. </div></div>
+<div class="ttc" id="packet_8lua_html_ac0443a417cdc375adfd2b90ff442596a"><div class="ttname"><a href="packet_8lua.html#ac0443a417cdc375adfd2b90ff442596a">enableTimestamps</a></div><div class="ttdeci">function pkt enableTimestamps()</div><div class="ttdoc">TODO. </div></div>
+<div class="ttc" id="ethernet_8lua_html_afc273c5659e952cbe7ed4a5d5eb1876d"><div class="ttname"><a href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a></div><div class="ttdeci">function etherHeader setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)</div><div class="ttdoc">Change the default values for namedArguments (for fill/get). </div></div>
+<div class="ttc" id="ip4_8lua_html_aad67eee9c45fb930f74be8ba6d7114d8"><div class="ttname"><a href="ip4_8lua.html#aad67eee9c45fb930f74be8ba6d7114d8">setLength</a></div><div class="ttdeci">function ip4Header setLength(int)</div><div class="ttdoc">Set the total length. </div></div>
 <div class="ttc" id="packet_8lua_html_a6b57d15d38741b7878ad8d06b88ebbb2"><div class="ttname"><a href="packet_8lua.html#a6b57d15d38741b7878ad8d06b88ebbb2">setDelay</a></div><div class="ttdeci">function pkt setDelay(delay)</div><div class="ttdoc">Set the time to wait before the packet is sent for software rate-controlled send methods. </div></div>
 <div class="ttc" id="ethernet_8lua_html_acf626fe45ca4177b3fa2994ed5f12655"><div class="ttname"><a href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a></div><div class="ttdeci">function etherHeader fill(args, pre)</div><div class="ttdoc">Set all members of the ethernet header. </div></div>
 <div class="ttc" id="packet_8lua_html_a40b03d76e322aea890f56cb62e081749"><div class="ttname"><a href="packet_8lua.html#a40b03d76e322aea890f56cb62e081749">packetCalculateChecksums</a></div><div class="ttdeci">function packetCalculateChecksums(self)</div><div class="ttdoc">Calculate all checksums manually (not offloading them). </div></div>
 <div class="ttc" id="packet_8lua_html_adc45c322a397d3e476801103a4f0ecb8"><div class="ttname"><a href="packet_8lua.html#adc45c322a397d3e476801103a4f0ecb8">packetFill</a></div><div class="ttdeci">function packetFill(self, namedArgs)</div><div class="ttdoc">Set all members of all headers. </div></div>
 <div class="ttc" id="packet_8lua_html_abf539eaa6742ff5dc815282767ca303e"><div class="ttname"><a href="packet_8lua.html#abf539eaa6742ff5dc815282767ca303e">get</a></div><div class="ttdeci">function pkt get()</div><div class="ttdoc">Returns the packet data cast to the best fitting packet struct. </div></div>
 <div class="ttc" id="packet_8lua_html_af10789b2c53556d4a523c5cd60680ee1"><div class="ttname"><a href="packet_8lua.html#af10789b2c53556d4a523c5cd60680ee1">hasTimestamp</a></div><div class="ttdeci">function pkt hasTimestamp()</div><div class="ttdoc">Check if the PKT_RX_IEEE1588_TMST flag is set. </div></div>
+<div class="ttc" id="packet_8lua_html_a04e10ab9efc9f793fb8125de25bc1605"><div class="ttname"><a href="packet_8lua.html#a04e10ab9efc9f793fb8125de25bc1605">setRate</a></div><div class="ttdeci">function pkt setRate(rate)</div><div class="ttdoc">TODO. </div></div>
+<div class="ttc" id="ip4_8lua_html_a747e5bfca42c9077e8be3a084cbcd30d"><div class="ttname"><a href="ip4_8lua.html#a747e5bfca42c9077e8be3a084cbcd30d">add</a></div><div class="ttdeci">function ip4Addr add(val)</div><div class="ttdoc">Add a number to an IPv4 address in-place. </div></div>
 <div class="ttc" id="packet_8lua_html_ad2182ba21f29223467ceb5d2858c0a20"><div class="ttname"><a href="packet_8lua.html#ad2182ba21f29223467ceb5d2858c0a20">packetSetLength</a></div><div class="ttdeci">function packetSetLength(self, length)</div><div class="ttdoc">Set length for all headers. </div></div>
 <div class="ttc" id="packet_8lua_html_a7b16486a2c3acbb96327174375464b14"><div class="ttname"><a href="packet_8lua.html#a7b16486a2c3acbb96327174375464b14">packetDump</a></div><div class="ttdeci">function packetDump(self, bytes)</div><div class="ttdoc">Print a hex dump of a packet. </div></div>
 <div class="ttc" id="ethernet_8lua_html_abd4d16011dee203ba12fc0b0cb1df914"><div class="ttname"><a href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a></div><div class="ttdeci">local eth</div><div class="ttdoc">Ethernet protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00024">ethernet.lua:24</a></div></div>
 <div class="ttc" id="packet_8lua_html_a8e1d90118b8f6ce7174b5f65ffc18b64"><div class="ttname"><a href="packet_8lua.html#a8e1d90118b8f6ce7174b5f65ffc18b64">packetMakeStruct</a></div><div class="ttdeci">function packetMakeStruct(...)</div><div class="ttdoc">Creates a packet struct (cdata) consisting of different headers. </div></div>
 <div class="ttc" id="packet_8lua_html_a2bcf3c64f8c48891a26a5541de496f65"><div class="ttname"><a href="packet_8lua.html#a2bcf3c64f8c48891a26a5541de496f65">offloadTcpChecksum</a></div><div class="ttdeci">function pkt offloadTcpChecksum(ipv4, l2_len, l3_len)</div><div class="ttdoc">Instruct the NIC to calculate the IP and TCP checksum for this packet. </div></div>
 <div class="ttc" id="packet_8lua_html_a5b0d50eb797ef2b260c50724fe3a3d84"><div class="ttname"><a href="packet_8lua.html#a5b0d50eb797ef2b260c50724fe3a3d84">getTimestamp</a></div><div class="ttdeci">function pkt getTimestamp()</div><div class="ttdoc">Retrieve the time stamp information. </div></div>
+<div class="ttc" id="ip4_8lua_html_a47df415387eb6f4fdd5752c3b5de89a7"><div class="ttname"><a href="ip4_8lua.html#a47df415387eb6f4fdd5752c3b5de89a7">ip</a></div><div class="ttdeci">local ip</div><div class="ttdoc">IP4 protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ip4_8lua_source.html#l00024">ip4.lua:24</a></div></div>
 <div class="ttc" id="packet_8lua_html_ac7205e5d1a92c37d7fd9b68555bcdaa1"><div class="ttname"><a href="packet_8lua.html#ac7205e5d1a92c37d7fd9b68555bcdaa1">packetGetHeader</a></div><div class="ttdeci">function packetGetHeader(self, h)</div><div class="ttdoc">Get the specified header of a packet (e.g. </div></div>
 <div class="ttc" id="packet_8lua_html_acf6e8135b9fcdfa8b19c81b2e462c1d2"><div class="ttname"><a href="packet_8lua.html#acf6e8135b9fcdfa8b19c81b2e462c1d2">packetResolveLastHeader</a></div><div class="ttdeci">function packetResolveLastHeader(self)</div><div class="ttdoc">Try to find out what the next header in the payload of this packet is. </div></div>
+<div class="ttc" id="packet_8lua_html_af8027fe3e9f1acfedd960d3c9b8b6b51"><div class="ttname"><a href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a></div><div class="ttdeci">local pkt</div><div class="ttdoc">Module for packets (rte_mbuf) </div><div class="ttdef"><b>Definition:</b> <a href="packet_8lua_source.html#l00020">packet.lua:20</a></div></div>
 <div class="ttc" id="packet_8lua_html_a9184100d6f5e1a29c8e6b580c40c6a3a"><div class="ttname"><a href="packet_8lua.html#a9184100d6f5e1a29c8e6b580c40c6a3a">packetGet</a></div><div class="ttdeci">function packetGet(self)</div><div class="ttdoc">Retrieve the values of all members as list of named arguments. </div></div>
+<div class="ttc" id="ip4_8lua_html_a32d6630a7a84455af5554e8b80df9047"><div class="ttname"><a href="ip4_8lua.html#a32d6630a7a84455af5554e8b80df9047">calculateChecksum</a></div><div class="ttdeci">function ip4Header calculateChecksum()</div><div class="ttdoc">Calculate and set the checksum. </div></div>
+<div class="ttc" id="packet_8lua_html_a51ce788acb683d3a0690599805e480dc"><div class="ttname"><a href="packet_8lua.html#a51ce788acb683d3a0690599805e480dc">setSize</a></div><div class="ttdeci">function pkt setSize(size)</div><div class="ttdoc">TODO. </div></div>
 <div class="ttc" id="ethernet_8lua_html_a77e75ae36313b17315d8ced823089f9e"><div class="ttname"><a href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a></div><div class="ttdeci">function macAddr set(addr)</div><div class="ttdoc">Set the MAC address. </div></div>
 <div class="ttc" id="packet_8lua_html_ac3637a202dd87b6f65ed3a0f2e580360"><div class="ttname"><a href="packet_8lua.html#ac3637a202dd87b6f65ed3a0f2e580360">packetGetHeaders</a></div><div class="ttdeci">function packetGetHeaders(self)</div><div class="ttdoc">Get all headers of a packet as list. </div></div>
 <div class="ttc" id="packet_8lua_html_a07b89b4064afceae93179acfa2c91d78"><div class="ttname"><a href="packet_8lua.html#a07b89b4064afceae93179acfa2c91d78">offloadIPChecksum</a></div><div class="ttdeci">function pkt offloadIPChecksum(ipv4, l2_len, l3_len)</div><div class="ttdoc">Instruct the NIC to calculate the IP checksum for this packet. </div></div>
@@ -589,7 +602,7 @@ $(document).ready(function(){initNavTree('packet_8lua_source.html','');});
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="packet_8lua.html">packet.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:54:42 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 13:53:58 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>
