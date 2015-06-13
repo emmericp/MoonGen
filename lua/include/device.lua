@@ -58,6 +58,16 @@ end
 
 local devices = {}
 
+-- FIXME: add description for rx/txDescs speed and dropEnable parameters.
+--- Configure a device
+-- @param port Port to configure
+-- @param mempool optional (default = create a new mempool) Mempool to associate to the device
+-- @param rxQueues optional (default = 1) Number of RX queues to configure 
+-- @param txQueues optional (default = 1) Number of TX queues to configure 
+-- @param rxDescs optional (default = 0)
+-- @param txDescs optional (default = 0)
+-- @param speed optional (default = 0)
+-- @param dropEnable optional (default = true)
 function mod.config(...)
   args = {...}
   if #args > 1 then
