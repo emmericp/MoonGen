@@ -13,9 +13,18 @@ void mg_bitmask_free(struct mg_bitmask * mask){
   rte_free(mask);
 }
 
-void mg_bitmask_set_n_one(struct mg_bitmask * mask, uint16_t n){
+void mg_bitmask_clear_all(struct mg_bitmask * mask){
   // TODO: check if memset() would be faster for 64bit values...
   uint16_t i;
+  for(i=0; i< mask->n_blocks; i++){
+    mask->mask[i] = 0;
+  }
+}
+
+// This will only touch the first n bits. If other bits are set/cleared, they
+// will not be affected
+void mg_bitmask_set_n_one(struct mg_bitmask * mask, uint16_t n){
+  // TODO: check if memset() would be faster for 64bit values...
   uint64_t * msk = mask->mask;
   while(n>=64){
     *msk = 0xffffffffffffffff;
@@ -23,7 +32,7 @@ void mg_bitmask_set_n_one(struct mg_bitmask * mask, uint16_t n){
     msk++;
   }
   if(n & 0x3f){
-    *msk = (0xffffffffffffffff >> (64-n));
+    *msk |= (0xffffffffffffffff >> (64-n));
   }
 }
 
@@ -34,6 +43,7 @@ void mg_bitmask_set_all_one(struct mg_bitmask * mask){
   for(i=0; i< mask->n_blocks; i++){
     mask->mask[i] = 0xffffffffffffffff;
   }
+  // FIXME XXX TODO why do we need this??? can't we just set all blocks to 1s?
   if(mask->size & 0x3f){
     mask->mask[mask->n_blocks-1] = (0xffffffffffffffff >> (64-(mask->size & 0x3f)));
   }
