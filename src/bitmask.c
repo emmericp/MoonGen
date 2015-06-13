@@ -13,8 +13,23 @@ void mg_bitmask_free(struct mg_bitmask * mask){
   rte_free(mask);
 }
 
+void mg_bitmask_set_n_one(struct mg_bitmask * mask, uint16_t n){
+  // TODO: check if memset() would be faster for 64bit values...
+  uint16_t i;
+  uint64_t * msk = mask->mask;
+  while(n>=64){
+    *msk = 0xffffffffffffffff;
+    n -= 64;
+    msk++;
+  }
+  if(n & 0x3f){
+    *msk = (0xffffffffffffffff >> (64-n));
+  }
+}
+
 void mg_bitmask_set_all_one(struct mg_bitmask * mask){
   // TODO: check if memset() would be faster for 64bit values...
+  // TODO: use mg_bitmask_set_n_one instead...
   uint16_t i;
   for(i=0; i< mask->n_blocks; i++){
     mask->mask[i] = 0xffffffffffffffff;
