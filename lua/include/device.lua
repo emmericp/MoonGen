@@ -4,6 +4,7 @@ local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
 local memory	= require "memory"
+local serpent = require "Serpent"
 
 mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_82599	= 0x808610FB
@@ -57,34 +58,59 @@ end
 
 local devices = {}
 
--- TODO: use a table/named arguments as this is becoming excessive
-function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
-	if not mempool or type(mempool) == "number" then
-    -- FIXME: this totally destroys readability. Variable names do not correspond with their meaning anymore
-		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
-	end
-	if devices[port] and devices[port].initialized then
-		printf("[WARNING] Device %d already configured, skipping initilization", port)
-		return mod.get(port)
-	end
-	speed = speed or 0
-	dropEnable = dropEnable == nil and true
-	if rxQueues == 0 or txQueues == 0 then
-		-- dpdk does not like devices without rx/tx queues :(
-		errorf("cannot initialize device without %s queues", rxQueues == 0 and txQueues == 0 and "rx and tx" or rxQueues == 0 and "rx" or "tx")
-	end
-	rxQueues = rxQueues or 1
-	txQueues = txQueues or 1
-	rxDescs = rxDescs or 0
-	txDescs = txDescs or 0
-	-- TODO: support options
-	local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, speed, mempool, dropEnable)
-	if rc ~= 0 then
-		errorf("could not configure device %d: error %d", port, rc)
-	end
-	local dev = mod.get(port)
-	dev.initialized = true
-	return dev
+function mod.config(...)
+  args = {...}
+  if #args > 1 then
+    -- this is for legacy compatibility when calling the function  without named arguments
+    print "[WARNING] You are using a depreciated method for invoking device config. config(...) should be used with named arguments."
+    if not args[2] or type(args[2]) == "number" then
+      args.port       = args[1]
+      args.rxQueues   = args[2]
+      args.txQueues   = args[3]
+      args.rxDescs    = args[4]
+      args.txDescs    = args[5]
+      args.speed      = args[6]
+      args.dropEnable = args[7]
+    else
+      args.port       = args[1]
+      args.mempool    = args[2]
+      args.rxQueues   = args[3]
+      args.txQueues   = args[4]
+      args.rxDescs    = args[5]
+      args.txDescs    = args[6]
+      args.speed      = args[7]
+      args.dropEnable = args[8]
+    end
+  elseif #args == 1 then
+    -- here we receive named arguments
+    args = args[1]
+  else
+    errorf("Device config needs at least one argument.")
+  end
+
+  args.mempool = args.mempool or memory.createMemPool(nil, dpdkc.get_socket(args.port))
+  if devices[args.port] and devices[args.port].initialized then
+    printf("[WARNING] Device %d already configured, skipping initilization", port)
+    return mod.get(args.port)
+  end
+  args.speed = args.speed or 0
+  args.dropEnable = args.dropEnable == nil and true
+  if args.rxQueues == 0 or args.txQueues == 0 then
+    -- dpdk does not like devices without rx/tx queues :(
+    errorf("cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
+  end
+  args.rxQueues = args.rxQueues or 1
+  args.txQueues = args.txQueues or 1
+  args.rxDescs  = args.rxDescs or 0
+  args.txDescs  = args.txDescs or 0
+  -- TODO: support options
+  local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable)
+  if rc ~= 0 then
+    errorf("could not configure device %d: error %d", args.port, rc)
+  end
+  local dev = mod.get(args.port)
+  dev.initialized = true
+  return dev
 end
 
 function mod.get(id)
