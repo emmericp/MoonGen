@@ -1,3 +1,9 @@
+---------------------------------
+--- @file namespaces.lua
+--- @brief Namespaces ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local ffi		= require "ffi"

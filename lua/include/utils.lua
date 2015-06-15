@@ -1,3 +1,9 @@
+---------------------------------
+--- @file utils.lua
+--- @brief Defines general utility functions.
+--- @todo TODO docu
+---------------------------------
+
 local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
 local write = io.write
 local format = string.format
@@ -54,8 +60,8 @@ function printCsv(...)
 end
 
 --- Get the time to wait (in byte-times) for the next packet based on a poisson process.
--- @param average the average wait time between two packets
--- @returns the number of byte-times to wait to achieve the given average wait-time
+--- @param average the average wait time between two packets
+--- @returns the number of byte-times to wait to achieve the given average wait-time
 function poissonDelay(average)
 	return floor(-log(1 - random()) / (1 / average) + 0.5)
 end
@@ -109,8 +115,8 @@ function checksum(data, len)
 end
 
 --- Parse a string to a MAC address
--- @param mac address in string format
--- @return address in mac_address format or nil if invalid address
+--- @param mac address in string format
+--- @return address in mac_address format or nil if invalid address
 function parseMacAddress(mac)
 	local bytes = {string.match(mac, '(%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)')}
 	if bytes == nil then
@@ -134,8 +140,8 @@ function parseMacAddress(mac)
 end
 
 --- Parse a string to an IP address
--- @return address ip address in ip4_address or ip6_address format or nil if invalid address
--- @return boolean true if IPv4 address, false otherwise
+--- @return address ip address in ip4_address or ip6_address format or nil if invalid address
+--- @return boolean true if IPv4 address, false otherwise
 function parseIPAddress(ip)
 	ip = tostring(ip)
 	local address = parseIP4Address(ip)
@@ -146,8 +152,8 @@ function parseIPAddress(ip)
 end
 
 --- Parse a string to an IPv4 address
--- @param ip address in string format
--- @return address in uint32 format or nil if invalid address
+--- @param ip address in string format
+--- @return address in uint32 format or nil if invalid address
 function parseIP4Address(ip)
 	ip = tostring(ip)
 	local bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
@@ -177,8 +183,8 @@ int inet_pton(int af, const char *src, void *dst);
 ]]
 
 --- Parse a string to an IPv6 address
--- @param ip address in string format
--- @return address in ip6_address format or nil if invalid address
+--- @param ip address in string format
+--- @return address in ip6_address format or nil if invalid address
 function parseIP6Address(ip)
 	ip = tostring(ip)
 	local LINUX_AF_INET6 = 10 --preprocessor constant of Linux
@@ -198,8 +204,8 @@ function parseIP6Address(ip)
 end
 
 --- Retrieve the system time with microseconds accuracy.
--- TODO use some C function to get microseconds.
--- @return System time in hh:mm:ss.uuuuuu format.
+--- @todo use some C function to get microseconds.
+--- @return System time in hh:mm:ss.uuuuuu format.
 function getTimeMicros()
 	local t = time()
 	local h, m, s, u
@@ -215,8 +221,8 @@ function getTimeMicros()
 end
 
 --- Print a hex dump of cdata.
--- @param data The cdata to be dumped.
--- @param bytes Number of bytes to dump.
+--- @param data The cdata to be dumped.
+--- @param bytes Number of bytes to dump.
 function dumpHex(data, bytes)
 	local data = ffi.cast("uint8_t*", data)
 	for i = 0, bytes - 1 do
@@ -237,7 +243,7 @@ function dumpHex(data, bytes)
 end
 
 --- Merge tables.
--- @param args Arbitrary amount of tables to get merged.
+--- @param args Arbitrary amount of tables to get merged.
 function mergeTables(...)
 	local table = {}
 	if select("#", ...) > 0 then
@@ -252,8 +258,8 @@ function mergeTables(...)
 end
 
 --- Return all integerss in the range [start, max].
--- @param max upper bound
--- @param start lower bound, default = 1
+--- @param max upper bound
+--- @param start lower bound, default = 1
 function range(max, start, ...)
 	start = start or 1
 	if start > max then
@@ -283,9 +289,8 @@ local band = bit.band
 local sar = bit.arshift
 
 --- Increment a wrapping counter, i.e. (val + 1) % max
--- This function is optimized to generate branchless code and faster than a naive modulo-based implementation.
--- 
--- NOTE: all attempts to wrap this in a nice and simple class have failed (~30% performance impact).
+--- This function is optimized to generate branchless code and faster than a naive modulo-based implementation.
+--- @note: all attempts to wrap this in a nice and simple class have failed (~30% performance impact).
 function incAndWrap(val, max)
 	return band(val + 1, sar(val - max + 1, 31))
 end

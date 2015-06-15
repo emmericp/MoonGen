@@ -1,7 +1,4 @@
 var searchData=
 [
-  ['type_5farp',['TYPE_ARP',['../ethernet_8lua.html#ac44bf7e3e27d6fe66b53b7278a9209b6',1,'ethernet.lua']]],
-  ['type_5fip',['TYPE_IP',['../ethernet_8lua.html#a7854d8660c75a74ab1961ecc8435a501',1,'ethernet.lua']]],
-  ['type_5fip6',['TYPE_IP6',['../ethernet_8lua.html#a1e62b109f01062908e85f51bf5f5ce77',1,'ethernet.lua']]],
-  ['type_5fptp',['TYPE_PTP',['../ethernet_8lua.html#a94c3f96c5a6351c392b324930ed1e68c',1,'ethernet.lua']]]
+  ['hardware_5faddress_5ftype_5fethernet',['HARDWARE_ADDRESS_TYPE_ETHERNET',['../arp_8lua.html#a4d74ee91acd62623c41050e084026684',1,'arp.lua']]]
 ];

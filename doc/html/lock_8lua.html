@@ -90,7 +90,7 @@ $(document).ready(function(){initNavTree('lock_8lua.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -101,229 +101,40 @@ $(document).ready(function(){initNavTree('lock_8lua.html','');});
 
 <div class="header">
   <div class="summary">
-<a href="#func-members">Functions</a> &#124;
-<a href="#var-members">Variables</a>  </div>
+<a href="#func-members">Functions</a>  </div>
   <div class="headertitle">
 <div class="title">lock.lua File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
 
+<p>Lock ...  
+<a href="#details">More...</a></p>
+
 <p><a href="lock_8lua_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a4aa7a9b79d26791d4bcdc382caeb5e41"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#a4aa7a9b79d26791d4bcdc382caeb5e41">new</a> ()</td></tr>
-<tr class="separator:a4aa7a9b79d26791d4bcdc382caeb5e41"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae05fd163c7af972373449fecbffb783e"><td class="memItemLeft" align="right" valign="top">function lock&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a> ()</td></tr>
-<tr class="separator:ae05fd163c7af972373449fecbffb783e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab96dfa917e677d101852c488274d0efa"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#ab96dfa917e677d101852c488274d0efa">unlock</a> ()</td></tr>
-<tr class="separator:ab96dfa917e677d101852c488274d0efa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a70aeb0f2439beea2170e7e200eb3e235"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#a70aeb0f2439beea2170e7e200eb3e235">tryLock</a> (timeout)</td></tr>
-<tr class="memdesc:a70aeb0f2439beea2170e7e200eb3e235"><td class="mdescLeft">&#160;</td><td class="mdescRight">Try to acquire the lock, blocking for max &lt;timeout&gt; microseconds.  <a href="#a70aeb0f2439beea2170e7e200eb3e235">More...</a><br/></td></tr>
+<tr class="memitem:a70aeb0f2439beea2170e7e200eb3e235"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a70aeb0f2439beea2170e7e200eb3e235"></a>
+function lock&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#a70aeb0f2439beea2170e7e200eb3e235">tryLock</a> (timeout)</td></tr>
+<tr class="memdesc:a70aeb0f2439beea2170e7e200eb3e235"><td class="mdescLeft">&#160;</td><td class="mdescRight">Try to acquire the lock, blocking for max &lt;timeout&gt; microseconds. <br/></td></tr>
 <tr class="separator:a70aeb0f2439beea2170e7e200eb3e235"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae7bdaeb5df12d0563dee13a197a3d9e7"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#ae7bdaeb5df12d0563dee13a197a3d9e7">__call</a> (func,...)</td></tr>
-<tr class="memdesc:ae7bdaeb5df12d0563dee13a197a3d9e7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wrap a function call in lock/unlock calls.  <a href="#ae7bdaeb5df12d0563dee13a197a3d9e7">More...</a><br/></td></tr>
+<tr class="memitem:ae7bdaeb5df12d0563dee13a197a3d9e7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae7bdaeb5df12d0563dee13a197a3d9e7"></a>
+function lock&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#ae7bdaeb5df12d0563dee13a197a3d9e7">__call</a> (func,...)</td></tr>
+<tr class="memdesc:ae7bdaeb5df12d0563dee13a197a3d9e7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wrap a function call in lock/unlock calls. <br/></td></tr>
 <tr class="separator:ae7bdaeb5df12d0563dee13a197a3d9e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
-Variables</h2></td></tr>
-<tr class="memitem:a93cc9d5f326c929f86fabf7a33c1bb65"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> = {}</td></tr>
-<tr class="separator:a93cc9d5f326c929f86fabf7a33c1bb65"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a> = require &quot;ffi&quot;</td></tr>
-<tr class="separator:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adae593e557057ea9bc7c0fcb9c8588fb"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#adae593e557057ea9bc7c0fcb9c8588fb">stp</a> = require &quot;StackTracePlus&quot;</td></tr>
-<tr class="separator:adae593e557057ea9bc7c0fcb9c8588fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ada5f7a2f7477e942da190f5f12a6f57c"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a> = ffi.C</td></tr>
-<tr class="separator:ada5f7a2f7477e942da190f5f12a6f57c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a670b95f722f2010f60dfdb69fe5e4743"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#a670b95f722f2010f60dfdb69fe5e4743">lock</a> = {}</td></tr>
-<tr class="separator:a670b95f722f2010f60dfdb69fe5e4743"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7886770f3f19d37665cd5a90fa80f973"><td class="memItemLeft" align="right" valign="top"><a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lock_8lua.html#a7886770f3f19d37665cd5a90fa80f973">__index</a> = <a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a></td></tr>
-<tr class="separator:a7886770f3f19d37665cd5a90fa80f973"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function Documentation</h2>
-<a class="anchor" id="ae7bdaeb5df12d0563dee13a197a3d9e7"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a> __call </td>
-          <td>(</td>
-          <td class="paramtype">func&#160;</td>
-          <td class="paramname">, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Lock ... </p>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000006">Todo:</a></b></dt><dd>TODO docu </dd></dl>
 
-<p>Wrap a function call in lock/unlock calls. </p>
-
-</div>
-</div>
-<a class="anchor" id="ae05fd163c7af972373449fecbffb783e"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function lock lock </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="a4aa7a9b79d26791d4bcdc382caeb5e41"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> new </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="a70aeb0f2439beea2170e7e200eb3e235"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a> tryLock </td>
-          <td>(</td>
-          <td class="paramtype">timeout&#160;</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Try to acquire the lock, blocking for max &lt;timeout&gt; microseconds. </p>
-
-</div>
-</div>
-<a class="anchor" id="ab96dfa917e677d101852c488274d0efa"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a> unlock </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<h2 class="groupheader">Variable Documentation</h2>
-<a class="anchor" id="a7886770f3f19d37665cd5a90fa80f973"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a> __index = <a class="el" href="lock_8lua.html#ae05fd163c7af972373449fecbffb783e">lock</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="lock_8lua_source.html#l00011">11</a> of file <a class="el" href="lock_8lua_source.html">lock.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ada5f7a2f7477e942da190f5f12a6f57c"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local C = ffi.C</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="lock_8lua_source.html#l00008">8</a> of file <a class="el" href="lock_8lua_source.html">lock.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ab0fe2c273d26b897ce8facde43ddda0b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ffi = require &quot;ffi&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="lock_8lua_source.html#l00003">3</a> of file <a class="el" href="lock_8lua_source.html">lock.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a670b95f722f2010f60dfdb69fe5e4743"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local lock = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="lock_8lua_source.html#l00010">10</a> of file <a class="el" href="lock_8lua_source.html">lock.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a93cc9d5f326c929f86fabf7a33c1bb65"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local mod = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="lock_8lua_source.html#l00001">1</a> of file <a class="el" href="lock_8lua_source.html">lock.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="adae593e557057ea9bc7c0fcb9c8588fb"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local stp = require &quot;StackTracePlus&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="lock_8lua_source.html#l00004">4</a> of file <a class="el" href="lock_8lua_source.html">lock.lua</a>.</p>
-
-</div>
-</div>
-</div><!-- contents -->
+<p>Definition in file <a class="el" href="lock_8lua_source.html">lock.lua</a>.</p>
+</div></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="lock_8lua.html">lock.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:21:32 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 21:12:35 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

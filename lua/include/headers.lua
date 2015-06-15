@@ -2,6 +2,7 @@
 --- @file headers.lua
 --- @brief C struct definitions for all protocol headers and respective 
 --- additional structs for instance addresses.
+--- Please check the source code for more information.
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"

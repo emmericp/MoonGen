@@ -1,3 +1,9 @@
+---------------------------------
+--- @file dpdk.lua
+--- @brief DPDK ...
+--- @todo TODO docu
+---------------------------------
+
 --- high-level dpdk wrapper
 local mod = {}
 local ffi		= require "ffi"

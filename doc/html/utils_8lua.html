@@ -90,7 +90,7 @@ $(document).ready(function(){initNavTree('utils_8lua.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -101,42 +101,22 @@ $(document).ready(function(){initNavTree('utils_8lua.html','');});
 
 <div class="header">
   <div class="summary">
-<a href="#func-members">Functions</a> &#124;
-<a href="#var-members">Variables</a>  </div>
+<a href="#func-members">Functions</a>  </div>
   <div class="headertitle">
 <div class="title">utils.lua File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
 
+<p>Defines general utility functions.  
+<a href="#details">More...</a></p>
+
 <p><a href="utils_8lua_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:ae54683ab3fdfbeb0a0f010986338a73e"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#ae54683ab3fdfbeb0a0f010986338a73e">printf</a> (str,...)</td></tr>
-<tr class="separator:ae54683ab3fdfbeb0a0f010986338a73e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaa76710deef1f005bf87a55d0e496046"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#aaa76710deef1f005bf87a55d0e496046">errorf</a> (str,...)</td></tr>
-<tr class="separator:aaa76710deef1f005bf87a55d0e496046"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab6eb3483ea654dddf4d9b0ec502d219d"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#ab6eb3483ea654dddf4d9b0ec502d219d">mapVarArg</a> (f,...)</td></tr>
-<tr class="separator:ab6eb3483ea654dddf4d9b0ec502d219d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1fc6730b27615bc41ade3f80de41964e"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a1fc6730b27615bc41ade3f80de41964e">map</a> (t, f)</td></tr>
-<tr class="separator:a1fc6730b27615bc41ade3f80de41964e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a64138c1d0f2cc7c0c6b23501f30c6aa9"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a64138c1d0f2cc7c0c6b23501f30c6aa9">tostringall</a> (...)</td></tr>
-<tr class="separator:a64138c1d0f2cc7c0c6b23501f30c6aa9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1f4a02537ee6cb770aea4dc98f124c2f"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a1f4a02537ee6cb770aea4dc98f124c2f">tonumberall</a> (...)</td></tr>
-<tr class="separator:a1f4a02537ee6cb770aea4dc98f124c2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a007800c75d476a7defa24e78aa9ec7d8"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a007800c75d476a7defa24e78aa9ec7d8">toCsv</a> (...)</td></tr>
-<tr class="separator:a007800c75d476a7defa24e78aa9ec7d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad137248c45a505a909fb94f17bba74b"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#aad137248c45a505a909fb94f17bba74b">printCsv</a> (...)</td></tr>
-<tr class="separator:aad137248c45a505a909fb94f17bba74b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6469cc43957083bc4ac7211abc39899e"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a6469cc43957083bc4ac7211abc39899e">poissonDelay</a> (<a class="el" href="stats_8lua.html#ac28130e0f77f05fdc1c255e731e9427c">average</a>)</td></tr>
+<tr class="memitem:a6469cc43957083bc4ac7211abc39899e"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a6469cc43957083bc4ac7211abc39899e">poissonDelay</a> (average)</td></tr>
 <tr class="memdesc:a6469cc43957083bc4ac7211abc39899e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the time to wait (in byte-times) for the next packet based on a poisson process.  <a href="#a6469cc43957083bc4ac7211abc39899e">More...</a><br/></td></tr>
 <tr class="separator:a6469cc43957083bc4ac7211abc39899e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1a994f9b920f11969d7872d55faef894"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a1a994f9b920f11969d7872d55faef894">rateToByteDelay</a> (rate, <a class="el" href="memory_8lua.html#aa3d6656320f1a7278c0c2c7fdf07617c">size</a>)</td></tr>
-<tr class="separator:a1a994f9b920f11969d7872d55faef894"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acfa32aa30a80f48ee71b0dc5cff840e4"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#acfa32aa30a80f48ee71b0dc5cff840e4">bswap16</a> (<a class="el" href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a>)</td></tr>
-<tr class="separator:acfa32aa30a80f48ee71b0dc5cff840e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab50a328c48b6841b1c0c78c6fd811dd8"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#ab50a328c48b6841b1c0c78c6fd811dd8">checksum</a> (data, len)</td></tr>
-<tr class="separator:ab50a328c48b6841b1c0c78c6fd811dd8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8739b52185d0108a1e3ea23bd57128d6"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a8739b52185d0108a1e3ea23bd57128d6">parseMacAddress</a> (mac)</td></tr>
 <tr class="memdesc:a8739b52185d0108a1e3ea23bd57128d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parse a string to a MAC address.  <a href="#a8739b52185d0108a1e3ea23bd57128d6">More...</a><br/></td></tr>
 <tr class="separator:a8739b52185d0108a1e3ea23bd57128d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -161,87 +141,13 @@ Functions</h2></td></tr>
 <tr class="memitem:a3227751a327f670aff28e258c7e4e61e"><td class="memItemLeft" align="right" valign="top">function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a3227751a327f670aff28e258c7e4e61e">range</a> (max, start,...)</td></tr>
 <tr class="memdesc:a3227751a327f670aff28e258c7e4e61e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return all integerss in the range [start, max].  <a href="#a3227751a327f670aff28e258c7e4e61e">More...</a><br/></td></tr>
 <tr class="separator:a3227751a327f670aff28e258c7e4e61e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
-Variables</h2></td></tr>
-<tr class="memitem:a598fc3fdee6e78605879e83c3b20c199"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bor</a></td></tr>
-<tr class="separator:a598fc3fdee6e78605879e83c3b20c199"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad7b51ea9fc3c6bfe1054e5861625cb1d"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#ad7b51ea9fc3c6bfe1054e5861625cb1d">band</a></td></tr>
-<tr class="separator:ad7b51ea9fc3c6bfe1054e5861625cb1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9bb9fa0add9f41d56bf1ea1b00f0f29f"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a9bb9fa0add9f41d56bf1ea1b00f0f29f">bnot</a></td></tr>
-<tr class="separator:a9bb9fa0add9f41d56bf1ea1b00f0f29f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a84d1e4c164c7cf777a943d26a07b2e4b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a84d1e4c164c7cf777a943d26a07b2e4b">rshift</a></td></tr>
-<tr class="separator:a84d1e4c164c7cf777a943d26a07b2e4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acaae1371dbd709eaf17514ccc770fd13"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#acaae1371dbd709eaf17514ccc770fd13">lshift</a></td></tr>
-<tr class="separator:acaae1371dbd709eaf17514ccc770fd13"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad369b60c48a402cd886ff56aa3b47842"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#ad369b60c48a402cd886ff56aa3b47842">bswap</a> = <a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bit.bor</a></td></tr>
-<tr class="separator:ad369b60c48a402cd886ff56aa3b47842"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4dd81335a2d7c7076c85564a0493853a"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a4dd81335a2d7c7076c85564a0493853a">write</a> = io.write</td></tr>
-<tr class="separator:a4dd81335a2d7c7076c85564a0493853a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a58ea6e9644da54b65f48bf1158205fd0"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a> = string.format</td></tr>
-<tr class="separator:a58ea6e9644da54b65f48bf1158205fd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a47e9355b7ec4afb84e5d0e07279d4959"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a47e9355b7ec4afb84e5d0e07279d4959">random</a></td></tr>
-<tr class="separator:a47e9355b7ec4afb84e5d0e07279d4959"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a109d45296c11048f126d8b4ffe93e40f"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a109d45296c11048f126d8b4ffe93e40f">log</a></td></tr>
-<tr class="separator:a109d45296c11048f126d8b4ffe93e40f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac60437ab69cd28eadc7d147a7ce75cb8"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#ac60437ab69cd28eadc7d147a7ce75cb8">floor</a> = <a class="el" href="utils_8lua.html#a47e9355b7ec4afb84e5d0e07279d4959">math.random</a></td></tr>
-<tr class="separator:ac60437ab69cd28eadc7d147a7ce75cb8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a90db9391e991f6c4f972c2c57038223f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a90db9391e991f6c4f972c2c57038223f">hton16</a> = <a class="el" href="utils_8lua.html#acfa32aa30a80f48ee71b0dc5cff840e4">bswap16</a></td></tr>
-<tr class="separator:a90db9391e991f6c4f972c2c57038223f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a52477e85393b2d01ffe22da322716b2b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a52477e85393b2d01ffe22da322716b2b">ntoh16</a> = <a class="el" href="utils_8lua.html#a90db9391e991f6c4f972c2c57038223f">hton16</a></td></tr>
-<tr class="separator:a52477e85393b2d01ffe22da322716b2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6223b329f2e10436421d623893a066b6"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a6223b329f2e10436421d623893a066b6">hton</a> = <a class="el" href="utils_8lua.html#ad369b60c48a402cd886ff56aa3b47842">bswap</a></td></tr>
-<tr class="separator:a6223b329f2e10436421d623893a066b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3052ad371f84e15f49734d329b0b4d30"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a3052ad371f84e15f49734d329b0b4d30">ntoh</a> = <a class="el" href="utils_8lua.html#a6223b329f2e10436421d623893a066b6">hton</a></td></tr>
-<tr class="separator:a3052ad371f84e15f49734d329b0b4d30"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a> = require &quot;ffi&quot;</td></tr>
-<tr class="separator:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5fbd577fa4d8e6b479736a7c43c85150"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="utils_8lua.html#a5fbd577fa4d8e6b479736a7c43c85150">tv</a> = <a class="el" href="timer_8lua.html#acd7f34728b817a617e44ebaf2d6324ee">ffi.new</a>(&quot;struct timeval&quot;)</td></tr>
-<tr class="separator:a5fbd577fa4d8e6b479736a7c43c85150"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function Documentation</h2>
-<a class="anchor" id="acfa32aa30a80f48ee71b0dc5cff840e4"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function bswap16 </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a>&#160;</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Defines general utility functions. </p>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000027">Todo:</a></b></dt><dd>TODO docu </dd></dl>
 
-</div>
-</div>
-<a class="anchor" id="ab50a328c48b6841b1c0c78c6fd811dd8"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function checksum </td>
-          <td>(</td>
-          <td class="paramtype">data&#160;</td>
-          <td class="paramname">, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">len&#160;</td>
-          <td class="paramname">&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
+<p>Definition in file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
+</div><h2 class="groupheader">Function Documentation</h2>
 <a class="anchor" id="a45f6043de72733cef3790327c7c310da"></a>
 <div class="memitem">
 <div class="memproto">
@@ -267,32 +173,13 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Print a hex dump of cdata. </p>
-
-</div>
-</div>
-<a class="anchor" id="aaa76710deef1f005bf87a55d0e496046"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function errorf </td>
-          <td>(</td>
-          <td class="paramtype">str&#160;</td>
-          <td class="paramname">, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">data</td><td>The cdata to be dumped. </td></tr>
+    <tr><td class="paramname">bytes</td><td>Number of bytes to dump. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -310,58 +197,8 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the system time with microseconds accuracy. </p>
-
-</div>
-</div>
-<a class="anchor" id="a1fc6730b27615bc41ade3f80de41964e"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function map </td>
-          <td>(</td>
-          <td class="paramtype">t&#160;</td>
-          <td class="paramname">, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">f&#160;</td>
-          <td class="paramname">&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="ab6eb3483ea654dddf4d9b0ec502d219d"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function mapVarArg </td>
-          <td>(</td>
-          <td class="paramtype">f&#160;</td>
-          <td class="paramname">, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000028">Todo:</a></b></dt><dd>use some C function to get microseconds. <dl class="section return"><dt>Returns</dt><dd>System time in hh:mm:ss.uuuuuu format. </dd></dl>
+</dd></dl>
 
 </div>
 </div>
@@ -380,6 +217,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Merge tables. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">args</td><td>Arbitrary amount of tables to get merged. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -398,6 +241,13 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Parse a string to an IPv4 address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ip</td><td>address in string format </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>address in uint32 format or nil if invalid address </dd></dl>
 
 </div>
 </div>
@@ -416,6 +266,13 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Parse a string to an IPv6 address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ip</td><td>address in string format </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>address in ip6_address format or nil if invalid address </dd></dl>
 
 </div>
 </div>
@@ -434,6 +291,9 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Parse a string to an IP address. </p>
+<dl class="section return"><dt>Returns</dt><dd>address ip address in ip4_address or ip6_address format or nil if invalid address </dd>
+<dd>
+boolean true if IPv4 address, false otherwise </dd></dl>
 
 </div>
 </div>
@@ -452,6 +312,13 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Parse a string to a MAC address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mac</td><td>address in string format </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>address in mac_address format or nil if invalid address </dd></dl>
 
 </div>
 </div>
@@ -462,7 +329,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function poissonDelay </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="stats_8lua.html#ac28130e0f77f05fdc1c255e731e9427c">average</a>&#160;</td>
+          <td class="paramtype">average&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -470,48 +337,13 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Get the time to wait (in byte-times) for the next packet based on a poisson process. </p>
-
-</div>
-</div>
-<a class="anchor" id="aad137248c45a505a909fb94f17bba74b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function printCsv </td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="ae54683ab3fdfbeb0a0f010986338a73e"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function printf </td>
-          <td>(</td>
-          <td class="paramtype">str&#160;</td>
-          <td class="paramname">, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">average</td><td>the average wait time between two packets </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of byte-times to wait to achieve the given average wait-time </dd></dl>
 
 </div>
 </div>
@@ -546,319 +378,13 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Return all integerss in the range [start, max]. </p>
-
-</div>
-</div>
-<a class="anchor" id="a1a994f9b920f11969d7872d55faef894"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function rateToByteDelay </td>
-          <td>(</td>
-          <td class="paramtype">rate&#160;</td>
-          <td class="paramname">, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="memory_8lua.html#aa3d6656320f1a7278c0c2c7fdf07617c">size</a>&#160;</td>
-          <td class="paramname">&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="a007800c75d476a7defa24e78aa9ec7d8"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function toCsv </td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="a1f4a02537ee6cb770aea4dc98f124c2f"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function tonumberall </td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="a64138c1d0f2cc7c0c6b23501f30c6aa9"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function tostringall </td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<h2 class="groupheader">Variable Documentation</h2>
-<a class="anchor" id="ad7b51ea9fc3c6bfe1054e5861625cb1d"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit band</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00001">1</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a9bb9fa0add9f41d56bf1ea1b00f0f29f"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bnot</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00001">1</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a598fc3fdee6e78605879e83c3b20c199"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bor</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00001">1</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ad369b60c48a402cd886ff56aa3b47842"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">_G bswap = <a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bit.bor</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00001">1</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ab0fe2c273d26b897ce8facde43ddda0b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ffi = require &quot;ffi&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00036">36</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ac60437ab69cd28eadc7d147a7ce75cb8"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local math math floor = <a class="el" href="utils_8lua.html#a47e9355b7ec4afb84e5d0e07279d4959">math.random</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00004">4</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a58ea6e9644da54b65f48bf1158205fd0"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local format = string.format</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00003">3</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a6223b329f2e10436421d623893a066b6"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">hton = <a class="el" href="utils_8lua.html#ad369b60c48a402cd886ff56aa3b47842">bswap</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00033">33</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a90db9391e991f6c4f972c2c57038223f"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">hton16 = <a class="el" href="utils_8lua.html#acfa32aa30a80f48ee71b0dc5cff840e4">bswap16</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00029">29</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a109d45296c11048f126d8b4ffe93e40f"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local math log</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00004">4</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="acaae1371dbd709eaf17514ccc770fd13"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bit bit lshift</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00001">1</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a3052ad371f84e15f49734d329b0b4d30"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">ntoh = <a class="el" href="utils_8lua.html#a6223b329f2e10436421d623893a066b6">hton</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00034">34</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a52477e85393b2d01ffe22da322716b2b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">ntoh16 = <a class="el" href="utils_8lua.html#a90db9391e991f6c4f972c2c57038223f">hton16</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00030">30</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a47e9355b7ec4afb84e5d0e07279d4959"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local random</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00004">4</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a84d1e4c164c7cf777a943d26a07b2e4b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bit rshift</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00001">1</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a5fbd577fa4d8e6b479736a7c43c85150"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local tv = <a class="el" href="timer_8lua.html#acd7f34728b817a617e44ebaf2d6324ee">ffi.new</a>(&quot;struct timeval&quot;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00039">39</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a4dd81335a2d7c7076c85564a0493853a"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local write = io.write</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="utils_8lua_source.html#l00002">2</a> of file <a class="el" href="utils_8lua_source.html">utils.lua</a>.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">max</td><td>upper bound </td></tr>
+    <tr><td class="paramname">start</td><td>lower bound, default = 1 </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -868,7 +394,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="utils_8lua.html">utils.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:21:32 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 21:12:35 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

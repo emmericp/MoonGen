@@ -108,7 +108,7 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;--- @file ethernet.lua</div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;--- @brief Ethernet protocol utility.</div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;--- Utility functions <span class="keywordflow">for</span> the mac_address and ethernet_header structs </div>
-<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;--- defined in \ref headers.lua . \n</div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;--- defined in \ref headers.lua . <a class="code" href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">\n</a></div>
 <div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;--- Includes:</div>
 <div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;--- - Ethernet constants</div>
 <div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;--- - Mac address utility</div>
@@ -116,7 +116,7 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;--- - Definition of ethernet packets</div>
 <div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;------------------------------------------------------------------------</div>
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;local ffi = require <span class="stringliteral">&quot;ffi&quot;</span></div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;local <a class="code" href="dpdkc_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a> = require <span class="stringliteral">&quot;ffi&quot;</span></div>
 <div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;local <a class="code" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> = require <span class="stringliteral">&quot;packet&quot;</span></div>
 <div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;</div>
 <div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;require <span class="stringliteral">&quot;utils&quot;</span></div>
@@ -125,7 +125,7 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;local ntoh, hton = ntoh, hton</div>
 <div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;local ntoh16, hton16 = ntoh16, hton16</div>
 <div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;local istype = ffi.istype</div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;local istype = <a class="code" href="dpdkc_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.istype</div>
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;local format = <span class="keywordtype">string</span>.format</div>
 <div class="line"><a name="l00024"></a><span class="lineno"><a class="line" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">   24</a></span>&#160;</div>
 <div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;</div>
@@ -156,7 +156,7 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;--- Module <span class="keywordflow">for</span> mac_address <span class="keyword">struct</span> (see \ref headers.lua).</div>
 <div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;local <a class="code" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a> = {}</div>
 <div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<a class="code" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a>.__index = <a class="code" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a></div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;local macAddrType = ffi.typeof(<span class="stringliteral">&quot;struct mac_address&quot;</span>)</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;local macAddrType = <a class="code" href="dpdkc_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.typeof(<span class="stringliteral">&quot;struct mac_address&quot;</span>)</div>
 <div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;</div>
 <div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;--- Retrieve the MAC address.</div>
 <div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;--- @<span class="keywordflow">return</span> Address in <span class="stringliteral">&#39;struct mac_address&#39;</span> format.</div>
@@ -179,7 +179,7 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;--- Set the MAC address.</div>
 <div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;--- @param mac Address in <span class="keywordtype">string</span> format.</div>
 <div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;function <a class="code" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a>:<a class="code" href="ethernet_8lua.html#a4afb06117eaa384c192769ea5dff8697">setString</a>(mac)</div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;    self:<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a>(parseMacAddress(mac))</div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;    self:<a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a>(<a class="code" href="utils_8lua.html#a8739b52185d0108a1e3ea23bd57128d6">parseMacAddress</a>(mac))</div>
 <div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;end</div>
 <div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;</div>
 <div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;--- Test equality of two MAC addresses.</div>
@@ -296,7 +296,7 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;</div>
 <div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;--- Set all members of the ethernet header.</div>
 <div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;--- Per default, all members are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to default values specified in the respective <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> function.</div>
-<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;--- Optional named arguments can be used to <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> a member to a user-provided value. \n</div>
+<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;--- Optional named arguments can be used to <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> a member to a user-provided value. \<a class="code" href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a></div>
 <div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;--- Exemplary invocations:</div>
 <div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;--- @code</div>
 <div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;--- <a class="code" href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a>() --- only default values</div>
@@ -356,12 +356,12 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;-- This list should be extended whenever a new type is added to &#39;Ethernet constants&#39;. </div>
 <div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;local mapNameType = {</div>
 <div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;    ip4 = <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>.TYPE_IP,</div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;    ip6 = <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>.TYPE_IP6,</div>
-<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;    arp = <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>.TYPE_ARP,</div>
-<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;    ptp = <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>.TYPE_PTP, }</div>
+<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;    <a class="code" href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a> = <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>.TYPE_IP6,</div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;    <a class="code" href="arp_8lua.html#a02203ea250dfb1428f95db578e7ce4f3">arp</a> = <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>.TYPE_ARP,</div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;    <a class="code" href="ptp_8lua.html#add61ce13e4ff069b3c009f428ce6260c">ptp</a> = <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a>.TYPE_PTP, }</div>
 <div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;</div>
 <div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;--- Resolve which header comes after <span class="keyword">this</span> one (in a packet).</div>
-<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;--- For instance: in tcp/udp based on the ports.</div>
+<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;--- For instance: in tcp/<a class="code" href="udp_8lua.html#a605be069667aac4e9674572dee46d278">udp</a> based on the ports.</div>
 <div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;--- This <span class="keyword">function</span> must exist and is only used when <span class="keyword">get</span>/<a class="code" href="packet_8lua.html#a2635156d751e509e4b4f607a2b045c5a">dump</a> is executed on</div>
 <div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;--- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)</div>
 <div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;--- @<span class="keywordflow">return</span> String next header (e.g. <span class="stringliteral">&#39;eth&#39;</span>, <span class="stringliteral">&#39;ip4&#39;</span>, nil)</div>
@@ -412,14 +412,15 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;---- Metatypes</div>
 <div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;----------------------------------------------------------------------------------</div>
 <div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;</div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;ffi.metatype(&quot;struct mac_address&quot;, <a class="code" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a>)</div>
-<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;ffi.metatype(&quot;struct ethernet_header&quot;, <a class="code" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>)</div>
+<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;<a class="code" href="dpdkc_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.metatype(&quot;struct mac_address&quot;, <a class="code" href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a>)</div>
+<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;<a class="code" href="dpdkc_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a>.metatype(&quot;struct ethernet_header&quot;, <a class="code" href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a>)</div>
 <div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;</div>
 <div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;</div>
 <div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;return <a class="code" href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a></div>
 <div class="ttc" id="ethernet_8lua_html_ab05729a6c51aab8ab366e1652c5ff52e"><div class="ttname"><a href="ethernet_8lua.html#ab05729a6c51aab8ab366e1652c5ff52e">get</a></div><div class="ttdeci">function macAddr get()</div><div class="ttdoc">Retrieve the MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_ab3581f6196a55541e67bed4a805831e9"><div class="ttname"><a href="ethernet_8lua.html#ab3581f6196a55541e67bed4a805831e9">__eq</a></div><div class="ttdeci">function macAddr __eq(lhs, rhs)</div><div class="ttdoc">Test equality of two MAC addresses. </div></div>
 <div class="ttc" id="ethernet_8lua_html_ab36bb02a7cfb87486cbf6b10e1668e06"><div class="ttname"><a href="ethernet_8lua.html#ab36bb02a7cfb87486cbf6b10e1668e06">setDst</a></div><div class="ttdeci">function etherHeader setDst(addr)</div><div class="ttdoc">Set the destination MAC address. </div></div>
+<div class="ttc" id="dpdkc_8lua_html_ab0fe2c273d26b897ce8facde43ddda0b"><div class="ttname"><a href="dpdkc_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a></div><div class="ttdeci">local ffi</div><div class="ttdoc">low-level dpdk wrapper </div><div class="ttdef"><b>Definition:</b> <a href="dpdkc_8lua_source.html#l00006">dpdkc.lua:6</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a15e9422439fdc27e2ccac9e0328370fd"><div class="ttname"><a href="ethernet_8lua.html#a15e9422439fdc27e2ccac9e0328370fd">setSrc</a></div><div class="ttdeci">function etherHeader setSrc(addr)</div><div class="ttdoc">Set the source MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_ac44bf7e3e27d6fe66b53b7278a9209b6"><div class="ttname"><a href="ethernet_8lua.html#ac44bf7e3e27d6fe66b53b7278a9209b6">TYPE_ARP</a></div><div class="ttdeci">eth TYPE_ARP</div><div class="ttdoc">EtherType for Arp. </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00029">ethernet.lua:29</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a69302ff5ede5ea0391e94f76c071d5f5"><div class="ttname"><a href="ethernet_8lua.html#a69302ff5ede5ea0391e94f76c071d5f5">getSrc</a></div><div class="ttdeci">function etherHeader getSrc(addr)</div><div class="ttdoc">Retrieve the source MAC address. </div></div>
@@ -432,8 +433,11 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="ttc" id="ethernet_8lua_html_a242d4477b0be3196f10cf6c8bb6da9d9"><div class="ttname"><a href="ethernet_8lua.html#a242d4477b0be3196f10cf6c8bb6da9d9">setDstString</a></div><div class="ttdeci">function etherHeader setDstString(str)</div><div class="ttdoc">Set the destination MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_a94c3f96c5a6351c392b324930ed1e68c"><div class="ttname"><a href="ethernet_8lua.html#a94c3f96c5a6351c392b324930ed1e68c">TYPE_PTP</a></div><div class="ttdeci">eth TYPE_PTP</div><div class="ttdoc">EtherType for Ptp. </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00033">ethernet.lua:33</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_afc273c5659e952cbe7ed4a5d5eb1876d"><div class="ttname"><a href="ethernet_8lua.html#afc273c5659e952cbe7ed4a5d5eb1876d">setDefaultNamedArgs</a></div><div class="ttdeci">function etherHeader setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)</div><div class="ttdoc">Change the default values for namedArguments (for fill/get). </div></div>
+<div class="ttc" id="udp_8lua_html_a605be069667aac4e9674572dee46d278"><div class="ttname"><a href="udp_8lua.html#a605be069667aac4e9674572dee46d278">udp</a></div><div class="ttdeci">local udp</div><div class="ttdoc">Udp protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="udp_8lua_source.html#l00023">udp.lua:23</a></div></div>
+<div class="ttc" id="arp_8lua_html_a02203ea250dfb1428f95db578e7ce4f3"><div class="ttname"><a href="arp_8lua.html#a02203ea250dfb1428f95db578e7ce4f3">arp</a></div><div class="ttdeci">local arp</div><div class="ttdoc">Arp protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="arp_8lua_source.html#l00032">arp.lua:32</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_acf626fe45ca4177b3fa2994ed5f12655"><div class="ttname"><a href="ethernet_8lua.html#acf626fe45ca4177b3fa2994ed5f12655">fill</a></div><div class="ttdeci">function etherHeader fill(args, pre)</div><div class="ttdoc">Set all members of the ethernet header. </div></div>
 <div class="ttc" id="ethernet_8lua_html_aa8c94964db8a504483c8180ba0fbc761"><div class="ttname"><a href="ethernet_8lua.html#aa8c94964db8a504483c8180ba0fbc761">getDstString</a></div><div class="ttdeci">function etherHeader getDstString()</div><div class="ttdoc">Retrieve the destination MAC address. </div></div>
+<div class="ttc" id="ptp_8lua_html_add61ce13e4ff069b3c009f428ce6260c"><div class="ttname"><a href="ptp_8lua.html#add61ce13e4ff069b3c009f428ce6260c">ptp</a></div><div class="ttdeci">local ptp</div><div class="ttdoc">Ptp protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ptp_8lua_source.html#l00023">ptp.lua:23</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a80ccfed2de871fd712e54ae6551c8f5d"><div class="ttname"><a href="ethernet_8lua.html#a80ccfed2de871fd712e54ae6551c8f5d">getEthPacket</a></div><div class="ttdeci">pkt getEthPacket</div><div class="ttdoc">Cast the packet to an ethernet packet (alias for pkt.getEthernetPacket) </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00174">ethernet.lua:174</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a638f489ebfbe480570a1d95ce6ef4162"><div class="ttname"><a href="ethernet_8lua.html#a638f489ebfbe480570a1d95ce6ef4162">macAddr</a></div><div class="ttdeci">local macAddr</div><div class="ttdoc">Module for mac_address struct (see headers.lua). </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00041">ethernet.lua:41</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_ab53fc06c7d7dcce606e1a23673d1f83f"><div class="ttname"><a href="ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f">etherHeader</a></div><div class="ttdeci">local etherHeader</div><div class="ttdoc">Module for ethernet_header struct (see headers.lua). </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00070">ethernet.lua:70</a></div></div>
@@ -443,10 +447,13 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div class="ttc" id="ethernet_8lua_html_a7854d8660c75a74ab1961ecc8435a501"><div class="ttname"><a href="ethernet_8lua.html#a7854d8660c75a74ab1961ecc8435a501">TYPE_IP</a></div><div class="ttdeci">eth TYPE_IP</div><div class="ttdoc">EtherType for IP4. </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00027">ethernet.lua:27</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a0453f2332a7ee5df8f3416932bc8f468"><div class="ttname"><a href="ethernet_8lua.html#a0453f2332a7ee5df8f3416932bc8f468">setSrcString</a></div><div class="ttdeci">function etherHeader setSrcString(str)</div><div class="ttdoc">Set the source MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_abd4d16011dee203ba12fc0b0cb1df914"><div class="ttname"><a href="ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914">eth</a></div><div class="ttdeci">local eth</div><div class="ttdoc">Ethernet protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ethernet_8lua_source.html#l00024">ethernet.lua:24</a></div></div>
+<div class="ttc" id="ip6_8lua_html_a48f8232a17cb626a8ad3e95972a69e52"><div class="ttname"><a href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a></div><div class="ttdeci">local ip6</div><div class="ttdoc">IP6 protocol constants. </div><div class="ttdef"><b>Definition:</b> <a href="ip6_8lua_source.html#l00025">ip6.lua:25</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a090e429971793a6f0c1a8ab2a32fd980"><div class="ttname"><a href="ethernet_8lua.html#a090e429971793a6f0c1a8ab2a32fd980">resolveNextHeader</a></div><div class="ttdeci">function etherHeader resolveNextHeader()</div><div class="ttdoc">Resolve which header comes after this one (in a packet). </div></div>
 <div class="ttc" id="packet_8lua_html_af8027fe3e9f1acfedd960d3c9b8b6b51"><div class="ttname"><a href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a></div><div class="ttdeci">local pkt</div><div class="ttdoc">Module for packets (rte_mbuf) </div><div class="ttdef"><b>Definition:</b> <a href="packet_8lua_source.html#l00020">packet.lua:20</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a2c70a5b7caf728b65cab21ead54c1e8f"><div class="ttname"><a href="ethernet_8lua.html#a2c70a5b7caf728b65cab21ead54c1e8f">getDst</a></div><div class="ttdeci">function etherHeader getDst(addr)</div><div class="ttdoc">Retrieve the destination MAC address. </div></div>
+<div class="ttc" id="memory_8lua_html_aeab71244afb687f16d8c4f5ee9d6ef0e"><div class="ttname"><a href="memory_8lua.html#aeab71244afb687f16d8c4f5ee9d6ef0e">n</a></div><div class="ttdeci">n</div><div class="ttdoc">Create a new array of memory buffers (initialized to nil). </div><div class="ttdef"><b>Definition:</b> <a href="memory_8lua_source.html#l00058">memory.lua:58</a></div></div>
 <div class="ttc" id="ethernet_8lua_html_a77e75ae36313b17315d8ced823089f9e"><div class="ttname"><a href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a></div><div class="ttdeci">function macAddr set(addr)</div><div class="ttdoc">Set the MAC address. </div></div>
+<div class="ttc" id="utils_8lua_html_a8739b52185d0108a1e3ea23bd57128d6"><div class="ttname"><a href="utils_8lua.html#a8739b52185d0108a1e3ea23bd57128d6">parseMacAddress</a></div><div class="ttdeci">function parseMacAddress(mac)</div><div class="ttdoc">Parse a string to a MAC address. </div></div>
 <div class="ttc" id="ethernet_8lua_html_af1923ae694c032f99fcf4ccd529285fc"><div class="ttname"><a href="ethernet_8lua.html#af1923ae694c032f99fcf4ccd529285fc">getSrcString</a></div><div class="ttdeci">function etherHeader getSrcString()</div><div class="ttdoc">Retrieve the source MAC address. </div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
@@ -454,7 +461,7 @@ $(document).ready(function(){initNavTree('ethernet_8lua_source.html','');});
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_008ba6cb71e2c02d515844436773d74d.html">proto</a></li><li class="navelem"><a class="el" href="ethernet_8lua.html">ethernet.lua</a></li>
-    <li class="footer">Generated on Mon Jun 15 2015 13:53:58 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 21:12:35 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

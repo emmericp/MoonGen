@@ -90,7 +90,7 @@ $(document).ready(function(){initNavTree('ip6_8lua.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -107,6 +107,9 @@ $(document).ready(function(){initNavTree('ip6_8lua.html','');});
 <div class="title">ip6.lua File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Internet protocol (v6) utility.  
+<a href="#details">More...</a></p>
 
 <p><a href="ip6_8lua_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -134,8 +137,9 @@ Functions</h2></td></tr>
 <tr class="memdesc:a1ce20597327c46c8c6baacce1625275c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Subtract a number from an IPv6 address.  <a href="#a1ce20597327c46c8c6baacce1625275c">More...</a><br/></td></tr>
 <tr class="separator:a1ce20597327c46c8c6baacce1625275c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af179ae103223b71b3734584ec8dbbb36"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a1b9499cf80ade2ec44a9404479a11289">ip6Addr</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#af179ae103223b71b3734584ec8dbbb36">getString</a> (doByteSwap)</td></tr>
+<tr class="memdesc:af179ae103223b71b3734584ec8dbbb36"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the string representation of an IPv6 address.  <a href="#af179ae103223b71b3734584ec8dbbb36">More...</a><br/></td></tr>
 <tr class="separator:af179ae103223b71b3734584ec8dbbb36"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adad854b2072c84fabf5b973d642103d9"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#adad854b2072c84fabf5b973d642103d9">setVersion</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:adad854b2072c84fabf5b973d642103d9"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#adad854b2072c84fabf5b973d642103d9">setVersion</a> (int)</td></tr>
 <tr class="memdesc:adad854b2072c84fabf5b973d642103d9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the version.  <a href="#adad854b2072c84fabf5b973d642103d9">More...</a><br/></td></tr>
 <tr class="separator:adad854b2072c84fabf5b973d642103d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae496232133a8ac2668ba40b994162d76"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ae496232133a8ac2668ba40b994162d76">getVersion</a> ()</td></tr>
@@ -144,7 +148,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a2d17243a5697fcaf6a0d22aee9a50ae7"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a2d17243a5697fcaf6a0d22aee9a50ae7">getVersionString</a> ()</td></tr>
 <tr class="memdesc:a2d17243a5697fcaf6a0d22aee9a50ae7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the version.  <a href="#a2d17243a5697fcaf6a0d22aee9a50ae7">More...</a><br/></td></tr>
 <tr class="separator:a2d17243a5697fcaf6a0d22aee9a50ae7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acb9159449108d01010b61e9a9e44d98a"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#acb9159449108d01010b61e9a9e44d98a">setTrafficClass</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:acb9159449108d01010b61e9a9e44d98a"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#acb9159449108d01010b61e9a9e44d98a">setTrafficClass</a> (int)</td></tr>
 <tr class="memdesc:acb9159449108d01010b61e9a9e44d98a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the traffic class.  <a href="#acb9159449108d01010b61e9a9e44d98a">More...</a><br/></td></tr>
 <tr class="separator:acb9159449108d01010b61e9a9e44d98a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8af97e878329e432c2c22728b9f9f86e"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a8af97e878329e432c2c22728b9f9f86e">getTrafficClass</a> ()</td></tr>
@@ -153,7 +157,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a88fd466d9cf4a11f6b8cc616f5c7705d"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a88fd466d9cf4a11f6b8cc616f5c7705d">getTrafficClassString</a> ()</td></tr>
 <tr class="memdesc:a88fd466d9cf4a11f6b8cc616f5c7705d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the traffic class.  <a href="#a88fd466d9cf4a11f6b8cc616f5c7705d">More...</a><br/></td></tr>
 <tr class="separator:a88fd466d9cf4a11f6b8cc616f5c7705d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac50456185e4378099470cf06af9dbbb3"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ac50456185e4378099470cf06af9dbbb3">setFlowLabel</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:ac50456185e4378099470cf06af9dbbb3"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ac50456185e4378099470cf06af9dbbb3">setFlowLabel</a> (int)</td></tr>
 <tr class="memdesc:ac50456185e4378099470cf06af9dbbb3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the flow label.  <a href="#ac50456185e4378099470cf06af9dbbb3">More...</a><br/></td></tr>
 <tr class="separator:ac50456185e4378099470cf06af9dbbb3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad5a9f19371c7721fd3905f29faa02059"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ad5a9f19371c7721fd3905f29faa02059">getFlowLabel</a> ()</td></tr>
@@ -162,7 +166,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a0e627fcddbd9af515fac74b396c7dcac"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a0e627fcddbd9af515fac74b396c7dcac">getFlowLabelString</a> ()</td></tr>
 <tr class="memdesc:a0e627fcddbd9af515fac74b396c7dcac"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the flow label.  <a href="#a0e627fcddbd9af515fac74b396c7dcac">More...</a><br/></td></tr>
 <tr class="separator:a0e627fcddbd9af515fac74b396c7dcac"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acbb9478e01d6ac4f7f43f29664ee287c"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#acbb9478e01d6ac4f7f43f29664ee287c">setLength</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:acbb9478e01d6ac4f7f43f29664ee287c"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#acbb9478e01d6ac4f7f43f29664ee287c">setLength</a> (int)</td></tr>
 <tr class="memdesc:acbb9478e01d6ac4f7f43f29664ee287c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the payload length.  <a href="#acbb9478e01d6ac4f7f43f29664ee287c">More...</a><br/></td></tr>
 <tr class="separator:acbb9478e01d6ac4f7f43f29664ee287c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9a549f614b5745f22fb4cd03bd7701ae"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a9a549f614b5745f22fb4cd03bd7701ae">getLength</a> ()</td></tr>
@@ -171,7 +175,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a6ac5081f4a5e47f636de685d8b947388"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a6ac5081f4a5e47f636de685d8b947388">getLengthString</a> ()</td></tr>
 <tr class="memdesc:a6ac5081f4a5e47f636de685d8b947388"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the length.  <a href="#a6ac5081f4a5e47f636de685d8b947388">More...</a><br/></td></tr>
 <tr class="separator:a6ac5081f4a5e47f636de685d8b947388"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a407ccc9cc5bf9d8fb96952354c1ee9fd"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a407ccc9cc5bf9d8fb96952354c1ee9fd">setNextHeader</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:a407ccc9cc5bf9d8fb96952354c1ee9fd"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a407ccc9cc5bf9d8fb96952354c1ee9fd">setNextHeader</a> (int)</td></tr>
 <tr class="memdesc:a407ccc9cc5bf9d8fb96952354c1ee9fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the next header.  <a href="#a407ccc9cc5bf9d8fb96952354c1ee9fd">More...</a><br/></td></tr>
 <tr class="separator:a407ccc9cc5bf9d8fb96952354c1ee9fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5f98d5e0abd9a38053db04ca248960ca"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a5f98d5e0abd9a38053db04ca248960ca">getNextHeader</a> ()</td></tr>
@@ -180,7 +184,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a919e32fd59b8f5abd76b49c5c29de866"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a919e32fd59b8f5abd76b49c5c29de866">getNextHeaderString</a> ()</td></tr>
 <tr class="memdesc:a919e32fd59b8f5abd76b49c5c29de866"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the next header.  <a href="#a919e32fd59b8f5abd76b49c5c29de866">More...</a><br/></td></tr>
 <tr class="separator:a919e32fd59b8f5abd76b49c5c29de866"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a380d30536198368ba25f33d5b9d53b4a"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a380d30536198368ba25f33d5b9d53b4a">setTTL</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:a380d30536198368ba25f33d5b9d53b4a"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a380d30536198368ba25f33d5b9d53b4a">setTTL</a> (int)</td></tr>
 <tr class="memdesc:a380d30536198368ba25f33d5b9d53b4a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the time-to-live (TTL).  <a href="#a380d30536198368ba25f33d5b9d53b4a">More...</a><br/></td></tr>
 <tr class="separator:a380d30536198368ba25f33d5b9d53b4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a630fdeaf334129470c087d262dee1e8b"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a630fdeaf334129470c087d262dee1e8b">getTTL</a> ()</td></tr>
@@ -222,60 +226,57 @@ Functions</h2></td></tr>
 <tr class="memitem:a804abb00c3e808c8357a82c12624e61f"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a804abb00c3e808c8357a82c12624e61f">getString</a> ()</td></tr>
 <tr class="memdesc:a804abb00c3e808c8357a82c12624e61f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the values of all members.  <a href="#a804abb00c3e808c8357a82c12624e61f">More...</a><br/></td></tr>
 <tr class="separator:a804abb00c3e808c8357a82c12624e61f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a16c915a91b769e29f0302a13ada40489"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a16c915a91b769e29f0302a13ada40489">resolveNextHeader</a> ()</td></tr>
+<tr class="memdesc:a16c915a91b769e29f0302a13ada40489"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resolve which header comes after this one (in a packet).  <a href="#a16c915a91b769e29f0302a13ada40489">More...</a><br/></td></tr>
+<tr class="separator:a16c915a91b769e29f0302a13ada40489"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aafb2f22bd67a4b4ec53298440b9fb483"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#aafb2f22bd67a4b4ec53298440b9fb483">setDefaultNamedArgs</a> (pre, namedArgs, nextHeader, accumulatedLength)</td></tr>
+<tr class="memdesc:aafb2f22bd67a4b4ec53298440b9fb483"><td class="mdescLeft">&#160;</td><td class="mdescRight">Change the default values for namedArguments (for fill/get).  <a href="#aafb2f22bd67a4b4ec53298440b9fb483">More...</a><br/></td></tr>
+<tr class="separator:aafb2f22bd67a4b4ec53298440b9fb483"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a> = require &quot;ffi&quot;</td></tr>
-<tr class="separator:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af8027fe3e9f1acfedd960d3c9b8b6b51"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> = require &quot;packet&quot;</td></tr>
-<tr class="separator:af8027fe3e9f1acfedd960d3c9b8b6b51"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaf8e711f16a7d6e8ef717b7dd98bddb4"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#aaf8e711f16a7d6e8ef717b7dd98bddb4">ntoh</a></td></tr>
-<tr class="separator:aaf8e711f16a7d6e8ef717b7dd98bddb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d4747c3e612b4ad43514af6fb0e9066"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a0d4747c3e612b4ad43514af6fb0e9066">hton</a> = <a class="el" href="utils_8lua.html#a3052ad371f84e15f49734d329b0b4d30">ntoh</a></td></tr>
-<tr class="separator:a0d4747c3e612b4ad43514af6fb0e9066"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adaa08fe03b3d576df466a17d1b512a58"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#adaa08fe03b3d576df466a17d1b512a58">ntoh16</a></td></tr>
-<tr class="separator:adaa08fe03b3d576df466a17d1b512a58"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a45daf24a47a55b28a467372f68091fd3"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a45daf24a47a55b28a467372f68091fd3">hton16</a> = <a class="el" href="utils_8lua.html#a52477e85393b2d01ffe22da322716b2b">ntoh16</a></td></tr>
-<tr class="separator:a45daf24a47a55b28a467372f68091fd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa68792841cda3abec7f8d86dd695a98a"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#aa68792841cda3abec7f8d86dd695a98a">bswap</a> = bswap</td></tr>
-<tr class="separator:aa68792841cda3abec7f8d86dd695a98a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad9c0c21b7da8e2fbb1a54c2bb54baebb"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ad9c0c21b7da8e2fbb1a54c2bb54baebb">bswap16</a> = bswap16</td></tr>
-<tr class="separator:ad9c0c21b7da8e2fbb1a54c2bb54baebb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a598fc3fdee6e78605879e83c3b20c199"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bor</a></td></tr>
-<tr class="separator:a598fc3fdee6e78605879e83c3b20c199"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad7b51ea9fc3c6bfe1054e5861625cb1d"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ad7b51ea9fc3c6bfe1054e5861625cb1d">band</a></td></tr>
-<tr class="separator:ad7b51ea9fc3c6bfe1054e5861625cb1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9bb9fa0add9f41d56bf1ea1b00f0f29f"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a9bb9fa0add9f41d56bf1ea1b00f0f29f">bnot</a></td></tr>
-<tr class="separator:a9bb9fa0add9f41d56bf1ea1b00f0f29f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a84d1e4c164c7cf777a943d26a07b2e4b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a84d1e4c164c7cf777a943d26a07b2e4b">rshift</a></td></tr>
-<tr class="separator:a84d1e4c164c7cf777a943d26a07b2e4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acaae1371dbd709eaf17514ccc770fd13"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#acaae1371dbd709eaf17514ccc770fd13">lshift</a> = <a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bit.bor</a></td></tr>
-<tr class="separator:acaae1371dbd709eaf17514ccc770fd13"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a77d4b79aafb10a09a5da9240164a59e8"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a77d4b79aafb10a09a5da9240164a59e8">istype</a> = ffi.istype</td></tr>
-<tr class="separator:a77d4b79aafb10a09a5da9240164a59e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a58ea6e9644da54b65f48bf1158205fd0"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a> = string.format</td></tr>
-<tr class="separator:a58ea6e9644da54b65f48bf1158205fd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a48f8232a17cb626a8ad3e95972a69e52"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a> = {}</td></tr>
-<tr class="memdesc:a48f8232a17cb626a8ad3e95972a69e52"><td class="mdescLeft">&#160;</td><td class="mdescRight">IP6 constants.  <a href="#a48f8232a17cb626a8ad3e95972a69e52">More...</a><br/></td></tr>
+<tr class="memitem:a48f8232a17cb626a8ad3e95972a69e52"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a48f8232a17cb626a8ad3e95972a69e52"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a> = {}</td></tr>
+<tr class="memdesc:a48f8232a17cb626a8ad3e95972a69e52"><td class="mdescLeft">&#160;</td><td class="mdescRight">IP6 protocol constants. <br/></td></tr>
 <tr class="separator:a48f8232a17cb626a8ad3e95972a69e52"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4187667f1f2493d921fda9c218c41ec3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a4187667f1f2493d921fda9c218c41ec3">PROTO_TCP</a> = 0x06</td></tr>
+<tr class="memitem:a4187667f1f2493d921fda9c218c41ec3"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a4187667f1f2493d921fda9c218c41ec3"></a>
+<a class="el" href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a4187667f1f2493d921fda9c218c41ec3">PROTO_TCP</a> = 0x06</td></tr>
+<tr class="memdesc:a4187667f1f2493d921fda9c218c41ec3"><td class="mdescLeft">&#160;</td><td class="mdescRight">NextHeader field value for Tcp. <br/></td></tr>
 <tr class="separator:a4187667f1f2493d921fda9c218c41ec3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9ec522acfb502342d1142a9af8f358dc"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a9ec522acfb502342d1142a9af8f358dc">PROTO_UDP</a> = 0x11</td></tr>
+<tr class="memitem:a9ec522acfb502342d1142a9af8f358dc"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a9ec522acfb502342d1142a9af8f358dc"></a>
+<a class="el" href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a9ec522acfb502342d1142a9af8f358dc">PROTO_UDP</a> = 0x11</td></tr>
+<tr class="memdesc:a9ec522acfb502342d1142a9af8f358dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">NextHeader field value for Udp. <br/></td></tr>
 <tr class="separator:a9ec522acfb502342d1142a9af8f358dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2fb84e221e2db2c2a4a5fca4d7e81599"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a2fb84e221e2db2c2a4a5fca4d7e81599">PROTO_ICMP</a> = 0x3a</td></tr>
+<tr class="memitem:a2fb84e221e2db2c2a4a5fca4d7e81599"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a2fb84e221e2db2c2a4a5fca4d7e81599"></a>
+<a class="el" href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a2fb84e221e2db2c2a4a5fca4d7e81599">PROTO_ICMP</a> = 0x3a</td></tr>
+<tr class="memdesc:a2fb84e221e2db2c2a4a5fca4d7e81599"><td class="mdescLeft">&#160;</td><td class="mdescRight">NextHeader field value for Icmp. <br/></td></tr>
 <tr class="separator:a2fb84e221e2db2c2a4a5fca4d7e81599"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1b9499cf80ade2ec44a9404479a11289"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a1b9499cf80ade2ec44a9404479a11289">ip6Addr</a> = {}</td></tr>
-<tr class="memdesc:a1b9499cf80ade2ec44a9404479a11289"><td class="mdescLeft">&#160;</td><td class="mdescRight">IPv6 addresses.  <a href="#a1b9499cf80ade2ec44a9404479a11289">More...</a><br/></td></tr>
+<tr class="memitem:a1b9499cf80ade2ec44a9404479a11289"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a1b9499cf80ade2ec44a9404479a11289"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a1b9499cf80ade2ec44a9404479a11289">ip6Addr</a> = {}</td></tr>
+<tr class="memdesc:a1b9499cf80ade2ec44a9404479a11289"><td class="mdescLeft">&#160;</td><td class="mdescRight">Module for ip6_address struct (see <a class="el" href="headers_8lua.html">headers.lua</a>). <br/></td></tr>
 <tr class="separator:a1b9499cf80ade2ec44a9404479a11289"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2cf9f25ea0b4eb64f7a45c15e7784761"><td class="memItemLeft" align="right" valign="top"><a class="el" href="ip6_8lua.html#a1b9499cf80ade2ec44a9404479a11289">ip6Addr</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a2cf9f25ea0b4eb64f7a45c15e7784761">__index</a> = <a class="el" href="ip6_8lua.html#a1b9499cf80ade2ec44a9404479a11289">ip6Addr</a></td></tr>
-<tr class="separator:a2cf9f25ea0b4eb64f7a45c15e7784761"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab46a24e65bdc237f25df52d13eb58626"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ab46a24e65bdc237f25df52d13eb58626">ip6AddrType</a> = ffi.typeof(&quot;union ip6_address&quot;)</td></tr>
-<tr class="separator:ab46a24e65bdc237f25df52d13eb58626"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5d9d1fd6476615da8778acff7ff82acf"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> = {}</td></tr>
-<tr class="memdesc:a5d9d1fd6476615da8778acff7ff82acf"><td class="mdescLeft">&#160;</td><td class="mdescRight">IPv6 header.  <a href="#a5d9d1fd6476615da8778acff7ff82acf">More...</a><br/></td></tr>
+<tr class="memitem:a5d9d1fd6476615da8778acff7ff82acf"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5d9d1fd6476615da8778acff7ff82acf"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> = {}</td></tr>
+<tr class="memdesc:a5d9d1fd6476615da8778acff7ff82acf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Module for ip6_header struct (see <a class="el" href="headers_8lua.html">headers.lua</a>). <br/></td></tr>
 <tr class="separator:a5d9d1fd6476615da8778acff7ff82acf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad2eb3ed5caa4b860ab755a04a4bc9ce7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad2eb3ed5caa4b860ab755a04a4bc9ce7"></a>
+<a class="el" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="ip6_8lua.html#ad2eb3ed5caa4b860ab755a04a4bc9ce7">getIP6Packet</a> = <a class="el" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;eth&quot;, &quot;<a class="el" href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a>&quot;)</td></tr>
+<tr class="memdesc:ad2eb3ed5caa4b860ab755a04a4bc9ce7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cast the packet to an IP6 packet. <br/></td></tr>
+<tr class="separator:ad2eb3ed5caa4b860ab755a04a4bc9ce7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Internet protocol (v6) utility. </p>
+<p>Utility functions for the ip6_address and ip6_header structs defined in <a class="el" href="headers_8lua.html">headers.lua</a> . <br/>
+Includes:</p>
+<ul>
+<li>IP6 constants</li>
+<li>IP6 address utility</li>
+<li>IP6 header utility</li>
+<li>Definition of IP6 packets </li>
+</ul>
+
+<p>Definition in file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
+</div><h2 class="groupheader">Function Documentation</h2>
 <a class="anchor" id="a11a05db72c18506287250478317be72e"></a>
 <div class="memitem">
 <div class="memproto">
@@ -301,6 +302,15 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Add a number to an IPv6 address. </p>
+<p>Max. 64bit, commutative. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">lhs</td><td>Address in 'union ip6_address' format. </td></tr>
+    <tr><td class="paramname">rhs</td><td>Number to add (64 bit integer). </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Resulting address in 'union ip6_address' format. </dd></dl>
 
 </div>
 </div>
@@ -329,6 +339,14 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Test equality of two IPv6 addresses. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">lhs</td><td>Address in 'union ip6_address' format. </td></tr>
+    <tr><td class="paramname">rhs</td><td>Address in 'union ip6_address' format. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if equal, false otherwise. </dd></dl>
 
 </div>
 </div>
@@ -347,6 +365,14 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Subtract a number from an IPv6 address. </p>
+<p>Max. 64 bit. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">val</td><td>Number to substract (64 bit integer). </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Resulting address in 'union ip6_address' format. </dd></dl>
 
 </div>
 </div>
@@ -365,6 +391,13 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Add a number to an IPv6 address in-place. </p>
+<p>Max 64 bit. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">val</td><td>Number to add (64 bit integer). </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -393,6 +426,16 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set all members of the ip6 header. </p>
+<p>Per default, all members are set to default values specified in the respective set function. Optional named arguments can be used to set a member to a user-provided value. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">args</td><td>Table of named arguments. Available arguments: ip6Version, ip6TrafficClass, ip6FlowLabel, ip6Length, ip6NextHeader, ip6TTL, ip6Src, ip6Dst </td></tr>
+    <tr><td class="paramname">pre</td><td>prefix for namedArgs. Default 'ip6'. <div class="fragment"><div class="line"><a class="code" href="arp_8lua.html#aa4fec404844cc2c6cb2c0b83ad3040f4">fill</a>() --- only <span class="keywordflow">default</span> values</div>
+<div class="line"><a class="code" href="arp_8lua.html#aa4fec404844cc2c6cb2c0b83ad3040f4">fill</a>{ ip6Src=<span class="stringliteral">&quot;f880::ab&quot;</span>, ip6TTL=101 } --- all members are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to <span class="keywordflow">default</span> values with the exception of ip6Src and ip6TTL</div>
+</div><!-- fragment --> </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -410,6 +453,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the IPv6 address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in 'union ip6_address' format. </dd></dl>
 
 </div>
 </div>
@@ -428,6 +472,14 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the values of all members. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">pre</td><td>prefix for namedArgs. Default 'ip6'. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Table of named arguments. For a list of arguments see "See also". </dd></dl>
+<dl class="section see"><dt>See Also</dt><dd><a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf" title="Module for ip6_header struct (see headers.lua). ">ip6Header</a>:<a class="el" href="ip6_8lua.html#a7784ecbc4871e500d90fb98b83c528c0" title="Set all members of the ip6 header. ">fill</a> </dd></dl>
 
 </div>
 </div>
@@ -445,6 +497,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the IP6 destination address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in 'union ip6_address' format. </dd></dl>
 
 </div>
 </div>
@@ -462,6 +515,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the IP6 destination address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in string format. </dd></dl>
 
 </div>
 </div>
@@ -479,6 +533,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the flow label. </p>
+<dl class="section return"><dt>Returns</dt><dd>Flow label as 20 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -496,6 +551,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the flow label. </p>
+<dl class="section return"><dt>Returns</dt><dd>Flow label as string. </dd></dl>
 
 </div>
 </div>
@@ -513,6 +569,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the length. </p>
+<dl class="section return"><dt>Returns</dt><dd>Length as 16 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -530,6 +587,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the length. </p>
+<dl class="section return"><dt>Returns</dt><dd>Length as string. </dd></dl>
 
 </div>
 </div>
@@ -547,6 +605,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the next header. </p>
+<dl class="section return"><dt>Returns</dt><dd>Next header as 8 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -564,6 +623,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the next header. </p>
+<dl class="section return"><dt>Returns</dt><dd>Next header as string. </dd></dl>
 
 </div>
 </div>
@@ -581,6 +641,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the IP6 source address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in 'union ip6_address' format. </dd></dl>
 
 </div>
 </div>
@@ -598,6 +659,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the IP6 source address. </p>
+<dl class="section return"><dt>Returns</dt><dd>Address in source format. </dd></dl>
 
 </div>
 </div>
@@ -615,6 +677,16 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Retrieve the string representation of an IPv6 address. </p>
+<p>Assumes 'union ip6_address' is in network byteorder. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">doByteSwap</td><td>Optional change the byteorder of the ip6 address before returning the string representation. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Address in string format. </dd></dl>
+
 </div>
 </div>
 <a class="anchor" id="a804abb00c3e808c8357a82c12624e61f"></a>
@@ -631,6 +703,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the values of all members. </p>
+<dl class="section return"><dt>Returns</dt><dd>Values in string format. </dd></dl>
 
 </div>
 </div>
@@ -648,6 +721,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the traffic class. </p>
+<dl class="section return"><dt>Returns</dt><dd>Traffic class as 8 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -665,6 +739,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the traffic class. </p>
+<dl class="section return"><dt>Returns</dt><dd>Traffic class as string. </dd></dl>
 
 </div>
 </div>
@@ -682,6 +757,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the time-to-live. </p>
+<dl class="section return"><dt>Returns</dt><dd>TTL as 8 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -699,6 +775,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the time-to-live. </p>
+<dl class="section return"><dt>Returns</dt><dd>TTL as string. </dd></dl>
 
 </div>
 </div>
@@ -716,6 +793,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the version. </p>
+<dl class="section return"><dt>Returns</dt><dd>Version as 4 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -733,6 +811,26 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the version. </p>
+<dl class="section return"><dt>Returns</dt><dd>Version as string. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a16c915a91b769e29f0302a13ada40489"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> resolveNextHeader </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Resolve which header comes after this one (in a packet). </p>
+<p>For instance: in tcp/udp based on the ports. This function must exist and is only used when get/dump is executed on an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf) </p>
+<dl class="section return"><dt>Returns</dt><dd>String next header (e.g. 'udp', 'icmp', nil) </dd></dl>
 
 </div>
 </div>
@@ -751,6 +849,63 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the IPv6 address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">addr</td><td>Address in 'union ip6_address' format. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="aafb2f22bd67a4b4ec53298440b9fb483"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> setDefaultNamedArgs </td>
+          <td>(</td>
+          <td class="paramtype">pre&#160;</td>
+          <td class="paramname">, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">namedArgs&#160;</td>
+          <td class="paramname">, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">nextHeader&#160;</td>
+          <td class="paramname">, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">accumulatedLength&#160;</td>
+          <td class="paramname">&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Change the default values for namedArguments (for fill/get). </p>
+<p>This can be used to for instance calculate a length value based on the total packet length. See proto/ip4.setDefaultNamedArgs as an example. This function must exist and is only used by packet.fill. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">pre</td><td>The prefix used for the namedArgs, e.g. 'ip6' </td></tr>
+    <tr><td class="paramname">namedArgs</td><td>Table of named arguments (see See Also) </td></tr>
+    <tr><td class="paramname">nextHeader</td><td>The header following after this header in a packet </td></tr>
+    <tr><td class="paramname">accumulatedLength</td><td>The so far accumulated length for previous headers in a packet </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section see"><dt>See Also</dt><dd><a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf" title="Module for ip6_header struct (see headers.lua). ">ip6Header</a>:<a class="el" href="ip6_8lua.html#a7784ecbc4871e500d90fb98b83c528c0" title="Set all members of the ip6 header. ">fill</a> </dd></dl>
 
 </div>
 </div>
@@ -769,6 +924,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the destination address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">addr</td><td>Address in 'union ip6_address' format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -787,6 +948,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the destination address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">str</td><td>Address in string format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -797,7 +964,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> setFlowLabel </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -805,6 +972,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the flow label. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>Flow label of the ip6 header as 20 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -815,7 +988,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> setLength </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -823,6 +996,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the payload length. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>Length of the ip6 header payload (hence, excluding l2 and l3 headers). 16 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -833,7 +1012,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> setNextHeader </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -841,6 +1020,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the next header. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>Next header of the ip6 header as 8 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -859,6 +1044,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the source address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">addr</td><td>Address in 'union ip6_address' format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -877,6 +1068,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the source address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">str</td><td>Address in string format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -895,6 +1092,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the IPv6 address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ip</td><td>Address in string format. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -905,7 +1108,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> setTrafficClass </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -913,6 +1116,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the traffic class. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>Traffic class of the ip6 header as 8 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -923,7 +1132,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> setTTL </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -931,6 +1140,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the time-to-live (TTL). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>TTL of the ip6 header as 8 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -941,7 +1156,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> setVersion </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -949,335 +1164,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the version. </p>
-
-</div>
-</div>
-<h2 class="groupheader">Variable Documentation</h2>
-<a class="anchor" id="a2cf9f25ea0b4eb64f7a45c15e7784761"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="ip6_8lua.html#a5d9d1fd6476615da8778acff7ff82acf">ip6Header</a> __index = <a class="el" href="ip6_8lua.html#a1b9499cf80ade2ec44a9404479a11289">ip6Addr</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00025">25</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ad7b51ea9fc3c6bfe1054e5861625cb1d"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit band</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00009">9</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a9bb9fa0add9f41d56bf1ea1b00f0f29f"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bnot</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00009">9</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a598fc3fdee6e78605879e83c3b20c199"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bor</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00009">9</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="aa68792841cda3abec7f8d86dd695a98a"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bswap = bswap</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00007">7</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ad9c0c21b7da8e2fbb1a54c2bb54baebb"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bswap16 = bswap16</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00008">8</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ab0fe2c273d26b897ce8facde43ddda0b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ffi = require &quot;ffi&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00001">1</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a58ea6e9644da54b65f48bf1158205fd0"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local format = string.format</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00011">11</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a0d4747c3e612b4ad43514af6fb0e9066"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local hton = <a class="el" href="utils_8lua.html#a3052ad371f84e15f49734d329b0b4d30">ntoh</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00005">5</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a45daf24a47a55b28a467372f68091fd3"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local hton16 = <a class="el" href="utils_8lua.html#a52477e85393b2d01ffe22da322716b2b">ntoh16</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00006">6</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a48f8232a17cb626a8ad3e95972a69e52"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ip6 = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>IP6 constants. </p>
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00015">15</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a1b9499cf80ade2ec44a9404479a11289"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ip6Addr = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>IPv6 addresses. </p>
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00024">24</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ab46a24e65bdc237f25df52d13eb58626"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ip6AddrType = ffi.typeof(&quot;union ip6_address&quot;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00026">26</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a5d9d1fd6476615da8778acff7ff82acf"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ip6Header = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>IPv6 header. </p>
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00055">55</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a77d4b79aafb10a09a5da9240164a59e8"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local istype = ffi.istype</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00010">10</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="acaae1371dbd709eaf17514ccc770fd13"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bit bit lshift = <a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bit.bor</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00009">9</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="aaf8e711f16a7d6e8ef717b7dd98bddb4"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ntoh</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00005">5</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="adaa08fe03b3d576df466a17d1b512a58"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ntoh16</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00006">6</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="af8027fe3e9f1acfedd960d3c9b8b6b51"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local pkt = require &quot;packet&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00002">2</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a2fb84e221e2db2c2a4a5fca4d7e81599"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a> PROTO_ICMP = 0x3a</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00019">19</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a4187667f1f2493d921fda9c218c41ec3"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a> PROTO_TCP = 0x06</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00017">17</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a9ec522acfb502342d1142a9af8f358dc"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a> PROTO_UDP = 0x11</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00018">18</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a84d1e4c164c7cf777a943d26a07b2e4b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bit rshift</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="ip6_8lua_source.html#l00009">9</a> of file <a class="el" href="ip6_8lua_source.html">ip6.lua</a>.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>IP6 header version as 4 bit integer. Should always be '6'. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -1287,7 +1179,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_008ba6cb71e2c02d515844436773d74d.html">proto</a></li><li class="navelem"><a class="el" href="ip6_8lua.html">ip6.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:21:32 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 21:12:35 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

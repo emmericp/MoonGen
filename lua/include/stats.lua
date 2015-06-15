@@ -1,3 +1,9 @@
+---------------------------------
+--- @file stats.lua
+--- @brief Stats ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local dpdk		= require "dpdk"

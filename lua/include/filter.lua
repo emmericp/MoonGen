@@ -1,3 +1,9 @@
+---------------------------------
+--- @file filter.lua
+--- @brief Filter ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local dpdkc = require "dpdkc"

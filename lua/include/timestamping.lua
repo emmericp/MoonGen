@@ -1,3 +1,9 @@
+---------------------------------
+--- @file timestamping.lua
+--- @brief Timestamping ...
+--- @todo TODO docu
+---------------------------------
+
 -- FIXME: this file is ugly because it doesn't abstract anything properly
 local mod = {}
 
@@ -90,7 +96,7 @@ local PKT_TX_UDP_CKSUM		= 0x6000
 
 
 ---
--- @deprecated
+--- @deprecated
 function mod.fillL2Packet(buf, seq)
 	seq = seq or (((3 * 255) + 2) * 255 + 1) * 255
 	buf.pkt.pkt_len = 60
@@ -102,7 +108,7 @@ function mod.fillL2Packet(buf, seq)
 end
 
 ---
--- @deprecated
+--- @deprecated
 function mod.readSeq(buf)
 	if buf.pkt.pkt_len < 4 then
 	  return nil
@@ -111,7 +117,7 @@ function mod.readSeq(buf)
 end
 
 ---
--- @deprecated
+--- @deprecated
 function mod.fillPacket(buf, port, size, ignoreBadSize)
 	size = size or 80
 	-- min 76 bytes as the NIC refuses to timestamp 'truncated' PTP packets
@@ -357,7 +363,7 @@ function rxQueue:getTimestamp(wait)
 end
 
 --- Check if the NIC saved a timestamp.
--- @return the PTP sequence number of the timestamped packet, nil otherwise
+--- @return the PTP sequence number of the timestamped packet, nil otherwise
 function dev:hasTimestamp()
 	local isIgb = device.get(self.id):getPciId() == device.PCI_ID_82580
 	if isIgb then
@@ -455,9 +461,9 @@ function mod:newUdpTimestamper(txQueue, rxQueue, mem)
 end
 
 --- Try to measure the latency of a single packet.
--- @param pktSize optional, the size of the generated packet, optional, defaults to the smallest possible size
--- @param packetModifier optional, a function that is called with the generated packet, e.g. to modified addresses
--- @param maxWait optional (cannot be the only argument) the time in ms to wait before the packet is assumed to be lost (default = 15)
+--- @param pktSize optional, the size of the generated packet, optional, defaults to the smallest possible size
+--- @param packetModifier optional, a function that is called with the generated packet, e.g. to modified addresses
+--- @param maxWait optional (cannot be the only argument) the time in ms to wait before the packet is assumed to be lost (default = 15)
 function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 	if type(pktSize) == "function" then -- optional first argument was skipped
 		return self:measureLatency(nil, pktSize, packetModifier)

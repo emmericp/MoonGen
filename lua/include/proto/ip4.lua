@@ -9,6 +9,7 @@
 --- - IP4 header utility
 --- - Definition of IP4 packets
 ------------------------------------------------------------------------
+
 local ffi = require "ffi"
 local pkt = require "packet"
 
@@ -542,13 +543,13 @@ end
 pkt.getIP4Packet = packetCreate("eth", "ip4") 
 --- Cast the packet to either an IP4 (nil/true) or IP6 (false) packet, depending on the passed boolean.
 pkt.getIPPacket = function(self, ip4) 
-		ip4 = ip4 == nil or ip4 
-		if ip4 then 
-			return pkt.getIP4Packet(self) 
-		else 
-			return pkt.getIP6Packet(self) 
-		end 
-	end   
+	ip4 = ip4 == nil or ip4 
+	if ip4 then 
+		return pkt.getIP4Packet(self) 
+	else 
+		return pkt.getIP6Packet(self) 
+	end 
+end   
 
 
 ------------------------------------------------------------------------

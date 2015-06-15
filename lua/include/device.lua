@@ -1,3 +1,9 @@
+---------------------------------
+--- @file device.lua
+--- @brief Device ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local ffi		= require "ffi"

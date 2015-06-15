@@ -1,3 +1,9 @@
+---------------------------------
+--- @file memory.lua
+--- @brief Memory ...
+--- @todo TODO docu
+---------------------------------
+
 -- vim:ts=4:sw=4:noexpandtab
 local mod = {}
 

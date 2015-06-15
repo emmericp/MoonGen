@@ -1,18 +1,12 @@
 var dpdk_8lua =
 [
-    [ "checkCore", "dpdk_8lua.html#af361b273af8b0f36ec3993486c0cbe22", null ],
-    [ "disableBadSocketWarning", "dpdk_8lua.html#ae5e1755e0f8fcffd7ad566d52f1f2bfd", null ],
-    [ "fileExists", "dpdk_8lua.html#a8dec275016796ff9d866c6a62abf11d8", null ],
     [ "getCore", "dpdk_8lua.html#a61b14afcbfb09808bcaa865bdd24aea6", null ],
-    [ "getCores", "dpdk_8lua.html#a378e4a485835c8ebfc0bca61f6a2d004", null ],
     [ "getCycles", "dpdk_8lua.html#a55364929988194a7d71a18152512765f", null ],
     [ "getCyclesFrequency", "dpdk_8lua.html#ac3c3dcaed19c5a168a2694db3feda645", null ],
     [ "getTime", "dpdk_8lua.html#a37026b6180bfebb42c0f985f63e95645", null ],
     [ "init", "dpdk_8lua.html#a53cd08c0378f1d00cdd624fbbe676790", null ],
-    [ "isRunning", "dpdk_8lua.html#aa4de3417e325021659009740fc8be547", null ],
     [ "launchLua", "dpdk_8lua.html#a527169b72422c8d7e1e5d4504164ad39", null ],
     [ "launchLuaOnCore", "dpdk_8lua.html#a575275095e2e00139451d954c2bf2b4d", null ],
-    [ "new", "dpdk_8lua.html#a11065c77ba9a8d38d587e6df331c525d", null ],
     [ "running", "dpdk_8lua.html#a9c3302b6465084549f626875f203ff39", null ],
     [ "setRuntime", "dpdk_8lua.html#aa20f7038318c993bc372cc56518495de", null ],
     [ "sleepMicros", "dpdk_8lua.html#a56dd6192a8c41d7dc8ceb1a30820140d", null ],
@@ -22,17 +16,5 @@ var dpdk_8lua =
     [ "stop", "dpdk_8lua.html#a05bdf7eb4a252e1e3560365b1506f28b", null ],
     [ "wait", "dpdk_8lua.html#afe824abe78f475b7cc664cf61f079f31", null ],
     [ "waitForSlaves", "dpdk_8lua.html#ab81defaf645bb7af7841899472acef9e", null ],
-    [ "__index", "dpdk_8lua.html#a6a258b4bdab2295bcde4e7f41367f8c5", null ],
-    [ "dpdkc", "dpdk_8lua.html#a66da5271812f687b7927ee29b251cb1b", null ],
-    [ "ffi", "dpdk_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b", null ],
-    [ "mod", "dpdk_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65", null ],
-    [ "PKT_RX_IEEE1588_TMST", "dpdk_8lua.html#a877d8c88933cbee6d093fba1a7f336df", null ],
-    [ "PKT_TX_IEEE1588_TMST", "dpdk_8lua.html#a0300447ddc473d206480d26cd80f9be0", null ],
-    [ "PKT_TX_IPV4_CSUM", "dpdk_8lua.html#adfb5710a8153360cbe3205eb52ce5b63", null ],
-    [ "PKT_TX_NO_CRC_CSUM", "dpdk_8lua.html#a86944da088fe1cde528c0f814cce28bc", null ],
-    [ "PKT_TX_TCP_CKSUM", "dpdk_8lua.html#aa0f2136dc092b87ccd7fd34edc2b7e2b", null ],
-    [ "PKT_TX_UDP_CKSUM", "dpdk_8lua.html#a9544a678bb0c74a41bffc2bc859e8768", null ],
-    [ "serpent", "dpdk_8lua.html#ae87b659ea59b715da044f7184ea39700", null ],
-    [ "task", "dpdk_8lua.html#a5fde3abbd58f00ef9197bbc0d4cca69e", null ],
-    [ "tasks", "dpdk_8lua.html#aa77ebb7fc935e4fdbfb1082cfb71c64f", null ]
+    [ "mod", "dpdk_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65", null ]
 ];

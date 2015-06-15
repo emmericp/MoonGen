@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['eth',['eth',['../ethernet_8lua.html#abd4d16011dee203ba12fc0b0cb1df914',1,'ethernet.lua']]],
-  ['etherheader',['etherHeader',['../ethernet_8lua.html#ab53fc06c7d7dcce606e1a23673d1f83f',1,'ethernet.lua']]]
+  ['broadcast',['BROADCAST',['../ethernet_8lua.html#a7668ff032d08761202742af04398e717',1,'ethernet.lua']]]
 ];

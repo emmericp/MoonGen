@@ -1,3 +1,9 @@
+---------------------------------
+--- @file pipe.lua
+--- @brief Pipe ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local memory	= require "memory"

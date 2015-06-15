@@ -90,7 +90,7 @@ $(document).ready(function(){initNavTree('pipe_8lua.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -101,282 +101,36 @@ $(document).ready(function(){initNavTree('pipe_8lua.html','');});
 
 <div class="header">
   <div class="summary">
-<a href="#func-members">Functions</a> &#124;
-<a href="#var-members">Variables</a>  </div>
+<a href="#func-members">Functions</a>  </div>
   <div class="headertitle">
 <div class="title">pipe.lua File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
 
+<p>Pipe ...  
+<a href="#details">More...</a></p>
+
 <p><a href="pipe_8lua_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:af1c1f68acd74b788989c2b2aede2abda"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#af1c1f68acd74b788989c2b2aede2abda">newSlowPipe</a> ()</td></tr>
-<tr class="memdesc:af1c1f68acd74b788989c2b2aede2abda"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a new slow pipe.  <a href="#af1c1f68acd74b788989c2b2aede2abda">More...</a><br/></td></tr>
+<tr class="memitem:af1c1f68acd74b788989c2b2aede2abda"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af1c1f68acd74b788989c2b2aede2abda"></a>
+function <a class="el" href="dpdk_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#af1c1f68acd74b788989c2b2aede2abda">newSlowPipe</a> ()</td></tr>
+<tr class="memdesc:af1c1f68acd74b788989c2b2aede2abda"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a new slow pipe. <br/></td></tr>
 <tr class="separator:af1c1f68acd74b788989c2b2aede2abda"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1aabddf6f81748c8b088759b99627062"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#a1aabddf6f81748c8b088759b99627062">send</a> (...)</td></tr>
-<tr class="separator:a1aabddf6f81748c8b088759b99627062"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa5aac9da7042757b18c9ab69bcd4ada1"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#aa5aac9da7042757b18c9ab69bcd4ada1">tryRecv</a> (<a class="el" href="timer_8lua.html#a112daeb10653b706c345db3d608618cc">wait</a>)</td></tr>
-<tr class="separator:aa5aac9da7042757b18c9ab69bcd4ada1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a43f97d7c2c7a66f3a1cbf5d96c2290d9"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#a43f97d7c2c7a66f3a1cbf5d96c2290d9">recv</a> ()</td></tr>
-<tr class="separator:a43f97d7c2c7a66f3a1cbf5d96c2290d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af9da2f9c1285ec97b48790e030d30a78"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#af9da2f9c1285ec97b48790e030d30a78">count</a> ()</td></tr>
-<tr class="separator:af9da2f9c1285ec97b48790e030d30a78"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5da429971679ef0fbb08471f38fccbbe"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#a5da429971679ef0fbb08471f38fccbbe">__serialize</a> ()</td></tr>
-<tr class="separator:a5da429971679ef0fbb08471f38fccbbe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3705d73aa14259a113d1479fba87ae61"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#a3705d73aa14259a113d1479fba87ae61">newFastPipe</a> ()</td></tr>
-<tr class="separator:a3705d73aa14259a113d1479fba87ae61"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
-Variables</h2></td></tr>
-<tr class="memitem:a93cc9d5f326c929f86fabf7a33c1bb65"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> = {}</td></tr>
-<tr class="separator:a93cc9d5f326c929f86fabf7a33c1bb65"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aebc2282c5e51597731e110f98501f470"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#aebc2282c5e51597731e110f98501f470">memory</a> = require &quot;memory&quot;</td></tr>
-<tr class="separator:aebc2282c5e51597731e110f98501f470"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a> = require &quot;ffi&quot;</td></tr>
-<tr class="separator:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae87b659ea59b715da044f7184ea39700"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#ae87b659ea59b715da044f7184ea39700">serpent</a> = require &quot;Serpent&quot;</td></tr>
-<tr class="separator:ae87b659ea59b715da044f7184ea39700"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a182d7c970afe1f08283d11aec035eac0"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#a182d7c970afe1f08283d11aec035eac0">dpdk</a> = require &quot;dpdk&quot;</td></tr>
-<tr class="separator:a182d7c970afe1f08283d11aec035eac0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ada5f7a2f7477e942da190f5f12a6f57c"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#ada5f7a2f7477e942da190f5f12a6f57c">C</a> = ffi.C</td></tr>
-<tr class="separator:ada5f7a2f7477e942da190f5f12a6f57c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9272e9ee06f9eb4eea989b2f73409d0b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a> = {}</td></tr>
-<tr class="separator:a9272e9ee06f9eb4eea989b2f73409d0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acc2b226eb02a7fc1858f7a70ca5251fa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="pipe_8lua.html#acc2b226eb02a7fc1858f7a70ca5251fa">__index</a> = <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a></td></tr>
-<tr class="separator:acc2b226eb02a7fc1858f7a70ca5251fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function Documentation</h2>
-<a class="anchor" id="a5da429971679ef0fbb08471f38fccbbe"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a> __serialize </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Pipe ... </p>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000015">Todo:</a></b></dt><dd>TODO docu </dd></dl>
 
-</div>
-</div>
-<a class="anchor" id="af9da2f9c1285ec97b48790e030d30a78"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a> count </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="a3705d73aa14259a113d1479fba87ae61"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> newFastPipe </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="af1c1f68acd74b788989c2b2aede2abda"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="timestamping_8lua.html#a93cc9d5f326c929f86fabf7a33c1bb65">mod</a> newSlowPipe </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Create a new slow pipe. </p>
-
-</div>
-</div>
-<a class="anchor" id="a43f97d7c2c7a66f3a1cbf5d96c2290d9"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a> recv </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="a1aabddf6f81748c8b088759b99627062"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a> send </td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a class="anchor" id="aa5aac9da7042757b18c9ab69bcd4ada1"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">function <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a> tryRecv </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="timer_8lua.html#a112daeb10653b706c345db3d608618cc">wait</a>&#160;</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<h2 class="groupheader">Variable Documentation</h2>
-<a class="anchor" id="acc2b226eb02a7fc1858f7a70ca5251fa"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a> __index = <a class="el" href="pipe_8lua.html#a9272e9ee06f9eb4eea989b2f73409d0b">slowPipe</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="pipe_8lua_source.html#l00015">15</a> of file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ada5f7a2f7477e942da190f5f12a6f57c"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local C = ffi.C</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="pipe_8lua_source.html#l00010">10</a> of file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a182d7c970afe1f08283d11aec035eac0"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local dpdk = require &quot;dpdk&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="pipe_8lua_source.html#l00006">6</a> of file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ab0fe2c273d26b897ce8facde43ddda0b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ffi = require &quot;ffi&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="pipe_8lua_source.html#l00004">4</a> of file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="aebc2282c5e51597731e110f98501f470"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local memory = require &quot;memory&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="pipe_8lua_source.html#l00003">3</a> of file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a93cc9d5f326c929f86fabf7a33c1bb65"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local mod = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="pipe_8lua_source.html#l00001">1</a> of file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ae87b659ea59b715da044f7184ea39700"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local serpent = require &quot;Serpent&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="pipe_8lua_source.html#l00005">5</a> of file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a9272e9ee06f9eb4eea989b2f73409d0b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local slowPipe = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="pipe_8lua_source.html#l00013">13</a> of file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
-
-</div>
-</div>
-</div><!-- contents -->
+<p>Definition in file <a class="el" href="pipe_8lua_source.html">pipe.lua</a>.</p>
+</div></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="pipe_8lua.html">pipe.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:21:32 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 21:12:35 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>

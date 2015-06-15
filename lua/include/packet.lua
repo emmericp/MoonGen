@@ -57,12 +57,12 @@ function pkt:setDelay(delay)
 	self.pkt.hash.rss = delay
 end
 
---- TODO
+--- @todo TODO docu
 function pkt:setRate(rate)
 	self.pkt.hash.rss = 10^10 / 8 / (rate * 10^6) - self.pkt.pkt_len - 24
 end
 
---- TODO
+--- @todo TODO does
 function pkt:setSize(size)
 	self.pkt.pkt_len = size
 	self.pkt.data_len = size
@@ -148,7 +148,7 @@ function pkt:offloadTcpChecksum(ipv4, l2_len, l3_len)
 	end
 end
 
---- TODO
+--- @todo TODO docu
 function pkt:enableTimestamps()
 	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IEEE1588_TMST)
 end

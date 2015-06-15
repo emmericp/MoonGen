@@ -1,3 +1,9 @@
+---------------------------------
+--- @file lock.lua
+--- @brief Lock ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local ffi	= require "ffi"

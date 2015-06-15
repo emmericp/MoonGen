@@ -1,3 +1,9 @@
+---------------------------------
+--- @file timer.lua
+--- @brief Timer ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local dpdk = require "dpdk"

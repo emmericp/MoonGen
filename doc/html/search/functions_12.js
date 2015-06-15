@@ -1,12 +1,9 @@
 var searchData=
 [
-  ['timeleft',['timeLeft',['../timer_8lua.html#adfe3026654da4213e4a9c65944f15267',1,'timer.lua']]],
-  ['tocsv',['toCsv',['../utils_8lua.html#a007800c75d476a7defa24e78aa9ec7d8',1,'utils.lua']]],
-  ['tonumberall',['tonumberall',['../utils_8lua.html#a1f4a02537ee6cb770aea4dc98f124c2f',1,'utils.lua']]],
-  ['tostringall',['tostringall',['../utils_8lua.html#a64138c1d0f2cc7c0c6b23501f30c6aa9',1,'utils.lua']]],
-  ['totals',['totals',['../histogram_8lua.html#ad0a6963ee328bef9b9d213555364aff5',1,'histogram.lua']]],
-  ['trylock',['tryLock',['../lock_8lua.html#a70aeb0f2439beea2170e7e200eb3e235',1,'lock.lua']]],
-  ['tryreadrxtimestamp',['tryReadRxTimestamp',['../timestamping_8lua.html#a69adf11ae72dc48a55c22288e1550869',1,'timestamping.lua']]],
-  ['tryreadtxtimestamp',['tryReadTxTimestamp',['../timestamping_8lua.html#ab61aaee845a06b841dc5b7e054f80d8d',1,'timestamping.lua']]],
-  ['tryrecv',['tryRecv',['../pipe_8lua.html#aa5aac9da7042757b18c9ab69bcd4ada1',1,'pipe.lua']]]
+  ['unsetack',['unsetAck',['../tcp_8lua.html#aa49f43d3292cb95136bc40cc9d8356a0',1,'tcp.lua']]],
+  ['unsetfin',['unsetFin',['../tcp_8lua.html#ab8596eadbbe97052b8f5b35fdf94426b',1,'tcp.lua']]],
+  ['unsetpsh',['unsetPsh',['../tcp_8lua.html#ade6161d1fe05c8aa4b9f0503db8d48ef',1,'tcp.lua']]],
+  ['unsetrst',['unsetRst',['../tcp_8lua.html#a5704f2d286b920af0fa7e4d2c5b9a369',1,'tcp.lua']]],
+  ['unsetsyn',['unsetSyn',['../tcp_8lua.html#af88bcd74d3fcf34ffbeeab0b9a5763f0',1,'tcp.lua']]],
+  ['unseturg',['unsetUrg',['../tcp_8lua.html#a798b183b76326de9b08d6d7e6b2063f3',1,'tcp.lua']]]
 ];

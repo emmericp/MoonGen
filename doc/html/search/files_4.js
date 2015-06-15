@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['filter_2elua',['filter.lua',['../filter_8lua.html',1,'']]]
+  ['headers_2elua',['headers.lua',['../headers_8lua.html',1,'']]],
+  ['histogram_2elua',['histogram.lua',['../histogram_8lua.html',1,'']]]
 ];

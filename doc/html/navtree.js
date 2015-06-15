@@ -3,11 +3,12 @@ var NAVTREE =
   [ "MoonGen", "index.html", [
     [ "README", "md__home_dominik__moon_gen__r_e_a_d_m_e.html", null ],
     [ "Todo List", "todo.html", null ],
+    [ "Deprecated List", "deprecated.html", null ],
     [ "Files", null, [
       [ "File List", "files.html", "files" ],
       [ "File Members", "globals.html", [
-        [ "All", "globals.html", null ],
-        [ "Functions", "globals_func.html", null ],
+        [ "All", "globals.html", "globals_dup" ],
+        [ "Functions", "globals_func.html", "globals_func" ],
         [ "Variables", "globals_vars.html", null ]
       ] ]
     ] ]
@@ -16,7 +17,9 @@ var NAVTREE =
 
 var NAVTREEINDEX =
 [
-"arp_8lua_source.html"
+"arp_8lua.html",
+"ip4_8lua.html#afc2126a021cc793390c34085a1eea24d",
+"udp_8lua.html#a0dcc4e95ce9d3995455dd5a8132f6d31"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

@@ -90,7 +90,7 @@ $(document).ready(function(){initNavTree('icmp_8lua.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -108,11 +108,14 @@ $(document).ready(function(){initNavTree('icmp_8lua.html','');});
 </div><!--header-->
 <div class="contents">
 
+<p>Internet control message protocol utility.  
+<a href="#details">More...</a></p>
+
 <p><a href="icmp_8lua_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a4656349cf2c02bccd61e1fbad2aa11f4"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a4656349cf2c02bccd61e1fbad2aa11f4">setType</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:a4656349cf2c02bccd61e1fbad2aa11f4"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a4656349cf2c02bccd61e1fbad2aa11f4">setType</a> (int)</td></tr>
 <tr class="memdesc:a4656349cf2c02bccd61e1fbad2aa11f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the type.  <a href="#a4656349cf2c02bccd61e1fbad2aa11f4">More...</a><br/></td></tr>
 <tr class="separator:a4656349cf2c02bccd61e1fbad2aa11f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3000efd762285fc1088a15b383c11a68"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a3000efd762285fc1088a15b383c11a68">getType</a> ()</td></tr>
@@ -121,7 +124,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a40bdd2351474f63815f0f511c5a514b2"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a40bdd2351474f63815f0f511c5a514b2">getTypeString</a> ()</td></tr>
 <tr class="memdesc:a40bdd2351474f63815f0f511c5a514b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the type.  <a href="#a40bdd2351474f63815f0f511c5a514b2">More...</a><br/></td></tr>
 <tr class="separator:a40bdd2351474f63815f0f511c5a514b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0c17ebfb5bfeae8fd73ac1f2bd2949ab"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a0c17ebfb5bfeae8fd73ac1f2bd2949ab">setCode</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:a0c17ebfb5bfeae8fd73ac1f2bd2949ab"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a0c17ebfb5bfeae8fd73ac1f2bd2949ab">setCode</a> (int)</td></tr>
 <tr class="memdesc:a0c17ebfb5bfeae8fd73ac1f2bd2949ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the code.  <a href="#a0c17ebfb5bfeae8fd73ac1f2bd2949ab">More...</a><br/></td></tr>
 <tr class="separator:a0c17ebfb5bfeae8fd73ac1f2bd2949ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a95dc763daa8730c7c3dde127719e8dde"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a95dc763daa8730c7c3dde127719e8dde">getCode</a> ()</td></tr>
@@ -130,7 +133,7 @@ Functions</h2></td></tr>
 <tr class="memitem:acb743b67c70a5375f2d1530be13e1cff"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#acb743b67c70a5375f2d1530be13e1cff">getCodeString</a> ()</td></tr>
 <tr class="memdesc:acb743b67c70a5375f2d1530be13e1cff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the code.  <a href="#acb743b67c70a5375f2d1530be13e1cff">More...</a><br/></td></tr>
 <tr class="separator:acb743b67c70a5375f2d1530be13e1cff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab6f401f1b5f074564c6e606347dde444"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#ab6f401f1b5f074564c6e606347dde444">setChecksum</a> (<a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>)</td></tr>
+<tr class="memitem:ab6f401f1b5f074564c6e606347dde444"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#ab6f401f1b5f074564c6e606347dde444">setChecksum</a> (int)</td></tr>
 <tr class="memdesc:ab6f401f1b5f074564c6e606347dde444"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the checksum.  <a href="#ab6f401f1b5f074564c6e606347dde444">More...</a><br/></td></tr>
 <tr class="separator:ab6f401f1b5f074564c6e606347dde444"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab86d43fcd7351d8bde8ba8b405a14b97"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#ab86d43fcd7351d8bde8ba8b405a14b97">calculateChecksum</a> (len)</td></tr>
@@ -161,64 +164,62 @@ Functions</h2></td></tr>
 <tr class="memdesc:a4b09f4e57535e5e64b43f449c7786523"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the values of all members.  <a href="#a4b09f4e57535e5e64b43f449c7786523">More...</a><br/></td></tr>
 <tr class="separator:a4b09f4e57535e5e64b43f449c7786523"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a591f20b57f52e693bb38e519b2c919f8"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a591f20b57f52e693bb38e519b2c919f8">resolveNextHeader</a> ()</td></tr>
+<tr class="memdesc:a591f20b57f52e693bb38e519b2c919f8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resolve which header comes after this one (in a packet).  <a href="#a591f20b57f52e693bb38e519b2c919f8">More...</a><br/></td></tr>
 <tr class="separator:a591f20b57f52e693bb38e519b2c919f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6453913959136a50ffcd219c552be743"><td class="memItemLeft" align="right" valign="top">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a6453913959136a50ffcd219c552be743">setDefaultNamedArgs</a> (pre, namedArgs, nextHeader, accumulatedLength)</td></tr>
+<tr class="memdesc:a6453913959136a50ffcd219c552be743"><td class="mdescLeft">&#160;</td><td class="mdescRight">Change the default values for namedArguments (for fill/get).  <a href="#a6453913959136a50ffcd219c552be743">More...</a><br/></td></tr>
 <tr class="separator:a6453913959136a50ffcd219c552be743"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#ab0fe2c273d26b897ce8facde43ddda0b">ffi</a> = require &quot;ffi&quot;</td></tr>
-<tr class="separator:ab0fe2c273d26b897ce8facde43ddda0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af8027fe3e9f1acfedd960d3c9b8b6b51"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> = require &quot;packet&quot;</td></tr>
-<tr class="separator:af8027fe3e9f1acfedd960d3c9b8b6b51"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaf8e711f16a7d6e8ef717b7dd98bddb4"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#aaf8e711f16a7d6e8ef717b7dd98bddb4">ntoh</a></td></tr>
-<tr class="separator:aaf8e711f16a7d6e8ef717b7dd98bddb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d4747c3e612b4ad43514af6fb0e9066"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a0d4747c3e612b4ad43514af6fb0e9066">hton</a> = <a class="el" href="utils_8lua.html#a3052ad371f84e15f49734d329b0b4d30">ntoh</a></td></tr>
-<tr class="separator:a0d4747c3e612b4ad43514af6fb0e9066"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adaa08fe03b3d576df466a17d1b512a58"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#adaa08fe03b3d576df466a17d1b512a58">ntoh16</a></td></tr>
-<tr class="separator:adaa08fe03b3d576df466a17d1b512a58"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a45daf24a47a55b28a467372f68091fd3"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a45daf24a47a55b28a467372f68091fd3">hton16</a> = <a class="el" href="utils_8lua.html#a52477e85393b2d01ffe22da322716b2b">ntoh16</a></td></tr>
-<tr class="separator:a45daf24a47a55b28a467372f68091fd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a598fc3fdee6e78605879e83c3b20c199"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bor</a></td></tr>
-<tr class="separator:a598fc3fdee6e78605879e83c3b20c199"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad7b51ea9fc3c6bfe1054e5861625cb1d"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#ad7b51ea9fc3c6bfe1054e5861625cb1d">band</a></td></tr>
-<tr class="separator:ad7b51ea9fc3c6bfe1054e5861625cb1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9bb9fa0add9f41d56bf1ea1b00f0f29f"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a9bb9fa0add9f41d56bf1ea1b00f0f29f">bnot</a></td></tr>
-<tr class="separator:a9bb9fa0add9f41d56bf1ea1b00f0f29f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a84d1e4c164c7cf777a943d26a07b2e4b"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a84d1e4c164c7cf777a943d26a07b2e4b">rshift</a></td></tr>
-<tr class="separator:a84d1e4c164c7cf777a943d26a07b2e4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acaae1371dbd709eaf17514ccc770fd13"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#acaae1371dbd709eaf17514ccc770fd13">lshift</a> = <a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bit.bor</a></td></tr>
-<tr class="separator:acaae1371dbd709eaf17514ccc770fd13"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a77d4b79aafb10a09a5da9240164a59e8"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a77d4b79aafb10a09a5da9240164a59e8">istype</a> = ffi.istype</td></tr>
-<tr class="separator:a77d4b79aafb10a09a5da9240164a59e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a58ea6e9644da54b65f48bf1158205fd0"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a58ea6e9644da54b65f48bf1158205fd0">format</a> = string.format</td></tr>
-<tr class="separator:a58ea6e9644da54b65f48bf1158205fd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a57104013bdcc76206b6408e63148131a"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a57104013bdcc76206b6408e63148131a">icmp</a> = {}</td></tr>
-<tr class="memdesc:a57104013bdcc76206b6408e63148131a"><td class="mdescLeft">&#160;</td><td class="mdescRight">ICMPv4 constants.  <a href="#a57104013bdcc76206b6408e63148131a">More...</a><br/></td></tr>
+<tr class="memitem:a57104013bdcc76206b6408e63148131a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a57104013bdcc76206b6408e63148131a"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a57104013bdcc76206b6408e63148131a">icmp</a> = {}</td></tr>
+<tr class="memdesc:a57104013bdcc76206b6408e63148131a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Icmp4 protocol constants. <br/></td></tr>
 <tr class="separator:a57104013bdcc76206b6408e63148131a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8c89e414cf84bec733b583352aad46a1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a8c89e414cf84bec733b583352aad46a1">ECHO_REPLY</a> = { type = 0, code = 0 }</td></tr>
+<tr class="memitem:a8c89e414cf84bec733b583352aad46a1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="icmp_8lua.html#a57104013bdcc76206b6408e63148131a">icmp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a8c89e414cf84bec733b583352aad46a1">ECHO_REPLY</a> = { type = 0, code = 0 }</td></tr>
+<tr class="memdesc:a8c89e414cf84bec733b583352aad46a1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Icmp4 type-code pair: echo reply.  <a href="#a8c89e414cf84bec733b583352aad46a1">More...</a><br/></td></tr>
 <tr class="separator:a8c89e414cf84bec733b583352aad46a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3a500a4702c5e09e225dbcb9b52eff54"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a3a500a4702c5e09e225dbcb9b52eff54">ECHO_REQUEST</a> = { type = 8, code = 0 }</td></tr>
+<tr class="memitem:a3a500a4702c5e09e225dbcb9b52eff54"><td class="memItemLeft" align="right" valign="top"><a class="el" href="icmp_8lua.html#a57104013bdcc76206b6408e63148131a">icmp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a3a500a4702c5e09e225dbcb9b52eff54">ECHO_REQUEST</a> = { type = 8, code = 0 }</td></tr>
+<tr class="memdesc:a3a500a4702c5e09e225dbcb9b52eff54"><td class="mdescLeft">&#160;</td><td class="mdescRight">Icmp4 type-code pair: echo request.  <a href="#a3a500a4702c5e09e225dbcb9b52eff54">More...</a><br/></td></tr>
 <tr class="separator:a3a500a4702c5e09e225dbcb9b52eff54"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0fcc2101fb7d71180984bd7765b7a492"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a0fcc2101fb7d71180984bd7765b7a492">DST_UNR_PORT_UNR</a> = { type = 3, code = 3 }</td></tr>
+<tr class="memitem:a0fcc2101fb7d71180984bd7765b7a492"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0fcc2101fb7d71180984bd7765b7a492"></a>
+<a class="el" href="icmp_8lua.html#a57104013bdcc76206b6408e63148131a">icmp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a0fcc2101fb7d71180984bd7765b7a492">DST_UNR_PORT_UNR</a> = { type = 3, code = 3 }</td></tr>
+<tr class="memdesc:a0fcc2101fb7d71180984bd7765b7a492"><td class="mdescLeft">&#160;</td><td class="mdescRight">Icmp4 type-code pair: destination unreachable - port unreachable. <br/></td></tr>
 <tr class="separator:a0fcc2101fb7d71180984bd7765b7a492"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a05fe7cfee9c817c801588cc414eb8990"><td class="memItemLeft" align="right" valign="top"><a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a05fe7cfee9c817c801588cc414eb8990">TIME_EXCEEDED_TTL_EXPIRED</a> = { type = 11, code = 0 }</td></tr>
+<tr class="memitem:a05fe7cfee9c817c801588cc414eb8990"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a05fe7cfee9c817c801588cc414eb8990"></a>
+<a class="el" href="icmp_8lua.html#a57104013bdcc76206b6408e63148131a">icmp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a05fe7cfee9c817c801588cc414eb8990">TIME_EXCEEDED_TTL_EXPIRED</a> = { type = 11, code = 0 }</td></tr>
+<tr class="memdesc:a05fe7cfee9c817c801588cc414eb8990"><td class="mdescLeft">&#160;</td><td class="mdescRight">Icmp4 type-code pair: time exceeded - TTL exceeded. <br/></td></tr>
 <tr class="separator:a05fe7cfee9c817c801588cc414eb8990"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a55b0af5a0ab80af93d0f88cc7dc593ec"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a55b0af5a0ab80af93d0f88cc7dc593ec">icmp6</a> = {}</td></tr>
-<tr class="memdesc:a55b0af5a0ab80af93d0f88cc7dc593ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">ICMPv6 constants.  <a href="#a55b0af5a0ab80af93d0f88cc7dc593ec">More...</a><br/></td></tr>
+<tr class="memitem:a55b0af5a0ab80af93d0f88cc7dc593ec"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a55b0af5a0ab80af93d0f88cc7dc593ec"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a55b0af5a0ab80af93d0f88cc7dc593ec">icmp6</a> = {}</td></tr>
+<tr class="memdesc:a55b0af5a0ab80af93d0f88cc7dc593ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Icmp6 protocol constants. <br/></td></tr>
 <tr class="separator:a55b0af5a0ab80af93d0f88cc7dc593ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a45c845282ec12a5274b8385835fb6ea8"><td class="memItemLeft" align="right" valign="top">local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a> = {}</td></tr>
-<tr class="memdesc:a45c845282ec12a5274b8385835fb6ea8"><td class="mdescLeft">&#160;</td><td class="mdescRight">ICMP header.  <a href="#a45c845282ec12a5274b8385835fb6ea8">More...</a><br/></td></tr>
+<tr class="memitem:a45c845282ec12a5274b8385835fb6ea8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a45c845282ec12a5274b8385835fb6ea8"></a>
+local&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a> = {}</td></tr>
+<tr class="memdesc:a45c845282ec12a5274b8385835fb6ea8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Module for icmp_header struct (see <a class="el" href="headers_8lua.html">headers.lua</a>). <br/></td></tr>
 <tr class="separator:a45c845282ec12a5274b8385835fb6ea8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae4b04d438a462b89cbafeb4b749e7f99"><td class="memItemLeft" align="right" valign="top"><a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#ae4b04d438a462b89cbafeb4b749e7f99">__index</a> = <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a></td></tr>
-<tr class="separator:ae4b04d438a462b89cbafeb4b749e7f99"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a68f4eba7263726e76c13fa2b12db67c1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="udp_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a68f4eba7263726e76c13fa2b12db67c1">getIcmp4Packet</a> = <a class="el" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;eth&quot;, &quot;<a class="el" href="proto_8lua.html#ac14d2f57d5e3348199eb098925c5ccca">ip4</a>&quot;, &quot;<a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a>&quot;)</td></tr>
-<tr class="memdesc:a68f4eba7263726e76c13fa2b12db67c1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Packets.  <a href="#a68f4eba7263726e76c13fa2b12db67c1">More...</a><br/></td></tr>
+<tr class="memitem:a68f4eba7263726e76c13fa2b12db67c1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a68f4eba7263726e76c13fa2b12db67c1"></a>
+<a class="el" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a68f4eba7263726e76c13fa2b12db67c1">getIcmp4Packet</a> = <a class="el" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;eth&quot;, &quot;ip4&quot;, &quot;<a class="el" href="icmp_8lua.html#a57104013bdcc76206b6408e63148131a">icmp</a>&quot;)</td></tr>
+<tr class="memdesc:a68f4eba7263726e76c13fa2b12db67c1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cast the packet to an Icmp4 packet. <br/></td></tr>
 <tr class="separator:a68f4eba7263726e76c13fa2b12db67c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a62e572569520ffafeec7183e54694ca5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="udp_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a62e572569520ffafeec7183e54694ca5">getIcmp6Packet</a> = <a class="el" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;eth&quot;, &quot;<a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a>&quot;, &quot;<a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a>&quot;)</td></tr>
+<tr class="memitem:a62e572569520ffafeec7183e54694ca5"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a62e572569520ffafeec7183e54694ca5"></a>
+<a class="el" href="packet_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="icmp_8lua.html#a62e572569520ffafeec7183e54694ca5">getIcmp6Packet</a> = <a class="el" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;eth&quot;, &quot;<a class="el" href="ip6_8lua.html#a48f8232a17cb626a8ad3e95972a69e52">ip6</a>&quot;, &quot;<a class="el" href="icmp_8lua.html#a57104013bdcc76206b6408e63148131a">icmp</a>&quot;)</td></tr>
+<tr class="memdesc:a62e572569520ffafeec7183e54694ca5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cast the packet to an Icmp6 packet. <br/></td></tr>
 <tr class="separator:a62e572569520ffafeec7183e54694ca5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Internet control message protocol utility. </p>
+<p>Utility functions for the icmp_header struct defined in <a class="el" href="headers_8lua.html">headers.lua</a> . <br/>
+Includes:</p>
+<ul>
+<li>Icmp4 constants</li>
+<li>Icmp6 constants</li>
+<li>Icmp header utility</li>
+<li>Definition of Icmp packets </li>
+</ul>
+
+<p>Definition in file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
+</div><h2 class="groupheader">Function Documentation</h2>
 <a class="anchor" id="ab86d43fcd7351d8bde8ba8b405a14b97"></a>
 <div class="memitem">
 <div class="memproto">
@@ -234,6 +235,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Calculate the checksum. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">len</td><td>Number of bytes that the checksum will be computed over </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -262,6 +269,16 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set all members of the icmp header. </p>
+<p>Per default, all members are set to default values specified in the respective set function. Optional named arguments can be used to set a member to a user-provided value. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">args</td><td>Table of named arguments. Available arguments: Type, Code, Checksum, MessageBody </td></tr>
+    <tr><td class="paramname">pre</td><td>prefix for namedArgs. Default 'icmp'. <div class="fragment"><div class="line"><a class="code" href="arp_8lua.html#aa4fec404844cc2c6cb2c0b83ad3040f4">fill</a>() --- only <span class="keywordflow">default</span> values</div>
+<div class="line"><a class="code" href="arp_8lua.html#aa4fec404844cc2c6cb2c0b83ad3040f4">fill</a>{ icmpCode=3 } --- all members are <a class="code" href="ethernet_8lua.html#a77e75ae36313b17315d8ced823089f9e">set</a> to <span class="keywordflow">default</span> values with the exception of icmpCode</div>
+</div><!-- fragment --> </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -280,6 +297,14 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the values of all members. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">pre</td><td>prefix for namedArgs. Default 'icmp'. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Table of named arguments. For a list of arguments see "See also". </dd></dl>
+<dl class="section see"><dt>See Also</dt><dd><a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8" title="Module for icmp_header struct (see headers.lua). ">icmpHeader</a>:<a class="el" href="icmp_8lua.html#a46890cf9f1c6638d128dbbf00807c1b2" title="Set all members of the icmp header. ">fill</a> </dd></dl>
 
 </div>
 </div>
@@ -297,6 +322,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the checksum. </p>
+<dl class="section return"><dt>Returns</dt><dd>Checksum as 16 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -314,6 +340,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the checksum. </p>
+<dl class="section return"><dt>Returns</dt><dd>Checksum as string. </dd></dl>
 
 </div>
 </div>
@@ -331,6 +358,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the code. </p>
+<dl class="section return"><dt>Returns</dt><dd>Code as 8 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -348,6 +376,8 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the code. </p>
+<p>does not work for ICMPv6 </p>
+<dl class="section return"><dt>Returns</dt><dd>Code as string. </dd></dl>
 
 </div>
 </div>
@@ -365,6 +395,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the message body. </p>
+<dl class="section return"><dt>Returns</dt><dd>Message body as TODO. </dd></dl>
 
 </div>
 </div>
@@ -382,6 +413,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the message body. </p>
+<dl class="section return"><dt>Returns</dt><dd>Message body as string TODO. </dd></dl>
 
 </div>
 </div>
@@ -399,6 +431,8 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the values of all members. </p>
+<p>Does not work correctly for ICMPv6 packets </p>
+<dl class="section return"><dt>Returns</dt><dd>Values in string format. </dd></dl>
 
 </div>
 </div>
@@ -416,6 +450,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the type. </p>
+<dl class="section return"><dt>Returns</dt><dd>Type as 8 bit integer. </dd></dl>
 
 </div>
 </div>
@@ -433,6 +468,8 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Retrieve the type. </p>
+<p>does not work for ICMPv6 (ICMPv6 uses different values) </p>
+<dl class="section return"><dt>Returns</dt><dd>Type as string. </dd></dl>
 
 </div>
 </div>
@@ -449,6 +486,10 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Resolve which header comes after this one (in a packet). </p>
+<p>For instance: in tcp/udp based on the ports. This function must exist and is only used when get/dump is executed on an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf) </p>
+<dl class="section return"><dt>Returns</dt><dd>String next header (e.g. 'udp', 'icmp', nil) </dd></dl>
+
 </div>
 </div>
 <a class="anchor" id="ab6f401f1b5f074564c6e606347dde444"></a>
@@ -458,7 +499,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a> setChecksum </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -466,6 +507,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the checksum. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>Checksum of the icmp header as 16 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -476,7 +523,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a> setCode </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -484,6 +531,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the code. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>Code of the icmp header as 8 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -523,6 +576,19 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Change the default values for namedArguments (for fill/get). </p>
+<p>This can be used to for instance calculate a length value based on the total packet length. See proto/ip4.setDefaultNamedArgs as an example. This function must exist and is only used by packet.fill. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">pre</td><td>The prefix used for the namedArgs, e.g. 'icmp' </td></tr>
+    <tr><td class="paramname">namedArgs</td><td>Table of named arguments (see See Also) </td></tr>
+    <tr><td class="paramname">nextHeader</td><td>The header following after this header in a packet </td></tr>
+    <tr><td class="paramname">accumulatedLength</td><td>The so far accumulated length for previous headers in a packet </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section see"><dt>See Also</dt><dd><a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8" title="Module for icmp_header struct (see headers.lua). ">icmpHeader</a>:<a class="el" href="icmp_8lua.html#a46890cf9f1c6638d128dbbf00807c1b2" title="Set all members of the icmp header. ">fill</a> </dd></dl>
+
 </div>
 </div>
 <a class="anchor" id="ab0a7a7b74136511efcca8655b0b5efc8"></a>
@@ -540,6 +606,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the message body. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>Message body of the icmp header as TODO. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -550,7 +622,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">function <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a> setType </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="tcp_8lua.html#a61569f2965b7a369eb10b6d75d410d11">int</a>&#160;</td>
+          <td class="paramtype">int&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -558,80 +630,16 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set the type. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">int</td><td>Type of the icmp header as 8 bit integer. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
 <h2 class="groupheader">Variable Documentation</h2>
-<a class="anchor" id="ae4b04d438a462b89cbafeb4b749e7f99"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a> __index = <a class="el" href="icmp_8lua.html#a45c845282ec12a5274b8385835fb6ea8">icmpHeader</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00034">34</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="ad7b51ea9fc3c6bfe1054e5861625cb1d"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit band</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00007">7</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a9bb9fa0add9f41d56bf1ea1b00f0f29f"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bnot</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00007">7</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a598fc3fdee6e78605879e83c3b20c199"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bor</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00007">7</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a0fcc2101fb7d71180984bd7765b7a492"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a> DST_UNR_PORT_UNR = { type = 3, code = 3 }</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00018">18</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
 <a class="anchor" id="a8c89e414cf84bec733b583352aad46a1"></a>
 <div class="memitem">
 <div class="memproto">
@@ -642,7 +650,10 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00015">15</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
+<p>Icmp4 type-code pair: echo reply. </p>
+<p>Icmp6 type-code pair: echo reply. </p>
+
+<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00028">28</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
 
 </div>
 </div>
@@ -656,239 +667,10 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00016">16</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
+<p>Icmp4 type-code pair: echo request. </p>
+<p>Icmp6 type-code pair: echo request. </p>
 
-</div>
-</div>
-<a class="anchor" id="ab0fe2c273d26b897ce8facde43ddda0b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ffi = require &quot;ffi&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00001">1</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a58ea6e9644da54b65f48bf1158205fd0"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local format = string.format</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00009">9</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a68f4eba7263726e76c13fa2b12db67c1"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="udp_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> getIcmp4Packet = <a class="el" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;eth&quot;, &quot;<a class="el" href="proto_8lua.html#ac14d2f57d5e3348199eb098925c5ccca">ip4</a>&quot;, &quot;<a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a>&quot;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Packets. </p>
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00102">102</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a62e572569520ffafeec7183e54694ca5"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="udp_8lua.html#af8027fe3e9f1acfedd960d3c9b8b6b51">pkt</a> getIcmp6Packet = <a class="el" href="packet_8lua.html#a9ec741ec046b38ff23624e841a2ec3da">packetCreate</a>(&quot;eth&quot;, &quot;<a class="el" href="proto_8lua.html#a8eac1eef5041e816fd6e633367d46dc7">ip6</a>&quot;, &quot;<a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a>&quot;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00103">103</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a0d4747c3e612b4ad43514af6fb0e9066"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local hton = <a class="el" href="utils_8lua.html#a3052ad371f84e15f49734d329b0b4d30">ntoh</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00005">5</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a45daf24a47a55b28a467372f68091fd3"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local hton16 = <a class="el" href="utils_8lua.html#a52477e85393b2d01ffe22da322716b2b">ntoh16</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00006">6</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a57104013bdcc76206b6408e63148131a"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local icmp = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>ICMPv4 constants. </p>
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00013">13</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a55b0af5a0ab80af93d0f88cc7dc593ec"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local icmp6 = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>ICMPv6 constants. </p>
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00025">25</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a45c845282ec12a5274b8385835fb6ea8"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local icmpHeader = {}</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>ICMP header. </p>
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00033">33</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a77d4b79aafb10a09a5da9240164a59e8"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local istype = ffi.istype</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00008">8</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="acaae1371dbd709eaf17514ccc770fd13"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bit bit lshift = <a class="el" href="utils_8lua.html#a598fc3fdee6e78605879e83c3b20c199">bit.bor</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00007">7</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="aaf8e711f16a7d6e8ef717b7dd98bddb4"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ntoh</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00005">5</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="adaa08fe03b3d576df466a17d1b512a58"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local ntoh16</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00006">6</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="af8027fe3e9f1acfedd960d3c9b8b6b51"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local pkt = require &quot;packet&quot;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00002">2</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a84d1e4c164c7cf777a943d26a07b2e4b"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">local bit bit bit rshift</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00007">7</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
-
-</div>
-</div>
-<a class="anchor" id="a05fe7cfee9c817c801588cc414eb8990"></a>
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="proto_8lua.html#a088019b868e563adb2108fcd5c058f91">icmp</a> TIME_EXCEEDED_TTL_EXPIRED = { type = 11, code = 0 }</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00020">20</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
+<p>Definition at line <a class="el" href="icmp_8lua_source.html#l00030">30</a> of file <a class="el" href="icmp_8lua_source.html">icmp.lua</a>.</p>
 
 </div>
 </div>
@@ -898,7 +680,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_008ba6cb71e2c02d515844436773d74d.html">proto</a></li><li class="navelem"><a class="el" href="icmp_8lua.html">icmp.lua</a></li>
-    <li class="footer">Generated on Sat Jun 13 2015 17:21:32 for MoonGen by
+    <li class="footer">Generated on Mon Jun 15 2015 21:12:35 for MoonGen by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.6 </li>
   </ul>
