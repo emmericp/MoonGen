@@ -96,6 +96,9 @@ struct rte_ctrlmbuf {
 #define PKT_RX_IPV6_HDR_EXT  0x0100 /**< RX packet with extended IPv6 header. */
 #define PKT_RX_IEEE1588_PTP  0x0200 /**< RX IEEE1588 L2 Ethernet PT Packet. */
 #define PKT_RX_IEEE1588_TMST 0x0400 /**< RX IEEE1588 L2/L4 timestamped packet.*/
+#define PKT_RX_IPSEC_SECP    0x0800 /**< RX Security operation processed by NIC. */
+#define PKT_RX_SECERR_LSB    0x1000 /**< RX Security Error reporting (LSB). */
+#define PKT_RX_SECERR_MSB    0x2000 /**< RX Security Error reporting (MSB). */
 
 #define PKT_TX_VLAN_PKT      0x0800 /**< TX packet is a 802.1q VLAN packet. */
 #define PKT_TX_IP_CKSUM      0x1000 /**< IP cksum of TX pkt. computed by NIC. */

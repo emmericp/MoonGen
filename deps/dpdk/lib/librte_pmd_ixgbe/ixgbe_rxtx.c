@@ -383,6 +383,7 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	}
 
 	if (ol_flags & PKT_TX_IPSEC) {
+		/*
 		printf("========== Hello DPDK ==========\n");
 		printf("IPSEC:  0x%x\n", ipsec);
 		printf("SAIDX:  %d\n", myipsec.sec.sa_idx);
@@ -390,16 +391,14 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		printf("TYPE:   %d\n", myipsec.sec.type);
 		printf("MODE:   %d\n", myipsec.sec.mode);
 		printf("=========== End DPDK ===========\n");
+		*/
 
 		//Set SA_IDX, TUCMD(Encryption) and TUCMD(IPSEC_TYPE) dynamically
 		//TUCMD is 11 bits, Encryption (bit 5) 1=ESP-encryption 0=ESP-auth, IPSEC_TYPE (bit 4) 1=ESP 0=AH
-
-		//TODO: this should be possible to be set for each packet
-
-		//If set IPSec type is ESP, otherwise AH
+		//If set, IPSec type is ESP, otherwise AH
 		if(myipsec.sec.type == 1) {
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_TYPE_ESP;
-			//If set ESP shall also be encrypted, otherwise just authenticated
+			//If set, ESP shall also be encrypted, otherwise just authenticated
 			if(myipsec.sec.mode)
 				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_ENCRYPT_EN;
 			//Set length of the ESP trailer
@@ -1206,31 +1205,29 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxdp = &rx_ring[rx_id];
 		staterr = rxdp->wb.upper.status_error;
 
-		//0x2c445240 seems to be some kind of default/empty value
-		if(staterr != 0x2c445240) {
-			int dd = 0; //descriptor done
-			int eop = 0; //end of packet
-			int secp = 0; //security offload processed
+		//int dd = 0; //descriptor done
+		//int eop = 0; //end of packet
+		int secp = 0; //security offload processed
 
-			if(staterr & IXGBE_RXDADV_STAT_DD)
-				dd = 1;
-			if(staterr & IXGBE_RXDADV_STAT_EOP)
-				eop = 1;
-			if(staterr & IXGBE_RXDADV_IPSEC_STATUS_SECP)
-				secp = 1;
+		//if(staterr & IXGBE_RXDADV_STAT_DD)
+		//	dd = 1;
+		//if(staterr & IXGBE_RXDADV_STAT_EOP)
+		//	eop = 1;
+		if(staterr & IXGBE_RXDADV_IPSEC_STATUS_SECP)
+			secp = 1;
 
-			uint16_t packet_type = rxdp->wb.lower.lo_dword.hs_rss.pkt_info >> 4; //Bit 13 missing (but unused)
-			uint32_t exterr = staterr >> 20;
-			uint16_t secerr = exterr & 0x180; //only bits 7 & 8, i.e. SECERR
-			secerr = secerr >> 7; //move to left
-			//TODO: read out IPSEC status/error and report via pkt_flags
-			printf("========== HELLO DPDK ==========\n");
-			printf("Paket Type: 0x%x\n", packet_type); //Bit 11 should be 0 (non L2 pkt), Bit 8 = ESP, Bit 9 = AH (p. 304)
-			printf("RXADV: Status Error 0x%x\n", staterr);
-			printf("RXADV: SECERR 0x%x\n", secerr);
-			printf("RXADV: DD(%d), EOP(%d), SECP(%d)\n", dd, eop, secp);
-			printf("=========== END DPDK ===========\n");
-		}
+		//uint16_t packet_type = rxdp->wb.lower.lo_dword.hs_rss.pkt_info >> 4; //Bit 13 missing (but unused)
+		uint32_t exterr = staterr >> 20;
+		uint16_t secerr = exterr & 0x180; //only bits 7 & 8, i.e. SECERR
+		secerr = secerr >> 7; //move to left
+		/*
+		printf("========== HELLO DPDK ==========\n");
+		printf("Paket Type: 0x%x\n", packet_type); //Bit 11 should be 0 (non L2 pkt), Bit 8=ESP, Bit 9=AH (p. 304)
+		printf("RXADV: Status Error 0x%x\n", staterr);
+		printf("RXADV: SECERR 0x%x\n", secerr);
+		printf("RXADV: DD(%d), EOP(%d), SECP(%d)\n", dd, eop, secp);
+		printf("=========== END DPDK ===========\n");
+		*/
 
 		if (! (staterr & rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD)))
 			break;
@@ -1336,6 +1333,8 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				rx_desc_status_to_pkt_flags(staterr));
 		pkt_flags = (uint16_t)(pkt_flags |
 				rx_desc_error_to_pkt_flags(staterr));
+		pkt_flags |= ((secp << 11) & PKT_RX_IPSEC_SECP);
+		pkt_flags |= ((secerr << 12) & (PKT_RX_SECERR_MSB | PKT_RX_SECERR_LSB));
 		rxm->ol_flags = pkt_flags;
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))

@@ -109,6 +109,8 @@ function rxSlave(port, queue)
 		for i = 1, rx do
 			local buf  = bufs[i]
 			local pkt = buf:getEspPacket()
+			local secp, secerr = buf:getSecFlags()
+			print("ESP HW status: SECP (" .. secp .. ") SECERR (0x" .. bit.tohex(secerr, 1) .. ")")
 			buf:dump(128) -- hexdump of received packet (incl. header)
 			printf("counter:   %d", pkt.payload.uint32[0])
 			printf("uint32[1]: %x", pkt.payload.uint32[1])

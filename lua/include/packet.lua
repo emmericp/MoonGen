@@ -36,6 +36,12 @@ function pkt:hasTimestamp()
 	return bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0
 end
 
+function pkt:getSecFlags()
+	local secp = bit.rshift(bit.band(self.ol_flags, dpdk.PKT_RX_IPSEC_SECP), 11)
+	local secerr = bit.rshift(bit.band(self.ol_flags, bit.bor(dpdk.PKT_RX_SECERR_MSB, dpdk.PKT_RX_SECERR_LSB)), 12)
+	return secp, secerr
+end
+
 --- Set the time to wait before the packet is sent for software rate-controlled send methods.
 -- @param delay the time to wait before this packet (in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE)
 function pkt:setDelay(delay)
