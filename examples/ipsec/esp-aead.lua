@@ -12,7 +12,7 @@ function master(txPort, rxPort)
 	local rxDev = device.config(rxPort, 1)
 	device.waitForLinks()
 
-	dpdk.launchLua("rxSlave", rxPort, rxDev:getRxQueue(0))
+	--dpdk.launchLua("rxSlave", rxPort, rxDev:getRxQueue(0))
 	dpdk.launchLua("txSlave", txPort, txDev:getTxQueue(0), rxDev:getRxQueue(0))
 
 	dpdk.waitForSlaves()
@@ -45,8 +45,8 @@ function txSlave(port, srcQueue, dstQueue)
 			ethSrc = srcQueue,
 			ethDst = "a0:36:9f:3b:71:da", --dstQueue,
 			ip4Protocol = 0x32, --ESP, 0x33=AH
-			ip4Src = "10.0.0.1",
-			ip4Dst = "192.168.1.1",
+			ip4Src = "192.168.1.1",
+			ip4Dst = "192.168.1.2",
 			espSPI = 0xdeadbeef,
 			espSQN = 0,
 			espIV  = iv,
