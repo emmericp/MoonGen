@@ -43,7 +43,7 @@ function txSlave(port, srcQueue, dstQueue)
 		buf:getEspPacket():fill{
 			pktLength = pkt_len,
 			ethSrc = srcQueue,
-			ethDst = dstQueue,
+			ethDst = "a0:36:9f:3b:71:da", --dstQueue,
 			ip4Protocol = 0x32, --ESP, 0x33=AH
 			ip4Src = "10.0.0.1",
 			ip4Dst = "192.168.1.1",
@@ -62,11 +62,13 @@ function txSlave(port, srcQueue, dstQueue)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getEspPacket()
 			pkt.esp:setSQN(count) -- increment ESP-SQN with each packet
-			pkt.payload.uint32[0] = count -- real payload
-			pkt.payload.uint32[1] = 0xffffffff -- real payload
+			pkt.payload.uint16[0] = bswap16(12) -- UDP src port (not assigned to service)
+			pkt.payload.uint16[1] = bswap16(14) -- UDP dst port (not assigned to service)
+			pkt.payload.uint16[2] = bswap16(16) -- UDP len (header + payload in bytes)
+			pkt.payload.uint16[3] = bswap16(0)  -- UDP checksum (0 = unused)
 			pkt.payload.uint32[2] = 0xdeadbeef -- real payload
 			pkt.payload.uint32[3] = 0xffffffff -- real payload
-			ipsec.add_esp_trailer(buf, 16) -- add 20 byte ESP trailer
+			ipsec.add_esp_trailer(buf, 16, 0x11) -- add 20 byte ESP trailer, next_hdr = UDP(0x11)
 			buf:offloadIPSec(0, "esp", 1) -- enable hw IPSec in ESP/Encrypted mode, with SA/Key at index 0
 			count = count+1
 		end
@@ -112,8 +114,8 @@ function rxSlave(port, queue)
 			local secp, secerr = buf:getSecFlags()
 			print("ESP HW status: SECP (" .. secp .. ") SECERR (0x" .. bit.tohex(secerr, 1) .. ")")
 			buf:dump(128) -- hexdump of received packet (incl. header)
-			printf("counter:   %d", pkt.payload.uint32[0])
-			printf("uint32[1]: %x", pkt.payload.uint32[1])
+			printf("uint32[0]: %x", pkt.payload.uint32[0]) --UDP header
+			printf("uint32[1]: %x", pkt.payload.uint32[1]) --UDP header
 			printf("uint32[2]: %x", pkt.payload.uint32[2])
 			printf("uint32[3]: %x", pkt.payload.uint32[3])
 		end

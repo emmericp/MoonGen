@@ -547,17 +547,16 @@ end
 -- @next_hdr type of encapsulated packet
 function mod.add_esp_trailer(buf, payload_len, next_hdr)
 	local pkt = buf:getEspPacket()
-	local hdr = next_hdr or 0x11 --default to UDP
 	local idx = math.ceil(payload_len/4)
 	local idx8  = idx * 4
-	local extra_pad = 4 - (payload_len % 4)
+	local extra_pad = idx8 - payload_len
 	local pad_len = 2 + extra_pad
 	local esp_trailer_len = 20 + extra_pad
 
 	pkt.payload.uint8[idx8+0] = 0x00
 	pkt.payload.uint8[idx8+1] = 0x00
 	pkt.payload.uint8[idx8+2] = pad_len
-	pkt.payload.uint8[idx8+3] = hdr
+	pkt.payload.uint8[idx8+3] = next_hdr
 
 	pkt.payload.uint32[idx+1] = 0x00 -- ICV n-3
 	pkt.payload.uint32[idx+2] = 0x00 -- ICV n-2
