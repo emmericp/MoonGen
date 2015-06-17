@@ -42,7 +42,7 @@ function ipsecIV:getString(doByteSwap)
 		self = self:get()
 	end
 
-	return ("%08x%08x"):format(self.uint32[0], self.uint32[1])
+	return ("0x%08x%08x"):format(self.uint32[1], self.uint32[0])
 end
 
 ---------------------------------------------------------------------------
