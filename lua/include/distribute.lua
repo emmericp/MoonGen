@@ -1,5 +1,6 @@
 local ffi = require "ffi"
 local dpdk = require "dpdk"
+local serpent = require "Serpent"
 
 ffi.cdef [[
 struct mg_distribute_queue{
@@ -101,6 +102,10 @@ function mod.createDistributor(socket, entryOffset, nrOutputs, alwaysFlush)
   }, mg_distribute)
 end
 
+
+function mg_distribute:__serialize()
+	return "require 'distribute'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('distribute').mg_distribute"), true
+end
 
 function mg_distribute:send(packets, bitMask, routingEntries)
   return ffi.C.mg_distribute_send(self.cfg, packets.array, bitMask.bitmask, ffi.cast("void **", routingEntries.array))
