@@ -221,13 +221,23 @@ function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
 	end
 end
 
-function bufArray:offloadIPChecksums(ipv4, l2Len, l3Len)
+--- If called, IP chksum offloading will be done for the first n packets
+--	in the bufArray.
+--	@param ipv4 optional (default = true) specifies, if the buffers contain ipv4 packets
+--	@param l2Len optional (default = 14)
+--	@param l3Len optional (default = 20)
+--	@param n optional (default = bufArray.size) for how many packets in the array, the operation
+--	  should be applied
+function bufArray:offloadIPChecksums(ipv4, l2Len, l3Len, n)
 	-- please do not touch this function without carefully measuring the performance impact
+	-- FIXME: touched this.
+	--	added parameter n
 	ipv4 = ipv4 == nil or ipv4
+	n = n or self.size
 	if ipv4 then
 		l2_len = l2_len or 14
 		l3_len = l3_len or 20
-		for i = 0, self.size - 1 do
+		for i = 0, n - 1 do
 			local buf = self.array[i]
 			buf.ol_flags = bit.bor(buf.ol_flags, dpdk.PKT_TX_IPV4_CSUM)
 			buf.pkt.header_lengths = l2_len * 512 + l3_len

@@ -156,4 +156,31 @@ function mod.applyRoute(pkts, mask, entries, entryOffset)
   return ffi.C.mg_table_lpm_apply_route(pkts.array, mask.bitmask, ffi.cast("void **", entries.array), entryOffset, 128, 6)
 end
 
+-- FIXME: this should not be in LPM module. but where?
+--- Decrements the IP TTL field of all masked packets by one.
+--  out_mask masks the successfully decremented packets (TTL did not reach zero).
+function mod.decrementTTL(pkts, in_mask, out_mask, ipv4)
+  ipv4 = ipv4 == nil or ipv4
+  if ipv4 then
+    -- TODO: C implementation might be faster...
+    for i, pkt in ipairs(pkts) do
+      if in_mask[i] then
+        local ipkt = pkt:getIPPacket()
+        local ttl = ipkt.ip:getTTL()
+        ttl = ttl - 1;
+        ipkt.ip:setTTL(ttl)
+        if(ttl ~= 0)then
+          out_mask[i] = 1 
+        else
+          out_mask[i] = 0
+        end
+      else
+        out_mask[i] = 0
+      end
+    end
+  else
+    errorf("TTL decrement for ipv6 not yet implemented")
+  end
+end
+
 return mod

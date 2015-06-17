@@ -18,6 +18,19 @@ struct mg_distribute_config * mg_distribute_create(
   return cfg;
 }
 
+void mg_distributor_apply_src_mac(struct rte_mbuf **pkts, uint8_t port_id, uint16_t n){
+  // TODO: it might be faster to read mac addr only once at output registration
+  struct ether_addr addr;
+  rte_eth_macaddr_get(port_id, &addr);
+
+  uint16_t i;
+  for(i=0;i<n;i++){
+    struct ether_hdr * ethhdr = rte_pktmbuf_mtod(*pkts, struct ether_hdr *);
+    ether_addr_copy(&addr, &ethhdr->s_addr);
+    pkts++;
+  }
+}
+
 int mg_distribute_output_flush(
   struct mg_distribute_config *cfg,
   uint16_t number
@@ -27,6 +40,10 @@ int mg_distribute_output_flush(
     printf(" output %d should have been flushed, but was empty!\n", number);
     return 0;
   }
+
+  // write the mac address of the output to all packets:
+  mg_distributor_apply_src_mac(queue->pkts, cfg->outputs[number].port_id, queue->next_idx);
+
   // Busy wait, until all packets are stored in tx descriptors.
   // TODO: maybe use a ring for the queue datastructure and do not do bust wait here
   while(queue->next_idx>0){
@@ -98,6 +115,7 @@ int mg_distribute_send(
         // printf("  d iface = %d\n", ((uint8_t*)(entries[0]))[4]);
         // printf("  d iface = %d\n", ((uint8_t*)(*entries))[4]);
         uint8_t output = ((uint8_t*)(*entries))[cfg->entry_offset];
+
         //printf(" send out to %d\n", output);
         // send pkt to the corresponding output...
         int8_t status = mg_distribute_enqueue(cfg->outputs[output].queue, *pkts);

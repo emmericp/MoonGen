@@ -5,6 +5,13 @@ local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
 local memory	= require "memory"
 local serpent = require "Serpent"
+require "headers"
+
+ffi.cdef[[
+  void rte_eth_macaddr_get 	( 	uint8_t  	port_id,
+		struct ether_addr *  	mac_addr 
+	) 	
+]]
 
 mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_82599	= 0x808610FB
@@ -413,6 +420,14 @@ function rxQueue:recv(bufArray)
 		end
 	end
 	return 0
+end
+
+function rxQueue:getMacAddr()
+  return ffi.cast("struct mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+end
+
+function txQueue:getMacAddr()
+  return ffi.cast("struct mac_address", ffi.C.rte_eth_macaddr_get(self.id))
 end
 
 function rxQueue:recvAll(bufArray)

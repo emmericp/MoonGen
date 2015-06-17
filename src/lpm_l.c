@@ -42,6 +42,7 @@
 #include <rte_log.h>
 #include <rte_lpm.h>
 #include <rte_memcpy.h>
+#include <rte_ether.h>
 
 #include "lpm_l.h"
 #include "bitmask.h"
@@ -421,7 +422,10 @@ int mg_table_lpm_apply_route(
       // TODO: we could also do this in LUA, check if performance is affected...
       // TODO: we could also do this already on lookup. Check if performance is affected
       // copy data to packet
-      rte_memcpy((*pkts)->buf_addr + offset_pkt, *entries + offset_entry, size);
+      //rte_memcpy((*pkts)->buf_addr + offset_pkt, *entries + offset_entry, size);
+      
+      struct ether_hdr * ethhdr = rte_pktmbuf_mtod(*pkts, struct ether_hdr *);
+      ether_addr_copy((struct ether_addr*)(*entries + offset_entry), &ethhdr->d_addr);
     }
     pkts++;
     entries++;
