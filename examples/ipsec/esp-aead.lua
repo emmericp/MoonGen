@@ -3,6 +3,7 @@ local ipsec	= require "ipsec"
 local memory	= require "memory"
 local device	= require "device"
 local ffi	= require "ffi"
+local stats	= require "stats"
 
 function master(txPort, rxPort)
 	if not txPort or not rxPort then
@@ -12,15 +13,15 @@ function master(txPort, rxPort)
 	local rxDev = device.config(rxPort, 1)
 	device.waitForLinks()
 
-	--dpdk.launchLua("rxSlave", rxPort, rxDev:getRxQueue(0))
-	dpdk.launchLua("txSlave", txPort, txDev:getTxQueue(0), rxDev:getRxQueue(0))
+	dpdk.launchLua("rxSlave", rxPort, rxDev:getRxQueue(0), rxDev)
+	dpdk.launchLua("txSlave", txPort, txDev:getTxQueue(0), rxDev:getRxQueue(0), txDev)
 
 	dpdk.waitForSlaves()
 	print("THE END...")
 end
 
 -- txSlave sends out (ipsec crypto) packages
-function txSlave(port, srcQueue, dstQueue)
+function txSlave(port, srcQueue, dstQueue, txDev)
 	-- Enable hw crypto engine
 	ipsec.enable(port)
 
@@ -53,40 +54,50 @@ function txSlave(port, srcQueue, dstQueue)
 		}
 	end)
 
+	local txCtr = stats:newDevTxCounter(txDev, "plain")
+
 	-- Prepare an Array of packets
-	bufs = mem:bufArray(10)
+	--bufs = mem:bufArray(10)
+	bufs = mem:bufArray(128)
 
 	local count = 0
-	--while dpdk.running() do
+	while dpdk.running() do
 		bufs:alloc(pkt_len)
 		for _, buf in ipairs(bufs) do
-			local pkt = buf:getEspPacket()
-			pkt.esp:setSQN(count) -- increment ESP-SQN with each packet
-			pkt.payload.uint16[0] = bswap16(12) -- UDP src port (not assigned to service)
-			pkt.payload.uint16[1] = bswap16(14) -- UDP dst port (not assigned to service)
-			pkt.payload.uint16[2] = bswap16(16) -- UDP len (header + payload in bytes)
-			pkt.payload.uint16[3] = bswap16(0)  -- UDP checksum (0 = unused)
-			pkt.payload.uint32[2] = 0xdeadbeef -- real payload
-			pkt.payload.uint32[3] = 0xffffffff -- real payload
+			--local pkt = buf:getEspPacket()
+			--pkt.esp:setSQN(count) -- increment ESP-SQN with each packet
+			--pkt.payload.uint16[0] = bswap16(12) -- UDP src port (not assigned to service)
+			--pkt.payload.uint16[1] = bswap16(14) -- UDP dst port (not assigned to service)
+			--pkt.payload.uint16[2] = bswap16(16) -- UDP len (header + payload in bytes)
+			--pkt.payload.uint16[3] = bswap16(0)  -- UDP checksum (0 = unused)
+			--pkt.payload.uint32[2] = 0xdeadbeef -- real payload
+			--pkt.payload.uint32[3] = 0xffffffff -- real payload
 			ipsec.add_esp_trailer(buf, 16, 0x11) -- add 20 byte ESP trailer, next_hdr = UDP(0x11)
 			buf:offloadIPSec(0, "esp", 1) -- enable hw IPSec in ESP/Encrypted mode, with SA/Key at index 0
-			count = count+1
+			--count = count+1
 		end
 		bufs:offloadIPChecksums()
+		--bufs:offloadIPSec(0, "esp", 1)
 		srcQueue:send(bufs)
-	--end
+
+		-- Update TX counter
+		txCtr:update()
+	end
+
+	-- Finalize TX counter
+	txCtr:finalize()
 
 	-- Disable hw crypto engine
 	ipsec.disable(port)
 end
 
 -- rxSlave logs received packages
-function rxSlave(port, queue)
+function rxSlave(port, queue, rxDev)
 	-- Enable hw crypto engine
 	ipsec.enable(port)
 
 	-- Install RX Security Association (SA)
-	ipsec.rx_set_ip(port, 127, "192.168.1.1")
+	ipsec.rx_set_ip(port, 127, "192.168.1.2")
 	ipsec.rx_set_spi(port, 0, 0xdeadbeef, 127)
 	ipsec.rx_set_key(port, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff", 4, "esp", 1)
 
@@ -103,32 +114,29 @@ function rxSlave(port, queue)
 	--print("SPI:    0x"..bit.tohex(spi, 8))
 	--print("IP_IDX: "..ip_idx)
 
-	local dev = device.get(port)
+	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
+
 	local bufs = memory.bufArray()
-	local total = 0
-	while total < 10 do
+	while dpdk.running() do
 		local rx = queue:recv(bufs)
 		for i = 1, rx do
 			local buf  = bufs[i]
 			local pkt = buf:getEspPacket()
-			local secp, secerr = buf:getSecFlags()
-			print("ESP HW status: SECP (" .. secp .. ") SECERR (0x" .. bit.tohex(secerr, 1) .. ")")
-			buf:dump(128) -- hexdump of received packet (incl. header)
-			printf("uint32[0]: %x", pkt.payload.uint32[0]) --UDP header
-			printf("uint32[1]: %x", pkt.payload.uint32[1]) --UDP header
-			printf("uint32[2]: %x", pkt.payload.uint32[2])
-			printf("uint32[3]: %x", pkt.payload.uint32[3])
+			--local secp, secerr = buf:getSecFlags()
+			--print("ESP HW status: SECP (" .. secp .. ") SECERR (0x" .. bit.tohex(secerr, 1) .. ")")
+			--buf:dump(128) -- hexdump of received packet (incl. header)
+			--printf("uint32[0]: %x", pkt.payload.uint32[0]) --UDP header
+			--printf("uint32[1]: %x", pkt.payload.uint32[1]) --UDP header
+			--printf("uint32[2]: %x", pkt.payload.uint32[2])
+			--printf("uint32[3]: %x", pkt.payload.uint32[3])
 		end
 		bufs:freeAll()
 
-		local time = dpdk.getTime()
-		dpdk.sleepMillis(1000)
-		local elapsed = dpdk.getTime() - time
-		local pkts = dev:getRxStats(port)
-		total = total + pkts
-		printf("Received %d packets, current rate %.2f Mpps\n", total, pkts / elapsed / 10^6)
+		-- Update RX counter
+		rxCtr:update()
 	end
-	print("Received "..total.." packets")
+	-- Finalize RX counter
+	rxCtr:finalize()
 
 	-- Disable hw crypto engine
 	ipsec.disable(port)

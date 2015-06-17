@@ -158,7 +158,7 @@ end
 -- This function should be called after using the other IPSec functions
 -- @port The port/interface to use
 function mod.disable(port)
-	print("IPsec disable, port: "..port)
+	--print("IPsec disable, port: "..port)
 	dump_regs(port)
 
 	-- Stop TX data path (set TX_DIS bit)
