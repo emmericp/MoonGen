@@ -30,6 +30,30 @@ end
 
 local dev = device.__devicePrototype
 
+ffi.cdef[[
+struct rte_5tuple_filter {
+	uint32_t dst_ip;         /**< destination IP address in big endian. */
+	uint32_t src_ip;         /**< source IP address in big endian. */
+	uint16_t dst_port;       /**< destination port in big endian. */
+	uint16_t src_port;       /**< source Port big endian. */
+	uint8_t protocol;        /**< l4 protocol. */
+	uint8_t tcp_flags;       /**< tcp flags. */
+	uint16_t priority;       /**< seven evels (001b-111b), 111b is highest,
+				      used when more than one filter matches. */
+	uint8_t dst_ip_mask:1,   /**< if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1,   /**< if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /**< if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /**< if mask is 1b, do not compare src port. */
+		protocol_mask:1; /**< if mask is 1b, do not compare protocol. */
+};
+
+int rte_eth_dev_add_5tuple_filter 	( 	uint8_t  	port_id,
+		uint16_t  	index,
+		struct rte_5tuple_filter *  	filter,
+		uint16_t  	rx_queue 
+	);
+]]
+
 function dev:l2Filter(etype, queue)
   -- XXX ASK: why not use dpdk:
   --  int rte_eth_dev_add_ethertype_filter(...)
@@ -46,6 +70,32 @@ function dev:l2Filter(etype, queue)
 	end
 	dpdkc.write_reg32(self.id, ETQF[1], bit.bor(ETQF_FILTER_ENABLE, etype))
 	dpdkc.write_reg32(self.id, ETQS[1], bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue, ETQS_RX_QUEUE_OFFS)))
+end
+
+function dev:addHW5tupleFilter(filter, priority, queue)
+  local sfilter = ffi.new("struct rte_5tuple_filter")
+  sfilter.src_ip_mask   = (filter.src_ip      == nil) ? 1 : 0
+  sfilter.dst_ip_mask   = (filter.dst_ip      == nil) ? 1 : 0
+  sfilter.src_port_mask = (filter.src_port    == nil) ? 1 : 0
+  sfilter.dst_port_mask = (filter.dst_port    == nil) ? 1 : 0
+  sfilter.protocol      = (filter.l4protocol  == nil) ? 1 : 0
+
+  sfilter.priority = priority or 1
+  if(sfilter.priority > 7 or sfilter.priority < 1) then
+    ferror("Filter priority has to be a number from 1 to 7")
+    return
+  end
+
+  sfilter.src_ip    = filter.src_ip     or 0
+  sfilter.dst_ip    = filter.dst_ip     or 0
+  sfilter.src_port  = filter.src_port   or 0
+  sfilter.dst_port  = filter.dst_port   or 0
+  sfilter.protocol  = filter.l4protocol or 0
+
+  local idx = ????
+  -- FIXME: difference between device ID and port ID ?
+  --  how is this handled in moongen?
+  return ffi.C.rte_eth_dev_add_5tuple_filter(self.id, idx, sfilter, queue.qid)
 end
 
 -- fdir support for layer 3/4 filters
