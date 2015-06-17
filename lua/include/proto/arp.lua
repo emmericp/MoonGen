@@ -323,16 +323,16 @@ local function arpTask(qs)
 
 
 	local ipToMac = {}
+    -- loop over NICs/Queues
     for _, nic in pairs(qs) do
         if nic.txQueue.dev ~= nic.rxQueue.dev then
 		    error("both queues must belong to the same device")
         end
 
-        -- loop over NICs
         for _, ip in pairs(nic.ips) do
             ipToMac[parseIPAddress(ip)] = nic.txQueue.dev:getMac()
         end
---nic.txQueue.dev:l2Filter(eth.TYPE_ARP, nic.rxQueue)
+        nic.txQueue.dev:l2Filter(eth.TYPE_ARP, nic.rxQueue)
     end
 
 	local rxBufs = memory.createBufArray(1)
