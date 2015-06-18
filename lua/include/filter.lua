@@ -73,7 +73,23 @@ function dev:l2Filter(etype, queue)
 	dpdkc.write_reg32(self.id, ETQF[1], bit.bor(ETQF_FILTER_ENABLE, etype))
 	dpdkc.write_reg32(self.id, ETQS[1], bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue, ETQS_RX_QUEUE_OFFS)))
 end
-
+--- Installs a 5tuple filter on the device.
+--  Matching packets will be redirected into the specified rx queue
+--  NOTE: this is currently only tested for X540 NICs, and will probably also
+--  work for 82599 and other ixgbe NICs. Use on other NICs might result in
+--  undefined behavior.
+-- @param filter A table describing the filter. Possible fields are
+--   src_ip    :  Sourche IPv4 Address
+--   dst_ip    :  Destination IPv4 Address
+--   src_port  :  Source L4 port
+--   dst_port  :  Destination L4 port
+--   l4protocol:  L4 Protocol type
+--  All fields are optional.
+--  If a field is not present, or nil, the filter will ignore this field when
+--  checking for a match.
+-- @param queue RX Queue, where packets, matching this filter will be redirected
+-- @param priority optional (default = 1) The priority of this filter rule.
+--  7 is the highest priority and 1 the lowest priority.
 function dev:addHW5tupleFilter(filter, queue, priority)
   local sfilter = ffi.new("struct rte_5tuple_filter")
   sfilter.src_ip_mask   = (filter.src_ip      == nil) and 1 or 0
@@ -93,15 +109,17 @@ function dev:addHW5tupleFilter(filter, queue, priority)
   sfilter.src_port  = filter.src_port   or 0
   sfilter.dst_port  = filter.dst_port   or 0
   sfilter.protocol  = filter.l4protocol or 0
-
-  -- FIXME: should dev be self??
-  if dev.filters5Tuple == nil then
-    dev.filters5Tuple = {}
-    dev.filters5Tuple.n = 0
+  if (filter.l4protocol) then
+    print "[WARNING] Protocol filter not yet fully implemented and tested"
   end
-  dev.filters5Tuple[dev.filters5Tuple.n] = sfilter
-  local idx = dev.filters5Tuple.n
-  dev.filters5Tuple.n = dev.filters5Tuple.n + 1
+
+  if self.filters5Tuple == nil then
+    self.filters5Tuple = {}
+    self.filters5Tuple.n = 0
+  end
+  self.filters5Tuple[self.filters5Tuple.n] = sfilter
+  local idx = self.filters5Tuple.n
+  self.filters5Tuple.n = self.filters5Tuple.n + 1
 
   local state
   if (self:getPciId() == device.PCI_ID_X540) then
