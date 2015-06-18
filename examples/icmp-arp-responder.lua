@@ -7,6 +7,7 @@ local headers	= require "headers"
 local packet	= require "packet"
 
 local arp		= require "proto.arp"
+local ip		= require "proto.ip4"
 local icmp		= require "proto.icmp"
 
 local ffi	= require "ffi"
@@ -25,7 +26,9 @@ function master(funny, port, ...)
 	local dev = device.config(port, 2, 2)
 	device.waitForLinks()
 	
-	dpdk.launchLua(arp.arpTask, dev:getRxQueue(1), dev:getTxQueue(1), { ... })
+	dpdk.launchLua(arp.arpTask, {
+		{ rxQueue = dev:getRxQueue(1), txQueue = dev:getTxQueue(1), ips = { ... } }
+	})
 
 	pingResponder(dev, funny)
 end
@@ -71,7 +74,7 @@ function pingResponder(dev, funny)
 		if rx > 0 then
 			local buf = rxBufs[1]
 			local pkt = buf:getIcmpPacket()
-			if pkt.ip4:getProtocol() == ip4.PROTO_ICMP then
+			if pkt.ip4:getProtocol() == ip.PROTO_ICMP then
 				local tmp = pkt.ip4.src:get()
 				pkt.eth.dst:set(pkt.eth.src)
 				pkt.eth.src:set(devMac)
