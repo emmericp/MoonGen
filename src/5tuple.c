@@ -9,6 +9,110 @@
 #include "bitmask.h"
 #include "debug.h"
 
+// FIXME: tidy up this include mess
+// I had trouble locating all the macros needed
+// for the mg_5tuple_add_HWfilter_ixgbe function.
+//----
+#include <sys/types.h>
+#include <sys/queue.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <errno.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+#include <rte_byteorder.h>
+#include <rte_log.h>
+#include <rte_debug.h>
+#include <rte_interrupts.h>
+#include <rte_pci.h>
+#include <rte_memory.h>
+#include <rte_memcpy.h>
+#include <rte_memzone.h>
+#include <rte_launch.h>
+#include <rte_tailq.h>
+#include <rte_eal.h>
+#include <rte_per_lcore.h>
+#include <rte_lcore.h>
+#include <rte_atomic.h>
+#include <rte_branch_prediction.h>
+#include <rte_common.h>
+#include <rte_ring.h>
+#include <rte_mempool.h>
+#include <rte_malloc.h>
+#include <rte_mbuf.h>
+#include <rte_errno.h>
+#include <rte_spinlock.h>
+#include <rte_string_fns.h>
+
+#include "rte_ether.h"
+#include "rte_ethdev.h"
+
+//----
+#include <sys/queue.h>
+#include <stdio.h>
+#include <errno.h>
+#include <stdint.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdarg.h>
+#include <inttypes.h>
+#include <rte_byteorder.h>
+#include <rte_common.h>
+#include <rte_cycles.h>
+
+#include <rte_interrupts.h>
+#include <rte_log.h>
+#include <rte_debug.h>
+#include <rte_pci.h>
+#include <rte_atomic.h>
+#include <rte_branch_prediction.h>
+#include <rte_memory.h>
+#include <rte_memzone.h>
+#include <rte_tailq.h>
+#include <rte_eal.h>
+#include <rte_alarm.h>
+#include <rte_ether.h>
+#include <rte_ethdev.h>
+#include <rte_atomic.h>
+#include <rte_malloc.h>
+#include <rte_random.h>
+#include <rte_dev.h>
+
+#include "ixgbe_logs.h"
+#include "ixgbe/ixgbe_api.h"
+#include "ixgbe/ixgbe_vf.h"
+#include "ixgbe/ixgbe_common.h"
+#include "ixgbe_ethdev.h"
+#include "ixgbe_bypass.h"
+#include "ixgbe_rxtx.h"
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+#define PMD_DEBUG_TRACE(fmt, args...) do {                        \
+		RTE_LOG(ERR, PMD, "%s: " fmt, __func__, ## args); \
+	} while (0)
+#else
+#define PMD_DEBUG_TRACE(fmt, args...)
+#endif
+
+/* Macros to check for invlaid function pointers in dev_ops structure */
+#define FUNC_PTR_OR_ERR_RET(func, retval) do { \
+	if ((func) == NULL) { \
+		PMD_DEBUG_TRACE("Function not supported\n"); \
+		return (retval); \
+	} \
+} while(0)
+#define FUNC_PTR_OR_RET(func) do { \
+	if ((func) == NULL) { \
+		PMD_DEBUG_TRACE("Function not supported\n"); \
+		return; \
+	} \
+} while(0)
+
+
 #define OFF_ETHHEAD	(sizeof(struct ether_hdr))
 #define OFF_IPV42PROTO (offsetof(struct ipv4_hdr, next_proto_id))
 #define MBUF_IPV4_2PROTO(m)	\
@@ -215,3 +319,144 @@ int mg_5tuple_classify_burst(
   return status;
 }
 
+
+int
+mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t rx_queue)
+{
+  //printf("add filter: port_id = %u, index = %u, queue = %u\n", port_id, index, rx_queue);
+  //printf("mask = %u, %u, %u, %u, %u\n", filter->dst_ip_mask, filter->src_ip_mask, filter->dst_port_mask, filter->src_port_mask, filter->protocol_mask);
+  //printhex("filter: ", filter, 21);
+
+  // the following code is merged from dpdk version 1.x and 2.0
+  // as the version shipped with moongen (1.x) has not yet implemented
+  // support for 5tuple filters on x540 NICs
+  // NOTE: this function overrides most device compatibility checks and assumes
+  // a x540 or similar NIC
+	struct rte_eth_dev *dev;
+
+	if (port_id >= rte_eth_dev_count()) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	if (filter->protocol != IPPROTO_TCP &&
+		filter->tcp_flags != 0){
+		PMD_DEBUG_TRACE("tcp flags is 0x%x, but the protocol value"
+			" is not TCP\n",
+			filter->tcp_flags);
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+
+  // I leave this check, as it will sort out some not supported cards...
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->add_5tuple_filter, -ENOTSUP);
+
+  // XXX the following is hard coded network card specific code
+  //  this will (hopefully) work for ixgbe cards.
+  // TODO: find a safe way to check, if this code works on the selected NIC
+  // XXX: Best solution would be to write a patch for ixgbe_ethdev.c
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	//struct ixgbe_filter_info *filter_info =
+	//	IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i;
+	uint32_t ftqf, sdpqf;
+	uint32_t l34timir = 0;
+	uint8_t mask = 0xff;
+
+  i = index;
+  sdpqf = (uint32_t)(filter->dst_port <<
+      IXGBE_SDPQF_DSTPORT_SHIFT);
+	sdpqf = sdpqf | (filter->src_port & IXGBE_SDPQF_SRCPORT);
+
+	ftqf = (uint32_t)(filter->protocol &
+		IXGBE_FTQF_PROTOCOL_MASK);
+	ftqf |= (uint32_t)((filter->priority &
+		IXGBE_FTQF_PRIORITY_MASK) << IXGBE_FTQF_PRIORITY_SHIFT);
+	if (filter->src_ip_mask == 0) /* 0 means compare. */
+		mask &= IXGBE_FTQF_SOURCE_ADDR_MASK;
+	if (filter->dst_ip_mask == 0)
+		mask &= IXGBE_FTQF_DEST_ADDR_MASK;
+	if (filter->src_port_mask == 0)
+		mask &= IXGBE_FTQF_SOURCE_PORT_MASK;
+	if (filter->dst_port_mask == 0)
+		mask &= IXGBE_FTQF_DEST_PORT_MASK;
+	if (filter->protocol_mask == 0)
+		mask &= IXGBE_FTQF_PROTOCOL_COMP_MASK;
+	ftqf |= mask << IXGBE_FTQF_5TUPLE_MASK_SHIFT;
+	ftqf |= IXGBE_FTQF_POOL_MASK_EN;
+	ftqf |= IXGBE_FTQF_QUEUE_ENABLE;
+
+	IXGBE_WRITE_REG(hw, IXGBE_DAQF(i), filter->dst_ip);
+	IXGBE_WRITE_REG(hw, IXGBE_SAQF(i), filter->src_ip);
+	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(i), sdpqf);
+	IXGBE_WRITE_REG(hw, IXGBE_FTQF(i), ftqf);
+
+	l34timir |= IXGBE_L34T_IMIR_RESERVE;
+	l34timir |= (uint32_t)(rx_queue <<
+				IXGBE_L34T_IMIR_QUEUE_SHIFT);
+	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(i), l34timir);
+
+  return 0;
+}
+
+// static int
+// ixgbe_add_5tuple_filter(struct rte_eth_dev *dev, uint16_t index,
+// 			struct rte_5tuple_filter *filter, uint16_t rx_queue)
+// {
+// 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+// 	uint32_t ftqf, sdpqf = 0;
+// 	uint32_t l34timir = 0;
+// 	uint8_t mask = 0xff;
+// 
+// 	if (hw->mac.type != ixgbe_mac_82599EB)
+// 		return -ENOSYS;
+// 
+// 	if (index >= IXGBE_MAX_FTQF_FILTERS ||
+// 		rx_queue >= IXGBE_MAX_RX_QUEUE_NUM ||
+// 		filter->priority > IXGBE_5TUPLE_MAX_PRI ||
+// 		filter->priority < IXGBE_5TUPLE_MIN_PRI)
+// 		return -EINVAL;  /* filter index is out of range. */
+// 
+// 	if (filter->tcp_flags) {
+// 		PMD_INIT_LOG(INFO, "82599EB not tcp flags in 5tuple");
+// 		return -EINVAL;
+// 	}
+// 
+// 	ftqf = IXGBE_READ_REG(hw, IXGBE_FTQF(index));
+// 	if (ftqf & IXGBE_FTQF_QUEUE_ENABLE)
+// 		return -EINVAL;  /* filter index is in use. */
+// 
+// 	ftqf = 0;
+// 	sdpqf = (uint32_t)(filter->dst_port << IXGBE_SDPQF_DSTPORT_SHIFT);
+// 	sdpqf = sdpqf | (filter->src_port & IXGBE_SDPQF_SRCPORT);
+// 
+// 	ftqf |= (uint32_t)(convert_protocol_type(filter->protocol) &
+// 		IXGBE_FTQF_PROTOCOL_MASK);
+// 	ftqf |= (uint32_t)((filter->priority & IXGBE_FTQF_PRIORITY_MASK) <<
+// 		IXGBE_FTQF_PRIORITY_SHIFT);
+// 	if (filter->src_ip_mask == 0) /* 0 means compare. */
+// 		mask &= IXGBE_FTQF_SOURCE_ADDR_MASK;
+// 	if (filter->dst_ip_mask == 0)
+// 		mask &= IXGBE_FTQF_DEST_ADDR_MASK;
+// 	if (filter->src_port_mask == 0)
+// 		mask &= IXGBE_FTQF_SOURCE_PORT_MASK;
+// 	if (filter->dst_port_mask == 0)
+// 		mask &= IXGBE_FTQF_DEST_PORT_MASK;
+// 	if (filter->protocol_mask == 0)
+// 		mask &= IXGBE_FTQF_PROTOCOL_COMP_MASK;
+// 	ftqf |= mask << IXGBE_FTQF_5TUPLE_MASK_SHIFT;
+// 	ftqf |= IXGBE_FTQF_POOL_MASK_EN;
+// 	ftqf |= IXGBE_FTQF_QUEUE_ENABLE;
+// 
+// 	IXGBE_WRITE_REG(hw, IXGBE_DAQF(index), filter->dst_ip);
+// 	IXGBE_WRITE_REG(hw, IXGBE_SAQF(index), filter->src_ip);
+// 	IXGBE_WRITE_REG(hw, IXGBE_SDPQF(index), sdpqf);
+// 	IXGBE_WRITE_REG(hw, IXGBE_FTQF(index), ftqf);
+// 
+// 	l34timir |= IXGBE_L34T_IMIR_RESERVE;
+// 	l34timir |= (uint32_t)(rx_queue << IXGBE_L34T_IMIR_QUEUE_SHIFT);
+// 	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(index), l34timir);
+// 	return 0;
+// }

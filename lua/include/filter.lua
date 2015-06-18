@@ -5,6 +5,7 @@ local device = require "device"
 local ffi = require "ffi"
 local dpdk = require "dpdk"
 local mbitmask = require "bitmask"
+local err = require "error"
 
 mod.DROP = -1
 
@@ -52,12 +53,13 @@ int rte_eth_dev_add_5tuple_filter 	( 	uint8_t  	port_id,
 		struct rte_5tuple_filter *  	filter,
 		uint16_t  	rx_queue 
 	);
+int
+mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t rx_queue);
 ]]
 
 function dev:l2Filter(etype, queue)
-  -- XXX ASK: why not use dpdk:
-  --  int rte_eth_dev_add_ethertype_filter(...)
-  --  instead of register mashup?
+  -- FIXME: ASK: device compatibility???
 	if type(queue) == "table" then
 		if queue.dev ~= self then
 			error("Queue must belong to the device being configured")
@@ -72,13 +74,13 @@ function dev:l2Filter(etype, queue)
 	dpdkc.write_reg32(self.id, ETQS[1], bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue, ETQS_RX_QUEUE_OFFS)))
 end
 
-function dev:addHW5tupleFilter(filter, priority, queue)
+function dev:addHW5tupleFilter(filter, queue, priority)
   local sfilter = ffi.new("struct rte_5tuple_filter")
-  sfilter.src_ip_mask   = (filter.src_ip      == nil) ? 1 : 0
-  sfilter.dst_ip_mask   = (filter.dst_ip      == nil) ? 1 : 0
-  sfilter.src_port_mask = (filter.src_port    == nil) ? 1 : 0
-  sfilter.dst_port_mask = (filter.dst_port    == nil) ? 1 : 0
-  sfilter.protocol      = (filter.l4protocol  == nil) ? 1 : 0
+  sfilter.src_ip_mask   = (filter.src_ip      == nil) and 1 or 0
+  sfilter.dst_ip_mask   = (filter.dst_ip      == nil) and 1 or 0
+  sfilter.src_port_mask = (filter.src_port    == nil) and 1 or 0
+  sfilter.dst_port_mask = (filter.dst_port    == nil) and 1 or 0
+  sfilter.protocol_mask = (filter.l4protocol  == nil) and 1 or 0
 
   sfilter.priority = priority or 1
   if(sfilter.priority > 7 or sfilter.priority < 1) then
@@ -92,10 +94,28 @@ function dev:addHW5tupleFilter(filter, priority, queue)
   sfilter.dst_port  = filter.dst_port   or 0
   sfilter.protocol  = filter.l4protocol or 0
 
-  local idx = ????
-  -- FIXME: difference between device ID and port ID ?
-  --  how is this handled in moongen?
-  return ffi.C.rte_eth_dev_add_5tuple_filter(self.id, idx, sfilter, queue.qid)
+  -- FIXME: should dev be self??
+  if dev.filters5Tuple == nil then
+    dev.filters5Tuple = {}
+    dev.filters5Tuple.n = 0
+  end
+  dev.filters5Tuple[dev.filters5Tuple.n] = sfilter
+  local idx = dev.filters5Tuple.n
+  dev.filters5Tuple.n = dev.filters5Tuple.n + 1
+
+  local state
+  if (self:getPciId() == device.PCI_ID_X540) then
+    -- TODO: write a proper patch for dpdk
+    state = ffi.C.mg_5tuple_add_HWfilter_ixgbe(self.id, idx, sfilter, queue.qid)
+  else
+    state = ffi.C.rte_eth_dev_add_5tuple_filter(self.id, idx, sfilter, queue.qid)
+  end
+
+  if (state ~= 0) then
+    errorf("Filter not successfully added: %s", err.getstr(-state))
+  end
+
+  return idx
 end
 
 -- fdir support for layer 3/4 filters

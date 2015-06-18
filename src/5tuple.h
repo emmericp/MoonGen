@@ -28,6 +28,7 @@ struct mg_5tuple_rule {
 
 };
 
+// Functions for the software 5tuple filter
 struct rte_acl_ctx * mg_5tuple_create_filter(int socket_id, uint32_t num_rules);
 void mg_5tuple_destruct_filter(struct rte_acl_ctx * acl);
 int mg_5tuple_add_rule(struct rte_acl_ctx * acx, struct mg_5tuple_rule * mgrule, int32_t priority, uint32_t category_mask, uint32_t value);
@@ -42,5 +43,9 @@ int mg_5tuple_classify_burst(
     uint32_t ** result_entries
     );
 uint32_t mg_5tuple_get_results_multiplier();
+
+// Functions for the hardware 5tuple filter
+int mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
+			struct rte_5tuple_filter *filter, uint16_t rx_queue);
 #endif
 
