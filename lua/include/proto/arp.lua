@@ -440,9 +440,11 @@ function arp.blockingLookup(ip)
 		arpTable[ip] = "pending" -- FIXME: this needs a lock
 	end
 	mac = arpTable[ip]
-	while not mac.mac do
-		--busy waiting until arp is resolved
+	-- TODO: add a timeout
+	while not mac.mac and dpdk.running() do
+		-- wait until arp is resolved (which might be forever)
 		mac = arpTable[ip]
+		dpdk.sleepMillisIdle(1)
 	end
 	return mac.mac, mac.timestamp
 end
