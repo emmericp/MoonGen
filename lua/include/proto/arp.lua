@@ -311,7 +311,6 @@ pkt.getArpPacket = packetCreate("eth", "arp")
 --- Arp handler task, responds to ARP queries for given IPs and performs arp lookups
 -- TODO implement garbage collection/refreshing entries
 -- the current implementation does not handle large tables efficiently
--- TODO multi-NIC support
 arp.arpTask = "__MG_ARP_TASK"
 
 local arpTable = ns:get()
