@@ -358,7 +358,7 @@ mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
       break;
     case IPPROTO_SCTP:
       protocol = 0x2;
-      break
+      break;
   }
 
   if(filter->tcp_flags != 0){
