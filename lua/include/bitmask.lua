@@ -69,8 +69,6 @@ function mg_bitMask:setAll()
   return self
 end
 
--- TODO: implement wrappers for bitlogic functions
-
 --- Index metamethod for mg_bitMask
 -- @param x Bit index. Index starts at 1 according to the LUA standard (1 indexes the first bit in the bitmask)
 -- @return For numeric indices: true, when corresponding bit is 1, false otherwise.
@@ -115,15 +113,37 @@ do
 	end
 end
 
+--- Bitwise and
+-- @param mask1
+-- @param mask2
+-- @param result
+--  result = mask1 band mask2
 function mod.band(mask1, mask2, result)
   ffi.C.mg_bitmask_and(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
+
+--- Bitwise or
+-- @param mask1
+-- @param mask2
+-- @param result
+--  result = mask1 bor mask2
 function mod.bor(mask1, mask2, result)
   ffi.C.mg_bitmask_or(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
+
+--- Bitwise xor
+-- @param mask1
+-- @param mask2
+-- @param result
+--  result = bask1 bxor mask2
 function mod.bxor(mask1, mask2, result)
   ffi.C.mg_bitmask_xor(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
+
+-- Bitwise not
+-- @param mask
+-- @param result
+--  result = not mask
 function mod.bnot(mask, result)
   ffi.C.mg_bitmask_not(mask.bitmask, result.bitmask)
 end
