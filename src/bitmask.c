@@ -71,20 +71,30 @@ void mg_bitmask_clear_bit(struct mg_bitmask * mask, uint16_t n){
   mask->mask[n/64] &= ~(1ULL<< (n&0x3f));
 }
 
-// FIXME: the and function should create a new bitmask, rather than overwriting
-// the first one.
-void mg_bitmask_and(struct mg_bitmask * mask1, struct mg_bitmask * mask2){
+void mg_bitmask_and(struct mg_bitmask * mask1, struct mg_bitmask * mask2, struct mg_bitmask * result){
   uint16_t i;
   for(i=0; i< mask1->n_blocks; i++){
-    mask1->mask[i] &= mask2->mask[i];
+    result->mask[i] = mask1->mask[i] & mask2->mask[i];
   }
 }
 
-// FIXME: the or function should create a new bitmask, rather than overwriting
-// the first one.
-void mg_bitmask_or(struct mg_bitmask * mask1, struct mg_bitmask * mask2){
+void mg_bitmask_xor(struct mg_bitmask * mask1, struct mg_bitmask * mask2, struct mg_bitmask * result){
   uint16_t i;
   for(i=0; i< mask1->n_blocks; i++){
-    mask1->mask[i] |= mask2->mask[i];
+    result->mask[i] = mask1->mask[i] ^ mask2->mask[i];
+  }
+}
+
+void mg_bitmask_or(struct mg_bitmask * mask1, struct mg_bitmask * mask2, struct mg_bitmask * result){
+  uint16_t i;
+  for(i=0; i< mask1->n_blocks; i++){
+    result->mask[i] = mask1->mask[i] | mask2->mask[i];
+  }
+}
+
+void mg_bitmask_not(struct mg_bitmask * mask1, struct mg_bitmask * result){
+  uint16_t i;
+  for(i=0; i< mask1->n_blocks; i++){
+    result->mask[i] = ~(mask1->mask[i]);
   }
 }

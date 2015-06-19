@@ -13,8 +13,10 @@ void mg_bitmask_clear_all(struct mg_bitmask * mask);
 uint8_t mg_bitmask_get_bit(struct mg_bitmask * mask, uint16_t n);
 void mg_bitmask_set_bit(struct mg_bitmask * mask, uint16_t n);
 void mg_bitmask_clear_bit(struct mg_bitmask * mask, uint16_t n);
-void mg_bitmask_and(struct mg_bitmask * mask1, struct mg_bitmask * mask2);
-void mg_bitmask_or(struct mg_bitmask * mask1, struct mg_bitmask * mask2);
+void mg_bitmask_and(struct mg_bitmask * mask1, struct mg_bitmask * mask2, struct mg_bitmask * result);
+void mg_bitmask_xor(struct mg_bitmask * mask1, struct mg_bitmask * mask2, struct mg_bitmask * result);
+void mg_bitmask_or(struct mg_bitmask * mask1, struct mg_bitmask * mask2, struct mg_bitmask * result);
+void mg_bitmask_not(struct mg_bitmask * mask1, struct mg_bitmask * result);
 ]]
 
 
@@ -111,6 +113,19 @@ do
 	function mg_bitMask.__ipairs(self)
 		return it, self, 0
 	end
+end
+
+function mod.and(mask1, mask2, result)
+  ffi.C.mg_bitmask_and(mask1.bitmask, mask2.bitmask, result.bitmask)
+end
+function mod.or(mask1, mask2, result)
+  ffi.C.mg_bitmask_or(mask1.bitmask, mask2.bitmask, result.bitmask)
+end
+function mod.xor(mask1, mask2, result)
+  ffi.C.mg_bitmask_xor(mask1.bitmask, mask2.bitmask, result.bitmask)
+end
+function mod.not(mask, result)
+  ffi.C.mg_bitmask_not(mask.bitmask, result.bitmask)
 end
 
 return mod
