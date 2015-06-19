@@ -348,6 +348,24 @@ mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
 		return -EINVAL;
 	}
 
+  uint8_t protocol = 0x3;
+  switch (filter->protocol){
+    case IPPROTO_TCP:
+      protocol = 0x0;
+      break;
+    case IPPROTO_UDP:
+      protocol = 0x1;
+      break;
+    case IPPROTO_SCTP:
+      protocol = 0x2;
+      break
+  }
+
+  if(filter->tcp_flags != 0){
+		PMD_DEBUG_TRACE("tcp flags not supported in filter\n",);
+		return -EINVAL;
+  }
+
 	dev = &rte_eth_devices[port_id];
 
   // I leave this check, as it will sort out some not supported cards...
@@ -370,7 +388,7 @@ mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
       IXGBE_SDPQF_DSTPORT_SHIFT);
 	sdpqf = sdpqf | (filter->src_port & IXGBE_SDPQF_SRCPORT);
 
-	ftqf = (uint32_t)(filter->protocol &
+	ftqf = (uint32_t)(protocol &
 		IXGBE_FTQF_PROTOCOL_MASK);
 	ftqf |= (uint32_t)((filter->priority &
 		IXGBE_FTQF_PRIORITY_MASK) << IXGBE_FTQF_PRIORITY_SHIFT);

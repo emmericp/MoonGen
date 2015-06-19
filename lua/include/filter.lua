@@ -84,6 +84,9 @@ end
 --   src_port  :  Source L4 port
 --   dst_port  :  Destination L4 port
 --   l4protocol:  L4 Protocol type
+--                supported protocols: ip.PROTO_ICMP, ip.PROTO_TCP, ip.PROTO_UDP
+--                If a non supported type is given, the filter will only match on
+--                protocols, which are not supported.
 --  All fields are optional.
 --  If a field is not present, or nil, the filter will ignore this field when
 --  checking for a match.
@@ -109,9 +112,9 @@ function dev:addHW5tupleFilter(filter, queue, priority)
   sfilter.src_port  = filter.src_port   or 0
   sfilter.dst_port  = filter.dst_port   or 0
   sfilter.protocol  = filter.l4protocol or 0
-  if (filter.l4protocol) then
-    print "[WARNING] Protocol filter not yet fully implemented and tested"
-  end
+  --if (filter.l4protocol) then
+  --  print "[WARNING] Protocol filter not yet fully implemented and tested"
+  --end
 
   if self.filters5Tuple == nil then
     self.filters5Tuple = {}
