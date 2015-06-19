@@ -115,16 +115,16 @@ do
 	end
 end
 
-function mod.and(mask1, mask2, result)
+function mod.band(mask1, mask2, result)
   ffi.C.mg_bitmask_and(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
-function mod.or(mask1, mask2, result)
+function mod.bor(mask1, mask2, result)
   ffi.C.mg_bitmask_or(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
-function mod.xor(mask1, mask2, result)
+function mod.bxor(mask1, mask2, result)
   ffi.C.mg_bitmask_xor(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
-function mod.not(mask, result)
+function mod.bnot(mask, result)
   ffi.C.mg_bitmask_not(mask.bitmask, result.bitmask)
 end
 
