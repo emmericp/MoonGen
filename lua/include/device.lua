@@ -7,14 +7,6 @@ local memory	= require "memory"
 local serpent = require "Serpent"
 require "headers"
 
--- local devDepend = {}
--- 
--- function mod:initDeviceDependentCode()
---   self.devDependent[mod.PCI_ID_X540] = require "X540"
--- end
-
-
-
 ffi.cdef[[
   void rte_eth_macaddr_get 	( 	uint8_t  	port_id,
 		struct ether_addr *  	mac_addr 

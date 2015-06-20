@@ -331,7 +331,7 @@ arp.arpTask = "__MG_ARP_TASK"
 local arpTable = ns:get()
 
 local function arpTask(rxQueue, txQueue, ips)
-  print "ARP RUNNING!!"
+  print( "ARP RUNNING!! at rx queue: " .. tostring(rxQueue.qid))
 	arpTable.taskRunning = true
 	if type(ips) ~= "table" then
 		ips = { ips }
@@ -364,6 +364,7 @@ local function arpTask(rxQueue, txQueue, ips)
 	local txBufs = txMem:bufArray(1)
 	dev:l2Filter(eth.TYPE_ARP, rxQueue)
 	
+  printf("start ARP loop...")
 	while dpdk.running() do
 		rx = rxQueue:tryRecvIdle(rxBufs, 1000)
 		assert(rx <= 1)
