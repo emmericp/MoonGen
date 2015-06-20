@@ -13,7 +13,7 @@ function master(funny, port, ...)
 		return master(nil, funny, port, ...)
 	end
 	port = tonumber(port)
-	if not port or select("#", ...) == 0 then
+	if not port or select("#", ...) == 0 or ... == nil then
 		printf("usage: [--do-funny-things] port ip [ip...]")
 		return
 	end
