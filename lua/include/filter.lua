@@ -58,6 +58,7 @@ mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
 			struct rte_5tuple_filter *filter, uint16_t rx_queue);
 ]]
 
+-- FIXME: this function is highly device dependent
 function dev:l2Filter(etype, queue)
   -- FIXME: ASK: device compatibility???
 	if type(queue) == "table" then
