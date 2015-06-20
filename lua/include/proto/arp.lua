@@ -331,6 +331,7 @@ arp.arpTask = "__MG_ARP_TASK"
 local arpTable = ns:get()
 
 local function arpTask(rxQueue, txQueue, ips)
+  print "ARP RUNNING!!"
 	arpTable.taskRunning = true
 	if type(ips) ~= "table" then
 		ips = { ips }
@@ -367,6 +368,7 @@ local function arpTask(rxQueue, txQueue, ips)
 		rx = rxQueue:tryRecvIdle(rxBufs, 1000)
 		assert(rx <= 1)
 		if rx > 0 then
+      print " ARP RX RX RX"
 			local rxPkt = rxBufs[1]:getArpPacket()
 			if rxPkt.eth:getType() == eth.TYPE_ARP then
 				if rxPkt.arp:getOperation() == arp.OP_REQUEST then

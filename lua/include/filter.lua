@@ -9,6 +9,13 @@ local err = require "error"
 
 mod.DROP = -1
 
+mod.RSS_FUNCTION_IPV4     = 1
+mod.RSS_FUNCTION_IPV4_TCP = 2
+mod.RSS_FUNCTION_IPV4_UDP = 3
+mod.RSS_FUNCTION_IPV6     = 4
+mod.RSS_FUNCTION_IPV6_TCP = 5
+mod.RSS_FUNCTION_IPV6_UDP = 6
+
 function mergeTables(t1, t2)
   res = {}
   for i, v in ipairs(t1) do
@@ -31,9 +38,19 @@ deviceDependent[device.PCI_ID_82599] = mergeTables(require "filter_x540", requir
 function dev:l2Filter(etype, queue)
   fun = deviceDependent[self:getPciId()].l2Filter
   if fun then
+    print "FILTER !!"
     return fun(self, etype, queue)
   else
     errorf("l2Filter not supported, or not yet implemented for this device")
+  end
+end
+
+function dev:setupRSS(hash_functions, nr_queues)
+  fun = deviceDependent[self:getPciId()].setupRSS
+  if fun then
+    return fun(self, hash_functions, nr_queues)
+  else
+    errorf("RSS not supported, or not yet implemented for this device")
   end
 end
 
