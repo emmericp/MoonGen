@@ -14,6 +14,7 @@ ffi.cdef [[
 	void namespace_iterate(struct namespace* ns, void (*func)(const char* key, const char* val));
 	struct lock* namespace_get_lock(struct namespace* ns);
 ]]
+local cbType = ffi.typeof("void (*)(const char* key, const char* val)")
 
 local C = ffi.C
 
@@ -63,6 +64,7 @@ function namespace:__newindex(key, val)
 	end
 end
 
+
 --- Iterate over all keys/values in a namespace
 -- Note: namespaces do not offer a 'normal' iterator (e.g. through a __pair metamethod) due to locking.
 -- Iterating over a table requires a lock on the whole table; ensuring that the lock is released is
@@ -70,7 +72,7 @@ end
 -- @param func function to call, receives (key, value) as arguments
 function namespace:forEach(func)
 	local caughtError
-	local cb =	ffi.cast("void (*)(const char* key, const char* val)", function(key, val)
+	local cb = ffi.cast(cbType, function(key, val)
 		if caughtError then
 			return
 		end
