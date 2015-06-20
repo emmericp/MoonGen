@@ -1,16 +1,11 @@
 local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
-local dpdkc		= require "dpdkc"
 local utils 	= require "utils"
-local headers	= require "headers"
-local packet	= require "packet"
 
 local arp		= require "proto.arp"
 local ip		= require "proto.ip4"
 local icmp		= require "proto.icmp"
-
-local ffi	= require "ffi"
 
 
 function master(funny, port, ...)
