@@ -316,13 +316,20 @@ arp.arpTask = "__MG_ARP_TASK"
 local arpTable = ns:get()
 
 local function arpTask(qs)
-	arpTable.taskRunning = true
+	-- two ways to call this: single nic or array of nics
+	if qs[1] == nil and qs.rxQueue then
+		return arpTask({ qs })
+	end
 
 	local ipToMac = {}
 	-- loop over NICs/Queues
 	for _, nic in pairs(qs) do
 		if nic.txQueue.dev ~= nic.rxQueue.dev then
 			error("both queues must belong to the same device")
+		end
+
+		if type(nic.ips) == "string" then
+			nic.ips = { nic.ips }
 		end
 
 		for _, ip in pairs(nic.ips) do
@@ -340,6 +347,8 @@ local function arpTask(qs)
 	end)
 	local txBufs = txMem:bufArray(1)
 	
+	arpTable.taskRunning = true
+
 	while dpdk.running() do
 		
 		for _, nic in pairs(qs) do
@@ -365,7 +374,7 @@ local function arpTask(qs)
 							nic.txQueue:send(txBufs)
 						end
 					elseif rxPkt.arp:getOperation() == arp.OP_REPLY then
-						-- learn from all arp replies we see (suspicable to arp cache poisoning but that doesn't matter here)
+						-- learn from all arp replies we see (arp cache poisoning doesn't matter here)
 						local mac = rxPkt.arp:getHardwareSrcString()
 						local ip = rxPkt.arp:getProtoSrcString()
 						arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = dpdk.getTime() }
@@ -403,6 +412,9 @@ local function arpTask(qs)
 	end
 end
 
+--- Lookup the MAC address for a given IP.
+-- Blocks for up to 1 second if the arp task is not yet running
+-- Caution: this function uses locks and namespaces, must not be used in the fast path
 function arp.lookup(ip)
 	if type(ip) == "string" then
 		ip = parseIPAddress(ip)
@@ -410,43 +422,36 @@ function arp.lookup(ip)
 		ip = ip:get()
 	end
 	if not arpTable.taskRunning then
-		error("ARP task is not running")
+		local waitForArpTask = 0
+		while not arpTable.taskRunning and waitForArpTask < 10 do
+			dpdk.sleepMillis(100)
+		end
+		if not arpTable.taskRunning then
+			error("ARP task is not running")
+		end
 	end
 	local mac = arpTable[tostring(ip)]
-	if mac and mac ~= "pending" then
+	if type(mac) == "table" then
 		return mac.mac, mac.timestamp
 	end
-	if mac ~= "requested" then
-		arpTable[tostring(ip)] = "pending" -- FIXME: this needs a lock
-	end
+	arpTable.lock(function()
+		if not arpTable[tostring(ip)] then
+			arpTable[tostring(ip)] = "pending"
+		end
+	end)
 	return nil
 end
 
-function arp.blockingLookup(ip)
-	if type(ip) == "string" then
-		ip = parseIPAddress(ip)
-	elseif type(ip) == "cdata" then
-		ip = ip:get()
-	end
-	if not arpTable.taskRunning then
-		error("ARP task is not running")
-	end
-	ip = tostring(ip)
-	local mac = arpTable[ip]
-	if mac and mac ~= "pending" then
-		return mac.mac, mac.timestamp
-	end
-	if mac ~= "requested" then
-		arpTable[ip] = "pending" -- FIXME: this needs a lock
-	end
-	mac = arpTable[ip]
-	-- TODO: add a timeout
-	while not mac.mac and dpdk.running() do
-		-- wait until arp is resolved (which might be forever)
-		mac = arpTable[ip]
-		dpdk.sleepMillisIdle(1)
-	end
-	return mac.mac, mac.timestamp
+-- FIXME: this only sends a single request
+function arp.blockingLookup(ip, timeout)
+	local timeout = dpdk.getTime() + timeout
+	repeat
+		local mac, ts = arp.lookup(ip)
+		if mac then
+			return mac, ts
+		end
+		dpdk.sleepMillisIdle(1000)
+	until dpdk.getTime() >= timeout
 end
 
 __MG_ARP_TASK = arpTask
