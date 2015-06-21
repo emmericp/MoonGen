@@ -9,17 +9,19 @@ local timer		= require "timer"
 local arp		= require "proto.arp"
 
 -- set addresses here
-local DST_MAC	= nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
-local SRC_IP	= "10.0.0.10"
-local DST_IP	= "10.1.0.10"
-local SRC_PORT	= 1234
-local DST_PORT	= 1234
+local DST_MAC		= nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
+local SRC_IP_BASE	= "10.0.0.10" -- actual address will be SRC_IP_BASE + random(0, flows)
+local DST_IP		= "10.1.0.10"
+local SRC_PORT		= 1234
+local DST_PORT		= 1234
 
 -- answer ARP requests for this IP on the rx port
 -- change this if benchmarking something like a NAT device
 local RX_IP		= DST_IP
 -- used to resolve DST_MAC
 local GW_IP		= DST_IP
+-- used as source IP to resolve GW_IP to DST_MAC
+local ARP_IP	= SRC_IP_BASE
 
 function master(...)
 	local txPort, rxPort, rate, flows, size = tonumberall(...)
@@ -40,7 +42,8 @@ function master(...)
 	dpdk.launchLua(arp.arpTask, {
 		-- run ARP on both ports
 		{ rxQueue = rxDev:getRxQueue(2), txQueue = rxDev:getTxQueue(2), ips = RX_IP },
-		{ rxQueue = txDev:getRxQueue(2), txQueue = txDev:getTxQueue(2), ips = SRC_IP }
+		-- we need an IP address to do ARP requests on this interface
+		{ rxQueue = txDev:getRxQueue(2), txQueue = txDev:getTxQueue(2), ips = ARP_IP }
 	})
 	dpdk.waitForSlaves()
 end
@@ -78,11 +81,12 @@ function loadSlave(queue, rxDev, size, flows)
 	local counter = 0
 	local txCtr = stats:newDevTxCounter(queue, "plain")
 	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
+	local baseIP = parseIPAddress(SRC_IP_BASE)
 	while dpdk.running() do
 		bufs:alloc(size)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
-			pkt.udp:setSrcPort(SRC_PORT + counter)
+			pkt.ip4.src:set(baseIP + counter)
 			counter = incAndWrap(counter, flows)
 		end
 		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
@@ -103,11 +107,12 @@ function timerSlave(txQueue, rxQueue, size, flows)
 	dpdk.sleepMillis(1000) -- ensure that the load task is running
 	local counter = 0
 	local rateLimit = timer:new(0.001)
+	local baseIP = parseIPAddress(SRC_IP_BASE)
 	while dpdk.running() do
 		hist:update(timestamper:measureLatency(size, function(buf)
 			fillUdpPacket(buf, size)
 			local pkt = buf:getUdpPacket()
-			pkt.udp:setSrcPort(SRC_PORT + counter)
+			pkt.ip4.src:set(baseIP + counter)
 			counter = incAndWrap(counter, flows)
 		end))
 		rateLimit:wait()
