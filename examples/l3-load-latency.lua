@@ -24,7 +24,7 @@ local GW_IP		= DST_IP
 function master(...)
 	local txPort, rxPort, rate, flows, size = tonumberall(...)
 	if not txPort or not rxPort then
-		errorf("usage: txPort rxPort [rate [flows [pktSize]]]")
+		return print("usage: txPort rxPort [rate [flows [pktSize]]]")
 	end
 	flows = flows or 4
 	rate = rate or 2000
@@ -32,9 +32,9 @@ function master(...)
 	txDev = device.config(txPort, 3, 3)
 	rxDev = device.config(rxPort, 3, 3)
 	device.waitForLinks()
-	-- max 1mbit timestamping traffic timestamping
+	-- max 1kpps timestamping traffic timestamping
 	-- rate will be somewhat off for high-latency links at low rates
-	txDev:getTxQueue(0):setRate(rate - 1)
+	txDev:getTxQueue(0):setRate(rate - (size + 4) * 8 / 1000)
 	dpdk.launchLua("loadSlave", txDev:getTxQueue(0), rxDev, size, flows)
 	dpdk.launchLua("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), size, flows)
 	dpdk.launchLua(arp.arpTask, {
@@ -45,14 +45,15 @@ function master(...)
 	dpdk.waitForSlaves()
 end
 
-local function fillUdpPacket(buf)
+local function fillUdpPacket(buf, len)
 	buf:getUdpPacket():fill{
 		ethSrc = queue,
 		ethDst = DST_MAC,
 		ip4Src = SRC_IP,
 		ip4Dst = DST_IP,
 		udpSrc = SRC_PORT,
-		udpDst = DST_PORT
+		udpDst = DST_PORT,
+		pktLength = len
 	}
 end
 
@@ -70,7 +71,9 @@ end
 
 function loadSlave(queue, rxDev, size, flows)
 	doArp()
-	local mempool = memory.createMemPool(fillUdpPacket)
+	local mempool = memory.createMemPool(function(buf)
+		fillUdpPacket(buf, size)
+	end)
 	local bufs = mempool:bufArray()
 	local counter = 0
 	local txCtr = stats:newDevTxCounter(queue, "plain")
@@ -102,7 +105,7 @@ function timerSlave(txQueue, rxQueue, size, flows)
 	local rateLimit = timer:new(0.001)
 	while dpdk.running() do
 		hist:update(timestamper:measureLatency(size, function(buf)
-			fillUdpPacket(buf)
+			fillUdpPacket(buf, size)
 			local pkt = buf:getUdpPacket()
 			pkt.udp:setSrcPort(SRC_PORT + counter)
 			counter = incAndWrap(counter, flows)
