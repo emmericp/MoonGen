@@ -44,7 +44,9 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	}
 
   uint64_t rss_hash_functions = 0;
-  if(rss_enable && hash_function != NULL){
+  printf("configure device: rss_enable = %u\n", rss_enable);
+  if(rss_enable && hash_functions != NULL){
+    printf("rss enabled -> config hash functions\n");
     // configure the selected hash functions:
     if(hash_functions->ipv4){
       rss_hash_functions |= ETH_RSS_IPV4;
@@ -86,7 +88,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
     .rss_key = NULL,
     .rss_key_len = 0,
     .rss_hf = rss_hash_functions,
-  }
+  };
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
       .mq_mode = rss_enable ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
@@ -102,7 +104,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		},
 		.fdir_conf = fdir_conf,
 		.link_speed = link_speed,
-    .rx_adv_conf = rss_conf,
+    .rx_adv_conf.rss_conf = rss_conf,
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
 	if (rc) return rc;
@@ -494,4 +496,19 @@ void rte_delay_ms_export(uint32_t ms) {
 
 void rte_delay_us_export(uint32_t us) {
 	rte_delay_us(us);
+}
+
+// This is a workaround, because lua can not do good 64bit operations.
+// so this function wraps the dpdk one, but is always setting the mask to all 1
+int mg_rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
+		struct rte_eth_rss_reta *  	reta_conf 
+	){
+  //printf("reta port = %u\n", port);
+  //uint8_t i;
+  //for(i = 0; i<128; i++){
+  //  printf(" i = %u, reta = %u\n", i, reta_conf->reta[i]);
+  //}
+  reta_conf->mask_lo = 0xffffffffffffffffULL;
+  reta_conf->mask_hi = 0xffffffffffffffffULL;
+  return rte_eth_dev_rss_reta_update(port, reta_conf);
 }

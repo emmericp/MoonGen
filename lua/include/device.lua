@@ -5,7 +5,16 @@ local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
 local memory	= require "memory"
 local serpent = require "Serpent"
+local errors = require "error"
 require "headers"
+
+-- FIXME: fix this ugly duplicated code enum
+mod.RSS_FUNCTION_IPV4     = 1
+mod.RSS_FUNCTION_IPV4_TCP = 2
+mod.RSS_FUNCTION_IPV4_UDP = 3
+mod.RSS_FUNCTION_IPV6     = 4
+mod.RSS_FUNCTION_IPV6_TCP = 5
+mod.RSS_FUNCTION_IPV6_UDP = 6
 
 ffi.cdef[[
   void rte_eth_macaddr_get 	( 	uint8_t  	port_id,
@@ -109,6 +118,8 @@ function mod.config(...)
   args.txQueues = args.txQueues or 1
   args.rxDescs  = args.rxDescs or 512
   args.txDescs  = args.txDescs or 256
+  args.rssNQueues = args.rssNQueues or 0
+  args.rssFunctions = args.rssFunctions or {mod.RSS_FUNCTION_IPV4, mod.RSS_FUNCTION_IPV4_UDP, mod.RSS_FUNCTION_IPV4_TCP, mod.RSS_FUNCTION_IPV6, mod.RSS_FUNCTION_IPV6_UDP, mod.RSS_FUNCTION_IPV6_TCP}
   -- create a mempool with enough memory to hold tx, as well as rx descriptors
   --args.mempool = args.mempool or memory.createMemPool(args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, dpdkc.get_socket(args.port))
   args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
@@ -123,32 +134,29 @@ function mod.config(...)
     errorf("cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
   end
   -- configure rss stuff
+  local rss_enabled = 0
   local rss_hash_mask = ffi.new("struct mg_rss_hash_mask")
-  for i, v in ipairs(args.rss_functions) do
-    if (v == mod.RSS_FUNCTION_IPV4) then
-      rss_hash_mask.ipv4 = 1
+  if(args.rssNQueues > 0) then
+    for i, v in ipairs(args.rssFunctions) do
+      if (v == mod.RSS_FUNCTION_IPV4) then
+        rss_hash_mask.ipv4 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV4_TCP) then
+        rss_hash_mask.tcp_ipv4 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV4_UDP) then
+        rss_hash_mask.udp_ipv4 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV6) then
+        rss_hash_mask.ipv6 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV6_TCP) then
+        rss_hash_mask.tcp_ipv6 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV6_UDP) then
+        rss_hash_mask.udp_ipv6 = 1
+      end
     end
-    if (v == mod.RSS_FUNCTION_IPV4_TCP) then
-      rss_hash_mask.tcp_ipv4 = 1
-    end
-    if (v == mod.RSS_FUNCTION_IPV4_UDP) then
-      rss_hash_mask.udp_ipv4 = 1
-    end
-    if (v == mod.RSS_FUNCTION_IPV6) then
-      rss_hash_mask.ipv6 = 1
-    end
-    if (v == mod.RSS_FUNCTION_IPV6_TCP) then
-      rss_hash_mask.tcp_ipv6 = 1
-    end
-    if (v == mod.RSS_FUNCTION_IPV6_UDP) then
-      rss_hash_mask.udp_ipv6 = 1
-    end
-  end
-  -- TODO: also check hash functions before enabling rss
-  local rss_enabled
-  if(args.rss_function = nil) then
-    rss_enabled = 0
-  else
     rss_enabled = 1
   end
   -- TODO: support options
@@ -158,8 +166,63 @@ function mod.config(...)
   end
   local dev = mod.get(args.port)
   dev.initialized = true
+  if rss_enabled == 1 then
+    dev:setRssNQueues(args.rssNQueues)
+  end
   return dev
 end
+
+ffi.cdef[[
+/**
+ * A structure used to configure Redirection Table of  the Receive Side
+ * Scaling (RSS) feature of an Ethernet port.
+ */
+struct rte_eth_rss_reta {
+	/** First 64 mask bits indicate which entry(s) need to updated/queried. */
+	uint64_t mask_lo;
+	/** Second 64 mask bits indicate which entry(s) need to updated/queried. */
+	uint64_t mask_hi;
+	uint8_t reta[128];  /**< 128 RETA entries*/
+};
+
+int mg_rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
+		struct rte_eth_rss_reta *  	reta_conf 
+	);
+int rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
+		struct rte_eth_rss_reta *  	reta_conf 
+	);
+]]
+
+function dev:setRssNQueues(n)
+  if(n>16)then
+    errorf("Maximum possible numbers of RSS queues is 16")
+    return
+  end
+  if(({[1]=1, [2]=1, [4]=1, [8]=1, [16]=1})[n] == nil) then
+    printf("[WARNING] RSS distribution to queues will not be fair. Fair distribution is only achieved with a number of Queues equal to 1, 2, 4, 8 or 16. However you are currently using %d queues", n)
+  end
+  local reta = ffi.new("struct rte_eth_rss_reta")
+
+  local npq = 128/n
+  local queue = 0
+  for i=0,127 do
+    reta.reta[i] = queue
+    if (queue < n - 1) then
+      queue = queue+1
+    else
+      queue = 0
+    end
+  end
+
+  -- the mg_ version of rte_eth_dev_rss_reta_update() will also write the mask
+  -- to the reta_config struct, as lua can not do 64bit unsigned int operations.
+  local ret = ffi.C.mg_rte_eth_dev_rss_reta_update(self.id, reta)
+  if (ret ~= 0) then
+    errorf("ERROR setting up RETA table: " .. errors.getstr(-ret))
+  end
+end
+
+
 
 function mod.get(id)
 	if devices[id] then

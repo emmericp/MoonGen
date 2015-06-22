@@ -114,6 +114,7 @@ function mod.createMemPool(...)
 	  end
 	end
 	---- TODO: was 2047. Why? 2048 does make more sense for me.
+	-- 2^n - 1
 	args.n = args.n or 2047
 	args.socket = args.socket or select(2, dpdk.getCore())
 	args.bufSize = args.bufSize or 2048
@@ -127,6 +128,7 @@ function mod.createMemPool(...)
 		local bufs = {}
 		for i = 1, args.n do
 			-- ASK: what is 1522 ???
+			-- TODO: make this dependent on bufSize
 			local buf = mem:alloc(1522)
 			args.func(buf)
 			bufs[#bufs + 1] = buf
