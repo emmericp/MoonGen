@@ -74,21 +74,36 @@ end
 
 local devices = {}
 
--- FIXME: add description for rx/txDescs speed and dropEnable parameters.
+-- FIXME: add description for speed and dropEnable parameters.
 --- Configure a device
--- @param port Port to configure
--- @param mempool optional (default = create a new mempool) Mempool to associate to the device
--- @param rxQueues optional (default = 1) Number of RX queues to configure 
--- @param txQueues optional (default = 1) Number of TX queues to configure 
--- @param rxDescs optional (default = 512)
--- @param txDescs optional (default = 256)
--- @param speed optional (default = 0)
--- @param dropEnable optional (default = true)
+-- @param args A table containing the following named arguments
+--   port Port to configure
+--   mempool optional (default = create a new mempool) Mempool to associate to the device
+--   rxQueues optional (default = 1) Number of RX queues to configure 
+--   txQueues optional (default = 1) Number of TX queues to configure 
+--   rxDescs optional (default = 512)
+--   txDescs optional (default = 256)
+--   speed optional (default = 0)
+--   dropEnable optional (default = true)
+--   rssNQueues optional (default = 0) If this is >0 RSS will be activated for
+--    this device. Incomming packates will be distributed to the
+--    rxQueues number 0 to (rssNQueues - 1). For a fair distribution use one of
+--    the following values (1, 2, 4, 8, 16). Values greater than 16 are not
+--    allowed.
+--   rssFunctions optional (default = all supported functions) A Table,
+--    containing hashing methods, which can be used for RSS.
+--    Possible methods are:
+--      dev.RSS_FUNCTION_IPV4    
+--      dev.RSS_FUNCTION_IPV4_TCP
+--      dev.RSS_FUNCTION_IPV4_UDP
+--      dev.RSS_FUNCTION_IPV6    
+--      dev.RSS_FUNCTION_IPV6_TCP
+--      dev.RSS_FUNCTION_IPV6_UDP
 function mod.config(...)
   local args = {...}
   if #args > 1 then
     -- this is for legacy compatibility when calling the function  without named arguments
-    print "[WARNING] You are using a depreciated method for invoking device config. config(...) should be used with named arguments."
+    print "[WARNING] You are using a depreciated method for invoking device config. config(...) should be used with named arguments. For details review the file 'device.lua'"
     if not args[2] or type(args[2]) == "number" then
       args.port       = args[1]
       args.rxQueues   = args[2]
@@ -121,7 +136,7 @@ function mod.config(...)
   args.rssNQueues = args.rssNQueues or 0
   args.rssFunctions = args.rssFunctions or {mod.RSS_FUNCTION_IPV4, mod.RSS_FUNCTION_IPV4_UDP, mod.RSS_FUNCTION_IPV4_TCP, mod.RSS_FUNCTION_IPV6, mod.RSS_FUNCTION_IPV6_UDP, mod.RSS_FUNCTION_IPV6_TCP}
   -- create a mempool with enough memory to hold tx, as well as rx descriptors
-  --args.mempool = args.mempool or memory.createMemPool(args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, dpdkc.get_socket(args.port))
+  -- FIXME: should n = 2^k-1 here too?
   args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
   if devices[args.port] and devices[args.port].initialized then
     printf("[WARNING] Device %d already configured, skipping initilization", port)

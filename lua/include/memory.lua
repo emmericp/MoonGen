@@ -94,10 +94,11 @@ end
 -- Memory pools are recycled once the owning task terminates.
 -- Call :retain() for mempools that are passed to other tasks.
 -- A table with named arguments should be used.
--- @param n optional (default = 2047), size of the mempool
--- @param func optional, init func, called for each argument
--- @param socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
--- @param bufSize optional the size of each buffer, can only be used if all other args are passed as well
+-- @param args A table containing the following named arguments
+--	n optional (default = 2047), size of the mempool
+--	func optional, init func, called for each argument
+-- 	socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
+-- 	bufSize optional the size of each buffer, can only be used if all other args are passed as well
 function mod.createMemPool(...)
 	local args = {...}
 	if type(args[1]) == "table" then
@@ -113,21 +114,16 @@ function mod.createMemPool(...)
         args.socket = args[2]
 	  end
 	end
-	---- TODO: was 2047. Why? 2048 does make more sense for me.
-	-- 2^n - 1
+	-- DPDK recommends to use a value of n=2^k - 1 here
 	args.n = args.n or 2047
 	args.socket = args.socket or select(2, dpdk.getCore())
 	args.bufSize = args.bufSize or 2048
 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
-	-- FIXME: ASK: the todo seems to be already implemented here.
-	--	HOWEVER: this might cause problems: how do we guarantee, that there are enough free slots
-	--	in the cached mempool ???
-	-- ASK: how are mempools coming into the cache?
+	-- FIXME: the todo seems to be already implemented here.
 	local mem = getPoolFromCache(args.socket, args.n, args.bufSize) or dpdkc.init_mem(args.n, args.socket, args.bufSize)
 	if args.func then
 		local bufs = {}
 		for i = 1, args.n do
-			-- ASK: what is 1522 ???
 			-- TODO: make this dependent on bufSize
 			local buf = mem:alloc(1522)
 			args.func(buf)
@@ -146,43 +142,6 @@ function mod.createMemPool(...)
 	}
 	return mem
 end
-
--- function mod.createMemPool(n, func, socket, bufSize)
--- 	if type(n) == "function" then -- (func[, socket])
--- 		socket = func
--- 		func = n
--- 		n = nil
--- 	elseif type(func) == "number" then -- (n[, socket])
--- 		socket = func
--- 		func = nil
--- 	end
--- 	-- TODO: was 2047. Why? 2048 does make more sense for me.
--- 	n = n or 2048
--- 	socket = socket or select(2, dpdk.getCore())
--- 	bufSize = bufSize or 2048
--- 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
--- 	local mem = getPoolFromCache(socket, n, bufSize) or dpdkc.init_mem(n, socket, bufSize)
--- 	if func then
--- 		local bufs = {}
--- 		for i = 1, n do
--- 			local buf = mem:alloc(1522)
--- 			func(buf)
--- 			bufs[#bufs + 1] = buf
--- 		end
--- 		for i, v in ipairs(bufs) do
--- 			dpdkc.rte_pktmbuf_free_export(v)
--- 		end
--- 	end
--- 	mempools[#mempools + 1] = {
--- 		pool = mem,
--- 		socket = socket,
--- 		n = n,
--- 		bufSize = bufSize,
--- 		core = dpdk.getCore()
--- 	}
--- 	return mem
--- end
-
 
 --- Free all memory pools owned by this task.
 -- All queues using these pools must be stopped before calling this.

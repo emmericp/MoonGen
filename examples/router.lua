@@ -19,42 +19,19 @@ struct table_entry {
   struct mac_address mac_next_hop;
 };
 ]]
-function astr(a)
-  -- serpent.dump() -- reqire Serpent
-  s = "["
-  for i,v in ipairs(a) do
-    s = s .. " " .. tostring(i) .. "->"
-    if (type(v) == "table") then
-      s = s .. astr(v)
-    else
-      s = s .. tostring(v)
-    end
-    s = s .. ","
-  end
-  s = s .. "]"
-  return s
-end
+
 function master(txPort, ...)
 
 
-  --local txDev = device.config(txPort, nil, nil, 3, 0, 0, 3, nil)
-  --local txDev = device.config(txPort,1,3)
-  local txDev = device.config({port=txPort, rxQueues=4, txQueues=4})
-  --txDev:setupRSS({filters.RSS_FUNCTION_IPV4}, 4)
+  -- configure the device (setup queues + RSS)
+  local txDev = device.config({port=txPort, rxQueues=4+4, txQueues=4, rssNQueues=4})
   device.waitForLinks()
 
-  -- local arpDev = device.get(txPort)
-  -- local arpDev = txDev
-  -- print("arp dev id = " .. tostring(arpDev.id))
-  -- print("device: " .. serpent.dump(arpDev))
-  -- print("device queues: " .. serpent.dump(arpDev.rxQueues))
-  -- print("device: " .. astr(arpDev))
-  -- print("device queues: " .. astr(arpDev.rxQueues))
   -- XXX this is the actual queue ID starting with 0 as the first queue
   -- TODO: update this in moongen documentation
-  local arpRxQueue = txDev:getRxQueue(1)
+  local arpRxQueue = txDev:getRxQueue(4)
   local arpTxQueue = txDev:getTxQueue(3)
-  dpdk.launchLuaOnCore(2, arp.arpTask, arpRxQueue, arpTxQueue, {"10.0.0.130", "10.0.0.10", "10.0.0.129"})
+  dpdk.launchLuaOnCore(2, arp.arpTask, arpRxQueue, arpTxQueue, {"10.0.0.130", "10.0.0.10", "10.0.0.11", "10.0.0.12", "10.0.0.13", "10.0.0.129"})
   print("ARP slave running")
 
   -- Create a new routing table.
@@ -95,12 +72,10 @@ function master(txPort, ...)
 
   -- create a 5tuple filter, which matches packets with destination ipv4
   -- addr of 10.0.0.10
-  --txDev:addHW5tupleFilter({dst_ip = parseIPAddress("10.0.0.10"), l4protocol = 0}, txDev:getRxQueue(2))
+  txDev:addHW5tupleFilter({dst_ip = parseIPAddress("10.0.0.10"), l4protocol = 0}, txDev:getRxQueue(4))
 
   -- Run the actual routing core:
-  --dpdk.launchLua("slave", lpmTable, distributor, {txDev:getRxQueue(0), txDev:getRxQueue(1), txDev:getRxQueue(2), txDev:getRxQueue(3)}, 128)
-  --dpdk.launchLua("slave", lpmTable, distributor, {txDev:getRxQueue(0), txDev:getRxQueue(2)}, 128)
-  dpdk.launchLua("slave", lpmTable, distributor, {txDev:getRxQueue(0)}, 128)
+  dpdk.launchLua("slave", lpmTable, distributor, {txDev:getRxQueue(0), txDev:getRxQueue(1), txDev:getRxQueue(2), txDev:getRxQueue(3), txDev:getRxQueue(4)}, 128)
   dpdk.waitForSlaves()
   collectgarbage("collect")
 end
@@ -177,5 +152,6 @@ function slave(lpmTable, distributor, rxQueues, maxBurstSize)
     end
   end
 
+  -- this is just for testing garbage collection
   collectgarbage("collect")
 end
