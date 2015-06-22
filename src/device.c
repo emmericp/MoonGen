@@ -6,6 +6,7 @@
 #include <rte_mbuf.h>
 #include <ixgbe_type.h>
 #include <rte_mbuf.h>
+#include "device.h"
 
 // default descriptors per queue
 #define DEFAULT_RX_DESCS 512
@@ -35,12 +36,43 @@ static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
 
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en) {
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions) {
   //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
 		return -1;
 	}
+
+  uint64_t rss_hash_functions = 0;
+  if(rss_enable && hash_function != NULL){
+    // configure the selected hash functions:
+    if(hash_functions->ipv4){
+      rss_hash_functions |= ETH_RSS_IPV4;
+      printf("ipv4\n");
+    }
+    if(hash_functions->udp_ipv4){
+      rss_hash_functions |= ETH_RSS_IPV4_UDP;
+      printf("ipv4 udp\n");
+    }
+    if(hash_functions->tcp_ipv4){
+      rss_hash_functions |= ETH_RSS_IPV4_TCP;
+      printf("ipv4 tcp\n");
+    }
+    if(hash_functions->ipv6){
+      rss_hash_functions |= ETH_RSS_IPV6;
+      printf("ipv6\n");
+    }
+    if(hash_functions->udp_ipv6){
+      rss_hash_functions |= ETH_RSS_IPV6_TCP;
+      printf("ipv6 udp\n");
+    }
+    if(hash_functions->tcp_ipv6){
+      rss_hash_functions |= ETH_RSS_IPV6_UDP;
+      printf("ipv6 tcp\n");
+    }
+  }
+
+
 	// TODO: enable other FDIR filter types
 	struct rte_fdir_conf fdir_conf = {
 		.mode = RTE_FDIR_MODE_PERFECT,
@@ -49,8 +81,15 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.flexbytes_offset = 21, // TODO support other values
 		.drop_queue = 63, // TODO: support for other NICs
 	};
+
+  struct rte_eth_rss_conf rss_conf = {
+    .rss_key = NULL,
+    .rss_key_len = 0,
+    .rss_hf = rss_hash_functions,
+  }
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
+      .mq_mode = rss_enable ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
 			.split_hdr_size = 0,
 			.header_split = 0,
 			.hw_ip_checksum = 1,
@@ -63,6 +102,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		},
 		.fdir_conf = fdir_conf,
 		.link_speed = link_speed,
+    .rx_adv_conf = rss_conf,
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
 	if (rc) return rc;

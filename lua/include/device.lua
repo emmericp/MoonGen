@@ -122,8 +122,37 @@ function mod.config(...)
     -- dpdk does not like devices without rx/tx queues :(
     errorf("cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
   end
+  -- configure rss stuff
+  local rss_hash_mask = ffi.new("struct mg_rss_hash_mask")
+  for i, v in ipairs(args.rss_functions) do
+    if (v == mod.RSS_FUNCTION_IPV4) then
+      rss_hash_mask.ipv4 = 1
+    end
+    if (v == mod.RSS_FUNCTION_IPV4_TCP) then
+      rss_hash_mask.tcp_ipv4 = 1
+    end
+    if (v == mod.RSS_FUNCTION_IPV4_UDP) then
+      rss_hash_mask.udp_ipv4 = 1
+    end
+    if (v == mod.RSS_FUNCTION_IPV6) then
+      rss_hash_mask.ipv6 = 1
+    end
+    if (v == mod.RSS_FUNCTION_IPV6_TCP) then
+      rss_hash_mask.tcp_ipv6 = 1
+    end
+    if (v == mod.RSS_FUNCTION_IPV6_UDP) then
+      rss_hash_mask.udp_ipv6 = 1
+    end
+  end
+  -- TODO: also check hash functions before enabling rss
+  local rss_enabled
+  if(args.rss_function = nil) then
+    rss_enabled = 0
+  else
+    rss_enabled = 1
+  end
   -- TODO: support options
-  local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable)
+  local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask)
   if rc ~= 0 then
     errorf("could not configure device %d: error %d", args.port, rc)
   end

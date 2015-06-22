@@ -118,10 +118,15 @@ function mod.createMemPool(...)
 	args.socket = args.socket or select(2, dpdk.getCore())
 	args.bufSize = args.bufSize or 2048
 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
+	-- FIXME: ASK: the todo seems to be already implemented here.
+	--	HOWEVER: this might cause problems: how do we guarantee, that there are enough free slots
+	--	in the cached mempool ???
+	-- ASK: how are mempools coming into the cache?
 	local mem = getPoolFromCache(args.socket, args.n, args.bufSize) or dpdkc.init_mem(args.n, args.socket, args.bufSize)
 	if args.func then
 		local bufs = {}
 		for i = 1, args.n do
+			-- ASK: what is 1522 ???
 			local buf = mem:alloc(1522)
 			args.func(buf)
 			bufs[#bufs + 1] = buf
