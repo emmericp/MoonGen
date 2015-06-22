@@ -301,8 +301,7 @@ end
 local enableFuncs = {
 	[device.PCI_ID_X540]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_82599]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
-	[device.PCI_ID_82580]	= { enableRxTimestampsIgb, enableTxTimestampsIgb, enableRxTimestampsAllIgb }
-}
+	[device.PCI_ID_82580]	= { enableRxTimestampsIgb, enableTxTimestampsIgb, enableRxTimestampsAllIgb } }
 
 function rxQueue:enableTimestamps(udpPort)
 	udpPort = udpPort or 0
@@ -382,8 +381,7 @@ end
 local timestampScales = {
 	[device.PCI_ID_X540]	= 6.4,
 	[device.PCI_ID_82599]	= 6.4,
-	[device.PCI_ID_82580]	= 1, -- ???
-}
+	[device.PCI_ID_82580]	= 1, } -- ???
 
 function dev:getTimestampScale()
 	return timestampScales[self:getPciId()] or 1
@@ -392,8 +390,7 @@ end
 local timeRegisters = {
 	[device.PCI_ID_X540]	= { 1, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
 	[device.PCI_ID_82599]	= { 1, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
-	[device.PCI_ID_82580]	= { 2, SYSTIMEL_82580, SYSTIMEH_82580, TIMEADJL_82580, TIMEADJH_82580 },
-}
+	[device.PCI_ID_82580]	= { 2, SYSTIMEL_82580, SYSTIMEH_82580, TIMEADJL_82580, TIMEADJH_82580 }, }
 
 function mod.syncClocks(dev1, dev2)
 	local regs1 = timeRegisters[dev1:getPciId()]

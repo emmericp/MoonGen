@@ -37,24 +37,26 @@ function lock:unlock()
 end
 
 --- Try to acquire the lock, blocking for max <timeout> microseconds.
--- This function does not block if timeout is <= 0.
--- This function may fail spuriously, i.e. return early or fail to acquire the lock.
--- @param timeout max time to wait in us
--- @returns true if the lock was acquired, false otherwise
+--- This function does not block if timeout is <= 0.
+--- This function may fail spuriously, i.e. return early or fail to acquire the lock.
+--- @param timeout max time to wait in us
+--- @returns true if the lock was acquired, false otherwise
 function lock:tryLock(timeout)
 	return C.lock_try_lock_for(self, timeout) == 1
 end
 
 --- Wrap a function call in lock/unlock calls.
--- Calling this is equivalent to the following pseudo-code:
---   lock:lock()
---   try {
---     func(...)
---   } finally {
---     lock:unlock()
---   }
--- @param func the function to call
--- @param ... arguments passed to the function
+--- Calling this is equivalent to the following pseudo-code:
+--- @code
+---   lock:lock()
+---   try {
+---     func(...)
+---   } finally {
+---     lock:unlock()
+---   }
+--- @endcode
+--- @param func the function to call
+--- @param ... arguments passed to the function
 function lock:__call(func, ...)
 	self:lock()
 	local ok, err = xpcall(func, function(err)

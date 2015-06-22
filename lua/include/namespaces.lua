@@ -31,14 +31,14 @@ local function getNameFromTrace()
 end
 
 --- Get a namespace by its name creating it if necessary.
--- @param name the name, defaults to an auto-generated string consisting of the caller's filename and line number
+--- @param name the name, defaults to an auto-generated string consisting of the caller's filename and line number
 function mod:get(name)
 	name = name or getNameFromTrace()
 	return C.create_or_get_namespace(name)
 end
 
 --- Retrieve a *copy* of a value in the namespace.
--- @param key the key, must be a string
+--- @param key the key, must be a string
 function namespace:__index(key)
 	if type(key) ~= "string" then
 		error("table index must be a string")
@@ -53,8 +53,8 @@ function namespace:__index(key)
 end
 
 --- Store a value in the namespace.
--- @param key the key, must be a string
--- @param val the value to store, will be serialized
+--- @param key the key, must be a string
+--- @param val the value to store, will be serialized
 function namespace:__newindex(key, val)
 	if type(key) ~= "string" then
 		error("table index must be a string")
@@ -70,10 +70,10 @@ function namespace:__newindex(key, val)
 end
 
 --- Iterate over all keys/values in a namespace
--- Note: namespaces do not offer a 'normal' iterator (e.g. through a __pair metamethod) due to locking.
--- Iterating over a table requires a lock on the whole table; ensuring that the lock is released is
--- easier with a forEach method than with a regular iterator.
--- @param cb function to call, receives (key, value) as arguments
+--- Note: namespaces do not offer a 'normal' iterator (e.g. through a __pair metamethod) due to locking.
+--- Iterating over a table requires a lock on the whole table; ensuring that the lock is released is
+--- easier with a forEach method than with a regular iterator.
+--- @param cb function to call, receives (key, value) as arguments
 function namespace:forEach(cb)
 	local caughtError
 	C.namespace_iterate(self, function(key, val)

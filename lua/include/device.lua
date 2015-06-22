@@ -63,7 +63,7 @@ end
 
 local devices = {}
 
--- TODO: use a table/named arguments as this is becoming excessive
+--- TODO: use a table/named arguments as this is becoming excessive
 function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
 	if not mempool or type(mempool) == "number" then
 		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
@@ -160,7 +160,7 @@ end
 
 
 --- Wait until the device is fully initialized and up to 9 seconds to establish a link.
--- This function then reports the current link state on stdout
+--- This function then reports the current link state on stdout
 function dev:wait()
 	local link = self:getLinkStatus()
 	self.speed = link.speed
@@ -197,8 +197,7 @@ local deviceNames = {
 	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
 	[mod.PCI_ID_82580]	= "82580 Gigabit Network Connection",
 	[mod.PCI_ID_82576]	= "82576 Gigabit Network Connection",
-	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
-}
+	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2", }
 
 function dev:getName()
 	local id = self:getPciId()
@@ -242,7 +241,7 @@ function dev:getTxStats()
 end
 
 
--- TODO: figure out how to actually acquire statistics in a meaningful way for dropped packets :/
+--- TODO: figure out how to actually acquire statistics in a meaningful way for dropped packets :/
 function dev:getRxStatsAll()
 	local stats = ffi.new("struct rte_eth_stats")
 	dpdkc.rte_eth_stats_get(self.id, stats)
@@ -252,13 +251,13 @@ end
 local RTTDQSEL = 0x00004904
 
 --- Set the tx rate of a queue in MBit/s.
--- This sets the payload rate, not to the actual wire rate, i.e. preamble, SFD, and IFG are ignored.
--- The X540 and 82599 chips seem to have a hardware bug (?): they seem use the wire rate in some point of the throttling process.
--- This causes erratic behavior for rates >= 64/84 * WireRate when using small packets.
--- The function is non-linear (not even monotonic) for such rates.
--- The function prints a warning if such a rate is configured.
--- A simple work-around for this is using two queues with 50% of the desired rate.
--- Note that this changes the inter-arrival times as the rate control of both queues is independent.
+--- This sets the payload rate, not to the actual wire rate, i.e. preamble, SFD, and IFG are ignored.
+--- The X540 and 82599 chips seem to have a hardware bug (?): they seem use the wire rate in some point of the throttling process.
+--- This causes erratic behavior for rates >= 64/84 * WireRate when using small packets.
+--- The function is non-linear (not even monotonic) for such rates.
+--- The function prints a warning if such a rate is configured.
+--- A simple work-around for this is using two queues with 50% of the desired rate.
+--- Note that this changes the inter-arrival times as the rate control of both queues is independent.
 function txQueue:setRate(rate)
 	if self.dev:getPciId() ~= mod.PCI_ID_82599 and self.dev:getPciId() ~= mod.PCI_ID_X540 then
 		error("tx rate control not yet implemented for this NIC")
@@ -360,7 +359,7 @@ do
 end
 
 --- Restarts all tx queues that were actively used by this task.
--- 'Actively used' means that either :send() or :sendWithDelay() was called from the current task.
+--- 'Actively used' means that either :send() or :sendWithDelay() was called from the current task.
 function mod.reclaimTxBuffers()
 	for _, dev in pairs(devices) do
 		for _, queue in pairs(dev.txQueues) do
@@ -373,7 +372,7 @@ function mod.reclaimTxBuffers()
 end
 
 --- Receive packets from a rx queue.
--- Returns as soon as at least one packet is available.
+--- Returns as soon as at least one packet is available.
 function rxQueue:recv(bufArray)
 	while dpdk.running() do
 		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, bufArray.size)
@@ -407,7 +406,7 @@ function rxQueue:tryRecv(bufArray, maxWait)
 end
 
 --- Receive packets from a rx queue with a timeout.
--- Does not perform a busy wait, this is not suitable for high-throughput applications.
+--- Does not perform a busy wait, this is not suitable for high-throughput applications.
 function rxQueue:tryRecvIdle(bufArray, maxWait)
 	maxWait = maxWait or math.huge
 	while maxWait >= 0 do
