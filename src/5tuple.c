@@ -82,9 +82,9 @@
 #include <rte_random.h>
 #include <rte_dev.h>
 
-#include "ixgbe/ixgbe_api.h"
-#include "ixgbe/ixgbe_vf.h"
-#include "ixgbe/ixgbe_common.h"
+#include "ixgbe_api.h"
+#include "ixgbe_vf.h"
+#include "ixgbe_common.h"
 #include "ixgbe_ethdev.h"
 #include "ixgbe_bypass.h"
 #include "ixgbe_rxtx.h"
