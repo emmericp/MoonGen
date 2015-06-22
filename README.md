@@ -1,4 +1,3 @@
-\mainpage
 ### TL;DR
 LuaJIT + DPDK = fast and flexible packet generator for 10 GBit Ethernet and beyond.
 
