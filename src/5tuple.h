@@ -5,6 +5,7 @@
 #include <rte_config.h>
 #include <rte_common.h>
 #include <rte_mbuf.h>
+#include <rte_ethdev.h>
 #include "bitmask.h"
 
 struct mg_5tuple_ipv4_5tuple {
