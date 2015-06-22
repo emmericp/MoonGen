@@ -126,7 +126,6 @@ mg_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 	lpm->n_rules = p->n_rules;
 	lpm->offset = p->offset;
 
-  printf("lpm allocate: %p\n", lpm);
 	return lpm;
 }
 

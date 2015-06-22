@@ -44,33 +44,31 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	}
 
   uint64_t rss_hash_functions = 0;
-  printf("configure device: rss_enable = %u\n", rss_enable);
   if(rss_enable && hash_functions != NULL){
-    printf("rss enabled -> config hash functions\n");
     // configure the selected hash functions:
     if(hash_functions->ipv4){
       rss_hash_functions |= ETH_RSS_IPV4;
-      printf("ipv4\n");
+      //printf("ipv4\n");
     }
     if(hash_functions->udp_ipv4){
       rss_hash_functions |= ETH_RSS_IPV4_UDP;
-      printf("ipv4 udp\n");
+      //printf("ipv4 udp\n");
     }
     if(hash_functions->tcp_ipv4){
       rss_hash_functions |= ETH_RSS_IPV4_TCP;
-      printf("ipv4 tcp\n");
+      //printf("ipv4 tcp\n");
     }
     if(hash_functions->ipv6){
       rss_hash_functions |= ETH_RSS_IPV6;
-      printf("ipv6\n");
+      //printf("ipv6\n");
     }
     if(hash_functions->udp_ipv6){
       rss_hash_functions |= ETH_RSS_IPV6_TCP;
-      printf("ipv6 udp\n");
+      //printf("ipv6 udp\n");
     }
     if(hash_functions->tcp_ipv6){
       rss_hash_functions |= ETH_RSS_IPV6_UDP;
-      printf("ipv6 tcp\n");
+      //printf("ipv6 tcp\n");
     }
   }
 
