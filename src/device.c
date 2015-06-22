@@ -155,6 +155,9 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	hlReg0 &= ~(1 << 10); // TXPADEN
 	hlReg0 |= (1 << 2); // JUMBOEN
 	write_reg32(port, 0x4240, hlReg0);
+	uint32_t tctl = read_reg32(port, 0x0400);
+	tctl &= ~(1 << 3); // PSP
+	write_reg32(port, 0x0400, tctl);
 	return rc; 
 }
 
@@ -183,20 +186,20 @@ uint8_t get_socket(uint8_t port) {
 	return (uint8_t) node;
 }
 
-void sync_clocks(uint8_t port1, uint8_t port2) {
+// FIXME: doesn't support syncing between different NIC families (e.g. GbE vs. 10 GBE)
+// this is somewhat tricky because they use a different timer granularity
+void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timh, uint32_t timl, uint32_t adjl, uint32_t adjh) {
 	// resetting SYSTIML twice prevents a race-condition when SYSTIML is just about to overflow into SYSTIMH
-	write_reg32(port1, IXGBE_SYSTIML, 0);
-	write_reg32(port2, IXGBE_SYSTIML, 0);
-	write_reg32(port1, IXGBE_SYSTIMH, 0);
-	write_reg32(port2, IXGBE_SYSTIMH, 0);
+	write_reg32(port1, timl, 0);
+	write_reg32(port2, timl, 0);
+	write_reg32(port1, timh, 0);
+	write_reg32(port2, timh, 0);
 	if (port1 == port2) {
 		// just reset timers if port1 == port2
 		return;
 	}
-	// to avoid potential unnecessary overhead between the two accesses; especially if compiler optimizations are disabled for some reason
-	// this is probably completely unnecessary on a modern OoO cpu
-	volatile uint32_t* port1time = get_reg_addr(port1, IXGBE_SYSTIML);
-	volatile uint32_t* port2time = get_reg_addr(port2, IXGBE_SYSTIML);
+	volatile uint32_t* port1time = get_reg_addr(port1, timl);
+	volatile uint32_t* port2time = get_reg_addr(port2, timl);
 	const int num_runs = 7; // must be odd
 	int32_t offsets[num_runs];
 	*port1time = 0;
@@ -221,8 +224,8 @@ void sync_clocks(uint8_t port1, uint8_t port2) {
 	int32_t offs = offsets[num_runs / 2];
 	if (offs) {
 		// offs of 0 is not supported
-		write_reg32(port2, IXGBE_TIMADJL, offs < 0 ? (uint32_t) -offs : (uint32_t) offs);
-		write_reg32(port2, IXGBE_TIMADJH, offs < 0 ? 1 << 31 : 0);
+		write_reg32(port2, adjl, offs < 0 ? (uint32_t) -offs : (uint32_t) offs);
+		write_reg32(port2, adjh, offs < 0 ? 1 << 31 : 0);
 		// verification that the clocks are synced: the two clocks should only differ by a constant caused by the read operation
 		// i.e. x2 - x1 = y2 - y1 iff clock1 == clock2
 		/*uint32_t x1 = *port1time;

@@ -1,6 +1,7 @@
 -- globally available utility functions
 require "utils"
-require "packet"
+-- all available headers, packets, ... and their utility functions
+require "proto.proto"
 
 local dpdk		= require "dpdk"
 local dpdkc		= require "dpdkc"
@@ -85,8 +86,12 @@ local function slave(taskId, userscript, args)
 	local buf = ffi.new("char[?]", #vals + 1)
 	ffi.copy(buf, vals)
 	dpdkc.store_result(taskId, buf)
-	dev.reclaimTxBuffers()
-	memory.freeMemPools()
+	local ok, err = pcall(dev.reclaimTxBuffers)
+	if ok then
+		memory.freeMemPools()
+	else
+		printf("Could not reclaim tx memory: %s", err)
+	end
 	--require("jit.p").stop()
 end
 

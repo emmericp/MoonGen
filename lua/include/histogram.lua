@@ -112,16 +112,17 @@ function histogram:samples()
 end
 
 -- FIXME: add support for different formats
-function histogram:print()
+function histogram:print(prefix)
 	if self.dirty then self:calc() end
 
-	printf("Samples: %d, Average: %.1f, StdDev: %.1f, Quartiles: %.1f/%.1f/%.1f", self.numSamples, self.avg, self.stdDev, unpack(self.quarts))
+	printf("%sSamples: %d, Average: %.1f ns, StdDev: %.1f ns, Quartiles: %.1f/%.1f/%.1f ns", prefix and ("[" .. prefix .. "] ") or "", self.numSamples, self.avg, self.stdDev, unpack(self.quarts))
 end
 
 function histogram:save(file)
 	if self.dirty then self:calc() end
 	local close = false
 	if type(file) ~= "userdata" then
+		printf("Saving histogram to '%s'", file)
 		file = io.open(file, "w+")
 		close = true
 	end
