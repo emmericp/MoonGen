@@ -82,7 +82,6 @@
 #include <rte_random.h>
 #include <rte_dev.h>
 
-#include "ixgbe_logs.h"
 #include "ixgbe/ixgbe_api.h"
 #include "ixgbe/ixgbe_vf.h"
 #include "ixgbe/ixgbe_common.h"
