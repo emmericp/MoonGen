@@ -98,7 +98,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		// TODO: get socket id for the NIC
     printf("setting up queue nr %d !\n", i);
 		rc = rte_eth_rx_queue_setup(port, i, rx_descs ? rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, mempool);
-		if (rc) {
+		if (rc != 0) {
 			printf("could not configure rx queue %d\n", i);
 			return rc;
 		}

@@ -105,7 +105,8 @@ function mod.createMemPool(n, func, socket, bufSize)
 		socket = func
 		func = nil
 	end
-	n = n or 2047
+	-- TODO: was 2047. Why? 2048 does make more sense for me.
+	n = n or 2048
 	socket = socket or select(2, dpdk.getCore())
 	bufSize = bufSize or 2048
 	-- TODO: get cached mempool from the mempool pool if possible and use that instead

@@ -71,8 +71,8 @@ local devices = {}
 -- @param mempool optional (default = create a new mempool) Mempool to associate to the device
 -- @param rxQueues optional (default = 1) Number of RX queues to configure 
 -- @param txQueues optional (default = 1) Number of TX queues to configure 
--- @param rxDescs optional (default = 0)
--- @param txDescs optional (default = 0)
+-- @param rxDescs optional (default = 512)
+-- @param txDescs optional (default = 256)
 -- @param speed optional (default = 0)
 -- @param dropEnable optional (default = true)
 function mod.config(...)
@@ -105,7 +105,12 @@ function mod.config(...)
     errorf("Device config needs at least one argument.")
   end
 
-  args.mempool = args.mempool or memory.createMemPool(nil, dpdkc.get_socket(args.port))
+  args.rxQueues = args.rxQueues or 1
+  args.txQueues = args.txQueues or 1
+  args.rxDescs  = args.rxDescs or 512
+  args.txDescs  = args.txDescs or 256
+  -- create a mempool with enough memory to hold tx, as well as rx descriptors
+  args.mempool = args.mempool or memory.createMemPool(args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, dpdkc.get_socket(args.port))
   if devices[args.port] and devices[args.port].initialized then
     printf("[WARNING] Device %d already configured, skipping initilization", port)
     return mod.get(args.port)
@@ -116,10 +121,6 @@ function mod.config(...)
     -- dpdk does not like devices without rx/tx queues :(
     errorf("cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
   end
-  args.rxQueues = args.rxQueues or 1
-  args.txQueues = args.txQueues or 1
-  args.rxDescs  = args.rxDescs or 0
-  args.txDescs  = args.txDescs or 0
   -- TODO: support options
   local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable)
   if rc ~= 0 then
