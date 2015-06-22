@@ -10,7 +10,7 @@ local filters = require "filter"
 local lshift = bit.lshift
 local distribute = require "distribute"
 local arp = require "proto.arp"
-local ip = require "proto.ip"
+local ip = require "proto.ip4"
 
 ffi.cdef [[
 struct table_entry {
@@ -21,17 +21,15 @@ struct table_entry {
 ]]
 
 function master(txPort, ...)
-
-
   -- configure the device (setup queues + RSS)
   local txDev = device.config({port=txPort, rxQueues=4+4, txQueues=4, rssNQueues=4})
   device.waitForLinks()
 
   -- XXX this is the actual queue ID starting with 0 as the first queue
   -- TODO: update this in moongen documentation
-  local arpRxQueue = txDev:getRxQueue(4)
+  local arpRxQueue = txDev:getRxQueue(5)
   local arpTxQueue = txDev:getTxQueue(3)
-  dpdk.launchLuaOnCore(2, arp.arpTask, arpRxQueue, arpTxQueue, {"10.0.0.130", "10.0.0.10", "10.0.0.11", "10.0.0.12", "10.0.0.13", "10.0.0.129"})
+  dpdk.launchLuaOnCore(2, arp.arpTask, {rxQueue = arpRxQueue, txQueue = arpTxQueue, ips = {"10.0.0.130", "10.0.0.10", "10.0.0.11", "10.0.0.12", "10.0.0.13", "10.0.0.129"}})
   print("ARP slave running")
 
   -- Create a new routing table.

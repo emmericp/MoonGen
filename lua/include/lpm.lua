@@ -166,9 +166,9 @@ function mod.decrementTTL(pkts, in_mask, out_mask, ipv4)
     for i, pkt in ipairs(pkts) do
       if in_mask[i] then
         local ipkt = pkt:getIPPacket()
-        local ttl = ipkt.ip:getTTL()
+        local ttl = ipkt.ip4:getTTL()
         ttl = ttl - 1;
-        ipkt.ip:setTTL(ttl)
+        ipkt.ip4:setTTL(ttl)
         if(ttl ~= 0)then
           out_mask[i] = 1 
         else
