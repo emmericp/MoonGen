@@ -5,6 +5,7 @@ local ffi	= require "ffi"
 local dpdkc = require "dpdkc"
 local dpdk	= require "dpdk"
 local ns	= require "namespaces"
+local serpent = require "Serpent"
 
 ffi.cdef [[
 	void* malloc(size_t size);
@@ -92,30 +93,37 @@ end
 --- Create a new memory pool.
 -- Memory pools are recycled once the owning task terminates.
 -- Call :retain() for mempools that are passed to other tasks.
+-- A table with named arguments should be used.
 -- @param n optional (default = 2047), size of the mempool
 -- @param func optional, init func, called for each argument
 -- @param socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
 -- @param bufSize optional the size of each buffer, can only be used if all other args are passed as well
-function mod.createMemPool(n, func, socket, bufSize)
-	if type(n) == "function" then -- (func[, socket])
-		socket = func
-		func = n
-		n = nil
-	elseif type(func) == "number" then -- (n[, socket])
-		socket = func
-		func = nil
+function mod.createMemPool(...)
+	local args = {...}
+	if type(args[1]) == "table" then
+	  args = args[1]
+	else
+	  --print "[WARNING] You are using a depreciated method for calling createMemPool(...). createMemPool(...) should be used with named arguments."
+      if type(args[1]) == "function" then
+	    -- (func[, socket])
+	    args.socket = args[2]
+        args.func = args[1]
+      elseif type(args[2]) == "number" then
+        -- (n[, socket])
+        args.socket = args[2]
+	  end
 	end
-	-- TODO: was 2047. Why? 2048 does make more sense for me.
-	n = n or 2048
-	socket = socket or select(2, dpdk.getCore())
-	bufSize = bufSize or 2048
+	---- TODO: was 2047. Why? 2048 does make more sense for me.
+	args.n = args.n or 2047
+	args.socket = args.socket or select(2, dpdk.getCore())
+	args.bufSize = args.bufSize or 2048
 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
-	local mem = getPoolFromCache(socket, n, bufSize) or dpdkc.init_mem(n, socket, bufSize)
-	if func then
+	local mem = getPoolFromCache(args.socket, args.n, args.bufSize) or dpdkc.init_mem(args.n, args.socket, args.bufSize)
+	if args.func then
 		local bufs = {}
-		for i = 1, n do
+		for i = 1, args.n do
 			local buf = mem:alloc(1522)
-			func(buf)
+			args.func(buf)
 			bufs[#bufs + 1] = buf
 		end
 		for i, v in ipairs(bufs) do
@@ -124,14 +132,49 @@ function mod.createMemPool(n, func, socket, bufSize)
 	end
 	mempools[#mempools + 1] = {
 		pool = mem,
-		socket = socket,
-		n = n,
-		bufSize = bufSize,
+		socket = args.socket,
+		n = args.n,
+		bufSize = args.bufSize,
 		core = dpdk.getCore()
 	}
 	return mem
 end
 
+-- function mod.createMemPool(n, func, socket, bufSize)
+-- 	if type(n) == "function" then -- (func[, socket])
+-- 		socket = func
+-- 		func = n
+-- 		n = nil
+-- 	elseif type(func) == "number" then -- (n[, socket])
+-- 		socket = func
+-- 		func = nil
+-- 	end
+-- 	-- TODO: was 2047. Why? 2048 does make more sense for me.
+-- 	n = n or 2048
+-- 	socket = socket or select(2, dpdk.getCore())
+-- 	bufSize = bufSize or 2048
+-- 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
+-- 	local mem = getPoolFromCache(socket, n, bufSize) or dpdkc.init_mem(n, socket, bufSize)
+-- 	if func then
+-- 		local bufs = {}
+-- 		for i = 1, n do
+-- 			local buf = mem:alloc(1522)
+-- 			func(buf)
+-- 			bufs[#bufs + 1] = buf
+-- 		end
+-- 		for i, v in ipairs(bufs) do
+-- 			dpdkc.rte_pktmbuf_free_export(v)
+-- 		end
+-- 	end
+-- 	mempools[#mempools + 1] = {
+-- 		pool = mem,
+-- 		socket = socket,
+-- 		n = n,
+-- 		bufSize = bufSize,
+-- 		core = dpdk.getCore()
+-- 	}
+-- 	return mem
+-- end
 
 
 --- Free all memory pools owned by this task.

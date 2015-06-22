@@ -38,7 +38,6 @@ deviceDependent[device.PCI_ID_82599] = mergeTables(require "filter_x540", requir
 function dev:l2Filter(etype, queue)
   fun = deviceDependent[self:getPciId()].l2Filter
   if fun then
-    print "FILTER !!"
     return fun(self, etype, queue)
   else
     errorf("l2Filter not supported, or not yet implemented for this device")

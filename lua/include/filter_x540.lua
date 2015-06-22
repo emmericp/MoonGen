@@ -66,7 +66,7 @@ function mod.l2Filter(dev, etype, queue)
 	if queue == -1 then
 		queue = 63
 	end
-  printf("devid %d, queue %d", dev.id, queue)
+  --printf("devid %d, queue %d", dev.id, queue)
 	dpdkc.write_reg32(dev.id, ETQF[1], bit.bor(ETQF_FILTER_ENABLE, etype))
 	dpdkc.write_reg32(dev.id, ETQS[1], bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue, ETQS_RX_QUEUE_OFFS)))
 end

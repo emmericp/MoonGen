@@ -76,7 +76,7 @@ local devices = {}
 -- @param speed optional (default = 0)
 -- @param dropEnable optional (default = true)
 function mod.config(...)
-  args = {...}
+  local args = {...}
   if #args > 1 then
     -- this is for legacy compatibility when calling the function  without named arguments
     print "[WARNING] You are using a depreciated method for invoking device config. config(...) should be used with named arguments."
@@ -110,7 +110,8 @@ function mod.config(...)
   args.rxDescs  = args.rxDescs or 512
   args.txDescs  = args.txDescs or 256
   -- create a mempool with enough memory to hold tx, as well as rx descriptors
-  args.mempool = args.mempool or memory.createMemPool(args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, dpdkc.get_socket(args.port))
+  --args.mempool = args.mempool or memory.createMemPool(args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, dpdkc.get_socket(args.port))
+  args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
   if devices[args.port] and devices[args.port].initialized then
     printf("[WARNING] Device %d already configured, skipping initilization", port)
     return mod.get(args.port)
