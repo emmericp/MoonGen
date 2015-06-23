@@ -39,7 +39,7 @@ function txSlave(port, srcQueue, dstQueue, txDev)
 	iv.uint32[1] = 0x05060708
 
 	-- Create a packet Blueprint
-	local pkt_len = 86 -- for ESP the packet must be 4 bytes aligned
+	local pkt_len = 70 -- 70 bytes is the minimum for IPv4/AHv4
 	local mem = memory.createMemPool(function(buf)
 		buf:getAhPacket():fill{
 			pktLength = pkt_len,
@@ -65,16 +65,16 @@ function txSlave(port, srcQueue, dstQueue, txDev)
 	while dpdk.running() do
 		bufs:alloc(pkt_len)
 		for _, buf in ipairs(bufs) do
-			local pkt = buf:getAhPacket()
-			pkt.ah:setSQN(count) -- increment AH-SQN with each packet
-			pkt.payload.uint16[0] = bswap16(12) -- UDP src port (not assigned to service)
-			pkt.payload.uint16[1] = bswap16(14) -- UDP dst port (not assigned to service)
-			pkt.payload.uint16[2] = bswap16(16) -- UDP len (header + payload in bytes)
-			pkt.payload.uint16[3] = bswap16(0)  -- UDP checksum (0 = unused)
-			pkt.payload.uint32[2] = 0xdeadbeef -- real payload
-			pkt.payload.uint32[3] = 0xffffffff -- real payload
+			--local pkt = buf:getAhPacket()
+			--pkt.ah:setSQN(count) -- increment AH-SQN with each packet
+			--pkt.payload.uint16[0] = bswap16(12) -- UDP src port (not assigned to service)
+			--pkt.payload.uint16[1] = bswap16(14) -- UDP dst port (not assigned to service)
+			--pkt.payload.uint16[2] = bswap16(16) -- UDP len (header + payload in bytes)
+			--pkt.payload.uint16[3] = bswap16(0)  -- UDP checksum (0 = unused)
+			--pkt.payload.uint32[2] = 0xdeadbeef -- real payload
+			--pkt.payload.uint32[3] = 0xffffffff -- real payload
 			buf:offloadIPSec(0, "ah") -- enable hw IPSec in AH mode, with SA/Key at index 0
-			count = count+1
+			--count = count+1
 		end
 		bufs:offloadIPChecksums()
 		--bufs:offloadIPSec(0, "ah")
@@ -121,10 +121,10 @@ function rxSlave(port, queue, rxDev)
 		local rx = queue:recv(bufs)
 		for i = rx, rx do
 			local buf  = bufs[i]
-			local pkt = buf:getAhPacket()
-			local secp, secerr = buf:getSecFlags()
-			print("IPSec HW status: SECP (" .. secp .. ") SECERR (0x" .. bit.tohex(secerr, 1) .. ")")
-			buf:dump(128) -- hexdump of received packet (incl. header)
+			--local pkt = buf:getAhPacket()
+			--local secp, secerr = buf:getSecFlags()
+			--print("IPSec HW status: SECP (" .. secp .. ") SECERR (0x" .. bit.tohex(secerr, 1) .. ")")
+			--buf:dump(128) -- hexdump of received packet (incl. header)
 			--printf("uint32[0]: %x", pkt.payload.uint32[0]) --UDP header
 			--printf("uint32[1]: %x", pkt.payload.uint32[1]) --UDP header
 			--printf("uint32[2]: %x", pkt.payload.uint32[2])
