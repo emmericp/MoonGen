@@ -303,21 +303,19 @@ function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	local ipv6 = nil
 	if ip_ver == 4 then
 		ipv6 = 0
-	else if ip_ver == 6 then
+	elseif ip_ver == 6 then
 		ipv6 = 1
 	else
 		error("IP version must be either 4 or 6")
-	end
 	end
 
 	local esp = nil
 	if proto == "esp" then
 		esp = 1
-	else if proto == "ah" then
+	elseif proto == "ah" then
 		esp = 0
 	else
 		error("Protocol must be either 'esp' or 'ah'")
-	end
 	end
 
 	local esp_mode = decrypt or 0

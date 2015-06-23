@@ -97,11 +97,10 @@ function pkt:offloadIPSec(idx, sec_type, esp_mode)
 	-- Set IPSec ESP/AH type
 	if sec_type == "esp" then
 		self.ol_ipsec.sec.type = 1
-	else if sec_type == "ah" then
+	elseif sec_type == "ah" then
 		self.ol_ipsec.sec.type = 0
 	else
 		error("Wrong IPSec type (esp/ah)")
-	end
 	end
 end
 
