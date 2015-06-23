@@ -33,13 +33,13 @@ ffi.cdef[[
 
 	union rte_ipsec {
 		uint32_t data;
-		struct {
-			uint16_t sa_idx:10;
-			uint16_t esp_len:9;
-			uint8_t type:1;
-			uint8_t mode:1;
-			uint16_t unused:11; /**< These 11 bits are unused. */
-		} sec;
+		//struct {
+		//	uint16_t sa_idx:10;
+		//	uint16_t esp_len:9;
+		//	uint8_t type:1;
+		//	uint8_t mode:1;
+		//	uint16_t unused:11; /**< These 11 bits are unused. */
+		//} sec;
 	};
 
 	struct rte_mbuf {

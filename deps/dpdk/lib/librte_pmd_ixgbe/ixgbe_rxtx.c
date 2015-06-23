@@ -383,29 +383,33 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	}
 
 	if (ol_flags & PKT_TX_IPSEC) {
+		uint16_t sec_sa_idx = myipsec.data & 0x3FF;
+		uint16_t sec_esp_len = (myipsec.data >> 10) & 0x1FF;
+		uint8_t sec_type = (myipsec.data >> 19) & 0x1;
+		uint8_t sec_mode = (myipsec.data >> 20) & 0x1;
 		/*
 		printf("========== Hello DPDK ==========\n");
 		printf("IPSEC:  0x%x\n", ipsec);
-		printf("SAIDX:  %d\n", myipsec.sec.sa_idx);
-		printf("ESPLEN: %d\n", myipsec.sec.esp_len);
-		printf("TYPE:   %d\n", myipsec.sec.type);
-		printf("MODE:   %d\n", myipsec.sec.mode);
+		printf("SAIDX:  %d\n", sec_sa_idx);
+		printf("ESPLEN: %d\n", sec_esp_len);
+		printf("TYPE:   %d\n", sec_type);
+		printf("MODE:   %d\n", sec_mode);
 		printf("=========== End DPDK ===========\n");
 		*/
 
 		//Set SA_IDX, TUCMD(Encryption) and TUCMD(IPSEC_TYPE) dynamically
 		//TUCMD is 11 bits, Encryption (bit 5) 1=ESP-encryption 0=ESP-auth, IPSEC_TYPE (bit 4) 1=ESP 0=AH
 		//If set, IPSec type is ESP, otherwise AH
-		if(myipsec.sec.type == 1) {
+		if(sec_type == 1) {
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_TYPE_ESP;
 			//If set, ESP shall also be encrypted, otherwise just authenticated
-			if(myipsec.sec.mode)
+			if(sec_mode)
 				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_ENCRYPT_EN;
 			//Set length of the ESP trailer
-			type_tucmd_mlhl |= myipsec.sec.esp_len;
+			type_tucmd_mlhl |= sec_esp_len;
 		}
 		//Set Idx into the SA table
-		seqnum_seed |= myipsec.sec.sa_idx;
+		seqnum_seed |= sec_sa_idx;
 	}
 
 	/* Specify which HW CTX to upload. */

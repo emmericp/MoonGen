@@ -17,7 +17,6 @@ function master(txPort, rxPort)
 	dpdk.launchLua("txSlave", txPort, txDev:getTxQueue(0), rxDev:getRxQueue(0), txDev)
 
 	dpdk.waitForSlaves()
-	print("THE END...")
 end
 
 -- txSlave sends out (ipsec crypto) packages
