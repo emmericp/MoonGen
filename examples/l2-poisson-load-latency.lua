@@ -33,7 +33,7 @@ function loadSlave(dev, rxDev, queue, rate, size)
 	rxDev:l2Filter(0x1234, filter.DROP)
 	local bufs = mem:bufArray()
 	local rxStats = stats:newDevRxCounter(rxDev, "plain")
-	local txStats = stats:newDevTxCounter(dev, "plain")
+	local txStats = stats:newManualTxCounter(dev, "plain")
 	while dpdk.running() do
 		bufs:alloc(size)
 		for _, buf in ipairs(bufs) do
@@ -41,9 +41,9 @@ function loadSlave(dev, rxDev, queue, rate, size)
 			buf:setDelay(poissonDelay(10^10 / 8 / (rate * 10^6) - size - 24))
 			--buf:setRate(rate)
 		end
-		queue:sendWithDelay(bufs)
+		txStats:updateWithSize(queue:sendWithDelay(bufs), size)
 		rxStats:update()
-		txStats:update()
+		--txStats:update()
 	end
 	rxStats:finalize()
 	txStats:finalize()

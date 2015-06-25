@@ -14,6 +14,7 @@ ffi.cdef [[
 	void namespace_iterate(struct namespace* ns, void (*func)(const char* key, const char* val));
 	struct lock* namespace_get_lock(struct namespace* ns);
 ]]
+local cbType = ffi.typeof("void (*)(const char* key, const char* val)")
 
 local C = ffi.C
 
@@ -63,26 +64,29 @@ function namespace:__newindex(key, val)
 	end
 end
 
+
 --- Iterate over all keys/values in a namespace
 -- Note: namespaces do not offer a 'normal' iterator (e.g. through a __pair metamethod) due to locking.
 -- Iterating over a table requires a lock on the whole table; ensuring that the lock is released is
 -- easier with a forEach method than with a regular iterator.
--- @param cb function to call, receives (key, value) as arguments
-function namespace:forEach(cb)
+-- @param func function to call, receives (key, value) as arguments
+function namespace:forEach(func)
 	local caughtError
-	C.namespace_iterate(self, function(key, val)
+	local cb = ffi.cast(cbType, function(key, val)
 		if caughtError then
 			return
 		end
 		-- avoid throwing an error across the C++ frame unnecessarily
 		-- not sure if this would work properly when compiled with clang instead of gcc
-		local ok, err = xpcall(cb, function(err)
+		local ok, err = xpcall(func, function(err)
 			return stp.stacktrace(err)
 		end, ffi.string(key), loadstring(ffi.string(val))())
 		if not ok then
 			caughtError = err
 		end
 	end)
+	C.namespace_iterate(self, cb)
+	cb:free()
 	if caughtError then
 		-- this is gonna be an ugly error message, but at least we get the full call stack
 		error("error while calling callback, inner error: " .. caughtError)

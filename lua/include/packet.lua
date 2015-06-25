@@ -32,6 +32,11 @@ function pkt:getTimestamp()
 	end
 end
 
+--- Check if the PKT_RX_IEEE1588_TMST flag is set
+-- Turns out that this flag is pretty pointless, it does not indicate
+-- if the packet was actually timestamped, just that it came from a
+-- queue/filter with timestamping enabled.
+-- You probably want to use device:hasTimestamp() and check the sequence number.
 function pkt:hasTimestamp()
 	return bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0
 end
@@ -64,9 +69,9 @@ function pkt:get()
 end
 
 --- Dumps the packet data cast to the best fitting packet struct
--- @param bytes number of bytes to dump
+-- @param bytes number of bytes to dump, optional
 function pkt:dump(bytes)
-	self:get():dump(bytes)
+	self:get():dump(bytes or self.pkt.pkt_len)
 end
 
 -------------------------------------------------------------------------------------------------------

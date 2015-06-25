@@ -349,7 +349,7 @@ end
 ---------------------------------------------------------------------------------
 
 pkt.getPtpPacket = packetCreate("eth", "ptp")
-pkt.getL3PtpPacket = packetCreate("eth", "ip4", "udp", "ptp")
+pkt.getUdpPtpPacket = packetCreate("eth", "ip4", "udp", "ptp")
 
 
 ------------------------------------------------------------------------
