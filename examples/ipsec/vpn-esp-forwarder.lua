@@ -76,8 +76,8 @@ function dumpSlave(port, queue, dev)
 		local rx = queue:recv(bufs)
 		for i = 1, rx do
 			local buf = bufs[i]
-			print("Original Pkt:")
-			buf:dump(128)
+			--print("Original Pkt:")
+			--buf:dump(128)
 			local pkt = buf:getIPPacket()
 			local eth_pkt = buf:getEthPacket()
 			local len = pkt.ip4:getLength()
@@ -92,16 +92,17 @@ function dumpSlave(port, queue, dev)
 				for i = 0, len-1 do
 					new_pkt.payload.uint8[i] = eth_pkt.payload.uint8[i]
 				end
-				print("New Pkt:")
-				new_buf:dump(128)
+				--print("New Pkt:")
+				--new_buf:dump(128)
 				ipsec.add_esp_trailer(new_buf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
-				print("New Pkt (with ESP Trailer):")
-				new_buf:dump(128)
+				--print("New Pkt (with ESP Trailer):")
+				--new_buf:dump(128)
 			end
 			--TODO:
 			--new_bufs:offloadIPChecksums()
 			--new_bufs:offloadIPSec(0, "esp", 1)
 			--queue:send(new_bufs)
+			new_bufs:freeAll() --discard all generated pkts (so it wont segfault)
 		end
 		bufs:freeAll()
 		rxCtr:update()
