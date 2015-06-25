@@ -538,6 +538,13 @@ function mod.rx_get_spi(port, idx)
 	return bswap(spi), ip_idx
 end
 
+function mod.calc_extra_pad(payload_len)
+	local idx = math.ceil(payload_len/4)
+	local idx8  = idx * 4
+	local extra_pad = idx8 - payload_len
+	return extra_pad
+end
+
 -- Calculate a ESP Trailer and the corresponding Padding and append to the packet payload.
 -- Only relevant for ESP/Ecryption mode
 -- @buf rte_mbuf to add esp trailer to

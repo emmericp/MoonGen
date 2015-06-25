@@ -82,7 +82,8 @@ function dumpSlave(port, queue, dev)
 			local eth_pkt = buf:getEthPacket()
 			local len = pkt.ip4:getLength()
 
-			local new_len = 14+20+16+len+20 -- eth(14), ip4(20), esp(16), __pkt__(len), esp_trailer(20)
+			local extra_pad = ipsec.calc_extra_pad(len) --for 4 byte alignment
+			local new_len = 14+20+16+len+extra_pad+20 -- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
 			new_bufs:alloc(new_len)
 			for _, new_buf in ipairs(new_bufs) do --FIXME: there is actually only one buf/pkt in new_bufs
 				local new_pkt = new_buf:getEspPacket()
