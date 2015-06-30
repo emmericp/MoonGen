@@ -41,14 +41,7 @@ function master(A, B)
 	ipsec.disable(B)
 end
 
-function vpn_decapsulate(buf, src_mac, dst_mac)
-	local new_mem = memory.createMemPool(function(buf)
-		buf:getEthPacket():fill{
-			--pktLength = new_len,
-			ethSrc = src_mac,
-			ethDst = dst_mac,
-		}
-	end)
+function vpn_decapsulate(buf, src_mac, dst_mac, new_mem)
 	local new_bufs = new_mem:bufArray(1) -- allocate one ETH packet
 
 	local pkt = buf:getIPPacket()
@@ -79,19 +72,7 @@ function vpn_decapsulate(buf, src_mac, dst_mac)
 	return new_bufs
 end
 
-function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip)
-	local new_mem = memory.createMemPool(function(buf)
-		buf:getEspPacket():fill{
-			--pktLength = new_len,
-			ethSrc = src_mac,
-			ethDst = dst_mac,
-			ip4Protocol = 0x32, --ESP
-			ip4Src = src_ip,
-			ip4Dst = dst_ip,
-			espSPI = spi,
-			espSQN = 0,
-		}
-	end)
+function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem)
 	local new_bufs = new_mem:bufArray(1) -- allocate one ESP packet
 
 	local pkt = buf:getIPPacket()
@@ -123,6 +104,18 @@ end
 
 function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 	local bufs = memory.bufArray()
+	local new_mem = memory.createMemPool(function(buf)
+		buf:getEspPacket():fill{
+			--pktLength = new_len,
+			ethSrc = src_mac,
+			ethDst = dst_mac,
+			ip4Protocol = 0x32, --ESP
+			ip4Src = src_ip,
+			ip4Dst = dst_ip,
+			espSPI = spi,
+			espSQN = 0,
+		}
+	end)
 	while dpdk.running() do
 		local rx = rxQ:recv(bufs)
 		--encapsulate all received packets
@@ -143,7 +136,7 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 				--end
 			else
 				local encapsulated_bufs = vpn_encapsulate(
-					buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip)
+					buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem)
 
 				--Send to VPN tunnel (from destination network)
 				txQ:send(encapsulated_bufs)
@@ -157,6 +150,15 @@ end
 function dumpSlave(rxQ, dev)
 	local bufs = memory.bufArray()
 	local ctr = stats:newDevRxCounter(dev, "plain")
+	--TODO: define next hop's MAC address
+	local next_hop = "01:02:03:04:05:06"
+	local new_mem = memory.createMemPool(function(buf)
+		buf:getEthPacket():fill{
+			--pktLength = new_len,
+			ethSrc = rxQ,
+			ethDst = next_hop,
+		}
+	end)
 	while dpdk.running() do
 		local rx = rxQ:recv(bufs)
 		for i = 1, rx do
@@ -164,15 +166,13 @@ function dumpSlave(rxQ, dev)
 			local secp, secerr = buf:getSecFlags()
 			local pkt = buf:getIPPacket()
 			if pkt.ip4:getProtocol() == ip.PROTO_ESP and secp == 1 and secerr == 0x0 then
-				--TODO: define next hop's MAC address
-				local next_hop = "01:02:03:04:05:06"
-				--local decapsulated_bufs = vpn_decapsulate(buf, rxQ, next_hop)
-				print("VPN/ESP success: SECP("..secp.."), SECERR("..secerr..")")
+				local decapsulated_bufs = vpn_decapsulate(buf, rxQ, next_hop, new_mem)
+				--print("VPN/ESP success: SECP("..secp.."), SECERR("..secerr..")")
 				--decapsulated_bufs[1]:dump()
 
 				--TODO: Send to destination network (from VPN tunnel)
 				--txQ:send(decapsulated_bufs)
-				--decapsulated_bufs:freeAll() -- free all decapsulated pkts (so it won't segfault)
+				decapsulated_bufs:freeAll() -- free all decapsulated pkts (so it won't segfault)
 				ctr:update()
 			else
 				print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
