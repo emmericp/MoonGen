@@ -545,6 +545,14 @@ function mod.calc_extra_pad(payload_len)
 	return extra_pad
 end
 
+function mod:get_extra_pad(buf)
+	local pkt = buf:getIPPacket()
+	local payload_len = pkt.ip4:getLength()-20 --IP4 Length less 20 bytes IP4 Header
+	--ESP_ICV(16), ESP_next_hdr(1), array_offset(1)
+	local esp_padding_len = pkt.payload.uint8[payload_len-16-1-1]
+	return esp_padding_len-2 --subtract default padding of 2 bytes, which is always there
+end
+
 -- Calculate a ESP Trailer and the corresponding Padding and append to the packet payload.
 -- Only relevant for ESP/Ecryption mode
 -- @buf rte_mbuf to add esp trailer to
