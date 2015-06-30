@@ -7,18 +7,19 @@ local stats	= require "stats"
 local math	= require "math"
 local ip	= require "proto.ip4"
 
-function master(txPort, rxPort)
-	if not txPort or not rxPort then
-		return print("Usage: txPort rxPort")
+function master(A, B)
+	if not A or not B then
+		return print("Usage: A B")
 	end
-	local txDev = device.config(txPort, 1)
-	local rxDev = device.config(rxPort, 1)
+
+	local dev_A = device.config({port=A, rxQueues=1, txQueues=1+1})
+	local dev_B = device.config({port=B, rxQueues=1, txQueues=1})
 	device.waitForLinks()
 
-	dpdk.launchLua("dumpSlave", rxPort, rxDev:getRxQueue(0), rxDev)
-	--dpdk.launchLua("encryptSlave", txPort, rxPort, txDev:getTxQueue(0), rxDev:getRxQueue(0))
-	-- TODO: add decryptSlave, for the other VPN-End-Point
-	dpdk.launchLua("loadSlave", txPort, txDev:getTxQueue(0), txDev, 256)
+	dpdk.launchLua("vpnEndpoint", B, dev_B:getRxQueue(0), dev_B:getTxQueue(0), dev_B)
+	dpdk.launchLua("vpnEndpoint", A, dev_A:getRxQueue(0), dev_A:getTxQueue(0), dev_A)
+
+	dpdk.launchLua("loadSlave", A, dev_A:getTxQueue(1), dev_A, 256)
 
 	dpdk.waitForSlaves()
 end
@@ -34,22 +35,24 @@ function vpn_decapsulate(buf, src_mac, dst_mac)
 	local new_bufs = new_mem:bufArray(1) -- allocate one ETH packet
 
 	print("Original (ESP) Pkt:")
+	local secp, secerr = buf:getSecFlags()
+	print("ESP HW status: SECP (" .. secp .. ") SECERR (0x" .. bit.tohex(secerr, 1) .. ")")
 	buf:dump()
 	local pkt = buf:getIPPacket()
 	local esp_pkt = buf:getEspPacket()
 
 	local len = pkt.ip4:getLength()
-	local extra_pad = pkt.payload.uint8[len-16-1-1] --ICV(16), next_hdr(1), array_starts_at_0(1)
-	print("Extra pad: " .. extra_pad)
+	local extra_pad = pkt.payload.uint8[len-20-16-1-1] --IP4(20), ICV(16), next_hdr(1), array_starts_at_0(1), less 2 bytes standard padding
 	-- eth(14), pkt(len), pad(extra_pad), outer_ip(20), esp_header(16), esp_trailer(20)
 	local new_len = 14+len-extra_pad-20-16-20
+	print("Len, New_len, extra_pad: " .. len .." ".. new_len .." "..extra_pad)
 
 	new_bufs:alloc(new_len)
 	local new_buf = new_bufs[1]
 	local new_pkt = new_buf:getEthPacket()
 	new_pkt:setLength(new_len)
 
-	-- copy old pkt (starting with IP header) into new ETH pkt
+	-- copy old (inner) pkt into new ETH pkt
 	for i = 0, new_len-14-1 do
 		new_pkt.payload.uint8[i] = esp_pkt.payload.uint8[i]
 	end
@@ -57,8 +60,6 @@ function vpn_decapsulate(buf, src_mac, dst_mac)
 	print("New Pkt:")
 	new_buf:dump()
 
-	--queue:send(new_bufs)
-	--new_bufs:freeAll() --discard all generated pkts (so it wont segfault)
 	return new_bufs
 end
 
@@ -81,8 +82,6 @@ function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip)
 	end)
 	local new_bufs = new_mem:bufArray(1) -- allocate one ESP packet
 
-	print("Original Pkt:")
-	buf:dump()
 	local pkt = buf:getIPPacket()
 	local eth_pkt = buf:getEthPacket()
 
@@ -103,14 +102,9 @@ function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip)
 
 	ipsec.add_esp_trailer(new_buf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
 
-	print("New Pkt (with ESP Trailer):")
-	new_buf:dump()
-
 	new_bufs:offloadIPChecksums()
 	new_bufs:offloadIPSec(sa_idx, "esp", 1)
 
-	--queue:send(new_bufs)
-	--new_bufs:freeAll() --discard all generated pkts (so it wont segfault)
 	return new_bufs
 end
 
@@ -144,28 +138,34 @@ function loadSlave(port, queue, dev, numFlows)
 	ctr:finalize()
 end
 
-function dumpSlave(port, queue, dev)
+function vpnEndpoint(port, rxQ, txQ, dev)
 	local rxCtr = stats:newDevRxCounter(dev, "plain")
 
 	local bufs = memory.bufArray()
 	while dpdk.running() do
-		local rx = queue:recv(bufs)
+		local rx = rxQ:recv(bufs)
 		--encapsulate all received packets
 		for i = 1, rx do
 			local buf = bufs[i]
 			local pkt = buf:getIPPacket()
 
 			if pkt.ip4:getProtocol() == ip.PROTO_ESP then
+				local decapsulated_bufs = vpn_decapsulate(
+					buf, rxQ, "a0:36:9f:3b:71:da")
+
 				--TODO: Send to destination network (from VPN tunnel)
-				--TODO: vpn_decapsulate
+				--txQ:send(decapsulated_bufs)
+				decapsulated_bufs:freeAll() --discard all generated pkts (so it wont segfault)
 			else
+				--print("Original SRC pkt")
+				--buf:dump()
 				local encapsulated_bufs = vpn_encapsulate(
 					buf, 0xdeadbeef, 0,
-					queue, "192.168.1.1", "a0:36:9f:3b:71:da", "192.168.1.2")
+					rxQ, "192.168.1.1", "a0:36:9f:3b:71:da", "192.168.1.2")
 
 				--TODO: Send to VPN tunnel (from destination network)
-				--txQueue:send(encapsulated_bufs)
-				encapsulated_bufs:freeAll() --discard all generated pkts (so it wont segfault)
+				txQ:send(encapsulated_bufs)
+				--encapsulated_bufs:freeAll() --discard all generated pkts (so it wont segfault)
 			end
 		end
 		bufs:freeAll()
