@@ -139,7 +139,7 @@ function mod.config(...)
   -- FIXME: should n = 2^k-1 here too?
   args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
   if devices[args.port] and devices[args.port].initialized then
-    printf("[WARNING] Device %d already configured, skipping initilization", port)
+    printf("[WARNING] Device %d already configured, skipping initilization", args.port)
     return mod.get(args.port)
   end
   args.speed = args.speed or 0
