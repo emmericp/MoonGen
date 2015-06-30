@@ -1,5 +1,6 @@
 local ffi = require "ffi"
 local pkt = require "packet"
+local math = require "math"
 
 require "headers"
 
@@ -22,6 +23,11 @@ local ipsecIVType = ffi.typeof("union ipsec_iv")
 --- Set the IPsec IV.
 -- @param iv IPsec IV in 'union ipsec_iv' format.
 function ipsecIV:set(iv)
+	local random_iv = ffi.new("union ipsec_iv")
+	random_iv.uint32[0] = math.random(0, 2^32-1)
+	random_iv.uint32[1] = math.random(0, 2^32-1)
+
+	local iv = iv or random_iv
 	self.uint32[0] = hton(iv.uint32[1])
 	self.uint32[1] = hton(iv.uint32[0])
 end
