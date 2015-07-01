@@ -9,27 +9,16 @@ local err = require "error"
 
 mod.DROP = -1
 
-function mergeTables(t1, t2)
-  res = {}
-  for i, v in ipairs(t1) do
-    res[i] = v
-  end
-  for i, v in ipairs(t2) do
-    res[i] = v
-  end
-  return res
-end
 
 local dev = device.__devicePrototype
 
 local deviceDependent = {}
-deviceDependent[device.PCI_ID_X540] = require "filter_x540"
--- I hope 82599 is very similar to x540, so we can use most functions from x540
-deviceDependent[device.PCI_ID_82599] = mergeTables(require "filter_x540", require "filter_82599")
+deviceDependent[device.PCI_ID_X540] = require "filter_ixgbe"
+deviceDependent[device.PCI_ID_82599] = require "filter_ixgbe"
 
 
 function dev:l2Filter(etype, queue)
-  fun = deviceDependent[self:getPciId()].l2Filter
+  local fun = deviceDependent[self:getPciId()].l2Filter
   if fun then
     return fun(self, etype, queue)
   else
