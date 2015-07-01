@@ -19,6 +19,7 @@ SET(FILES
   src/lpm_l.c
   src/5tuple.c
   src/distribute.c
+  src/barrier.cpp
 	src/task-results.cpp
 	src/pipe.cpp
 	src/lock.cpp
