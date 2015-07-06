@@ -19,6 +19,7 @@ function master(...)
 	local numQueues = rate > 6000 and rate < 10000 and 3 or 1
 	local txDev = device.config(txPort, 2, 4)
 	local rxDev = device.config(rxPort, 2, 4) -- ignored if txDev == rxDev
+	device.waitForLinks()
 	local queues1, queues2 = {}, {}
 	for i = 1, numQueues do
 		local queue = txDev:getTxQueue(i)
@@ -33,7 +34,9 @@ function master(...)
 		end
 	end
 	dpdk.launchLua("loadSlave", queues1, txDev, rxDev)
-	dpdk.launchLua("loadSlave", queues2, rxDev, txDev)
+	if rxPort ~= txPort then
+		dpdk.launchLua("loadSlave", queues2, rxDev, txDev)
+	end
 	dpdk.launchLua("timerSlave", txDev:getTxQueue(0), rxDev:getRxQueue(1))
 	dpdk.waitForSlaves()
 end
