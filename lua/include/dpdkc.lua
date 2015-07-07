@@ -166,6 +166,10 @@ ffi.cdef[[
 	struct rte_mbuf* alloc_mbuf(struct mempool* mp);
 	void alloc_mbufs(struct mempool* mp, struct rte_mbuf* bufs[], uint32_t len, uint16_t pkt_len);
 	void rte_pktmbuf_free_export(struct rte_mbuf* m);
+	static char* rte_pktmbuf_prepend_export(struct rte_mbuf *m, uint16_t len);
+	static char* rte_pktmbuf_append_export(struct rte_mbuf *m, uint16_t len);
+	static char* rte_pktmbuf_adj_export(struct rte_mbuf *m, uint16_t len);
+	int rte_pktmbuf_trim_export(struct rte_mbuf *m, uint16_t len);
 	uint16_t rte_mbuf_refcnt_read_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value);
 
