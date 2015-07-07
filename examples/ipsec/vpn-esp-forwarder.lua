@@ -9,7 +9,7 @@ local ip	= require "proto.ip4"
 
 function master(A, B)
 	if not A or not B then
-		return print("Usage: A B")
+		return print("Usage: load/dump_port vpn_port")
 	end
 
 	local dev_A = device.config({port=A, rxQueues=1, txQueues=1})
@@ -31,8 +31,8 @@ function master(A, B)
 	dpdk.launchLua("vpnEndpoint", dev_B:getRxQueue(0), dev_B:getTxQueue(0),
 		"A0:36:9F:3B:71:DA", "192.168.1.1", "A0:36:9F:3B:71:D8", "192.168.1.2", 0xdeadbeef, 0)
 
-	dpdk.launchLua("dumpSlave", dev_A:getRxQueue(0), dev_A)
-	dpdk.launchLua("loadSlave", dev_A:getTxQueue(0), dev_A, 60)
+	dpdk.launchLua("dumpSlave", dev_A:getRxQueue(0))
+	dpdk.launchLua("loadSlave", dev_A:getTxQueue(0), 60)
 
 	dpdk.waitForSlaves()
 
@@ -72,8 +72,8 @@ function vpn_decapsulate(buf, src_mac, dst_mac, new_mem)
 	return new_bufs
 end
 
-function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem)
-	local new_bufs = new_mem:bufArray(1) -- allocate one ESP packet
+function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem, new_bufs)
+	--local new_bufs = new_mem:bufArray(1) -- allocate one ESP packet
 
 	local pkt = buf:getIPPacket()
 	local eth_pkt = buf:getEthPacket()
@@ -103,6 +103,8 @@ end
 
 
 function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
+	--local p = require("jit.p")
+	--require("jit.v").on()
 	local bufs = memory.bufArray()
 	local new_mem = memory.createMemPool(function(buf)
 		buf:getEspPacket():fill{
@@ -116,13 +118,17 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 			espSQN = 0,
 		}
 	end)
+	local new_bufs = new_mem:bufArray(1) -- allocate one ESP packet
+	local ctrRx = stats:newDevRxCounter(rxQ.dev, "plain")
+	local ctrTx = stats:newDevTxCounter(txQ.dev, "plain")
+	--p.start("l")
 	while dpdk.running() do
 		local rx = rxQ:recv(bufs)
 		--encapsulate all received packets
 		for i = 1, rx do
 			local buf = bufs[i]
-			local pkt = buf:getIPPacket()
-			if pkt.ip4:getProtocol() == ip.PROTO_ESP then
+			--local pkt = buf:getIPPacket()
+			--if pkt.ip4:getProtocol() == ip.PROTO_ESP then
 				--local secp, secerr = buf:getSecFlags()
 				--if secp == 1 and secerr == 0x0 then
 				--	local decapsulated_bufs = vpn_decapsulate(
@@ -134,22 +140,28 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 				--else
 				--	print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
 				--end
-			else
+			--else
+				--local encapsulated_bufs = bufs
 				local encapsulated_bufs = vpn_encapsulate(
-					buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem)
+					buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem, new_bufs)
 
 				--Send to VPN tunnel (from destination network)
-				txQ:send(encapsulated_bufs)
-				--encapsulated_bufs:freeAll() -- free new pkts
-			end
+				--txQ:send(encapsulated_bufs)
+				txQ:send(new_bufs)
+			--end
 		end
 		bufs:freeAll()
+		ctrRx:update()
+		ctrTx:update()
 	end
+	--p.stop()
+	ctrRx:finalize()
+	ctrTx:finalize()
 end
 
-function dumpSlave(rxQ, dev)
+function dumpSlave(rxQ)
 	local bufs = memory.bufArray()
-	local ctr = stats:newDevRxCounter(dev, "plain")
+	local ctr = stats:newDevRxCounter(rxQ.dev, "plain")
 	--TODO: define next hop's MAC address
 	local next_hop = "01:02:03:04:05:06"
 	local new_mem = memory.createMemPool(function(buf)
@@ -173,17 +185,18 @@ function dumpSlave(rxQ, dev)
 				--TODO: Send to destination network (from VPN tunnel)
 				--txQ:send(decapsulated_bufs)
 				decapsulated_bufs:freeAll() -- free all decapsulated pkts (so it won't segfault)
-				ctr:update()
 			else
-				print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
+				--print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
+				--buf:dump()
 			end
 		end
 		bufs:freeAll()
+		ctr:update()
 	end
 	ctr:finalize()
 end
 
-function loadSlave(txQ, dev, size)
+function loadSlave(txQ, size)
 	local pkt_size = size or 60
 	local numFlows = 256
 	local mem = memory.createMemPool(function(buf)
@@ -196,10 +209,10 @@ function loadSlave(txQ, dev, size)
 			udpDst = 5678,
 		}
 	end)
-	bufs = mem:bufArray(128)
+	bufs = mem:bufArray()
 	local baseIP = parseIPAddress("10.0.0.1")
 	local flow = 0
-	local ctr = stats:newDevTxCounter(dev, "plain")
+	local ctr = stats:newDevTxCounter(txQ.dev, "plain")
 	while dpdk.running() do
 		bufs:alloc(pkt_size)
 		for _, buf in ipairs(bufs) do
