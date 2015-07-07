@@ -1,4 +1,5 @@
 local dpdk	= require "dpdk"
+local dpdkc	= require "dpdkc"
 local ipsec	= require "ipsec"
 local memory	= require "memory"
 local device	= require "device"
@@ -72,28 +73,21 @@ function vpn_decapsulate(buf, src_mac, dst_mac, new_mem)
 	return new_bufs
 end
 
-function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem, len)
+function vpn_encapsulate(buf, len, esp_buf)
 	local extra_pad = ipsec.calc_extra_pad(len) --for 4 byte alignment
 	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
 	local new_len = 14+20+16+len+extra_pad+20
 
-	local new_buf = new_mem:alloc(new_len)
-	local new_pkt = new_buf:getEspPacket()
+	-- prepend space for new headers (eth(14), ip4(20), esp(16))
+	dpdkc.rte_pktmbuf_prepend_export(buf, 20+16) -- 14 bytes for eth already there (will be overwritten)
+	ffi.copy(buf.pkt.data, esp_buf.pkt.data, 50) -- copy eth, ip4, esp header in free space
+	dpdkc.rte_pktmbuf_append_export(buf, extra_pad+20) -- append space for extra_pad and esp trailer
+
+	local new_pkt = buf:getEspPacket()
 	new_pkt:setLength(new_len)
 
-	--FIXME: this is slow!
-	--TODO: maybe using memcpy is better
-	-- copy old pkt (starting with IP header) into new ESP pkt
-	--local eth_pkt = buf:getEthPacket()
-	--for i = 0, len-1 do
-	--	new_pkt.payload.uint8[i] = eth_pkt.payload.uint8[i]
-	--end
-
-	ipsec.add_esp_trailer(new_buf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
-
-	return new_buf
+	ipsec.add_esp_trailer(buf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
 end
-
 
 function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 	--local p = require("jit.p")
@@ -111,12 +105,12 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 			espSQN = 0,
 		}
 	end)
+	local default_esp_buf = new_mem:alloc(14+20+16) --eth, ip4, esp
 	local ctrRx = stats:newDevRxCounter(rxQ.dev, "plain")
 	local ctrTx = stats:newDevTxCounter(txQ.dev, "plain")
 	--p.start("l")
 	while dpdk.running() do
 		local rx = rxQ:recv(bufs)
-		local new_bufs = new_mem:bufArray(rx) -- allocate 'rx' ESP packets
 		--encapsulate all received packets
 		for i = 1, rx do
 			local buf = bufs[i]
@@ -134,15 +128,15 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 				--	print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
 				--end
 			else
-				new_bufs[i] = vpn_encapsulate(
-					buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem, pkt.ip4:getLength())
+				vpn_encapsulate(buf, pkt.ip4:getLength(), default_esp_buf) --modifies the rxBuffers (bufs)
+				--bufs[i]:dump()
 			end
 		end
-		new_bufs:offloadIPChecksums()
-		new_bufs:offloadIPSec(sa_idx, "esp", 1)
+		bufs:offloadIPChecksums()
+		bufs:offloadIPSec(sa_idx, "esp", 1)
 		--Send to VPN tunnel (from destination network)
-		txQ:send(new_bufs)
-		bufs:freeAll()
+		txQ:send(bufs)
+		--bufs:freeAll() --RX bufs are reused for TX
 		ctrRx:update()
 		ctrTx:update()
 	end
