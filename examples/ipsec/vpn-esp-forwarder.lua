@@ -72,33 +72,26 @@ function vpn_decapsulate(buf, src_mac, dst_mac, new_mem)
 	return new_bufs
 end
 
-function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem, new_bufs)
-	--local new_bufs = new_mem:bufArray(1) -- allocate one ESP packet
-
-	local pkt = buf:getIPPacket()
-	local eth_pkt = buf:getEthPacket()
-
-	local len = pkt.ip4:getLength()
+function vpn_encapsulate(buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem, len)
 	local extra_pad = ipsec.calc_extra_pad(len) --for 4 byte alignment
 	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
 	local new_len = 14+20+16+len+extra_pad+20
 
-	new_bufs:alloc(new_len)
-	local new_buf = new_bufs[1]
+	local new_buf = new_mem:alloc(new_len)
 	local new_pkt = new_buf:getEspPacket()
 	new_pkt:setLength(new_len)
 
+	--FIXME: this is slow!
+	--TODO: maybe using memcpy is better
 	-- copy old pkt (starting with IP header) into new ESP pkt
-	for i = 0, len-1 do
-		new_pkt.payload.uint8[i] = eth_pkt.payload.uint8[i]
-	end
+	--local eth_pkt = buf:getEthPacket()
+	--for i = 0, len-1 do
+	--	new_pkt.payload.uint8[i] = eth_pkt.payload.uint8[i]
+	--end
 
 	ipsec.add_esp_trailer(new_buf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
 
-	new_bufs:offloadIPChecksums()
-	new_bufs:offloadIPSec(sa_idx, "esp", 1)
-
-	return new_bufs
+	return new_buf
 end
 
 
@@ -118,17 +111,17 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 			espSQN = 0,
 		}
 	end)
-	local new_bufs = new_mem:bufArray(1) -- allocate one ESP packet
 	local ctrRx = stats:newDevRxCounter(rxQ.dev, "plain")
 	local ctrTx = stats:newDevTxCounter(txQ.dev, "plain")
 	--p.start("l")
 	while dpdk.running() do
 		local rx = rxQ:recv(bufs)
+		local new_bufs = new_mem:bufArray(rx) -- allocate 'rx' ESP packets
 		--encapsulate all received packets
 		for i = 1, rx do
 			local buf = bufs[i]
-			--local pkt = buf:getIPPacket()
-			--if pkt.ip4:getProtocol() == ip.PROTO_ESP then
+			local pkt = buf:getIPPacket()
+			if pkt.ip4:getProtocol() == ip.PROTO_ESP then
 				--local secp, secerr = buf:getSecFlags()
 				--if secp == 1 and secerr == 0x0 then
 				--	local decapsulated_bufs = vpn_decapsulate(
@@ -140,16 +133,15 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 				--else
 				--	print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
 				--end
-			--else
-				--local encapsulated_bufs = bufs
-				local encapsulated_bufs = vpn_encapsulate(
-					buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem, new_bufs)
-
-				--Send to VPN tunnel (from destination network)
-				--txQ:send(encapsulated_bufs)
-				txQ:send(new_bufs)
-			--end
+			else
+				new_bufs[i] = vpn_encapsulate(
+					buf, spi, sa_idx, src_mac, src_ip, dst_mac, dst_ip, new_mem, pkt.ip4:getLength())
+			end
 		end
+		new_bufs:offloadIPChecksums()
+		new_bufs:offloadIPSec(sa_idx, "esp", 1)
+		--Send to VPN tunnel (from destination network)
+		txQ:send(new_bufs)
 		bufs:freeAll()
 		ctrRx:update()
 		ctrTx:update()
@@ -186,8 +178,8 @@ function dumpSlave(rxQ)
 				--txQ:send(decapsulated_bufs)
 				decapsulated_bufs:freeAll() -- free all decapsulated pkts (so it won't segfault)
 			else
-				--print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
-				--buf:dump()
+				print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
+				buf:dump()
 			end
 		end
 		bufs:freeAll()
