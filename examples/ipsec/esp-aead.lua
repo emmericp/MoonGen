@@ -45,7 +45,7 @@ function txSlave(port, srcQueue, dstQueue, txDev)
 	iv.uint32[1] = 0x05060708
 
 	-- Create a packet Blueprint
-	local pkt_len = 86 -- for ESP the packet must be 4 bytes aligned
+	local pkt_len = 70 -- for ESP the packet must be 4 bytes aligned
 	local mem = memory.createMemPool(function(buf)
 		buf:getEspPacket():fill{
 			pktLength = pkt_len,
@@ -72,13 +72,13 @@ function txSlave(port, srcQueue, dstQueue, txDev)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getEspPacket()
 			pkt.esp:setSQN(count) -- increment ESP-SQN with each packet
-			pkt.payload.uint16[0] = bswap16(12) -- UDP src port (not assigned to service)
-			pkt.payload.uint16[1] = bswap16(14) -- UDP dst port (not assigned to service)
-			pkt.payload.uint16[2] = bswap16(16) -- UDP len (header + payload in bytes)
-			pkt.payload.uint16[3] = bswap16(0)  -- UDP checksum (0 = unused)
-			pkt.payload.uint32[2] = 0xdeadbeef -- real payload
-			pkt.payload.uint32[3] = 0xffffffff -- real payload
-			ipsec.add_esp_trailer(buf, 16, 0x11) -- add 20 byte ESP trailer, next_hdr = UDP(0x11)
+			--pkt.payload.uint16[0] = bswap16(12) -- UDP src port (not assigned to service)
+			--pkt.payload.uint16[1] = bswap16(14) -- UDP dst port (not assigned to service)
+			--pkt.payload.uint16[2] = bswap16(16) -- UDP len (header + payload in bytes)
+			--pkt.payload.uint16[3] = bswap16(0)  -- UDP checksum (0 = unused)
+			--pkt.payload.uint32[2] = 0xdeadbeef -- real payload
+			--pkt.payload.uint32[3] = 0xffffffff -- real payload
+			ipsec.add_esp_trailer(buf, 0, 0x11) -- add 20 byte ESP trailer, next_hdr = UDP(0x11)
 			buf:offloadIPSec(0, "esp", 1) -- enable hw IPSec in ESP/Encrypted mode, with SA/Key at index 0
 			count = count+1
 		end
