@@ -74,7 +74,7 @@ end
 --- Retrieve the SPI as string.
 -- @return SPI as string.
 function espHeader:getSPIString()
-	return self:getSPI()
+	return ("0x%08x"):format(self.spi)
 end
 
 --- Set the SQN.
