@@ -545,7 +545,7 @@ function mod.calc_extra_pad(payload_len)
 	return extra_pad
 end
 
-function mod:get_extra_pad(buf)
+function mod.get_extra_pad(buf)
 	local pkt = buf:getIPPacket()
 	local payload_len = pkt.ip4:getLength()-20 --IP4 Length less 20 bytes IP4 Header
 	--ESP_ICV(16), ESP_next_hdr(1), array_offset(1)
@@ -577,6 +577,44 @@ function mod.add_esp_trailer(buf, payload_len, next_hdr)
 	pkt.payload.uint32[idx+4] = 0x00 -- ICV n-0
 
 	buf:setESPTrailerLength(esp_trailer_len)
+end
+
+function mod.esp_vpn_decapsulate(buf, len, eth_buf)
+	local extra_pad = mod.get_extra_pad(buf)
+	-- eth(14), pkt(len), pad(extra_pad), outer_ip(20), esp_header(16), esp_trailer(20)
+	local new_len = 14+len-extra_pad-20-16-20
+	local ret = 0
+
+	ret = ret + dpdkc.rte_pktmbuf_adj_export(buf, 20+16)
+	ffi.copy(buf.pkt.data, eth_buf.pkt.data, 14)
+	ret = ret + dpdkc.rte_pktmbuf_trim_export(buf, extra_pad+20)
+
+	local new_pkt = buf:getEthPacket()
+	new_pkt:setLength(new_len)
+end
+
+function mod.esp_vpn_encapsulate(buf, len, esp_buf)
+	local extra_pad = mod.calc_extra_pad(len) --for 4 byte alignment
+	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
+	local new_len = 14+20+16+len+extra_pad+20
+	local ret = 0
+
+	-- prepend space (in mbuf headroom) for new headers (eth(14), ip4(20), esp(16))
+	ret = ret + dpdkc.rte_pktmbuf_prepend_export(buf, 20+16) -- 14 bytes for eth already there (will be overwritten)
+	ret = ret + dpdkc.rte_pktmbuf_append_export(buf, extra_pad+20) -- append space (in mbuf tailroom) for extra_pad and esp trailer
+	ffi.copy(buf.pkt.data, esp_buf.pkt.data, 14+20+16) -- copy eth, ip4, esp header in free space
+	local new_pkt = buf:getEspPacket()
+	new_pkt:setLength(new_len) --FIXME: this seems to be slow
+
+	--buf:getEspPacket():fill{
+	--	pktLength = new_len,
+	--	ethSrc = "01:02:03:04:05:06",
+	--	ethDst = "aa:bb:cc:dd:ee:ff",
+	--}
+
+
+	mod.add_esp_trailer(buf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
+--	buf:dump()
 end
 
 return mod

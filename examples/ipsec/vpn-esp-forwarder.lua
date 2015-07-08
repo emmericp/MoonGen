@@ -33,60 +33,13 @@ function master(A, B)
 		"A0:36:9F:3B:71:DA", "192.168.1.1", "A0:36:9F:3B:71:D8", "192.168.1.2", 0xdeadbeef, 0)
 
 	dpdk.launchLua("dumpSlave", dev_A:getRxQueue(0))
-	dpdk.launchLua("loadSlave", dev_A:getTxQueue(0), 60)
+	dpdk.launchLua("loadSlave", dev_A:getTxQueue(0), 60) --TODO: check different sizes
 
 	dpdk.waitForSlaves()
 
 	-- Disable hw crypto engine
 	ipsec.disable(A)
 	ipsec.disable(B)
-end
-
-function vpn_decapsulate(buf, src_mac, dst_mac, new_mem)
-	local new_bufs = new_mem:bufArray(1) -- allocate one ETH packet
-
-	local pkt = buf:getIPPacket()
-	local esp_pkt = buf:getEspPacket()
-
-	local len = pkt.ip4:getLength()
-
-	--local extra_pad = ipsec.get_extra_pad(buf)
-	local pkt = buf:getIPPacket()
-	local payload_len = pkt.ip4:getLength()-20 --IP4 Length less 20 bytes IP4 Header
-	--ESP_ICV(16), ESP_next_hdr(1), array_offset(1)
-	local esp_padding_len = pkt.payload.uint8[payload_len-16-1-1]
-	local extra_pad = esp_padding_len-2 --subtract default padding of 2 bytes, which is always there
-
-	-- eth(14), pkt(len), pad(extra_pad), outer_ip(20), esp_header(16), esp_trailer(20)
-	local new_len = 14+len-extra_pad-20-16-20
-
-	new_bufs:alloc(new_len)
-	local new_buf = new_bufs[1]
-	local new_pkt = new_buf:getEthPacket()
-	new_pkt:setLength(new_len)
-
-	-- copy old (inner) pkt into new ETH pkt
-	for i = 0, new_len-14-1 do
-		new_pkt.payload.uint8[i] = esp_pkt.payload.uint8[i]
-	end
-
-	return new_bufs
-end
-
-function vpn_encapsulate(buf, len, esp_buf)
-	local extra_pad = ipsec.calc_extra_pad(len) --for 4 byte alignment
-	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
-	local new_len = 14+20+16+len+extra_pad+20
-
-	-- prepend space for new headers (eth(14), ip4(20), esp(16))
-	dpdkc.rte_pktmbuf_prepend_export(buf, 20+16) -- 14 bytes for eth already there (will be overwritten)
-	ffi.copy(buf.pkt.data, esp_buf.pkt.data, 50) -- copy eth, ip4, esp header in free space
-	dpdkc.rte_pktmbuf_append_export(buf, extra_pad+20) -- append space for extra_pad and esp trailer
-
-	local new_pkt = buf:getEspPacket()
-	new_pkt:setLength(new_len)
-
-	ipsec.add_esp_trailer(buf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
 end
 
 function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
@@ -115,6 +68,7 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 		for i = 1, rx do
 			local buf = bufs[i]
 			local pkt = buf:getIPPacket()
+			local len = pkt.ip4:getLength()
 			if pkt.ip4:getProtocol() == ip.PROTO_ESP then
 				--local secp, secerr = buf:getSecFlags()
 				--if secp == 1 and secerr == 0x0 then
@@ -128,7 +82,8 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 				--	print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
 				--end
 			else
-				vpn_encapsulate(buf, pkt.ip4:getLength(), default_esp_buf) --modifies the rxBuffers (bufs)
+				--modifies the rxBuffers (bufs)
+				ipsec.esp_vpn_encapsulate(buf, len, default_esp_buf)
 				--bufs[i]:dump()
 			end
 		end
@@ -157,25 +112,27 @@ function dumpSlave(rxQ)
 			ethDst = next_hop,
 		}
 	end)
+	local default_eth_buf = new_mem:alloc(14) --eth
 	while dpdk.running() do
 		local rx = rxQ:recv(bufs)
 		for i = 1, rx do
 			local buf = bufs[i]
-			local secp, secerr = buf:getSecFlags()
 			local pkt = buf:getIPPacket()
+			local len = pkt.ip4:getLength()
+			local secp, secerr = buf:getSecFlags()
 			if pkt.ip4:getProtocol() == ip.PROTO_ESP and secp == 1 and secerr == 0x0 then
-				local decapsulated_bufs = vpn_decapsulate(buf, rxQ, next_hop, new_mem)
+				--bufs[i]:dump()
+				--modifies the rxBuffers (bufs)
+				ipsec.esp_vpn_decapsulate(buf, len, default_eth_buf)
 				--print("VPN/ESP success: SECP("..secp.."), SECERR("..secerr..")")
-				--decapsulated_bufs[1]:dump()
-
-				--TODO: Send to destination network (from VPN tunnel)
-				--txQ:send(decapsulated_bufs)
-				decapsulated_bufs:freeAll() -- free all decapsulated pkts (so it won't segfault)
+				--bufs[i]:dump()
 			else
 				print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
-				buf:dump()
+				buf:dump(0)
 			end
 		end
+		--TODO: Send to destination network (from VPN tunnel)
+		--txQ:send(bufs)
 		bufs:freeAll()
 		ctr:update()
 	end

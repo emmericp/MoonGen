@@ -490,8 +490,6 @@ void rte_pktmbuf_free_export(void* m) {
 	rte_pktmbuf_free(m);
 }
 
-//FIXME: this should return the real pointer
-//static char* rte_pktmbuf_prepend_export(struct rte_mbuf *m, uint16_t len) {
 int rte_pktmbuf_prepend_export(struct rte_mbuf *m, uint16_t len) {
 	char* ret = rte_pktmbuf_prepend(m, len);
 	if (ret == NULL)
@@ -499,8 +497,6 @@ int rte_pktmbuf_prepend_export(struct rte_mbuf *m, uint16_t len) {
 	return 0;
 }
 
-//FIXME: this should return the real pointer
-//static char* rte_pktmbuf_append_export(struct rte_mbuf *m, uint16_t len) {
 int rte_pktmbuf_append_export(struct rte_mbuf *m, uint16_t len) {
 	char* ret = rte_pktmbuf_append(m, len);
 	if (ret == NULL)
@@ -508,8 +504,6 @@ int rte_pktmbuf_append_export(struct rte_mbuf *m, uint16_t len) {
 	return 0;
 }
 
-//FIXME: this should return the real pointer
-//static char* rte_pktmbuf_adj_export(struct rte_mbuf *m, uint16_t len) {
 int rte_pktmbuf_adj_export(struct rte_mbuf *m, uint16_t len) {
 	char* ret = rte_pktmbuf_adj(m, len);
 	if (ret == NULL)
