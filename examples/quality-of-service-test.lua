@@ -144,7 +144,7 @@ function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 	local rateLimit = timer:new(0.001)
 	while dpdk.running() do
 		local port = math.random() <= ratio and port or bgPort
-		local lat = timestamper:measureLatency(size, function(buf)
+		local lat = timestamper:measureLatency(PKT_SIZE, function(buf)
 			local pkt = buf:getUdpPacket()
 			pkt:fill{
 				pktLength = PKT_SIZE, -- this sets all length headers fields in all used protocols
