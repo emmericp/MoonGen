@@ -490,6 +490,20 @@ void rte_pktmbuf_free_export(void* m) {
 	rte_pktmbuf_free(m);
 }
 
+void flush_cache_line(void *p) {
+    asm("clflush (%0)" :: "r"(p));
+}
+
+int rte_pktmbuf_prepend_copy(struct rte_mbuf *m, struct rte_mbuf *src, uint16_t len, uint16_t cpy_len) {
+	char* ret = rte_pktmbuf_prepend(m, len);
+	if (ret == NULL)
+		return -1;
+	memcpy(ret, src->pkt.data, cpy_len);
+	//flush_cache_line(ret+cpy_len);
+	//flush_cache_line(m);
+	return 0;
+}
+
 int rte_pktmbuf_prepend_export(struct rte_mbuf *m, uint16_t len) {
 	char* ret = rte_pktmbuf_prepend(m, len);
 	if (ret == NULL)

@@ -63,7 +63,7 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 	local ctrTx = stats:newDevTxCounter(txQ.dev, "plain")
 	--p.start("l")
 	while dpdk.running() do
-		local rx = rxQ:recv(bufs)
+		local rx = rxQ:tryRecv(bufs, 0)
 		--encapsulate all received packets
 		for i = 1, rx do
 			local buf = bufs[i]
@@ -84,7 +84,7 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 			else
 				--modifies the rxBuffers (bufs)
 				ipsec.esp_vpn_encapsulate(buf, len, default_esp_buf)
-				--bufs[i]:dump()
+				--buf:dump()
 			end
 		end
 		bufs:offloadIPChecksums()
@@ -121,11 +121,11 @@ function dumpSlave(rxQ)
 			local len = pkt.ip4:getLength()
 			local secp, secerr = buf:getSecFlags()
 			if pkt.ip4:getProtocol() == ip.PROTO_ESP and secp == 1 and secerr == 0x0 then
-				--bufs[i]:dump()
+				--print("VPN/ESP success: SECP("..secp.."), SECERR("..secerr..")")
+				--buf:dump(0)
 				--modifies the rxBuffers (bufs)
 				ipsec.esp_vpn_decapsulate(buf, len, default_eth_buf)
-				--print("VPN/ESP success: SECP("..secp.."), SECERR("..secerr..")")
-				--bufs[i]:dump()
+				--buf:dump(0)
 			else
 				print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
 				buf:dump(0)
