@@ -16,8 +16,10 @@ function master(txPort, rxPort)
 	device.waitForLinks()
 
 	dpdk.launchLua("rxSlave", rxPort, rxDev:getRxQueue(0), rxDev)
+	dpdk.launchLua("rxSlave", txPort, txDev:getRxQueue(0), txDev)
 	for i = 0, NUM_QUEUES - 1 do
 		dpdk.launchLua("txSlave", txPort, txDev:getTxQueue(i), rxDev:getRxQueue(0), txDev)
+		dpdk.launchLua("txSlave", rxPort, rxDev:getTxQueue(i), txDev:getRxQueue(0), rxDev)
 	end
 
 	dpdk.waitForSlaves()
