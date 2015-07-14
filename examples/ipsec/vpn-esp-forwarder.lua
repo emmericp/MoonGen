@@ -128,7 +128,13 @@ function dumpSlave(rxQ)
 				--buf:dump(0)
 			else
 				print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
-				buf:dump(0)
+				buf:dump()
+
+				local eth_pkt = buf:getEthPacket()
+				--'efbeadde' is static: only for testing SPI=0xdeadbeef
+				if uhex32(eth_pkt.payload.uint32[5]) ~= "efbeadde" then
+					error("SPI wrong, cache error")
+				end
 			end
 		end
 		--TODO: Send to destination network (from VPN tunnel)
