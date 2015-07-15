@@ -167,7 +167,7 @@ function loadSlave(txQ, size)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
 			pkt.ip4.src:set(baseIP + flow)
-			flow = incAndWrap(flow, numFlows)
+			--flow = incAndWrap(flow, numFlows)
 		end
 		-- UDP checksums are optional, so just IP checksums are sufficient here
 		bufs:offloadIPChecksums()
