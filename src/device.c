@@ -491,7 +491,11 @@ void rte_pktmbuf_free_export(void* m) {
 }
 
 void flush_cache_line(void *p) {
-    asm("clflush (%0)" :: "r"(p));
+	asm volatile ("clflush (%0)" :: "r"(p));
+}
+
+void memory_fence() {
+	asm volatile ("mfence" ::: "memory");
 }
 
 int rte_pktmbuf_prepend_copy(struct rte_mbuf *m, struct rte_mbuf *src, uint16_t len, uint16_t cpy_len) {

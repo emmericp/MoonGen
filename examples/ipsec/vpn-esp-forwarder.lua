@@ -8,7 +8,7 @@ local stats	= require "stats"
 local math	= require "math"
 local ip	= require "proto.ip4"
 
-function master(A, B)
+function master(A, B, size)
 	if not A or not B then
 		return print("Usage: load/dump_port vpn_port")
 	end
@@ -33,7 +33,7 @@ function master(A, B)
 		"A0:36:9F:3B:71:DA", "192.168.1.1", "A0:36:9F:3B:71:D8", "192.168.1.2", 0xdeadbeef, 0)
 
 	dpdk.launchLua("dumpSlave", dev_A:getRxQueue(0))
-	dpdk.launchLua("loadSlave", dev_A:getTxQueue(0), 60) --TODO: check different sizes
+	dpdk.launchLua("loadSlave", dev_A:getTxQueue(0), size) --TODO: check different sizes
 
 	dpdk.waitForSlaves()
 
@@ -59,8 +59,8 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 		}
 	end)
 	local default_esp_buf = new_mem:alloc(14+20+16) --eth, ip4, esp
-	local ctrRx = stats:newDevRxCounter(rxQ.dev, "plain")
-	local ctrTx = stats:newDevTxCounter(txQ.dev, "plain")
+	--local ctrRx = stats:newDevRxCounter(rxQ.dev, "plain")
+	--local ctrTx = stats:newDevTxCounter(txQ.dev, "plain")
 	--p.start("l")
 	while dpdk.running() do
 		local rx = rxQ:tryRecv(bufs, 0)
@@ -92,12 +92,12 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 		--Send to VPN tunnel (from destination network)
 		txQ:send(bufs)
 		--bufs:freeAll() --RX bufs are reused for TX
-		ctrRx:update()
-		ctrTx:update()
+		--ctrRx:update()
+		--ctrTx:update()
 	end
 	--p.stop()
-	ctrRx:finalize()
-	ctrTx:finalize()
+	--ctrRx:finalize()
+	--ctrTx:finalize()
 end
 
 function dumpSlave(rxQ)
@@ -161,7 +161,7 @@ function loadSlave(txQ, size)
 	bufs = mem:bufArray()
 	local baseIP = parseIPAddress("10.0.0.1")
 	local flow = 0
-	local ctr = stats:newDevTxCounter(txQ.dev, "plain")
+	--local ctr = stats:newDevTxCounter(txQ.dev, "plain")
 	while dpdk.running() do
 		bufs:alloc(pkt_size)
 		for _, buf in ipairs(bufs) do
@@ -172,7 +172,7 @@ function loadSlave(txQ, size)
 		-- UDP checksums are optional, so just IP checksums are sufficient here
 		bufs:offloadIPChecksums()
 		txQ:send(bufs)
-		ctr:update()
+		--ctr:update()
 	end
-	ctr:finalize()
+	--ctr:finalize()
 end

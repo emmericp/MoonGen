@@ -600,10 +600,12 @@ function mod.esp_vpn_encapsulate(buf, len, esp_buf)
 
 	-- prepend space (in mbuf headroom) for new headers (eth(14), ip4(20), esp(16))
 	dpdkc.rte_pktmbuf_prepend_export(buf, 20+16) -- 14 bytes for eth already there (will be overwritten)
+	dpdkc.memory_fence()
 	ffi.copy(buf.pkt.data, esp_buf.pkt.data, 14+20+16) -- copy eth, ip4, esp header in free space + override old MAC
+	dpdkc.memory_fence()
 
 	--FIXME: this seems to be working only for the first couple of million packets
-	dpdkc.flush_cache_line(buf.pkt.data) -- flush cacheline, otherwise the old MAC is not overwritten
+	--dpdkc.flush_cache_line(buf.pkt.data) -- flush cacheline, otherwise the old MAC is not overwritten
 
 	local new_pkt = buf:getEspPacket()
 	--new_pkt:setLength(new_len) --FIXME: this seems to be slow, influences the cache somehow
