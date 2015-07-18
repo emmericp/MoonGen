@@ -4,25 +4,21 @@ local device	= require "device"
 local stats		= require "stats"
 
 
-function master(...)
-	local txPorts = tostring((select(1, ...)))
-	local minIP = select(2, ...)
-	local numIPs = tonumber((select(3, ...)))
-	local rate = tonumber(select(4, ...))
-	
-	if not txPorts or not minIP or not numIPs or not rate then
-		printf("usage: txPort1,txPort2 minIP numIPs rate")
+function master(txPorts, minIp, numIps, rate)
+	if not txPorts then
+		printf("usage: txPort1[,txPort2[,...]] [minIP numIPs rate]")
 		return
 	end
-
-        for currentTxPort in txPorts:gmatch("[0-9+]") do
+	minIp = minIp or "10.0.0.1"
+	numIps = numIps or 100
+	rate = rate or 0
+	for currentTxPort in txPorts:gmatch("(%d+),?") do
 		currentTxPort = tonumber(currentTxPort) 
-		local rxMempool = memory.createMemPool()
-		local txDev = device.config(currentTxPort, rxMempool, 2, 2)
+		local txDev = device.config({ port = currentTxPort })
 		txDev:wait()
 		txDev:getTxQueue(0):setRate(rate)
-		dpdk.launchLua("loadSlave", currentTxPort, 0, minIP, numIPs)
-        end
+		dpdk.launchLua("loadSlave", currentTxPort, 0, minIp, numIps)
+	end
 	dpdk.waitForSlaves()
 end
 
