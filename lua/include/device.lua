@@ -103,7 +103,7 @@ function mod.config(...)
   local args = {...}
   if #args > 1 then
     -- this is for legacy compatibility when calling the function  without named arguments
-    print "[WARNING] You are using a depreciated method for invoking device config. config(...) should be used with named arguments. For details review the file 'device.lua'"
+    print("[WARNING] You are using a deprecated method for invoking device.config. config(...) should be used with named arguments. For details: see documentation")
     if not args[2] or type(args[2]) == "number" then
       args.port       = args[1]
       args.rxQueues   = args[2]
