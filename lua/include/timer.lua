@@ -1,3 +1,9 @@
+---------------------------------
+--- @file timer.lua
+--- @brief Timer ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local dpdk = require "dpdk"
@@ -30,14 +36,14 @@ end
 
 --- Perform a busy wait on the timer.
 -- Returns early if MoonGen is stopped (mg.running() == false).
-function timer:busyWait()
+-function timer:busyWait()
 	while not self:expired() and dpdk.running() do
 	end
 	return dpdk.running()
 end
 
 --- Perform a non-busy wait on the timer.
--- Might be less accurate than busyWait()
+--- Might be less accurate than busyWait()
 function timer:wait()
 	-- TODO: implement
 	return self:busyWait()

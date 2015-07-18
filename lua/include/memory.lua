@@ -1,3 +1,9 @@
+---------------------------------
+--- @file memory.lua
+--- @brief Memory ...
+--- @todo TODO docu
+---------------------------------
+
 -- vim:ts=4:sw=4:noexpandtab
 local mod = {}
 
@@ -17,8 +23,8 @@ local C = ffi.C
 local cast = ffi.cast
 
 --- Off-heap allocation, not garbage-collected.
--- @param ctype a ffi type, must be a pointer or array type
--- @param size the amount of memory to allocate
+--- @param ctype a ffi type, must be a pointer or array type
+--- @param size the amount of memory to allocate
 function mod.alloc(ctype, size)
 	return cast(ctype, C.malloc(size))
 end
@@ -29,8 +35,8 @@ function mod.free(buf)
 end
 
 --- Off-heap allocation on huge pages, not garbage-collected.
--- See memory.alloc.
--- TODO: add a free function for this
+--- See memory.alloc.
+--- TODO: add a free function for this
 function mod.allocHuge(ctype, size)
 	return cast(ctype, C.alloc_huge(size))
 end
@@ -41,12 +47,12 @@ local mempoolCache = ns:get()
 local cacheEnabled = false
 
 --- Enable mempool recycling.
--- Calling this function enables the mempool cache. This prevents memory leaks
--- as DPDK cannot delete mempools.
--- Mempools with the same parameters created on the same core will be recycled.
--- This is not yet enabled by default because I'm not 100% confident that it works
--- properly in all cases.
--- For example, mempools passed to other tasks will probably break stuff.
+--- Calling this function enables the mempool cache. This prevents memory leaks
+--- as DPDK cannot delete mempools.
+--- Mempools with the same parameters created on the same core will be recycled.
+--- This is not yet enabled by default because I'm not 100% confident that it works
+--- properly in all cases.
+--- For example, mempools passed to other tasks will probably break stuff.
 function mod.enableCache()
 	cacheEnabled = true
 end
@@ -91,14 +97,14 @@ local function getPoolFromCache(socket, n, bufSize)
 end
 
 --- Create a new memory pool.
--- Memory pools are recycled once the owning task terminates.
--- Call :retain() for mempools that are passed to other tasks.
--- A table with named arguments should be used.
--- @param args A table containing the following named arguments
---	n optional (default = 2047), size of the mempool
---	func optional, init func, called for each argument
--- 	socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
--- 	bufSize optional the size of each buffer, can only be used if all other args are passed as well
+--- Memory pools are recycled once the owning task terminates.
+--- Call :retain() for mempools that are passed to other tasks.
+--- A table with named arguments should be used.
+--- @param args A table containing the following named arguments
+---	@param n optional (default = 2047), size of the mempool
+---	@param func optional, init func, called for each argument
+--- @param	socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
+--- @param	bufSize optional the size of each buffer, can only be used if all other args are passed as well
 function mod.createMemPool(...)
 	local args = {...}
 	if type(args[1]) == "table" then
@@ -144,7 +150,7 @@ function mod.createMemPool(...)
 end
 
 --- Free all memory pools owned by this task.
--- All queues using these pools must be stopped before calling this.
+--- All queues using these pools must be stopped before calling this.
 function mod.freeMemPools()
 	if not cacheEnabled then
 		return
@@ -159,7 +165,7 @@ local mempool = {}
 mempool.__index = mempool
 
 --- Retain a memory pool.
--- This will prevent the pool from being returned to a pool of pools once the task ends.
+--- This will prevent the pool from being returned to a pool of pools once the task ends.
 function mempool:retain()
 	for i, v in ipairs(mempools) do
 		if v.pool == self then

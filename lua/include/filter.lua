@@ -1,3 +1,9 @@
+---------------------------------
+--- @file filter.lua
+--- @brief Filter ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local dpdkc = require "dpdkc"
@@ -56,10 +62,11 @@ function dev:addHW5tupleFilter(filter, queue, priority)
 end
 
 --- Filter PTP time stamp packets by inspecting the PTP version and type field.
--- Packets with PTP version 2 are matched with this filter.
--- @arg offset the offset of the PTP version field
--- @arg mtype the PTP type to look for, default = 0
--- @arg ver the PTP version to look for, default = 2
+--- Packets with PTP version 2 are matched with this filter.
+--- @param queue
+--- @param offset the offset of the PTP version field
+--- @param ntype the PTP type to look for, default = 0
+--- @param ver the PTP version to look for, default = 2
 function dev:filterTimestamps(queue, offset, ntype, ver)
 	-- TODO: dpdk only allows to change this at init time
 	-- however, I think changing the flex-byte offset field in the FDIRCTRL register can be changed at run time here

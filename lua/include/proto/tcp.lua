@@ -1,3 +1,14 @@
+------------------------------------------------------------------------
+--- @file tcp.lua
+--- @brief Transmission control protocol (TCP) utility.
+--- Utility functions for the tcp_header struct
+--- defined in \ref headers.lua . \n
+--- Includes:
+--- - TCP constants
+--- - TCP header utility
+--- - Definition of TCP packets
+------------------------------------------------------------------------
+
 local ffi = require "ffi"
 local pkt = require "packet"
 
@@ -12,65 +23,96 @@ local format = string.format
 
 
 ------------------------------------------------------------------------------
---- TCP header
+---- TCP constants
 ------------------------------------------------------------------------------
 
+
+------------------------------------------------------------------------------
+---- TCP header
+------------------------------------------------------------------------------
+
+--- Module for tcp_header struct (see \ref headers.lua).
 local tcpHeader = {}
 tcpHeader.__index = tcpHeader
 
+--- Set the source port.
+--- @param int Port as 16 bit integer.
 function tcpHeader:setSrcPort(int)
 	int = int or 1025
 	self.src = hton16(int)
 end
 
+--- Retrieve the source port.
+--- @return Port as 16 bit integer.
 function tcpHeader:getSrcPort()
 	return hton16(self.src)
 end
 
+--- Retrieve the source port.
+--- @return Port in string format.
 function tcpHeader:getSrcPortString()
 	return self:getSrcPort()
 end
 
+--- Set the destination port.
+--- @param int Port as 16 bit integer.
 function tcpHeader:setDstPort(int)
 	int = int or 1024
 	self.dst = hton16(int)
 end
 
+--- Retrieve the destination port.
+--- @return Port as 16 bit integer.
 function tcpHeader:getDstPort()
 	return hton16(self.dst)
 end
 
+--- Retrieve the destination port.
+--- @return Port in string format.
 function tcpHeader:getDstPortString()
 	return self:getDstPort()
 end
 
+--- Set the sequence number.
+--- @param int Sequence number as 8 bit integer.
 function tcpHeader:setSeqNumber(int)
 	int = int or 0
 	self.seq = hton(int)
 end
 
+--- Retrieve the sequence number.
+--- @return Seq number as 8 bit integer.
 function tcpHeader:getSeqNumber()
 	return hton(self.seq)
 end
 
+--- Retrieve the sequence number.
+--- @return Sequence number in string format.
 function tcpHeader:getSeqNumberString()
 	return self:getSeqNumber()
 end
 
+--- Set the acknowledgement number.
+--- @param int Ack number as 8 bit integer.
 function tcpHeader:setAckNumber(int)
 	int = int or 0
 	self.ack = hton(int)
 end
 
+--- Retrieve the acknowledgement number.
+--- @return Seq number as 8 bit integer.
 function tcpHeader:getAckNumber()
 	return hton(self.ack)
 end
 
+--- Retrieve the acknowledgement number.
+--- @return Ack number in string format.
 function tcpHeader:getAckNumberString()
 	return self:getAckNumber()
 end
 
--- 4 bit, header size in 32 bit words (min. 5 (no options), max. 15)
+--- Set the data offset.
+--- @param int Offset as 4 bit integer. Header size is counted in 32 bit words (min. 5 (no options), max. 15)
 function tcpHeader:setDataOffset(int)
 	int = int or 5 
 	int = band(lshift(int, 4), 0xf0) -- fill to 8 bits
@@ -81,15 +123,20 @@ function tcpHeader:setDataOffset(int)
 	self.offset = bor(old, int)
 end
 
+--- Retrieve the data offset.
+--- @return Offset as 4 bit integer.
 function tcpHeader:getDataOffset()
 	return band(rshift(self.offset, 4), 0x0f)
 end
 
+--- Retrieve the data offset.
+--- @return Offset in string format.
 function tcpHeader:getDataOffsetString()
 	return format("0x%01x", self:getDataOffset())
 end
 
--- 6 bit (4 bit offset, 2 bit flags)
+--- Set the reserved field.
+--- @param int Reserved field as 6 bit integer.
 function tcpHeader:setReserved(int)
 	int = int or 0
 	-- offset  |   flags
@@ -113,18 +160,23 @@ function tcpHeader:setReserved(int)
 	self.flags = bor(old, fla)
 end
 
+--- Retrieve the reserved field.
+--- @return Reserved field as 6 bit integer.
 function tcpHeader:getReserved()
 	res = lshift(band(self.offset, 0x0f), 2) 	-- 4 lowest from offset to 4 highest from reserved
 	res = bor(res, rshift(self.flags, 6)) 		-- 2 highest from flags to 2 lowest from reserved
 	return res
 end
 
+--- Retrieve the reserved field.
+--- @return Reserved field in string format.
 function tcpHeader:getReservedString()
 	return format("0x%02x", self:getReserved())
 end
 
--- TODO RFC 3168 specifies new CWR and ECE flags (reserved reduced to 4 bit)
--- 6bit
+--- Set the flags.
+--- @param int Flags as 6 bit integer.
+--- @todo TODO RFC 3168 specifies new CWR and ECE flags (reserved reduced to 4 bit)
 function tcpHeader:setFlags(int)
 	int = int or 0
 
@@ -136,26 +188,36 @@ function tcpHeader:setFlags(int)
 	self.flags = bor(old, int)
 end
 
+--- Retrieve the flags.
+--- @return Flags as 6 bit integer.
 function tcpHeader:getFlags()
 	return band(self.flags, 0x3f)
 end
 
+--- Retrieve the flags.
+--- @return Flags in string format.
 function tcpHeader:getFlagsString()
 	return format("0x%02x", self:getFlags())
 end
 
+--- Set the Urg flag.
 function tcpHeader:setUrg()
 	self.flags = bor(self.flags, 0x20)
 end
 
+--- Unset the Urg flag.
 function tcpHeader:unsetUrg()
 	self.flags = band(self.flags, 0xdf)
 end
 
+--- Retrieve the Urg flag.
+--- @return Flag as 1 bit integer.
 function tcpHeader:getUrg()
 	return rshift(band(self.flags, 0x20), 5)
 end
 
+--- Retrieve the Urg flag.
+--- @return Flag in string format.
 function tcpHeader:getUrgString()
 	if self:getUrg() == 1 then
 		return "URG"
@@ -164,18 +226,24 @@ function tcpHeader:getUrgString()
 	end
 end
 
+--- Set the Ack flag.
 function tcpHeader:setAck()
 	self.flags = bor(self.flags, 0x10)
 end
 
+--- Unset the Ack flag.
 function tcpHeader:unsetAck()
 	self.flags = band(self.flags, 0xef)
 end
 
+--- Retrieve the Ack flag.
+--- @return Flag as 1 bit integer.
 function tcpHeader:getAck()
 	return rshift(band(self.flags, 0x10), 4)
 end
 
+--- Retrieve the Ack flag.
+--- @return Flag in string format.
 function tcpHeader:getAckString()
 	if self:getAck() == 1 then
 		return "ACK"
@@ -184,18 +252,24 @@ function tcpHeader:getAckString()
 	end
 end
 
+--- Set the Psh flag.
 function tcpHeader:setPsh()
 	self.flags = bor(self.flags, 0x08)
 end
 
+--- Unset the Psh flag.
 function tcpHeader:unsetPsh()
 	self.flags = band(self.flags, 0xf7)
 end
 
+--- Retrieve the Psh flag.
+--- @return Flag as 1 bit integer.
 function tcpHeader:getPsh()
 	return rshift(band(self.flags, 0x08), 3)
 end
 
+--- Retrieve the Psh flag.
+--- @return Flag in string format.
 function tcpHeader:getPshString()
 	if self:getPsh() == 1 then
 		return "PSH"
@@ -204,18 +278,24 @@ function tcpHeader:getPshString()
 	end
 end
 
+--- Set the Rst flag.
 function tcpHeader:setRst()
 	self.flags = bor(self.flags, 0x04)
 end
 
+--- Unset the Rst flag.
 function tcpHeader:unsetRst()
 	self.flags = band(self.flags, 0xfb)
 end
 
+--- Retrieve the Rst flag.
+--- @return Flag as 1 bit integer.
 function tcpHeader:getRst()
 	return rshift(band(self.flags, 0x04), 2)
 end
 
+--- Retrieve the Rst flag.
+--- @return Flag in string format.
 function tcpHeader:getRstString()
 	if self:getRst() == 1 then
 		return "RST"
@@ -224,18 +304,24 @@ function tcpHeader:getRstString()
 	end
 end
 
+--- Set the Syn flag.
 function tcpHeader:setSyn()
 	self.flags = bor(self.flags, 0x02)
 end
 
+--- Unset the Syn flag.
 function tcpHeader:unsetSyn()
 	self.flags = band(self.flags, 0xfd)
 end
 
+--- Retrieve the Syn flag.
+--- @return Flag as 1 bit integer.
 function tcpHeader:getSyn()
 	return rshift(band(self.flags, 0x02), 1)
 end
 
+--- Retrieve the Syn flag.
+--- @return Flag in string format.
 function tcpHeader:getSynString()
 	if self:getSyn() == 1 then
 		return "SYN"
@@ -244,18 +330,24 @@ function tcpHeader:getSynString()
 	end
 end
 
+--- Set the Fin flag.
 function tcpHeader:setFin()
 	self.flags = bor(self.flags, 0x01)
 end
 
+--- Unset the Fin flag.
 function tcpHeader:unsetFin()
 	self.flags = band(self.flags, 0xfe)
 end
 
+--- Retrieve the Fin flag.
+--- @return Flag as 1 bit integer.
 function tcpHeader:getFin()
 	return band(self.flags, 0x01)
 end
 
+--- Retrieve the Fin flag.
+--- @return Flag in string format.
 function tcpHeader:getFinString()
 	if self:getFin() == 1 then
 		return "FIN"
@@ -264,46 +356,65 @@ function tcpHeader:getFinString()
 	end
 end
 
+--- Set the window field.
+--- @param int Window as 16 bit integer.
 function tcpHeader:setWindow(int)
 	int = int or 0
 	self.window = hton16(int)
 end
 
+--- Retrieve the window field.
+--- @return Window as 16 bit integer.
 function tcpHeader:getWindow()
 	return hton16(self.window)
 end
 
+--- Retrieve the window field.
+--- @return Window in string format.
 function tcpHeader:getWindowString()
 	return self:getWindow()
 end
 
+--- Set the checksum.
+--- @param int Checksum as 16 bit integer.
 function tcpHeader:setChecksum(int)
 	int = int or 0
 	self.cs = hton16(int)
 end
 
---- Calculate the checksum
--- FIXME NYI
+--- Calculate the checksum.
+--- @param len Number of bytes to calculate the checksum over.
+--- @todo FIXME NYI
 function tcpHeader:calculateChecksum(len)
 end
 
+--- Retrieve the checksum.
+--- @return Checksum as 16 bit integer.
 function tcpHeader:getChecksum()
 	return hton16(self.cs)
 end
 
+--- Retrieve the checksum.
+--- @return Checksum in string format.
 function tcpHeader:getChecksumString()
 	return format("0x%04x", self:getChecksum())
 end
 
+--- Set the urgent pointer.
+--- @param int Urgent pointer as 16 bit integer.
 function tcpHeader:setUrgentPointer(int)
 	int = int or 0
 	self.urg = hton16(int)
 end
 
+--- Retrieve the urgent pointer.
+--- @return Urgent pointer as 16 bit integer.
 function tcpHeader:getUrgentPointer()
 	return hton16(self.urg)
 end
 
+--- Retrieve the urgent pointer.
+--- @return Urgent pointer in string format.
 function tcpHeader:getUrgentPointerString()
 	return self:getUrgentPointer()
 end
@@ -314,6 +425,15 @@ end
 	self. = int
 end--]]
 
+--- Set all members of the ip header.
+--- Per default, all members are set to default values specified in the respective set function.
+--- Optional named arguments can be used to set a member to a user-provided value.
+--- @param args Table of named arguments. Available arguments: Src, Dst, SeqNumber, AckNumber, DataOffset, Reserved, Flags, Urg, Ack, Psh, Rst, Syn, Fin, Window, Checksum, UrgentPointer
+--- @param pre prefix for namedArgs. Default 'tcp'.
+--- @code
+--- fill() --- only default values
+--- fill{ tcpSrc=1234, ipTTL=100 } --- all members are set to default values with the exception of tcpSrc
+--- @endcode
 function tcpHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "tcp"
@@ -349,8 +469,8 @@ function tcpHeader:fill(args, pre)
 end
 
 --- Retrieve the values of all members.
--- @return Table of named arguments. For a list of arguments see "See also".
--- @see tcpHeader:fill
+--- @return Table of named arguments. For a list of arguments see "See also".
+--- @see tcpHeader:fill
 function tcpHeader:get(pre)
 	pre = pre or "tcp"
 
@@ -376,7 +496,7 @@ function tcpHeader:get(pre)
 end
 
 --- Retrieve the values of all members.
--- @return Values in string format.
+--- @return Values in string format.
 function tcpHeader:getString()
 	return "TCP " 		.. self:getSrcPortString() 
 		.. " > " 	.. self:getDstPortString() 
@@ -396,25 +516,49 @@ function tcpHeader:getString()
 		.. " urg " 	.. self:getUrgentPointerString() 
 end
 
+--- Resolve which header comes after this one (in a packet).
+--- For instance: in tcp/udp based on the ports.
+--- This function must exist and is only used when get/dump is executed on
+--- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
+--- @return String next header (e.g. 'udp', 'icmp', nil)
 function tcpHeader:resolveNextHeader()
 	return nil
 end
 
+--- Change the default values for namedArguments (for fill/get).
+--- This can be used to for instance calculate a length value based on the total packet length.
+--- See proto/ip4.setDefaultNamedArgs as an example.
+--- This function must exist and is only used by packet.fill.
+--- @param pre The prefix used for the namedArgs, e.g. 'tcp'
+--- @param namedArgs Table of named arguments (see See Also)
+--- @param nextHeader The header following after this header in a packet
+--- @param accumulatedLength The so far accumulated length for previous headers in a packet
+--- @see tcpHeader:fill
 function tcpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
 end
 
 
 ----------------------------------------------------------------------------------
---- Packets
+---- Packets
 ----------------------------------------------------------------------------------
 
+--- Cast the packet to a Tcp (IP4) packet
 pkt.getTcp4Packet = packetCreate("eth", "ip4", "tcp")
+--- Cast the packet to a Tcp (IP6) packet
 pkt.getTcp6Packet = packetCreate("eth", "ip6", "tcp")
-pkt.getTcpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getTcp4Packet(self) else return pkt.getTcp6Packet(self) end end   
+--- Cast the packet to a Tcp packet, either using IP4 (nil/true) or IP6 (false), depending on the passed boolean.
+pkt.getTcpPacket = function(self, ip4) 
+	ip4 = ip4 == nil or ip4 
+	if ip4 then 
+		return pkt.getTcp4Packet(self) 
+	else 
+		return pkt.getTcp6Packet(self) 
+	end 
+end   
 
 ------------------------------------------------------------------------------------
---- Metatypes
+---- Metatypes
 ------------------------------------------------------------------------------------
 
 ffi.metatype("struct tcp_header", tcpHeader)

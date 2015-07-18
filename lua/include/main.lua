@@ -1,3 +1,9 @@
+---------------------------------
+--- @file main.lua
+--- @brief Main ...
+--- @todo TODO docu
+---------------------------------
+
 -- globally available utility functions
 require "utils"
 -- all available headers, packets, ... and their utility functions

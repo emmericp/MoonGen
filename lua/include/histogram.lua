@@ -1,3 +1,9 @@
+---------------------------------
+--- @file histogram.lua
+--- @brief Histrogram ...
+--- @todo TODO docu
+---------------------------------
+
 local histogram = {}
 histogram.__index = histogram
 

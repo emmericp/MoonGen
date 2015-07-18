@@ -1,3 +1,9 @@
+---------------------------------
+--- @file dpdkc.lua
+--- @brief DPDKc ...
+--- @todo TODO docu
+---------------------------------
+
 --- low-level dpdk wrapper
 local ffi = require "ffi"
 
