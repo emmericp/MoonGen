@@ -415,76 +415,78 @@ arp.arpTask = "__MG_ARP_TASK"
 local arpTable = ns:get()
 
 --- Arp handler task
---- @param rxQueue The queue that receives arp packets
---- @param txQueue The queue that sends arp packets
---- @param ips List of ip addresses. The first will be used as source address in ARP requests.
+--- @param qs TODO
 --- @todo TODO docu
-local function arpTask(rxQueue, txQueue, ips)
-	arpTable.taskRunning = true
-	if type(ips) ~= "table" then
-		ips = { ips }
+local function arpTask(qs)
+	-- two ways to call this: single nic or array of nics
+	if qs[1] == nil and qs.rxQueue then
+		return arpTask({ qs })
 	end
-	local ipToMac = {}
-	for i, v in ipairs(ips) do
-		if type(v) == "string" then
-			v = parseIPAddress(v)
-			ips[i] = v
-		end
-		ipToMac[v] = true -- TODO: support different MACs for different IPs
-	end
-	if rxQueue.dev ~= txQueue.dev then
-		error("both queues must belong to the same device")
-	end
-	local arpSrcIP = ips[1] -- the source address for ARP requests
 
-	local dev = rxQueue.dev
-	local devMac = dev:getMac()
+	local ipToMac = {}
+	-- loop over NICs/Queues
+	for _, nic in pairs(qs) do
+		if nic.txQueue.dev ~= nic.rxQueue.dev then
+			error("both queues must belong to the same device")
+		end
+
+		if type(nic.ips) == "string" then
+			nic.ips = { nic.ips }
+		end
+
+		for _, ip in pairs(nic.ips) do
+			ipToMac[parseIPAddress(ip)] = nic.txQueue.dev:getMac()
+		end
+		nic.txQueue.dev:l2Filter(eth.TYPE_ARP, nic.rxQueue)
+	end
+
 	local rxBufs = memory.createBufArray(1)
 	local txMem = memory.createMemPool(function(buf)
 		buf:getArpPacket():fill{ 
-			ethSrc			= devMac,  
 			arpOperation	= arp.OP_REPLY,
-			arpHardwareSrc	= devMac,
-			arpProtoSrc 	= devIP,
 			pktLength		= 60
 		}
 	end)
 	local txBufs = txMem:bufArray(1)
-	dev:l2Filter(eth.TYPE_ARP, rxQueue)
 	
+	arpTable.taskRunning = true
+
 	while dpdk.running() do
-		rx = rxQueue:tryRecvIdle(rxBufs, 1000)
-		assert(rx <= 1)
-		if rx > 0 then
-			local rxPkt = rxBufs[1]:getArpPacket()
-			if rxPkt.eth:getType() == eth.TYPE_ARP then
-				if rxPkt.arp:getOperation() == arp.OP_REQUEST then
-					local ip = rxPkt.arp:getProtoDst()
-					local mac = ipToMac[ip]
-					if mac then
-						if mac == true then
-							mac = devMac
+		
+		for _, nic in pairs(qs) do
+			rx = nic.rxQueue:tryRecvIdle(rxBufs, 1000)
+			assert(rx <= 1)
+			if rx > 0 then
+				local rxPkt = rxBufs[1]:getArpPacket()
+				if rxPkt.eth:getType() == eth.TYPE_ARP then
+					if rxPkt.arp:getOperation() == arp.OP_REQUEST then
+						local ip = rxPkt.arp:getProtoDst()
+						local mac = ipToMac[ip]
+						if mac then
+							txBufs:alloc(60)
+							-- TODO: a single-packet API would be nice for things like this
+							local pkt = txBufs[1]:getArpPacket()
+							pkt.eth:setSrc(mac)
+							pkt.eth:setDst(rxPkt.eth:getSrc())
+							pkt.arp:setOperation(arp.OP_REPLY)
+							pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
+							pkt.arp:setHardwareSrc(mac)
+							pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
+							pkt.arp:setProtoSrc(ip)
+							nic.txQueue:send(txBufs)
 						end
-						txBufs:alloc(60)
-						-- TODO: a single-packet API would be nice for things like this
-						local pkt = txBufs[1]:getArpPacket()
-						pkt.eth:setDst(rxPkt.eth:getSrc())
-						pkt.arp:setOperation(arp.OP_REPLY)
-						pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
-						pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
-						pkt.arp:setProtoSrc(ip)
-						txQueue:send(txBufs)
+					elseif rxPkt.arp:getOperation() == arp.OP_REPLY then
+						-- learn from all arp replies we see (arp cache poisoning doesn't matter here)
+						local mac = rxPkt.arp:getHardwareSrcString()
+						local ip = rxPkt.arp:getProtoSrcString()
+						arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = dpdk.getTime() }
 					end
-				elseif rxPkt.arp:getOperation() == arp.OP_REPLY then
-					-- learn from all arp replies we see (suspicable to arp cache poisoning but that doesn't matter here)
-					local mac = rxPkt.arp:getHardwareSrcString()
-					local ip = rxPkt.arp:getProtoSrcString()
-					arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = dpdk.getTime() }
 				end
+				rxBufs:freeAll()
 			end
-			rxBufs:freeAll()
 		end
-		-- send outstanding requests
+
+		-- send outstanding requests 
 		arpTable:forEach(function(ip, value)
 			-- TODO: refresh or GC old entries
 			if value ~= "pending" then
@@ -499,14 +501,23 @@ local function arpTask(rxQueue, txQueue, ips)
 			pkt.arp:setOperation(arp.OP_REQUEST)
 			pkt.arp:setHardwareDstString(eth.BROADCAST)
 			pkt.arp:setProtoDst(ip)
-			pkt.arp:setProtoSrc(arpSrcIP)
-			txQueue:send(txBufs)
+			-- TODO: do not send requests on all devices, but only the relevant
+			for _, nic in pairs(qs) do
+				local mac = nic.txQueue.dev:getMac()
+				pkt.eth:setSrc(mac)
+				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
+				pkt.arp:setHardwareSrc(mac)
+				nic.txQueue:send(txBufs)
+			end
 		end)
-		--dpdk.sleepMillisIdle(1)
+		dpdk.sleepMillisIdle(1)
 	end
 end
 
 --- Perform a lookup in the ARP table.
+--- Lookup the MAC address for a given IP.
+--- Blocks for up to 1 second if the arp task is not yet running
+--- Caution: this function uses locks and namespaces, must not be used in the fast path
 --- @param ip The ip address in string or cdata format to look up.
 function arp.lookup(ip)
 	if type(ip) == "string" then
@@ -515,23 +526,39 @@ function arp.lookup(ip)
 		ip = ip:get()
 	end
 	if not arpTable.taskRunning then
-		error("ARP task is not running")
+		local waitForArpTask = 0
+		while not arpTable.taskRunning and waitForArpTask < 10 do
+			dpdk.sleepMillis(100)
+		end
+		if not arpTable.taskRunning then
+			error("ARP task is not running")
+		end
 	end
 	local mac = arpTable[tostring(ip)]
-	if mac and mac ~= "pending" then
+	if type(mac) == "table" then
 		return mac.mac, mac.timestamp
 	end
-	if mac ~= "requested" then
-		arpTable[tostring(ip)] = "pending" -- FIXME: this needs a lock
-	end
+	arpTable.lock(function()
+		if not arpTable[tostring(ip)] then
+			arpTable[tostring(ip)] = "pending"
+		end
+	end)
 	return nil
 end
 
 --- Perform a non-blocking lookup in the ARP table.
 --- @param ip The ip address in string or cdata format to look up.
---- @todo TODO NYI
-function arp.blockingLookup(ip)
-	error("NYI")
+--- @param timeout TODO
+--- @todo FIXME: this only sends a single request
+function arp.blockingLookup(ip, timeout)
+	local timeout = dpdk.getTime() + timeout
+	repeat
+		local mac, ts = arp.lookup(ip)
+		if mac then
+			return mac, ts
+		end
+		dpdk.sleepMillisIdle(1000)
+	until dpdk.getTime() >= timeout
 end
 
 __MG_ARP_TASK = arpTask

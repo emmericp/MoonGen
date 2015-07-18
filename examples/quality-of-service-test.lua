@@ -6,12 +6,20 @@ local ts		= require "timestamping"
 local filter	= require "filter"
 local stats		= require "stats"
 local hist		= require "histogram"
+local timer		= require "timer"
 
-local PKT_SIZE = 124
+local PKT_SIZE	= 124 -- without CRC
+local ETH_DST	= "10:11:12:13:14:15" -- src mac is taken from the NIC
+local IP_SRC	= "192.168.0.1"
+local NUM_FLOWS	= 256 -- src ip will be IP_SRC + random(0, NUM_FLOWS - 1)
+local IP_DST	= "10.0.0.1"
+local PORT_SRC	= 1234
+local PORT_FG	= 42
+local PORT_BG	= 43
 
-function master(txPort, rxPort, fgRate, bgRate)
+function master(txPort, rxPort, bgRate, fgRate)
 	if not txPort or not rxPort then
-		return print("usage: txPort rxPort [fgRate [bgRate]]")
+		return print("usage: txPort rxPort [bgRate [fgRate]]")
 	end
 	fgRate = fgRate or 100
 	bgRate = bgRate or 1500
@@ -32,40 +40,42 @@ function master(txPort, rxPort, fgRate, bgRate)
 	end
 	-- wait until the links are up
 	device.waitForLinks()
+	printf("Sending %d MBit/s background traffic to UDP port %d", bgRate, PORT_BG)
+	printf("Sending %d MBit/s foreground traffic to UDP port %d", fgRate, PORT_FG)
 	-- setup rate limiters for CBR traffic
 	-- see l2-poisson.lua for an example with different traffic patterns
 	txDev:getTxQueue(0):setRate(bgRate)
 	txDev:getTxQueue(1):setRate(fgRate)
 	-- background traffic
-	dpdk.launchLua("loadSlave", txDev:getTxQueue(0), 42)
+	dpdk.launchLua("loadSlave", txDev:getTxQueue(0), PORT_BG)
 	-- high priority traffic (different UDP port)
-	dpdk.launchLua("loadSlave", txDev:getTxQueue(1), 43)
+	dpdk.launchLua("loadSlave", txDev:getTxQueue(1), PORT_FG)
 	-- count the incoming packets
-	dpdk.launchLua("counterSlave", rxDev:getRxQueue(0), 42, 43)
+	dpdk.launchLua("counterSlave", rxDev:getRxQueue(0))
 	-- measure latency from a second queue
-	timerSlave(txDev:getTxQueue(2), rxDev:getRxQueue(1), 42, 43, fgRate / (fgRate + bgRate))
+	timerSlave(txDev:getTxQueue(2), rxDev:getRxQueue(1), PORT_BG, PORT_FG, fgRate / (fgRate + bgRate))
 	-- wait until all tasks are finished
 	dpdk.waitForSlaves()
 end
 
-function loadSlave(queue, port, rate)
+function loadSlave(queue, port)
 	dpdk.sleepMillis(100) -- wait a few milliseconds to ensure that the rx thread is running
 	-- TODO: implement barriers
 	local mem = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
 			pktLength = PKT_SIZE, -- this sets all length headers fields in all used protocols
 			ethSrc = queue, -- get the src mac from the device
-			ethDst = "10:11:12:13:14:15",
+			ethDst = ETH_DST,
 			-- ipSrc will be set later as it varies
-			ip4Dst = "192.168.1.1",
-			udpSrc = 1234,
+			ip4Dst = IP_DST,
+			udpSrc = PORT_SRC,
 			udpDst = port,
 			-- payload will be initialized to 0x00 as new memory pools are initially empty
 		}
 	end)
 	-- TODO: fix per-queue stats counters to use the statistics registers here
 	local txCtr = stats:newManualTxCounter("Port " .. port, "plain")
-	local baseIP = parseIPAddress("10.0.0.1")
+	local baseIP = parseIPAddress(IP_SRC)
 	-- a buf array is essentially a very thing wrapper around a rte_mbuf*[], i.e. an array of pointers to packet buffers
 	local bufs = mem:bufArray()
 	while dpdk.running() do
@@ -76,7 +86,7 @@ function loadSlave(queue, port, rate)
 			local pkt = buf:getUdpPacket()
 			-- select a randomized source IP address
 			-- you can also use a wrapping counter instead of random
-			pkt.ip4.src:set(baseIP + math.random() * 255)
+			pkt.ip4.src:set(baseIP + math.random(NUM_FLOWS) - 1)
 			-- you can modify other fields here (e.g. different source ports or destination addresses)
 		end
 		-- send packets
@@ -120,76 +130,47 @@ function counterSlave(queue)
 	-- TODO: check the queue's overflow counter to detect lost packets
 end
 
--- TODO: move this function into the timestamping library
-local function measureLatency(txQueue, rxQueue, bufs, rxBufs)
-	ts.syncClocks(txQueue.dev, rxQueue.dev)
-	txQueue:send(bufs)
-	-- increment the wait time when using large packets or slower links
-	local tx = txQueue:getTimestamp(100)
-	if tx then
-		dpdk.sleepMicros(500) -- minimum latency to limit the packet rate
-		-- sent was successful, try to get the packet back (max. 10 ms wait time before we assume the packet is lost)
-		local rx = rxQueue:tryRecv(rxBufs, 10000)
-		if rx > 0 then
-			local numPkts = 0
-			for i = 1, rx do
-				if bit.bor(rxBufs[i].ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0 then
-					numPkts = numPkts + 1
-				end
-			end
-			local delay = (rxQueue:getTimestamp() - tx) * 6.4
-			if numPkts == 1 then
-				if delay > 0 and delay < 100000000 then
-					rxBufs:freeAll()
-					return delay
-				end
-			end -- else: got more than one packet, so we got a problem
-			rxBufs:freeAll()
-		end
-	end
-end
 
+-- TODO refactor this to use the new API
 function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
-	-- TODO fix the time stamping API
 	local txDev = txQueue.dev
 	local rxDev = rxQueue.dev
-	local mem = memory.createMemPool()
-	local bufs = mem:bufArray(1)
-	local rxBufs = mem:bufArray(128)
-	txQueue:enableTimestamps()
 	rxDev:filterTimestamps(rxQueue)
+	local timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	local histBg, histFg = hist(), hist()
 	-- wait one second, otherwise we might start timestamping before the load is applied
 	dpdk.sleepMillis(1000)
-	local counter = 0
-	local baseIP = parseIPAddress("10.0.0.1")
+	local baseIP = parseIPAddress(IP_SRC)
+	local rateLimit = timer:new(0.001)
 	while dpdk.running() do
-		bufs:alloc(PKT_SIZE)
-		local pkt = bufs[1]:getUdpPacket()
 		local port = math.random() <= ratio and port or bgPort
-		-- TODO: ts.fillPacket must be fixed
-		ts.fillPacket(bufs[1], port, PKT_SIZE + 4)
-		pkt:fill{
-			pktLength = PKT_SIZE, -- this sets all length headers fields in all used protocols
-			ethSrc = txQueue, -- get the src mac from the device
-			ethDst = "10:11:12:13:14:15",
-			-- ipSrc will be set later as it varies
-			ip4Dst = "192.168.1.1",
-			udpSrc = 1234,
-			udpDst = port,
-			-- payload will be initialized to 0x00 as new memory pools are initially empty
-		}
-		pkt.ip4.src:set(baseIP + math.random() * 255)
-		bufs:offloadUdpChecksums()
-		rxQueue:enableTimestamps(port)
-		local lat = measureLatency(txQueue, rxQueue, bufs, rxBufs)
+		local lat = timestamper:measureLatency(PKT_SIZE, function(buf)
+			local pkt = buf:getUdpPacket()
+			pkt:fill{
+				pktLength = PKT_SIZE, -- this sets all length headers fields in all used protocols
+				ethSrc = txQueue, -- get the src mac from the device
+				ethDst = ETH_DST,
+				-- ipSrc will be set later as it varies
+				ip4Dst = IP_DST,
+				udpSrc = PORT_SRC,
+				udpDst = port,
+			}
+			pkt.ip4.src:set(baseIP + math.random(NUM_FLOWS) - 1)
+		end)
 		if lat then
-			local hist = port == bgPort and histBg or histFg
-			hist:update(lat)
+			if port == bgPort then
+				histBg:update(lat)
+			else
+				histFg:update(lat)
+			end
 		end
+		rateLimit:wait()
+		rateLimit:reset()
 	end
-	dpdk.sleepMillis(50) -- to prevent overlapping stdout
-	printf("Background traffic: Average %d, Standard Deviation %d, Quartiles %d/%d/%d", histBg:avg(), histBg:standardDeviation(), histBg:quartiles())
-	printf("Foreground traffic: Average %d, Standard Deviation %d, Quartiles %d/%d/%d", histFg:avg(), histFg:standardDeviation(), histFg:quartiles())
+	dpdk.sleepMillis(100) -- to prevent overlapping stdout
+	histBg:save("hist-background.csv")
+	histFg:save("hist-foreground.csv")
+	histBg:print("Background traffic")
+	histFg:print("Foreground traffic")
 end
 

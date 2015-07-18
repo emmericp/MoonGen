@@ -10,6 +10,23 @@ local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
 local memory	= require "memory"
+local serpent = require "Serpent"
+local errors = require "error"
+require "headers"
+
+-- FIXME: fix this ugly duplicated code enum
+mod.RSS_FUNCTION_IPV4     = 1
+mod.RSS_FUNCTION_IPV4_TCP = 2
+mod.RSS_FUNCTION_IPV4_UDP = 3
+mod.RSS_FUNCTION_IPV6     = 4
+mod.RSS_FUNCTION_IPV6_TCP = 5
+mod.RSS_FUNCTION_IPV6_UDP = 6
+
+ffi.cdef[[
+  void rte_eth_macaddr_get 	( 	uint8_t  	port_id,
+		struct ether_addr *  	mac_addr 
+	) 	
+]]
 
 mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_82599	= 0x808610FB
@@ -63,34 +80,170 @@ end
 
 local devices = {}
 
---- TODO: use a table/named arguments as this is becoming excessive
-function mod.config(port, mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
-	if not mempool or type(mempool) == "number" then
-		return mod.config(port, memory.createMemPool(nil, dpdkc.get_socket(port)), mempool, rxQueues, txQueues, speed, rxDescs, txDescs, dropEnable)
-	end
-	if devices[port] and devices[port].initialized then
-		printf("[WARNING] Device %d already configured, skipping initilization", port)
-		return mod.get(port)
-	end
-	speed = speed or 0
-	dropEnable = dropEnable == nil and true
-	if rxQueues == 0 or txQueues == 0 then
-		-- dpdk does not like devices without rx/tx queues :(
-		errorf("cannot initialize device without %s queues", rxQueues == 0 and txQueues == 0 and "rx and tx" or rxQueues == 0 and "rx" or "tx")
-	end
-	rxQueues = rxQueues or 1
-	txQueues = txQueues or 1
-	rxDescs = rxDescs or 0
-	txDescs = txDescs or 0
-	-- TODO: support options
-	local rc = dpdkc.configure_device(port, rxQueues, txQueues, rxDescs, txDescs, speed, mempool, dropEnable)
-	if rc ~= 0 then
-		errorf("could not configure device %d: error %d", port, rc)
-	end
-	local dev = mod.get(port)
-	dev.initialized = true
-	return dev
+--- Configure a device
+--- @param args A table containing the following named arguments
+---   port Port to configure
+---   mempool optional (default = create a new mempool) Mempool to associate to the device
+---   rxQueues optional (default = 1) Number of RX queues to configure 
+---   txQueues optional (default = 1) Number of TX queues to configure 
+---   rxDescs optional (default = 512)
+---   txDescs optional (default = 256)
+---   speed optional (default = 0)
+---   dropEnable optional (default = true)
+---   rssNQueues optional (default = 0) If this is >0 RSS will be activated for
+---    this device. Incomming packates will be distributed to the
+---    rxQueues number 0 to (rssNQueues - 1). For a fair distribution use one of
+---    the following values (1, 2, 4, 8, 16). Values greater than 16 are not
+---    allowed.
+---   rssFunctions optional (default = all supported functions) A Table,
+---    containing hashing methods, which can be used for RSS.
+---    Possible methods are:
+---      dev.RSS_FUNCTION_IPV4    
+---      dev.RSS_FUNCTION_IPV4_TCP
+---      dev.RSS_FUNCTION_IPV4_UDP
+---      dev.RSS_FUNCTION_IPV6    
+---      dev.RSS_FUNCTION_IPV6_TCP
+---      dev.RSS_FUNCTION_IPV6_UDP
+--- @todo FIXME: add description for speed and dropEnable parameters.
+function mod.config(...)
+  local args = {...}
+  if #args > 1 then
+    -- this is for legacy compatibility when calling the function  without named arguments
+    print("[WARNING] You are using a deprecated method for invoking device.config. config(...) should be used with named arguments. For details: see documentation")
+    if not args[2] or type(args[2]) == "number" then
+      args.port       = args[1]
+      args.rxQueues   = args[2]
+      args.txQueues   = args[3]
+      args.rxDescs    = args[4]
+      args.txDescs    = args[5]
+      args.speed      = args[6]
+      args.dropEnable = args[7]
+    else
+      args.port       = args[1]
+      args.mempool    = args[2]
+      args.rxQueues   = args[3]
+      args.txQueues   = args[4]
+      args.rxDescs    = args[5]
+      args.txDescs    = args[6]
+      args.speed      = args[7]
+      args.dropEnable = args[8]
+    end
+  elseif #args == 1 then
+    -- here we receive named arguments
+    args = args[1]
+  else
+    errorf("Device config needs at least one argument.")
+  end
+
+  args.rxQueues = args.rxQueues or 1
+  args.txQueues = args.txQueues or 1
+  args.rxDescs  = args.rxDescs or 512
+  args.txDescs  = args.txDescs or 256
+  args.rssNQueues = args.rssNQueues or 0
+  args.rssFunctions = args.rssFunctions or {mod.RSS_FUNCTION_IPV4, mod.RSS_FUNCTION_IPV4_UDP, mod.RSS_FUNCTION_IPV4_TCP, mod.RSS_FUNCTION_IPV6, mod.RSS_FUNCTION_IPV6_UDP, mod.RSS_FUNCTION_IPV6_TCP}
+  -- create a mempool with enough memory to hold tx, as well as rx descriptors
+  -- FIXME: should n = 2^k-1 here too?
+  args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
+  if devices[args.port] and devices[args.port].initialized then
+    printf("[WARNING] Device %d already configured, skipping initilization", args.port)
+    return mod.get(args.port)
+  end
+  args.speed = args.speed or 0
+  args.dropEnable = args.dropEnable == nil and true
+  if args.rxQueues == 0 or args.txQueues == 0 then
+    -- dpdk does not like devices without rx/tx queues :(
+    errorf("cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
+  end
+  -- configure rss stuff
+  local rss_enabled = 0
+  local rss_hash_mask = ffi.new("struct mg_rss_hash_mask")
+  if(args.rssNQueues > 0) then
+    for i, v in ipairs(args.rssFunctions) do
+      if (v == mod.RSS_FUNCTION_IPV4) then
+        rss_hash_mask.ipv4 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV4_TCP) then
+        rss_hash_mask.tcp_ipv4 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV4_UDP) then
+        rss_hash_mask.udp_ipv4 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV6) then
+        rss_hash_mask.ipv6 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV6_TCP) then
+        rss_hash_mask.tcp_ipv6 = 1
+      end
+      if (v == mod.RSS_FUNCTION_IPV6_UDP) then
+        rss_hash_mask.udp_ipv6 = 1
+      end
+    end
+    rss_enabled = 1
+  end
+  -- TODO: support options
+  local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask)
+  if rc ~= 0 then
+    errorf("could not configure device %d: error %d", args.port, rc)
+  end
+  local dev = mod.get(args.port)
+  dev.initialized = true
+  if rss_enabled == 1 then
+    dev:setRssNQueues(args.rssNQueues)
+  end
+  return dev
 end
+
+ffi.cdef[[
+/**
+ * A structure used to configure Redirection Table of  the Receive Side
+ * Scaling (RSS) feature of an Ethernet port.
+ */
+struct rte_eth_rss_reta {
+	/** First 64 mask bits indicate which entry(s) need to updated/queried. */
+	uint64_t mask_lo;
+	/** Second 64 mask bits indicate which entry(s) need to updated/queried. */
+	uint64_t mask_hi;
+	uint8_t reta[128];  /**< 128 RETA entries*/
+};
+
+int mg_rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
+		struct rte_eth_rss_reta *  	reta_conf 
+	);
+int rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
+		struct rte_eth_rss_reta *  	reta_conf 
+	);
+]]
+
+function dev:setRssNQueues(n)
+  if(n>16)then
+    errorf("Maximum possible numbers of RSS queues is 16")
+    return
+  end
+  if(({[1]=1, [2]=1, [4]=1, [8]=1, [16]=1})[n] == nil) then
+    printf("[WARNING] RSS distribution to queues will not be fair. Fair distribution is only achieved with a number of Queues equal to 1, 2, 4, 8 or 16. However you are currently using %d queues", n)
+  end
+  local reta = ffi.new("struct rte_eth_rss_reta")
+
+  local npq = 128/n
+  local queue = 0
+  for i=0,127 do
+    reta.reta[i] = queue
+    if (queue < n - 1) then
+      queue = queue+1
+    else
+      queue = 0
+    end
+  end
+
+  -- the mg_ version of rte_eth_dev_rss_reta_update() will also write the mask
+  -- to the reta_config struct, as lua can not do 64bit unsigned int operations.
+  local ret = ffi.C.mg_rte_eth_dev_rss_reta_update(self.id, reta)
+  if (ret ~= 0) then
+    errorf("ERROR setting up RETA table: " .. errors.getstr(-ret))
+  end
+end
+
+
 
 function mod.get(id)
 	if devices[id] then
@@ -381,6 +534,14 @@ function rxQueue:recv(bufArray)
 		end
 	end
 	return 0
+end
+
+function rxQueue:getMacAddr()
+  return ffi.cast("struct mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+end
+
+function txQueue:getMacAddr()
+  return ffi.cast("struct mac_address", ffi.C.rte_eth_macaddr_get(self.id))
 end
 
 function rxQueue:recvAll(bufArray)

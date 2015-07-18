@@ -248,6 +248,9 @@ function mod:newDevRxCounter(name, dev, format, file)
 	end
 	-- use device if queue objects are passed
 	dev = dev and dev.dev or dev
+	if type(dev) ~= "table" then
+		error("bad device")
+	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
 	obj.sleep = 100
@@ -365,6 +368,9 @@ function mod:newDevTxCounter(name, dev, format, file)
 	end
 	-- use device if queue objects are passed
 	dev = dev and dev.dev or dev
+	if type(dev) ~= "table" then
+		error("bad device")
+	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
 	obj.sleep = 50

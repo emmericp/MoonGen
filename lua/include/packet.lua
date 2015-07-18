@@ -76,9 +76,9 @@ function pkt:get()
 end
 
 --- Dumps the packet data cast to the best fitting packet struct.
---- @param bytes number of bytes to dump
+--- @param bytes number of bytes to dump, optional
 function pkt:dump(bytes)
-	self:get():dump(bytes)
+	self:get():dump(bytes or self.pkt.pkt_len)
 end
 
 
