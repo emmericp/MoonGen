@@ -1,3 +1,9 @@
+---------------------------------
+--- @file barrier.lua
+--- @brief Barrier ...
+--- @todo TODO docu
+---------------------------------
+ 
 local mod = {}
 
 local ffi = require "ffi"
@@ -15,16 +21,20 @@ local C = ffi.C
 local barrier = {}
 barrier.__index = barrier
 
-
+---
+--- @param n
 function mod.new(n)
     return C.make_barrier(n)
 end
 
+--- 
 function barrier:wait()
     C.barrier_wait(self)
 end
 
--- only call if NO threads are waiting on this barrier
+---
+--- only call if NO threads are waiting on this barrier
+--- @param n
 function barrier:reinit(n)
     C.barrier_reinit(self, n)
 end
