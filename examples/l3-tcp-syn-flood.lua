@@ -11,21 +11,24 @@ local packet	= require "packet"
 local ffi	= require "ffi"
 
 function master(...)
-	local txPort = tonumber((select(1, ...)))
+	local txPorts = tostring((select(1, ...)))
 	local minIP = select(2, ...)
 	local numIPs = tonumber((select(3, ...)))
 	local rate = tonumber(select(4, ...))
 	
-	if not txPort or not minIP or not numIPs or not rate then
-		printf("usage: txPort minIP numIPs rate")
+	if not txPorts or not minIP or not numIPs or not rate then
+		printf("usage: txPort1,txPort2 minIP numIPs rate")
 		return
 	end
 
-	local rxMempool = memory.createMemPool()
-	local txDev = device.config(txPort, rxMempool, 2, 2)
-	txDev:wait()
-	txDev:getTxQueue(0):setRate(rate)
-	dpdk.launchLua("loadSlave", txPort, 0, minIP, numIPs)
+        for currentTxPort in txPorts:gmatch("[0-9+]") do
+		currentTxPort = tonumber(currentTxPort) 
+		local rxMempool = memory.createMemPool()
+		local txDev = device.config(currentTxPort, rxMempool, 2, 2)
+		txDev:wait()
+		txDev:getTxQueue(0):setRate(rate)
+		dpdk.launchLua("loadSlave", currentTxPort, 0, minIP, numIPs)
+        end
 	dpdk.waitForSlaves()
 end
 
