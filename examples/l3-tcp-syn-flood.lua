@@ -9,6 +9,7 @@ function master(txPorts, minIp, numIps, rate)
 		printf("usage: txPort1[,txPort2[,...]] [minIP numIPs rate]")
 		return
 	end
+	txPorts = tostring(txPorts)
 	minIp = minIp or "10.0.0.1"
 	numIps = numIps or 100
 	rate = rate or 0
