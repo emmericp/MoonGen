@@ -36,7 +36,7 @@ end
 
 --- Perform a busy wait on the timer.
 -- Returns early if MoonGen is stopped (mg.running() == false).
--function timer:busyWait()
+function timer:busyWait()
 	while not self:expired() and dpdk.running() do
 	end
 	return dpdk.running()
