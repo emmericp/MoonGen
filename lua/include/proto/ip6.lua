@@ -427,7 +427,8 @@ end
 local mapNameProto = {
 	icmp = ip6.PROTO_ICMP,
 	udp = ip6.PROTO_UDP,
-	tcp = ip6.PROTO_TCP, }
+	tcp = ip6.PROTO_TCP, 
+}
 
 --- Resolve which header comes after this one (in a packet).
 --- For instance: in tcp/udp based on the ports.

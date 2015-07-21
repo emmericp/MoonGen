@@ -171,7 +171,8 @@ end
 -- Maps headers to respective (well knwon) port.
 -- This list should be extended whenever a new protocol is added to 'UDP constants'. 
 local mapNamePort = {
-	ptp = { udp.PORT_PTP_EVENTS, udp.PORT_PTP_GENERAL_MESSAGES }, }
+	ptp = { udp.PORT_PTP_EVENTS, udp.PORT_PTP_GENERAL_MESSAGES }, 
+}
 
 --- Resolve which header comes after this one (in a packet).
 --- For instance: in tcp/udp based on the ports.

@@ -252,7 +252,8 @@ local mapNameType = {
 	ip4 = eth.TYPE_IP,
 	ip6 = eth.TYPE_IP6,
 	arp = eth.TYPE_ARP,
-	ptp = eth.TYPE_PTP, }
+	ptp = eth.TYPE_PTP, 
+}
 
 --- Resolve which header comes after this one (in a packet).
 --- For instance: in tcp/udp based on the ports.
