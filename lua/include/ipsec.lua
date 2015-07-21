@@ -593,7 +593,7 @@ function mod.esp_vpn_decapsulate(buf, len, eth_buf)
 	new_pkt:setLength(new_len)
 end
 
-function mod.esp_vpn_encapsulate_slow(buf, len, esp_mem)
+function mod.esp_vpn_encapsulate(buf, len, esp_mem)
 	local extra_pad = mod.calc_extra_pad(len) --for 4 byte alignment
 	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
 	local new_len = 14+20+16+len+extra_pad+20
@@ -603,16 +603,17 @@ function mod.esp_vpn_encapsulate_slow(buf, len, esp_mem)
 
 	local eth_pkt = buf:getEthPacket()
 	new_pkt.ip4:setLength(new_len-14)
-	for i = 0, len-1 do
-		new_pkt.payload.uint8[i] = eth_pkt.payload.uint8[i]
-	end
+	--for i = 0, len-1 do
+	--	new_pkt.payload.uint8[i] = eth_pkt.payload.uint8[i]
+	--end
+	ffi.copy(new_pkt.payload, eth_pkt.payload, len)
 
 	mod.add_esp_trailer(mybuf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
 
 	return mybuf
 end
 
-function mod.esp_vpn_encapsulate(buf, len, esp_buf)
+function mod.esp_vpn_encapsulate_old(buf, len, esp_buf)
 	local extra_pad = mod.calc_extra_pad(len) --for 4 byte alignment
 	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
 	local new_len = 14+20+16+len+extra_pad+20

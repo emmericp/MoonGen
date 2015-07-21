@@ -58,13 +58,13 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 			espSQN = 0,
 		}
 	end)
-	local default_esp_buf = new_mem:alloc(14+20+16) --eth, ip4, esp
+	--local default_esp_buf = new_mem:alloc(14+20+16) --eth, ip4, esp --used for encapsulate_old()
 	--local ctrRx = stats:newDevRxCounter(rxQ.dev, "plain")
 	--local ctrTx = stats:newDevTxCounter(txQ.dev, "plain")
 	--p.start("l")
 	while dpdk.running() do
 		local rx = rxQ:tryRecv(bufs, 0)
-		--local esp_bufs = new_mem:bufArray(rx) -- used for encapsulate_slow()
+		local esp_bufs = new_mem:bufArray(rx) -- used for encapsulate()
 		--encapsulate all received packets
 		for i = 1, rx do
 			local buf = bufs[i]
@@ -84,19 +84,19 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 				--end
 			else
 				--modifies the rxBuffers (bufs)
-				ipsec.esp_vpn_encapsulate(buf, len, default_esp_buf)
-				--esp_bufs[i] = ipsec.esp_vpn_encapsulate_slow(buf, len, new_mem)
+				--ipsec.esp_vpn_encapsulate_old(buf, len, default_esp_buf)
+				esp_bufs[i] = ipsec.esp_vpn_encapsulate(buf, len, new_mem)
 				--buf:dump()
 			end
 		end
-		bufs:offloadIPChecksums()
-		bufs:offloadIPSec(sa_idx, "esp", 1)
-		--esp_bufs:offloadIPChecksums() --used for encapsulate_slow()
-		--esp_bufs:offloadIPSec(sa_idx, "esp", 1) --used for encapsulate_slow()
+		--bufs:offloadIPChecksums() --used for encapsulate_old()
+		--bufs:offloadIPSec(sa_idx, "esp", 1) --used for encapsulate_old()
+		esp_bufs:offloadIPChecksums() --used for encapsulate()
+		esp_bufs:offloadIPSec(sa_idx, "esp", 1) --used for encapsulate()
 		--Send to VPN tunnel (from destination network)
-		txQ:send(bufs)
-		--txQ:send(esp_bufs) --used for encapsulate_slow()
-		--bufs:freeAll() --used for encapsulate_slow()
+		--txQ:send(bufs) --used for encapsulate_old()
+		txQ:send(esp_bufs) --used for encapsulate()
+		bufs:freeAll() --used for encapsulate()
 		--ctrRx:update()
 		--ctrTx:update()
 	end
