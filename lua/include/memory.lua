@@ -234,9 +234,7 @@ end
 function bufArray:offloadIPSec(idx, mode, sec_type)
 	for i = 0, self.size - 1 do
 		local buf = self.array[i]
-		if buf ~= nil then
-			buf:offloadIPSec(idx, mode, sec_type)
-		end
+		buf:offloadIPSec(idx, mode, sec_type)
 	end
 end
 
@@ -258,10 +256,8 @@ function bufArray:offloadIPChecksums(ipv4, l2Len, l3Len, n)
 		l3_len = l3_len or 20
 		for i = 0, n - 1 do
 			local buf = self.array[i]
-			if buf ~= nil then
-				buf.ol_flags = bit.bor(buf.ol_flags, dpdk.PKT_TX_IPV4_CSUM)
-				buf.pkt.header_lengths = l2_len * 512 + l3_len
-			end
+			buf.ol_flags = bit.bor(buf.ol_flags, dpdk.PKT_TX_IPV4_CSUM)
+			buf.pkt.header_lengths = l2_len * 512 + l3_len
 		end
 	end
 end
