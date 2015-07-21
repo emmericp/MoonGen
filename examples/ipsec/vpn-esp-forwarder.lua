@@ -131,7 +131,7 @@ function dumpSlave(rxQ)
 				--modifies the rxBuffers (bufs)
 				ipsec.esp_vpn_decapsulate(buf, len, default_eth_buf)
 				--buf:dump(0)
-			else
+			elseif pkt.ip4:getProtocol() == ip.PROTO_ESP then
 				print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
 				buf:dump()
 
@@ -140,6 +140,8 @@ function dumpSlave(rxQ)
 				if uhex32(eth_pkt.payload.uint32[5]) ~= "efbeadde" then
 					error("SPI wrong, cache error")
 				end
+			else
+				buf:dump(0)
 			end
 		end
 		--TODO: Send to destination network (from VPN tunnel)
