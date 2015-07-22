@@ -6,7 +6,7 @@ MoonGen uses hardware features for accurate and precise latency measurements and
 You have to write a simple script for your use case.
 Read [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua) to get started.
 
-Detailed evaluation: [Paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) ([BibTeX entry](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2014arXiv1410.3322E&data_type=BIBTEX&db_key=PRE&nocookieset=1))
+Detailed evaluation: [Paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) (Accepted at IMC 2015, [BibTeX entry](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2014arXiv1410.3322E&data_type=BIBTEX&db_key=PRE&nocookieset=1))
 
 # MoonGen Packet Generator
 
@@ -182,7 +182,7 @@ We decided for DPDK as back end for the following reasons:
 Note that this might change. Using DPDK also comes with disadvantages like its bloated build system and configuration.
 
 # References
-[1] Paul Emmerich, Sebastian Gallenmüller, Florian Wohlfart, Daniel Raumer, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator, 2015. Draft. Conference TBD. [Preprint available](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf).  [BibTeX](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2014arXiv1410.3322E&data_type=BIBTEX&db_key=PRE&nocookieset=1).
+[1] Paul Emmerich, Sebastian Gallenmüller, Florian Wohlfart, Daniel Raumer, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator, 2015. Draft. Accepted at IMC 2015. [Preprint available](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf).  [BibTeX](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2014arXiv1410.3322E&data_type=BIBTEX&db_key=PRE&nocookieset=1).
 
 [2] Alessio Botta, Alberto Dainotti, and Antonio Pescapé. Do you trust your software-based traffic generator? In *IEEE Communications Magazine*, 48(9):158–165, 2010.
 
