@@ -14,7 +14,7 @@
 -- Replace all occurrences of PROTO with your protocol (e.g. sctp)
 -- Remove unnecessary comments in this file (comments inbetween [[...]])
 -- Necessary changes to other files:
--- - header.lua: add the header struct (and other structs, e.g. address), named PROTO_header
+-- - headers.lua: add the header struct (and other structs, e.g. address), named PROTO_header
 -- - packet.lua: if the header has a length member, adapt packetSetLength; 
 -- 				 if the packet has a checksum, adapt packetCreate (loop at end of function) and packetCalculateChecksums
 -- - proto/proto.lua: add PROTO.lua to the list so it gets loaded
