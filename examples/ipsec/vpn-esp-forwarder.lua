@@ -8,7 +8,55 @@ local stats	= require "stats"
 local math	= require "math"
 local ip	= require "proto.ip4"
 
-function master(A, B, size)
+-- narva
+--./build/MoonGen examples/ipsec/vpn-esp-forwarder.lua 0 1
+function narva(A, B, size)
+	if not A or not B then
+		return print("Usage: plain-in crypt-out")
+	end
+
+	local dev_A = device.config({port=A, rxQueues=1, txQueues=1})
+	local dev_B = device.config({port=B, rxQueues=1, txQueues=1})
+	device.waitForLinks()
+
+	-- Enable hw crypto engine
+	ipsec.enable(B)
+	ipsec.tx_set_key(B, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff")
+	dpdk.launchLua("vpnEndpoint", dev_A:getRxQueue(0), dev_B:getTxQueue(0),
+	        "90:E2:BA:1F:8D:44", "1.1.1.1", "90:E2:BA:35:B5:80", "2.2.2.2", 0xdeadbeef, 0)
+	dpdk.waitForSlaves()
+	-- Disable hw crypto engine
+	ipsec.disable(B)
+end
+
+--klaipeda
+--for s in $(seq 60 64 1458) 1458; do timeout -s INT 13 ./build/MoonGen examples/ipsec/vpn-esp-forwarder.lua 1 0 $s; echo "Size:" $s; echo "======"; echo ""; done;
+function klaipeda(A, B, size)
+	if not A or not B then
+		return print("Usage: load dump pkt-size")
+	end
+
+	local dev_A = device.config({port=A, rxQueues=1, txQueues=1})
+	local dev_B = device.config({port=B, rxQueues=1, txQueues=1})
+	device.waitForLinks()
+
+	-- Enable hw crypto engine
+	ipsec.enable(B)
+
+	ipsec.rx_set_key(B, 0, "77777777deadbeef77777777DEADBEEF", "ff0000ff", 4, "esp", 1)
+	ipsec.rx_set_spi(B, 0, 0xdeadbeef, 127)
+	ipsec.rx_set_ip(B, 127, "2.2.2.2")
+
+	dpdk.launchLua("dumpSlave", dev_B:getRxQueue(0))
+	dpdk.launchLua("loadSlave", dev_A:getTxQueue(0), size, "90:E2:BA:2C:CB:02")
+	dpdk.waitForSlaves()
+
+	-- Disable hw crypto engine
+	ipsec.disable(B)
+end
+
+--omanyte
+function omanyte(A, B, size)
 	if not A or not B then
 		return print("Usage: load/dump_port vpn_port")
 	end
@@ -40,6 +88,18 @@ function master(A, B, size)
 	-- Disable hw crypto engine
 	ipsec.disable(A)
 	ipsec.disable(B)
+end
+
+function master(host, A, B, size)
+	if host == "omanyte" then
+		omanyte(A,B,size)
+	elseif host == "klaipeda" then
+		klaipeda(A,B,size)
+	elseif host == "narva" then
+		narva(A,B,size)
+	else
+		return print("Usage: omanyte|klaipeda|narva A B size")
+	end
 end
 
 function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
@@ -152,29 +212,27 @@ function dumpSlave(rxQ)
 	ctr:finalize()
 end
 
-function loadSlave(txQ, size)
+function loadSlave(txQ, size, next_hop)
+	local next_hop = next_hop or "11:22:33:44:55:66"
 	local pkt_size = size or 60
 	local numFlows = 256
 	local mem = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
 			pktLength = pkt_size,
 			ethSrc = txQ,
-			ethDst = "10:11:12:13:14:15",
-			ip4Dst = "10.0.1.1",
+			ethDst = next_hop,
+			ip4Src = "10.0.1.1",
+			ip4Dst = "10.0.2.1",
 			udpSrc = 1234,
 			udpDst = 5678,
 		}
 	end)
 	bufs = mem:bufArray()
-	local baseIP = parseIPAddress("10.0.0.1")
-	local flow = 0
 	--local ctr = stats:newDevTxCounter(txQ.dev, "plain")
 	while dpdk.running() do
 		bufs:alloc(pkt_size)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
-			pkt.ip4.src:set(baseIP + flow)
-			--flow = incAndWrap(flow, numFlows)
 		end
 		-- UDP checksums are optional, so just IP checksums are sufficient here
 		bufs:offloadIPChecksums()
