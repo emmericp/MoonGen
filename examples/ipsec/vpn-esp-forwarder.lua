@@ -103,8 +103,6 @@ function master(host, A, B, size)
 end
 
 function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
-	--local p = require("jit.p")
-	--require("jit.v").on()
 	local bufs = memory.bufArray()
 	local new_mem = memory.createMemPool(function(buf)
 		buf:getEspPacket():fill{
@@ -118,10 +116,6 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 			espSQN = 0,
 		}
 	end)
-	--local default_esp_buf = new_mem:alloc(14+20+16) --eth, ip4, esp --used for encapsulate_old()
-	--local ctrRx = stats:newDevRxCounter(rxQ.dev, "plain")
-	--local ctrTx = stats:newDevTxCounter(txQ.dev, "plain")
-	--p.start("l")
 	while dpdk.running() do
 		local rx = rxQ:tryRecv(bufs, 0)
 		local esp_bufs = new_mem:bufArray(rx) -- used for encapsulate()
@@ -143,33 +137,23 @@ function vpnEndpoint(rxQ, txQ, src_mac, src_ip, dst_mac, dst_ip, spi, sa_idx)
 				--	print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
 				--end
 			else
-				--modifies the rxBuffers (bufs)
-				--ipsec.esp_vpn_encapsulate_old(buf, len, default_esp_buf)
 				esp_bufs[i] = ipsec.esp_vpn_encapsulate(buf, len, new_mem)
 				--buf:dump()
 			end
 		end
-		--bufs:offloadIPChecksums() --used for encapsulate_old()
-		--bufs:offloadIPSec(sa_idx, "esp", 1) --used for encapsulate_old()
 		esp_bufs:offloadIPChecksums() --used for encapsulate()
 		esp_bufs:offloadIPSec(sa_idx, "esp", 1) --used for encapsulate()
 		--Send to VPN tunnel (from destination network)
-		--txQ:send(bufs) --used for encapsulate_old()
 		txQ:send(esp_bufs) --used for encapsulate()
 		bufs:freeAll() --used for encapsulate()
-		--ctrRx:update()
-		--ctrTx:update()
 	end
-	--p.stop()
-	--ctrRx:finalize()
-	--ctrTx:finalize()
 end
 
-function dumpSlave(rxQ)
+function dumpSlave(rxQ, next_hop)
 	local bufs = memory.bufArray()
 	local ctr = stats:newDevRxCounter(rxQ.dev, "plain")
-	--TODO: define next hop's MAC address
-	local next_hop = "01:02:03:04:05:06"
+	--define next hop's MAC address
+	local next_hop = next_hop or "01:02:03:04:05:06"
 	local new_mem = memory.createMemPool(function(buf)
 		buf:getEthPacket():fill{
 			--pktLength = new_len,
@@ -177,9 +161,9 @@ function dumpSlave(rxQ)
 			ethDst = next_hop,
 		}
 	end)
-	local default_eth_buf = new_mem:alloc(14) --eth
 	while dpdk.running() do
-		local rx = rxQ:recv(bufs)
+		local rx = rxQ:tryRecv(bufs, 0)
+		local eth_bufs = new_mem:bufArray(rx)
 		for i = 1, rx do
 			local buf = bufs[i]
 			local pkt = buf:getIPPacket()
@@ -187,25 +171,20 @@ function dumpSlave(rxQ)
 			local secp, secerr = buf:getSecFlags()
 			if pkt.ip4:getProtocol() == ip.PROTO_ESP and secp == 1 and secerr == 0x0 then
 				--print("VPN/ESP success: SECP("..secp.."), SECERR("..secerr..")")
-				--buf:dump(0)
-				--modifies the rxBuffers (bufs)
-				ipsec.esp_vpn_decapsulate(buf, len, default_eth_buf)
-				--buf:dump(0)
+				--buf:dump()
+				eth_bufs[i] = ipsec.esp_vpn_decapsulate(buf, len, new_mem)
+				--eth_bufs[i]:dump()
 			elseif pkt.ip4:getProtocol() == ip.PROTO_ESP then
 				print("VPN/ESP error: SECP("..secp.."), SECERR("..secerr..")")
 				buf:dump()
-
-				local eth_pkt = buf:getEthPacket()
-				--'efbeadde' is static: only for testing SPI=0xdeadbeef
-				if uhex32(eth_pkt.payload.uint32[5]) ~= "efbeadde" then
-					error("SPI wrong, cache error")
-				end
 			else
 				buf:dump(0)
 			end
 		end
 		--TODO: Send to destination network (from VPN tunnel)
-		--txQ:send(bufs)
+		--eth_bufs:offloadIPChecksums()
+		--txQ:send(eth_bufs)
+		eth_bufs:freeAll()
 		bufs:freeAll()
 		ctr:update()
 	end

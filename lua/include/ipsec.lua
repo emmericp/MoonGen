@@ -579,18 +579,18 @@ function mod.add_esp_trailer(buf, payload_len, next_hdr)
 	buf:setESPTrailerLength(esp_trailer_len)
 end
 
-function mod.esp_vpn_decapsulate(buf, len, eth_buf)
+function mod.esp_vpn_decapsulate(buf, len, eth_mem)
 	local extra_pad = mod.get_extra_pad(buf)
 	-- eth(14), pkt(len), pad(extra_pad), outer_ip(20), esp_header(16), esp_trailer(20)
 	local new_len = 14+len-extra_pad-20-16-20
-	local ret = 0
 
-	ret = ret + dpdkc.rte_pktmbuf_adj_export(buf, 20+16)
-	ffi.copy(buf.pkt.data, eth_buf.pkt.data, 14)
-	ret = ret + dpdkc.rte_pktmbuf_trim_export(buf, extra_pad+20)
+	local mybuf = eth_mem:alloc(new_len)
+	local new_pkt = mybuf:getEthPacket()
 
-	local new_pkt = buf:getEthPacket()
-	new_pkt:setLength(new_len)
+	local esp_pkt = buf:getEspPacket()
+	ffi.copy(new_pkt.payload, esp_pkt.payload, new_len-14)
+
+	return mybuf
 end
 
 function mod.esp_vpn_encapsulate(buf, len, esp_mem)
@@ -611,46 +611,6 @@ function mod.esp_vpn_encapsulate(buf, len, esp_mem)
 	mod.add_esp_trailer(mybuf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
 
 	return mybuf
-end
-
-function mod.esp_vpn_encapsulate_old(buf, len, esp_buf)
-	local extra_pad = mod.calc_extra_pad(len) --for 4 byte alignment
-	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
-	local new_len = 14+20+16+len+extra_pad+20
-
-	-- prepend space (in mbuf headroom) for new headers (eth(14), ip4(20), esp(16))
-	dpdkc.rte_pktmbuf_prepend_export(buf, 20+16) -- 14 bytes for eth already there (will be overwritten)
-	dpdkc.memory_fence()
-	ffi.copy(buf.pkt.data, esp_buf.pkt.data, 14+20+16) -- copy eth, ip4, esp header in free space + override old MAC
-	dpdkc.memory_fence()
-
-	--FIXME: this seems to be working only for the first couple of million packets
-	--dpdkc.flush_cache_line(buf.pkt.data) -- flush cacheline, otherwise the old MAC is not overwritten
-
-	local new_pkt = buf:getEspPacket()
-	--new_pkt:setLength(new_len) --FIXME: this seems to be slow, influences the cache somehow
-	new_pkt.ip4:setLength(new_len-14) --FIXME: this leads to cache error direcly (if cache not flushed)
-
-	dpdkc.rte_pktmbuf_append_export(buf, extra_pad+20) -- append space (in mbuf tailroom) for extra_pad and esp trailer
-	mod.add_esp_trailer(buf, len, 0x4) -- Tunnel mode: next_header = 0x4 (IPv4)
-
-	--local eth_pkt = buf:getEthPacket()
-	--if uhex32(eth_pkt.payload.uint32[5]) ~= "efbeadde" then --'efbeadde' is static: only for testing SPI=0xdeadbeef
-	--	error("SPI wrong, cache error")
-	--end
-
-	--buf:getEspPacket():fill{
-	--	pktLength = new_len,
-	--	ethSrc = "A0:36:9F:3B:71:DA",
-	--	ethDst = "A0:36:9F:3B:71:D8",
-	--	ip4Protocol = 0x32, --ESP
-	--	ip4Src = "192.168.1.1",
-	--	ip4Dst = "192.168.1.2",
-	--	espSPI = 0xdeadbeef,
-	--	espSQN = 0,
-	--}
-
-	--buf:dump()
 end
 
 return mod
