@@ -1,3 +1,9 @@
+---------------------------------
+--- @file device.lua
+--- @brief Device ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local ffi		= require "ffi"
@@ -74,36 +80,36 @@ end
 
 local devices = {}
 
--- FIXME: add description for speed and dropEnable parameters.
 --- Configure a device
--- @param args A table containing the following named arguments
---   port Port to configure
---   mempool optional (default = create a new mempool) Mempool to associate to the device
---   rxQueues optional (default = 1) Number of RX queues to configure 
---   txQueues optional (default = 1) Number of TX queues to configure 
---   rxDescs optional (default = 512)
---   txDescs optional (default = 256)
---   speed optional (default = 0)
---   dropEnable optional (default = true)
---   rssNQueues optional (default = 0) If this is >0 RSS will be activated for
---    this device. Incomming packates will be distributed to the
---    rxQueues number 0 to (rssNQueues - 1). For a fair distribution use one of
---    the following values (1, 2, 4, 8, 16). Values greater than 16 are not
---    allowed.
---   rssFunctions optional (default = all supported functions) A Table,
---    containing hashing methods, which can be used for RSS.
---    Possible methods are:
---      dev.RSS_FUNCTION_IPV4    
---      dev.RSS_FUNCTION_IPV4_TCP
---      dev.RSS_FUNCTION_IPV4_UDP
---      dev.RSS_FUNCTION_IPV6    
---      dev.RSS_FUNCTION_IPV6_TCP
---      dev.RSS_FUNCTION_IPV6_UDP
+--- @param args A table containing the following named arguments
+---   port Port to configure
+---   mempool optional (default = create a new mempool) Mempool to associate to the device
+---   rxQueues optional (default = 1) Number of RX queues to configure 
+---   txQueues optional (default = 1) Number of TX queues to configure 
+---   rxDescs optional (default = 512)
+---   txDescs optional (default = 256)
+---   speed optional (default = 0)
+---   dropEnable optional (default = true)
+---   rssNQueues optional (default = 0) If this is >0 RSS will be activated for
+---    this device. Incomming packates will be distributed to the
+---    rxQueues number 0 to (rssNQueues - 1). For a fair distribution use one of
+---    the following values (1, 2, 4, 8, 16). Values greater than 16 are not
+---    allowed.
+---   rssFunctions optional (default = all supported functions) A Table,
+---    containing hashing methods, which can be used for RSS.
+---    Possible methods are:
+---      dev.RSS_FUNCTION_IPV4    
+---      dev.RSS_FUNCTION_IPV4_TCP
+---      dev.RSS_FUNCTION_IPV4_UDP
+---      dev.RSS_FUNCTION_IPV6    
+---      dev.RSS_FUNCTION_IPV6_TCP
+---      dev.RSS_FUNCTION_IPV6_UDP
+--- @todo FIXME: add description for speed and dropEnable parameters.
 function mod.config(...)
   local args = {...}
   if #args > 1 then
     -- this is for legacy compatibility when calling the function  without named arguments
-    print "[WARNING] You are using a depreciated method for invoking device config. config(...) should be used with named arguments. For details review the file 'device.lua'"
+    print("[WARNING] You are using a deprecated method for invoking device.config. config(...) should be used with named arguments. For details: see documentation")
     if not args[2] or type(args[2]) == "number" then
       args.port       = args[1]
       args.rxQueues   = args[2]
@@ -139,7 +145,7 @@ function mod.config(...)
   -- FIXME: should n = 2^k-1 here too?
   args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
   if devices[args.port] and devices[args.port].initialized then
-    printf("[WARNING] Device %d already configured, skipping initilization", port)
+    printf("[WARNING] Device %d already configured, skipping initilization", args.port)
     return mod.get(args.port)
   end
   args.speed = args.speed or 0
@@ -307,7 +313,7 @@ end
 
 
 --- Wait until the device is fully initialized and up to 9 seconds to establish a link.
--- This function then reports the current link state on stdout
+--- This function then reports the current link state on stdout
 function dev:wait()
 	local link = self:getLinkStatus()
 	self.speed = link.speed
@@ -344,8 +350,7 @@ local deviceNames = {
 	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
 	[mod.PCI_ID_82580]	= "82580 Gigabit Network Connection",
 	[mod.PCI_ID_82576]	= "82576 Gigabit Network Connection",
-	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
-}
+	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2", }
 
 function dev:getName()
 	local id = self:getPciId()
@@ -389,7 +394,7 @@ function dev:getTxStats()
 end
 
 
--- TODO: figure out how to actually acquire statistics in a meaningful way for dropped packets :/
+--- TODO: figure out how to actually acquire statistics in a meaningful way for dropped packets :/
 function dev:getRxStatsAll()
 	local stats = ffi.new("struct rte_eth_stats")
 	dpdkc.rte_eth_stats_get(self.id, stats)
@@ -399,13 +404,13 @@ end
 local RTTDQSEL = 0x00004904
 
 --- Set the tx rate of a queue in MBit/s.
--- This sets the payload rate, not to the actual wire rate, i.e. preamble, SFD, and IFG are ignored.
--- The X540 and 82599 chips seem to have a hardware bug (?): they seem use the wire rate in some point of the throttling process.
--- This causes erratic behavior for rates >= 64/84 * WireRate when using small packets.
--- The function is non-linear (not even monotonic) for such rates.
--- The function prints a warning if such a rate is configured.
--- A simple work-around for this is using two queues with 50% of the desired rate.
--- Note that this changes the inter-arrival times as the rate control of both queues is independent.
+--- This sets the payload rate, not to the actual wire rate, i.e. preamble, SFD, and IFG are ignored.
+--- The X540 and 82599 chips seem to have a hardware bug (?): they seem use the wire rate in some point of the throttling process.
+--- This causes erratic behavior for rates >= 64/84 * WireRate when using small packets.
+--- The function is non-linear (not even monotonic) for such rates.
+--- The function prints a warning if such a rate is configured.
+--- A simple work-around for this is using two queues with 50% of the desired rate.
+--- Note that this changes the inter-arrival times as the rate control of both queues is independent.
 function txQueue:setRate(rate)
 	if self.dev:getPciId() ~= mod.PCI_ID_82599 and self.dev:getPciId() ~= mod.PCI_ID_X540 then
 		error("tx rate control not yet implemented for this NIC")
@@ -507,7 +512,7 @@ do
 end
 
 --- Restarts all tx queues that were actively used by this task.
--- 'Actively used' means that either :send() or :sendWithDelay() was called from the current task.
+--- 'Actively used' means that either :send() or :sendWithDelay() was called from the current task.
 function mod.reclaimTxBuffers()
 	for _, dev in pairs(devices) do
 		for _, queue in pairs(dev.txQueues) do
@@ -520,7 +525,7 @@ function mod.reclaimTxBuffers()
 end
 
 --- Receive packets from a rx queue.
--- Returns as soon as at least one packet is available.
+--- Returns as soon as at least one packet is available.
 function rxQueue:recv(bufArray)
 	while dpdk.running() do
 		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, bufArray.size)
@@ -562,7 +567,7 @@ function rxQueue:tryRecv(bufArray, maxWait)
 end
 
 --- Receive packets from a rx queue with a timeout.
--- Does not perform a busy wait, this is not suitable for high-throughput applications.
+--- Does not perform a busy wait, this is not suitable for high-throughput applications.
 function rxQueue:tryRecvIdle(bufArray, maxWait)
 	maxWait = maxWait or math.huge
 	while maxWait >= 0 do

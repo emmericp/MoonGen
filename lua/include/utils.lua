@@ -1,16 +1,37 @@
+---------------------------------
+--- @file utils.lua
+--- @brief Defines general utility functions.
+--- @todo TODO docu
+--- @todo local unpackers ... crashes lua2dox parser
+---------------------------------
+
 local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
 local write = io.write
 local format = string.format
 local random, log, floor = math.random, math.log, math.floor
 
+--- Print a formatted string.
+--- @todo docu
+--- @param str
+--- @param args
+--- @param return
 function printf(str, ...)
 	return print(str:format(...))
 end
 
+--- Print a formatted error string.
+--- @todo docu
+--- @param str
+--- @param args
 function errorf(str, ...)
 	error(str:format(...), 2)
 end
 
+--- TODO
+--- @todo docu
+--- @param f
+--- @param args
+--- @return
 function mapVarArg(f, ...)
 	local l = { ... }
 	for i, v in ipairs(l) do
@@ -19,6 +40,11 @@ function mapVarArg(f, ...)
 	return unpack(l)
 end
 
+--- TODO
+--- @todo docu
+--- @param t
+--- @param f
+--- @return
 function map(t, f)
 	for i, v in ipairs(t) do
 		t[i] = f(v)
@@ -26,14 +52,26 @@ function map(t, f)
 	return t
 end
 
+--- TODO
+--- @todo docu
+--- @param args
+--- @return
 function tostringall(...)
 	return mapVarArg(tostring, ...)
 end
 
+--- TODO
+--- @todo docu
+--- @param args
+--- @return
 function tonumberall(...)
 	return mapVarArg(tonumber, ...)
 end
 
+--- TODO
+--- @todo docu
+--- @param args
+--- @return
 function toCsv(...)
 	local vals = { tostringall(...) }
 	for i, v in ipairs(vals) do
@@ -49,22 +87,34 @@ function toCsv(...)
 	return table.concat(vals, ",")
 end
 
+--- TODO
+--- @todo docu
+--- @param args
+--- @return
 function printCsv(...)
 	return print(toCsv(...))
 end
 
 --- Get the time to wait (in byte-times) for the next packet based on a poisson process.
--- @param average the average wait time between two packets
--- @returns the number of byte-times to wait to achieve the given average wait-time
+--- @param average the average wait time between two packets
+--- @returns the number of byte-times to wait to achieve the given average wait-time
 function poissonDelay(average)
 	return floor(-log(1 - random()) / (1 / average) + 0.5)
 end
 
+--- TODO
+--- @todo docu
+--- @param rate
+--- @param size
+--- @return
 function rateToByteDelay(rate, size)
 	size = size or 60
 	return 10^10 / 8 / (rate * 10^6) - size - 24
 end
 
+--- Byte swap for 16 bit integers
+--- @param n 16 bit integer
+--- @return Byte swapped integer
 function bswap16(n)
 	return bor(rshift(n, 8), lshift(band(n, 0xFF), 8))
 end
@@ -96,6 +146,10 @@ do
 end
 
 
+--- Calculate a 16 bit checksum 
+--- @param data cdata to calculate the checksum for.
+--- @param len Number of bytes to calculate the checksum for.
+--- @return 16 bit integer
 function checksum(data, len)
 	data = ffi.cast("uint16_t*", data)
 	local cs = 0
@@ -109,8 +163,8 @@ function checksum(data, len)
 end
 
 --- Parse a string to a MAC address
--- @param mac address in string format
--- @return address in mac_address format or nil if invalid address
+--- @param mac address in string format
+--- @return address in mac_address format or nil if invalid address
 function parseMacAddress(mac)
 	local bytes = {string.match(mac, '(%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)')}
 	if bytes == nil then
@@ -134,8 +188,8 @@ function parseMacAddress(mac)
 end
 
 --- Parse a string to an IP address
--- @return address ip address in ip4_address or ip6_address format or nil if invalid address
--- @return boolean true if IPv4 address, false otherwise
+--- @return address ip address in ip4_address or ip6_address format or nil if invalid address
+--- @return boolean true if IPv4 address, false otherwise
 function parseIPAddress(ip)
 	ip = tostring(ip)
 	local address = parseIP4Address(ip)
@@ -146,8 +200,8 @@ function parseIPAddress(ip)
 end
 
 --- Parse a string to an IPv4 address
--- @param ip address in string format
--- @return address in uint32 format or nil if invalid address
+--- @param ip address in string format
+--- @return address in uint32 format or nil if invalid address
 function parseIP4Address(ip)
 	ip = tostring(ip)
 	local bytes = {string.match(ip, '(%d+)%.(%d+)%.(%d+)%.(%d+)')}
@@ -177,8 +231,8 @@ int inet_pton(int af, const char *src, void *dst);
 ]]
 
 --- Parse a string to an IPv6 address
--- @param ip address in string format
--- @return address in ip6_address format or nil if invalid address
+--- @param ip address in string format
+--- @return address in ip6_address format or nil if invalid address
 function parseIP6Address(ip)
 	ip = tostring(ip)
 	local LINUX_AF_INET6 = 10 --preprocessor constant of Linux
@@ -198,8 +252,8 @@ function parseIP6Address(ip)
 end
 
 --- Retrieve the system time with microseconds accuracy.
--- TODO use some C function to get microseconds.
--- @return System time in hh:mm:ss.uuuuuu format.
+--- @todo use some C function to get microseconds.
+--- @return System time in hh:mm:ss.uuuuuu format.
 function getTimeMicros()
 	local t = time()
 	local h, m, s, u
@@ -215,8 +269,8 @@ function getTimeMicros()
 end
 
 --- Print a hex dump of cdata.
--- @param data The cdata to be dumped.
--- @param bytes Number of bytes to dump.
+--- @param data The cdata to be dumped.
+--- @param bytes Number of bytes to dump.
 function dumpHex(data, bytes)
 	local data = ffi.cast("uint8_t*", data)
 	for i = 0, bytes - 1 do
@@ -237,7 +291,7 @@ function dumpHex(data, bytes)
 end
 
 --- Merge tables.
--- @param args Arbitrary amount of tables to get merged.
+--- @param args Arbitrary amount of tables to get merged.
 function mergeTables(...)
 	local table = {}
 	if select("#", ...) > 0 then
@@ -252,8 +306,8 @@ function mergeTables(...)
 end
 
 --- Return all integerss in the range [start, max].
--- @param max upper bound
--- @param start lower bound, default = 1
+--- @param max upper bound
+--- @param start lower bound, default = 1
 function range(max, start, ...)
 	start = start or 1
 	if start > max then
@@ -262,6 +316,18 @@ function range(max, start, ...)
 	return start, range(max, start + 1, select(2, ...))
 end
 
+local band = bit.band
+local sar = bit.arshift
+
+--- Increment a wrapping counter, i.e. (val + 1) % max
+--- This function is optimized to generate branchless code and faster than a naive modulo-based implementation.
+--- @note: all attempts to wrap this in a nice and simple class have failed (~30% performance impact).
+--- @param val Current value (number)
+--- @param max Maximum allowed value of val (number)
+--- @return Incremented and wrapped number
+function incAndWrap(val, max)
+	return band(val + 1, sar(val - max + 1, 31))
+end
 
 local unpackers = setmetatable({}, { __index = function(self, n)
 	local func = loadstring(([[
@@ -274,20 +340,8 @@ local unpackers = setmetatable({}, { __index = function(self, n)
 end })
 
 --- unpack() with support for arrays with 'holes'.
+--- @param tbl Table to unpack
+--- @return Unpacked values
 function unpackAll(tbl)
 	return unpackers[table.maxn(tbl)](tbl)
 end
-
-
-local band = bit.band
-local sar = bit.arshift
-
---- Increment a wrapping counter, i.e. (val + 1) % max
--- This function is optimized to generate branchless code and faster than a naive modulo-based implementation.
--- 
--- NOTE: all attempts to wrap this in a nice and simple class have failed (~30% performance impact).
-function incAndWrap(val, max)
-	return band(val + 1, sar(val - max + 1, 31))
-end
-
-

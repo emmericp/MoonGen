@@ -1,3 +1,16 @@
+------------------------------------------------------------------------
+--- @file arp.lua
+--- @brief Address resolution protocol (ARP) utility.
+--- Utility functions for the arp_header struct
+--- defined in \ref headers.lua . \n
+--- Includes:
+--- - Arp constants
+--- - Arp address utility
+--- - Arp header utility
+--- - Definition of Arp packets
+--- - Arp handler task
+------------------------------------------------------------------------
+
 local ffi = require "ffi"
 local pkt = require "packet"
 
@@ -16,46 +29,49 @@ local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, 
 local format = string.format
 local istype = ffi.istype
 
+
+--------------------------------------------------------------------------------------------------------
+---- ARP constants (c.f. http://www.iana.org/assignments/arp-parameters/arp-parameters.xhtml)
+--------------------------------------------------------------------------------------------------------
+
+--- Arp protocol constants
 local arp = {}
 
-
---------------------------------------------------------------------------------------------------------
---- ARP constants (c.f. http://www.iana.org/assignments/arp-parameters/arp-parameters.xhtml)
---------------------------------------------------------------------------------------------------------
-
--- hrd
+--- Hardware address type for ethernet
 arp.HARDWARE_ADDRESS_TYPE_ETHERNET = 1
 
--- pro (for ethernet based protocols uses ether type numbers)
+--- Proto address type for IP (for ethernet based protocols uses etherType numbers \ref ethernet.lua)
 arp.PROTO_ADDRESS_TYPE_IP = 0x0800
 
--- op
+--- Operation: request
 arp.OP_REQUEST = 1
+--- Operation: reply
 arp.OP_REPLY = 2
 
 
 --------------------------------------------------------------------------------------------------------
---- ARP header
+---- ARP header
 --------------------------------------------------------------------------------------------------------
 
+--- Module for arp_header struct (see \ref headers.lua).
 local arpHeader = {}
 arpHeader.__index = arpHeader
 
 --- Set the hardware address type.
--- @param int Type as 16 bit integer.
+--- @param int Type as 16 bit integer.
 function arpHeader:setHardwareAddressType(int)
 	int = int or arp.HARDWARE_ADDRESS_TYPE_ETHERNET
 	self.hrd = hton16(int)
 end
 
 --- Retrieve the hardware address type.
--- @return Type as 16 bit integer.
+--- @return Type as 16 bit integer.
 function arpHeader:getHardwareAddressType()
 	return hton16(self.hrd)
 end
 
 --- Retrieve the hardware address type.
--- @return Type in string format.
+--- @return Type in string format.
 function arpHeader:getHardwareAddressTypeString()
 	local type = self:getHardwareAddressType()
 	if type == arp.HARDWARE_ADDRESS_TYPE_ETHERNET then
@@ -65,15 +81,21 @@ function arpHeader:getHardwareAddressTypeString()
 	end
 end
 	
+--- Set the protocol address type.
+--- @param int Type as 16 bit integer.
 function arpHeader:setProtoAddressType(int)
 	int = int or arp.PROTO_ADDRESS_TYPE_IP
 	self.pro = hton16(int)
 end
 
+--- Retrieve the protocol address type.
+--- @return Type as 16 bit integer.
 function arpHeader:getProtoAddressType()
 	return hton16(self.pro)
 end
 
+--- Retrieve the protocol address type.
+--- @return Type in string format.
 function arpHeader:getProtoAddressTypeString()
 	local type = self:getProtoAddressType()
 	if type == arp.PROTO_ADDR_TYPE_IP then
@@ -83,41 +105,59 @@ function arpHeader:getProtoAddressTypeString()
 	end
 end
 
+--- Set the hardware address length.
+--- @param int Length as 8 bit integer.
 function arpHeader:setHardwareAddressLength(int)
 	int = int or 6
 	self.hln = int
 end
 
+--- Retrieve the hardware address length.
+--- @return Length as 8 bit integer.
 function arpHeader:getHardwareAddressLength()
 	return self.hln
 end
 
+--- Retrieve the hardware address length.
+--- @return Length in string format.
 function arpHeader:getHardwareAddressLengthString()
 	return self:getHardwareAddressLength()
 end
 
+--- Set the protocol address length.
+--- @param int Length as 8 bit integer.
 function arpHeader:setProtoAddressLength(int)
 	int = int or 4
 	self.pln = int
 end
 
+--- Retrieve the protocol address length.
+--- @return Length as 8 bit integer.
 function arpHeader:getProtoAddressLength()
 	return self.pln
 end
 
+--- Retrieve the protocol address length.
+--- @return Length in string format.
 function arpHeader:getProtoAddressLengthString()
 	return self:getProtoAddressLength()
 end
 
+--- Set the operation.
+--- @param int Operation as 16 bit integer.
 function arpHeader:setOperation(int)
 	int = int or arp.OP_REQUEST
 	self.op = hton16(int)
 end
 
+--- Retrieve the operation.
+--- @return Operation as 16 bit integer.
 function arpHeader:getOperation()
 	return hton16(self.op)
 end
 
+--- Retrieve the operation.
+--- @return Operation in string format.
 function arpHeader:getOperationString()
 	local op = self:getOperation()
 	if op == arp.OP_REQUEST then
@@ -129,70 +169,111 @@ function arpHeader:getOperationString()
 	end
 end
 
+--- Set the hardware source address.
+--- @param addr Address in 'struct mac_address' format.
 function arpHeader:setHardwareSrc(addr)
 	self.sha:set(addr)
 end
 
+--- Retrieve the hardware source address.
+--- @return Address in 'struct mac_address' format.
 function arpHeader:getHardwareSrc()
 	return self.sha:get()
 end
 
+--- Set the hardware source address.
+--- @param addr Address in string format.
 function arpHeader:setHardwareSrcString(addr)
 	self.sha:setString(addr)
 end
 
+--- Retrieve the hardware source address.
+--- @return Address in string format.
 function arpHeader:getHardwareSrcString()
 	return self.sha:getString()
 end
 
+--- Set the hardware destination address.
+--- @param addr Address in 'struct mac_address' format.
 function arpHeader:setHardwareDst(addr)
 	self.tha:set(addr)
 end
 
+--- Retrieve the hardware destination address.
+--- @return Address in 'struct mac_address' format.
 function arpHeader:getHardwareDst()
 	return self.tha:get()
 end
 
+--- Set the hardware destination address.
+--- @param addr Address in string format.
 function arpHeader:setHardwareDstString(addr)
 	self.tha:setString(addr)
 end
 
+--- Retrieve the hardware destination address.
+--- @return Address in string format.
 function arpHeader:getHardwareDstString()
 	return self.tha:getString()
 end
 
+--- Set the protocol source address.
+--- @param addr Address in 'struct ip4_address' format.
 function arpHeader:setProtoSrc(addr)
 	self.spa:set(addr)
 end
 
+--- Retrieve the protocol source address.
+--- @return Address in 'struct ip4_address' format.
 function arpHeader:getProtoSrc()
 	return self.spa:get()
 end
 
+--- Set the protocol source address.
+--- @param addr Address in source format.
 function arpHeader:setProtoSrcString(addr)
 	self.spa:setString(addr)
 end
 
+--- Retrieve the protocol source address.
+--- @return Address in string format.
 function arpHeader:getProtoSrcString()
 	return self.spa:getString()
 end
 
+--- Set the protocol destination address.
+--- @param addr Address in 'struct ip4_address' format.
 function arpHeader:setProtoDst(addr)
 	self.tpa:set(addr)
 end
 
+--- Retrieve the protocol destination address.
+--- @return Address in 'struct ip4_address' format.
 function arpHeader:getProtoDst()
 	return self.tpa:get()
 end
 
+--- Set the protocol destination address.
+--- @param addr Address in string format.
 function arpHeader:setProtoDstString(addr)
 	self.tpa:setString(addr)
 end
 
+--- Retrieve the protocol destination address.
+--- @return Address in string format.
 function arpHeader:getProtoDstString()
 	return self.tpa:getString()
 end
 
+--- Set all members of the ip header.
+--- Per default, all members are set to default values specified in the respective set function.
+--- Optional named arguments can be used to set a member to a user-provided value.
+--- @param args Table of named arguments. Available arguments: HardwareAddressType, ProtoAddressType, HardwareAddressLength, ProtoAddressLength, Operation, HardwareSrc, HardwareDst, ProtoSrc, ProtoDst
+--- @param pre prefix for namedArgs. Default 'arp'.
+--- @code
+--- fill() --- only default values
+--- fill{ arpOperation=2, ipTTL=100 } --- all members are set to default values with the exception of arpOperation
+--- @endcode
 function arpHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "arp"
@@ -237,9 +318,9 @@ function arpHeader:fill(args, pre)
 end
 
 --- Retrieve the values of all members.
--- @param pre prefix for namedArgs. Default 'arp'.
--- @return Table of named arguments. For a list of arguments see "See also".
--- @see arpHeader:fill
+--- @param pre prefix for namedArgs. Default 'arp'.
+--- @return Table of named arguments. For a list of arguments see "See also".
+--- @see arpHeader:fill
 function arpHeader:get(pre)
 	pre = pre or "arp"
 
@@ -258,7 +339,7 @@ function arpHeader:get(pre)
 end
 
 --- Retrieve the values of all members.
--- @return Values in string format.
+--- @return Values in string format.
 function arpHeader:getString()
 	local str = "ARP hrd " 			.. self:getHardwareAddressTypeString() 
 				.. " (hln " 		.. self:getHardwareAddressLengthString() 
@@ -289,32 +370,53 @@ function arpHeader:getString()
 	return str
 end
 
+--- Resolve which header comes after this one (in a packet).
+--- For instance: in tcp/udp based on the ports.
+--- This function must exist and is only used when get/dump is executed on
+--- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
+--- @return String next header (e.g. 'udp', 'icmp', nil)
 function arpHeader:resolveNextHeader()
 	return nil
 end
 
+--- Change the default values for namedArguments (for fill/get).
+--- This can be used to for instance calculate a length value based on the total packet length.
+--- See proto/ip4.setDefaultNamedArgs as an example.
+--- This function must exist and is only used by packet.fill.
+--- @param pre The prefix used for the namedArgs, e.g. 'arp'
+--- @param namedArgs Table of named arguments (see See Also)
+--- @param nextHeader The header following after this header in a packet
+--- @param accumulatedLength The so far accumulated length for previous headers in a packet
+--- @see arpHeader:fill
 function arpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
 end
 	
 ---------------------------------------------------------------------------------
---- Packets
+---- Packets
 ---------------------------------------------------------------------------------
 
+--- Cast the packet to an Arp packet 
 pkt.getArpPacket = packetCreate("eth", "arp")
 
 
 ---------------------------------------------------------------------------------
---- ARP Handler Task
+---- ARP Handler Task
 ---------------------------------------------------------------------------------
 
 --- Arp handler task, responds to ARP queries for given IPs and performs arp lookups
--- TODO implement garbage collection/refreshing entries
--- the current implementation does not handle large tables efficiently
+--- @todo TODO implement garbage collection/refreshing entries \n
+--- the current implementation does not handle large tables efficiently \n
+--- @todo TODO multi-NIC support
 arp.arpTask = "__MG_ARP_TASK"
 
+--- Arp table
+--- TODO docu
 local arpTable = ns:get()
 
+--- Arp handler task
+--- @param qs TODO
+--- @todo TODO docu
 local function arpTask(qs)
 	-- two ways to call this: single nic or array of nics
 	if qs[1] == nil and qs.rxQueue then
@@ -412,9 +514,11 @@ local function arpTask(qs)
 	end
 end
 
+--- Perform a lookup in the ARP table.
 --- Lookup the MAC address for a given IP.
--- Blocks for up to 1 second if the arp task is not yet running
--- Caution: this function uses locks and namespaces, must not be used in the fast path
+--- Blocks for up to 1 second if the arp task is not yet running
+--- Caution: this function uses locks and namespaces, must not be used in the fast path
+--- @param ip The ip address in string or cdata format to look up.
 function arp.lookup(ip)
 	if type(ip) == "string" then
 		ip = parseIPAddress(ip)
@@ -442,7 +546,10 @@ function arp.lookup(ip)
 	return nil
 end
 
--- FIXME: this only sends a single request
+--- Perform a non-blocking lookup in the ARP table.
+--- @param ip The ip address in string or cdata format to look up.
+--- @param timeout TODO
+--- @todo FIXME: this only sends a single request
 function arp.blockingLookup(ip, timeout)
 	local timeout = dpdk.getTime() + timeout
 	repeat
@@ -458,7 +565,7 @@ __MG_ARP_TASK = arpTask
 
 
 ---------------------------------------------------------------------------------
---- Metatypes
+---- Metatypes
 ---------------------------------------------------------------------------------
 
 ffi.metatype("struct arp_header", arpHeader)

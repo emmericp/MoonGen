@@ -6,6 +6,7 @@ local ts		= require "timestamping"
 local filter	= require "filter"
 local stats		= require "stats"
 local hist		= require "histogram"
+local timer		= require "timer"
 
 local PKT_SIZE	= 124 -- without CRC
 local ETH_DST	= "10:11:12:13:14:15" -- src mac is taken from the NIC
@@ -129,73 +130,42 @@ function counterSlave(queue)
 	-- TODO: check the queue's overflow counter to detect lost packets
 end
 
--- TODO: move this function into the timestamping library
-local function measureLatency(txQueue, rxQueue, bufs, rxBufs)
-	ts.syncClocks(txQueue.dev, rxQueue.dev)
-	txQueue:send(bufs)
-	-- increment the wait time when using large packets or slower links
-	local tx = txQueue:getTimestamp(100)
-	if tx then
-		dpdk.sleepMicros(500) -- minimum latency to limit the packet rate
-		-- sent was successful, try to get the packet back (max. 10 ms wait time before we assume the packet is lost)
-		local rx = rxQueue:tryRecv(rxBufs, 10000)
-		if rx > 0 then
-			local numPkts = 0
-			for i = 1, rx do
-				if bit.bor(rxBufs[i].ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0 then
-					numPkts = numPkts + 1
-				end
-			end
-			local delay = (rxQueue:getTimestamp() - tx) * 6.4
-			if numPkts == 1 then
-				if delay > 0 and delay < 100000000 then
-					rxBufs:freeAll()
-					return delay
-				end
-			end -- else: got more than one packet, so we got a problem
-			rxBufs:freeAll()
-		end
-	end
-end
 
 -- TODO refactor this to use the new API
 function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 	local txDev = txQueue.dev
 	local rxDev = rxQueue.dev
-	local mem = memory.createMemPool()
-	local bufs = mem:bufArray(1)
-	local rxBufs = mem:bufArray(128)
-	txQueue:enableTimestamps()
 	rxDev:filterTimestamps(rxQueue)
+	local timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	local histBg, histFg = hist(), hist()
 	-- wait one second, otherwise we might start timestamping before the load is applied
 	dpdk.sleepMillis(1000)
-	local counter = 0
 	local baseIP = parseIPAddress(IP_SRC)
+	local rateLimit = timer:new(0.001)
 	while dpdk.running() do
-		bufs:alloc(PKT_SIZE)
-		local pkt = bufs[1]:getUdpPacket()
 		local port = math.random() <= ratio and port or bgPort
-		-- TODO: ts.fillPacket must be fixed
-		ts.fillPacket(bufs[1], port, PKT_SIZE + 4)
-		pkt:fill{
-			pktLength = PKT_SIZE, -- this sets all length headers fields in all used protocols
-			ethSrc = txQueue, -- get the src mac from the device
-			ethDst = ETH_DST,
-			-- ipSrc will be set later as it varies
-			ip4Dst = IP_DST,
-			udpSrc = PORT_SRC,
-			udpDst = port,
-			-- payload will be initialized to 0x00 as new memory pools are initially empty
-		}
-		pkt.ip4.src:set(baseIP + math.random(NUM_FLOWS) - 1)
-		bufs:offloadUdpChecksums()
-		rxQueue:enableTimestamps(port)
-		local lat = measureLatency(txQueue, rxQueue, bufs, rxBufs)
+		local lat = timestamper:measureLatency(PKT_SIZE, function(buf)
+			local pkt = buf:getUdpPacket()
+			pkt:fill{
+				pktLength = PKT_SIZE, -- this sets all length headers fields in all used protocols
+				ethSrc = txQueue, -- get the src mac from the device
+				ethDst = ETH_DST,
+				-- ipSrc will be set later as it varies
+				ip4Dst = IP_DST,
+				udpSrc = PORT_SRC,
+				udpDst = port,
+			}
+			pkt.ip4.src:set(baseIP + math.random(NUM_FLOWS) - 1)
+		end)
 		if lat then
-			local hist = port == bgPort and histBg or histFg
-			hist:update(lat)
+			if port == bgPort then
+				histBg:update(lat)
+			else
+				histFg:update(lat)
+			end
 		end
+		rateLimit:wait()
+		rateLimit:reset()
 	end
 	dpdk.sleepMillis(100) -- to prevent overlapping stdout
 	histBg:save("hist-background.csv")

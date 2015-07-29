@@ -18,16 +18,25 @@ function master(...)
 	-- hardware rate control fails with small packets at these rates
 	local numQueues = rate > 6000 and rate < 10000 and 3 or 1
 	local txDev = device.config(txPort, 2, 4)
-	local rxDev = device.config(rxPort, 2, 1) -- ignored if txDev == rxDev
-	local queues = {}
+	local rxDev = device.config(rxPort, 2, 4) -- ignored if txDev == rxDev
+	device.waitForLinks()
+	local queues1, queues2 = {}, {}
 	for i = 1, numQueues do
 		local queue = txDev:getTxQueue(i)
-		queues[#queues + 1] = queue
+		queues1[#queues1 + 1] = queue
+		if rate < 10000 then -- only set rate if necessary to work with devices that don't support hw rc
+			queue:setRate(rate / numQueues)
+		end
+		local queue = rxDev:getTxQueue(i)
+		queues2[#queues2 + 1] = queue
 		if rate < 10000 then -- only set rate if necessary to work with devices that don't support hw rc
 			queue:setRate(rate / numQueues)
 		end
 	end
-	dpdk.launchLua("loadSlave", queues, txDev, rxDev)
+	dpdk.launchLua("loadSlave", queues1, txDev, rxDev)
+	if rxPort ~= txPort then
+		dpdk.launchLua("loadSlave", queues2, rxDev, txDev)
+	end
 	dpdk.launchLua("timerSlave", txDev:getTxQueue(0), rxDev:getRxQueue(1))
 	dpdk.waitForSlaves()
 end

@@ -1,3 +1,15 @@
+------------------------------------------------------------------------
+--- @file ip6.lua
+--- @brief Internet protocol (v6) utility.
+--- Utility functions for the ip6_address and ip6_header structs 
+--- defined in \ref headers.lua . \n
+--- Includes:
+--- - IP6 constants
+--- - IP6 address utility
+--- - IP6 header utility
+--- - Definition of IP6 packets
+------------------------------------------------------------------------
+
 local ffi = require "ffi"
 local pkt = require "packet"
 
@@ -13,28 +25,33 @@ local istype = ffi.istype
 local format = string.format
 
 ------------------------------------------------------------------------------------
---- IP6 constants
+---- IP6 constants
 ------------------------------------------------------------------------------------
 
+--- IP6 protocol constants
 local ip6 = {}
 
+--- NextHeader field value for Tcp
 ip6.PROTO_TCP 	= 0x06
+--- NextHeader field value for Udp
 ip6.PROTO_UDP 	= 0x11
+--- NextHeader field value for Icmp
 ip6.PROTO_ICMP	= 0x3a -- 58
 ip6.PROTO_ESP	= 0x32
 ip6.PROTO_AH	= 0x33
 
 
 -------------------------------------------------------------------------------------
---- IPv6 addresses
+---- IPv6 addresses
 -------------------------------------------------------------------------------------
 
+--- Module for ip6_address struct (see \ref headers.lua).
 local ip6Addr = {}
 ip6Addr.__index = ip6Addr
 local ip6AddrType = ffi.typeof("union ip6_address")
 
 --- Retrieve the IPv6 address.
--- @return Address in 'union ip6_address' format.
+--- @return Address in 'union ip6_address' format.
 function ip6Addr:get()
 	local addr = ip6AddrType()
 	addr.uint32[0] = bswap(self.uint32[3])
@@ -45,7 +62,7 @@ function ip6Addr:get()
 end
 
 --- Set the IPv6 address.
--- @param addr Address in 'union ip6_address' format.
+--- @param addr Address in 'union ip6_address' format.
 function ip6Addr:set(addr)
 	self.uint32[0] = bswap(addr.uint32[3])
 	self.uint32[1] = bswap(addr.uint32[2])
@@ -54,24 +71,24 @@ function ip6Addr:set(addr)
 end
 
 --- Set the IPv6 address.
--- @param ip Address in string format.
+--- @param ip Address in string format.
 function ip6Addr:setString(ip)
 	self:set(parseIP6Address(ip))
 end
 
 --- Test equality of two IPv6 addresses.
--- @param lhs Address in 'union ip6_address' format.
--- @param rhs Address in 'union ip6_address' format.
--- @return true if equal, false otherwise.
+--- @param lhs Address in 'union ip6_address' format.
+--- @param rhs Address in 'union ip6_address' format.
+--- @return true if equal, false otherwise.
 function ip6Addr.__eq(lhs, rhs)
 	return istype(ip6AddrType, lhs) and istype(ip6AddrType, rhs) and lhs.uint64[0] == rhs.uint64[0] and lhs.uint64[1] == rhs.uint64[1]
 end
 
 --- Add a number to an IPv6 address.
--- Max. 64bit, commutative.
--- @param lhs Address in 'union ip6_address' format.
--- @param rhs Number to add (64 bit integer).
--- @return Resulting address in 'union ip6_address' format.
+--- Max. 64bit, commutative.
+--- @param lhs Address in 'union ip6_address' format.
+--- @param rhs Number to add (64 bit integer).
+--- @return Resulting address in 'union ip6_address' format.
 function ip6Addr.__add(lhs, rhs)
 	-- calc ip (self) + number (val)
 	local self, val
@@ -99,8 +116,8 @@ function ip6Addr.__add(lhs, rhs)
 end
 
 --- Add a number to an IPv6 address in-place.
--- Max 64 bit.
--- @param val Number to add (64 bit integer).
+--- Max 64 bit.
+--- @param val Number to add (64 bit integer).
 function ip6Addr:add(val)
 	-- calc ip (self) + number (val)
 	local low, high = bswap(self.uint64[1]), bswap(self.uint64[0])
@@ -117,17 +134,17 @@ function ip6Addr:add(val)
 end
 
 --- Subtract a number from an IPv6 address.
--- Max. 64 bit.
--- @param val Number to substract (64 bit integer).
--- @return Resulting address in 'union ip6_address' format.
+--- Max. 64 bit.
+--- @param val Number to substract (64 bit integer).
+--- @return Resulting address in 'union ip6_address' format.
 function ip6Addr:__sub(val)
 	return self + -val
 end
 
--- Retrieve the string representation of an IPv6 address.
--- Assumes 'union ip6_address' is in network byteorder.
--- @param doByteSwap Optional change the byteorder of the ip6 address before returning the string representation.
--- @return Address in string format.
+--- Retrieve the string representation of an IPv6 address.
+--- Assumes 'union ip6_address' is in network byteorder.
+--- @param doByteSwap Optional change the byteorder of the ip6 address before returning the string representation.
+--- @return Address in string format.
 function ip6Addr:getString(doByteSwap)
 	doByteSwap = doByteSwap or false
 	if doByteSwap then
@@ -144,14 +161,15 @@ end
 
 
 ------------------------------------------------------------------------------
---- IPv6 header
+---- IPv6 header
 ------------------------------------------------------------------------------
 
+--- Module for ip6_header struct (see \ref headers.lua).
 local ip6Header = {}
 ip6Header.__index = ip6Header
 
 --- Set the version. 
--- @param int IP6 header version as 4 bit integer. Should always be '6'.
+--- @param int IP6 header version as 4 bit integer. Should always be '6'.
 function ip6Header:setVersion(int)
 	int = int or 6
 	int = band(lshift(int, 28), 0xf0000000) -- fill to 32 bits
@@ -163,19 +181,19 @@ function ip6Header:setVersion(int)
 end
 
 --- Retrieve the version.
--- @return Version as 4 bit integer.
+--- @return Version as 4 bit integer.
 function ip6Header:getVersion()
 	return band(rshift(bswap(self.vtf), 28), 0x0000000f)
 end
 
 --- Retrieve the version.
--- @return Version as string.
+--- @return Version as string.
 function ip6Header:getVersionString()
 	return self:getVersion()
 end
 
 --- Set the traffic class.
--- @param int Traffic class of the ip6 header as 8 bit integer.
+--- @param int Traffic class of the ip6 header as 8 bit integer.
 function ip6Header:setTrafficClass(int)
 	int = int or 0
 	int = band(lshift(int, 20), 0x0ff00000)
@@ -187,19 +205,19 @@ function ip6Header:setTrafficClass(int)
 end
 
 --- Retrieve the traffic class.
--- @return Traffic class as 8 bit integer.
+--- @return Traffic class as 8 bit integer.
 function ip6Header:getTrafficClass()
 	return band(rshift(bswap(self.vtf), 20), 0x000000ff)
 end
 
 --- Retrieve the traffic class.
--- @return Traffic class as string.
+--- @return Traffic class as string.
 function ip6Header:getTrafficClassString()
 	return self:getTrafficClass()
 end
 
 --- Set the flow label.
--- @param int Flow label of the ip6 header as 20 bit integer.
+--- @param int Flow label of the ip6 header as 20 bit integer.
 function ip6Header:setFlowLabel(int)
 	int = int or 0
 	int = band(int, 0x000fffff)
@@ -211,51 +229,51 @@ function ip6Header:setFlowLabel(int)
 end
 
 --- Retrieve the flow label.
--- @return Flow label as 20 bit integer.
+--- @return Flow label as 20 bit integer.
 function ip6Header:getFlowLabel()
 	return band(bswap(self.vtf), 0x000fffff)
 end
 
 --- Retrieve the flow label.
--- @return Flow label as string.
+--- @return Flow label as string.
 function ip6Header:getFlowLabelString()
 	return self:getFlowLabel()
 end
 
 --- Set the payload length.
--- @param int Length of the ip6 header payload (hence, excluding l2 and l3 headers). 16 bit integer.
+--- @param int Length of the ip6 header payload (hence, excluding l2 and l3 headers). 16 bit integer.
 function ip6Header:setLength(int)
 	int = int or 8	-- with eth + UDP -> minimum 66
 	self.len = hton16(int)
 end
 
 --- Retrieve the length.
--- @return Length as 16 bit integer.
+--- @return Length as 16 bit integer.
 function ip6Header:getLength()
 	return hton16(self.len)
 end
 
 --- Retrieve the length.
--- @return Length as string.
+--- @return Length as string.
 function ip6Header:getLengthString()
 	return self:getLength()
 end
 
 --- Set the next header.
--- @param int Next header of the ip6 header as 8 bit integer.
+--- @param int Next header of the ip6 header as 8 bit integer.
 function ip6Header:setNextHeader(int)
 	int = int or ip6.PROTO_UDP
 	self.nextHeader = int
 end
 
 --- Retrieve the next header.
--- @return Next header as 8 bit integer.
+--- @return Next header as 8 bit integer.
 function ip6Header:getNextHeader()
 	return self.nextHeader
 end
 
 --- Retrieve the next header.
--- @return Next header as string.
+--- @return Next header as string.
 function ip6Header:getNextHeaderString()
 	local proto = self:getNextHeader()
 	local cleartext = ""
@@ -278,79 +296,81 @@ function ip6Header:getNextHeaderString()
 end
 
 --- Set the time-to-live (TTL).
--- @param int TTL of the ip6 header as 8 bit integer.
+--- @param int TTL of the ip6 header as 8 bit integer.
 function ip6Header:setTTL(int)
 	int = int or 64
 	self.ttl = int
 end
 
 --- Retrieve the time-to-live.
--- @return TTL as 8 bit integer.
+--- @return TTL as 8 bit integer.
 function ip6Header:getTTL()
 	return self.ttl
 end
 
 --- Retrieve the time-to-live.
--- @return TTL as string.
+--- @return TTL as string.
 function ip6Header:getTTLString()
 	return self:getTTL()
 end
 
 --- Set the destination address.
--- @param addr Address in 'union ip6_address' format.
+--- @param addr Address in 'union ip6_address' format.
 function ip6Header:setDst(addr)
 	self.dst:set(addr)
 end
 
 --- Retrieve the IP6 destination address.
--- @return Address in 'union ip6_address' format.
+--- @return Address in 'union ip6_address' format.
 function ip6Header:getDst()
 	return self.dst:get()
 end
 
---- Set the source  address.
--- @param addr Address in 'union ip6_address' format.
+--- Set the source address.
+--- @param addr Address in 'union ip6_address' format.
 function ip6Header:setSrc(addr)
 	self.src:set(addr)
 end
 
 --- Retrieve the IP6 source address.
--- @return Address in 'union ip6_address' format.
+--- @return Address in 'union ip6_address' format.
 function ip6Header:getSrc()
 	return self.src:get()
 end
 
 --- Set the destination address.
--- @param str Address in string format.
+--- @param str Address in string format.
 function ip6Header:setDstString(str)
 	self:setDst(parseIP6Address(str))
 end
 
 --- Retrieve the IP6 destination address.
--- @return Address in string format.
+--- @return Address in string format.
 function ip6Header:getDstString()
 	return self.dst:getString()
 end
 
 --- Set the source address.
--- @param str Address in string format.
+--- @param str Address in string format.
 function ip6Header:setSrcString(str)
 	self:setSrc(parseIP6Address(str))
 end
 
 --- Retrieve the IP6 source address.
--- @return Address in source format.
+--- @return Address in source format.
 function ip6Header:getSrcString()
 	return self.src:getString()
 end
 
 --- Set all members of the ip6 header.
--- Per default, all members are set to default values specified in the respective set function.
--- Optional named arguments can be used to set a member to a user-provided value.
--- @param args Table of named arguments. Available arguments: ip6Version, ip6TrafficClass, ip6FlowLabel, ip6Length, ip6NextHeader, ip6TTL, ip6Src, ip6Dst
--- @param pre prefix for namedArgs. Default 'ip6'.
--- @usage fill() -- only default values
--- @usage fill{ ip6Src="f880::ab", ip6TTL=101 } -- all members are set to default values with the exception of ip6Src and ip6TTL
+--- Per default, all members are set to default values specified in the respective set function.
+--- Optional named arguments can be used to set a member to a user-provided value.
+--- @param args Table of named arguments. Available arguments: ip6Version, ip6TrafficClass, ip6FlowLabel, ip6Length, ip6NextHeader, ip6TTL, ip6Src, ip6Dst
+--- @param pre prefix for namedArgs. Default 'ip6'.
+--- @code
+--- fill() --- only default values
+--- fill{ ip6Src="f880::ab", ip6TTL=101 } --- all members are set to default values with the exception of ip6Src and ip6TTL
+--- @endcode
 function ip6Header:fill(args, pre)
 	args = args or {}
 	pre = pre or "ip6"
@@ -381,9 +401,9 @@ function ip6Header:fill(args, pre)
 end
 
 --- Retrieve the values of all members.
--- @param pre prefix for namedArgs. Default 'ip6'.
--- @return Table of named arguments. For a list of arguments see "See also".
--- @see ip6Header:fill
+--- @param pre prefix for namedArgs. Default 'ip6'.
+--- @return Table of named arguments. For a list of arguments see "See also".
+--- @see ip6Header:fill
 function ip6Header:get(pre)
 	pre = pre or "ip6"
 
@@ -401,13 +421,15 @@ function ip6Header:get(pre)
 end
 
 --- Retrieve the values of all members.
--- @return Values in string format.
+--- @return Values in string format.
 function ip6Header:getString()
 	return "IP6 " .. self:getSrcString() .. " > " .. self:getDstString() .. " ver " .. self:getVersionString() 
 		   .. " tc " .. self:getTrafficClassString() .. " fl " .. self:getFlowLabelString() .. " len " .. self:getLengthString() 
 		   .. " next " .. self:getNextHeaderString() .. " ttl " .. self:getTTLString()
 end
 
+-- Maps headers to respective nextHeader value.
+-- This list should be extended whenever a new protocol is added to 'IPv6 constants'. 
 local mapNameProto = {
 	icmp = ip6.PROTO_ICMP,
 	udp = ip6.PROTO_UDP,
@@ -416,6 +438,11 @@ local mapNameProto = {
 	ah = ip6.PROTO_AH,
 }
 
+--- Resolve which header comes after this one (in a packet).
+--- For instance: in tcp/udp based on the ports.
+--- This function must exist and is only used when get/dump is executed on
+--- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
+--- @return String next header (e.g. 'udp', 'icmp', nil)
 function ip6Header:resolveNextHeader()
 	local proto = self:getNextHeader()
 	for name, _proto in pairs(mapNameProto) do
@@ -426,7 +453,15 @@ function ip6Header:resolveNextHeader()
 	return nil
 end
 
--- TODO do not use static >ip<Length etc, instead use >member<Length (e.g. if member is 'innerIP' -> innerIPLength)
+--- Change the default values for namedArguments (for fill/get).
+--- This can be used to for instance calculate a length value based on the total packet length.
+--- See proto/ip4.setDefaultNamedArgs as an example.
+--- This function must exist and is only used by packet.fill.
+--- @param pre The prefix used for the namedArgs, e.g. 'ip6'
+--- @param namedArgs Table of named arguments (see See Also)
+--- @param nextHeader The header following after this header in a packet
+--- @param accumulatedLength The so far accumulated length for previous headers in a packet
+--- @see ip6Header:fill
 function ip6Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	-- set length
 	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
@@ -446,14 +481,15 @@ function ip6Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 end
 
 ----------------------------------------------------------------------------------
---- Packets
+---- Packets
 ----------------------------------------------------------------------------------
 
+--- Cast the packet to an IP6 packet 
 pkt.getIP6Packet = packetCreate("eth", "ip6")
 
 
 ------------------------------------------------------------------------
---- Metatypes
+---- Metatypes
 ------------------------------------------------------------------------
 
 ffi.metatype("union ip6_address", ip6Addr)
