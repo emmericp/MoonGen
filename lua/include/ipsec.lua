@@ -538,6 +538,9 @@ function mod.rx_get_spi(port, idx)
 	return bswap(spi), ip_idx
 end
 
+-- Calculate the length of extra padding needed, in order to achive a 4 byte alignment.
+-- @payload_len The lenght of the original IP packet
+-- @return The number of extra padding bytes needed
 function mod.calc_extra_pad(payload_len)
 	local idx = math.ceil(payload_len/4)
 	local idx8  = idx * 4
@@ -545,6 +548,9 @@ function mod.calc_extra_pad(payload_len)
 	return extra_pad
 end
 
+-- Calculate the length of extra padding included in this packet for 4 byte alignment.
+-- @buf The rte_mbuf containing the hw-decrypted ESP packet
+-- @return The number of extra padding bytes included in this packet
 function mod.get_extra_pad(buf)
 	local pkt = buf:getIPPacket()
 	local payload_len = pkt.ip4:getLength()-20 --IP4 Length less 20 bytes IP4 Header
@@ -579,6 +585,11 @@ function mod.add_esp_trailer(buf, payload_len, next_hdr)
 	buf:setESPTrailerLength(esp_trailer_len)
 end
 
+-- Decapsulate a hw-decrypted ESP packet
+-- @buf The rte_mbuf containing the hw-decrypted ESP packet
+-- @len Length of the hw-decrypted IP/ESP packet
+-- @eth_mem memoryPool to allocate new ethernet packets from
+-- @return A new rte_mbuf containing the original (inner) IP packet
 function mod.esp_vpn_decapsulate(buf, len, eth_mem)
 	local extra_pad = mod.get_extra_pad(buf)
 	-- eth(14), pkt(len), pad(extra_pad), outer_ip(20), esp_header(16), esp_trailer(20)
@@ -593,6 +604,11 @@ function mod.esp_vpn_decapsulate(buf, len, eth_mem)
 	return mybuf
 end
 
+-- Encapsulate an IP packet into a new IP header and ESP header and trailer
+-- @buf The rte_mbuf containing the original IP packet
+-- @len Length of the original IP packet
+-- @esp_mem memoryPool to allocate new esp packets from
+-- @return A new rte_mbuf containing the encapsulated IP/ESP packet
 function mod.esp_vpn_encapsulate(buf, len, esp_mem)
 	local extra_pad = mod.calc_extra_pad(len) --for 4 byte alignment
 	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)
