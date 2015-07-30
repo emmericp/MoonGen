@@ -29,6 +29,7 @@ ffi.cdef[[
 ]]
 
 mod.PCI_ID_X540		= 0x80861528
+mod.PCI_ID_X520         = 0x8086154D
 mod.PCI_ID_82599	= 0x808610FB
 mod.PCI_ID_82580	= 0x8086150E
 mod.PCI_ID_82576	= 0x80861526
@@ -350,7 +351,8 @@ local deviceNames = {
 	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
 	[mod.PCI_ID_82580]	= "82580 Gigabit Network Connection",
 	[mod.PCI_ID_82576]	= "82576 Gigabit Network Connection",
-	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2", }
+	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
+	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter" }
 
 function dev:getName()
 	local id = self:getPciId()
@@ -412,7 +414,7 @@ local RTTDQSEL = 0x00004904
 --- A simple work-around for this is using two queues with 50% of the desired rate.
 --- Note that this changes the inter-arrival times as the rate control of both queues is independent.
 function txQueue:setRate(rate)
-	if self.dev:getPciId() ~= mod.PCI_ID_82599 and self.dev:getPciId() ~= mod.PCI_ID_X540 then
+	if self.dev:getPciId() ~= mod.PCI_ID_82599 and self.dev:getPciId() ~= mod.PCI_ID_X540 and self.dev:getPciId() ~= mod.PCI_ID_X520 then
 		error("tx rate control not yet implemented for this NIC")
 	end
 	local speed = self.dev:getLinkStatus().speed

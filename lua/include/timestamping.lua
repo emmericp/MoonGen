@@ -219,7 +219,7 @@ local function startTimerIxgbe(port, id)
 	-- start system timer, this differs slightly between the two currently supported ixgbe-chips
 	if id == device.PCI_ID_X540 then
 		dpdkc.write_reg32(port, TIMEINCA, 1)
-	elseif id == device.PCI_ID_82599 then
+	elseif id == device.PCI_ID_82599 or id == device.PCI_ID_X520 then
 		dpdkc.write_reg32(port, TIMINCA, bit.bor(2, bit.lshift(2, TIMINCA_IP_OFFS)))
 	else -- should not happen
 		errorf("unsupported ixgbe device %s", device.getDeviceName(port))
@@ -300,6 +300,7 @@ end
 -- TODO: implement support for more hardware
 local enableFuncs = {
 	[device.PCI_ID_X540]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
+	[device.PCI_ID_X520]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_82599]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_82580]	= { enableRxTimestampsIgb, enableTxTimestampsIgb, enableRxTimestampsAllIgb } }
 
@@ -380,6 +381,7 @@ end
 
 local timestampScales = {
 	[device.PCI_ID_X540]	= 6.4,
+	[device.PCI_ID_X520]	= 6.4,
 	[device.PCI_ID_82599]	= 6.4,
 	[device.PCI_ID_82580]	= 1, } -- ???
 
@@ -389,6 +391,7 @@ end
 
 local timeRegisters = {
 	[device.PCI_ID_X540]	= { 1, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
+	[device.PCI_ID_X520]    = { 1, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
 	[device.PCI_ID_82599]	= { 1, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
 	[device.PCI_ID_82580]	= { 2, SYSTIMEL_82580, SYSTIMEH_82580, TIMEADJL_82580, TIMEADJH_82580 }, }
 
