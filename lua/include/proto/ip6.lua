@@ -433,7 +433,7 @@ end
 local mapNameProto = {
 	icmp = ip6.PROTO_ICMP,
 	udp = ip6.PROTO_UDP,
-	tcp = ip6.PROTO_TCP,
+	tcp = ip6.PROTO_TCP, 
 	esp = ip6.PROTO_ESP,
 	ah = ip6.PROTO_AH,
 }

@@ -496,7 +496,7 @@ end
 local mapNameProto = {
 	icmp = ip.PROTO_ICMP,
 	udp = ip.PROTO_UDP,
-	tcp = ip.PROTO_TCP,
+	tcp = ip.PROTO_TCP, 
 	esp = ip.PROTO_ESP,
 	ah = ip.PROTO_AH,
 }
