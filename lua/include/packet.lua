@@ -203,7 +203,8 @@ function packetCreate(...)
 	packet.setLength = packetSetLength(args)
 
 	-- functions for manual (not offloaded) checksum calculations
-	packet.calculateChecksums = packetCalculateChecksums
+	-- runtime critical function, load specific code during runtime
+	packet.calculateChecksums = packetCalculateChecksums(args)
 	
 	for _, v in ipairs(args) do
 		local header, member
@@ -391,9 +392,11 @@ end
 --- Calculate all checksums manually (not offloading them).
 --- There also exist functions to calculate the checksum of only one header.
 --- Naming convention: pkt:calculate<member>Checksum() (for all existing packets member = {Ip, Tcp, Udp, Icmp})
---- @todo Runtime critical function: this has to be fast (check with benchmark)
-function packetCalculateChecksums(self)
-	for _, v in ipairs(self:getArgs()) do
+--- @note Calculating checksums manually is extremely slow compared to offloading this task to the NIC (~65% performance loss at the moment)
+--- @todo Manual calculation of udp and tcp checksums NYI
+function packetCalculateChecksums(args)
+	local str = ""
+	for _, v in ipairs(args) do
 		local header, member
 		if type(v) == "table" then
 			header = v[1]
@@ -405,9 +408,22 @@ function packetCalculateChecksums(self)
 		
 		-- if the header has a checksum, call the function
 		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
-			self:getHeader(v):calculateChecksum()
+			str = str .. [[
+				self.]] .. header .. [[:calculateChecksum()
+				]]
 		end
 	end
+	
+	-- build complete function
+	str = [[
+		return function(self)]] 
+			.. str .. [[
+		end]]
+	
+	-- load new function and return it
+	local func = assert(loadstring(str))()
+
+	return func
 end
 
 --- Creates a packet struct (cdata) consisting of different headers.
