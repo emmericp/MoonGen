@@ -207,14 +207,7 @@ function packetCreate(...)
 	packet.calculateChecksums = packetCalculateChecksums(args)
 	
 	for _, v in ipairs(args) do
-		local header, member
-		if type(v) == "table" then
-			header = v[1]
-			member = v[2]
-		else
-			header = v
-			member = v
-		end
+		local header, member = getHeaderMember(v)
 		-- if the header has a checksum, add a function to calculate it
 		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
 			local key = 'calculate' .. member:gsub("^.", string.upper) .. 'Checksum'
@@ -228,6 +221,18 @@ function packetCreate(...)
 
 	-- return 'get'/'cast' for this kind of packet
 	return function(self) return ctype(self.pkt.data) end
+end
+
+--- Get the name of the header and the name of the respective member of a packet
+--- @param v Either the name of the header (then the member has the same name), or a table { header, member }
+--- @return Name of the header
+--- @return Name of the member
+function getHeaderMember(v)
+		if type(v) == "table" then
+			return v[1], v[2]
+		else
+			return v, v
+		end
 end
 
 --- Get all headers of a packet as list.
@@ -246,12 +251,7 @@ end
 --- @param h header to be returned
 --- @return The member of the packet
 function packetGetHeader(self, h)
-	local proto, member
-	if type(h) == "table" then
-		member = h[2]
-	else
-		member = h
-	end
+	local _, member = getHeaderMember(h)
 	return self[member]
 end
 
@@ -287,19 +287,14 @@ end
 --- @param args Table of named arguments. For a list of available arguments see "See also"
 --- @note This function is slow. If you want to modify members of a header during a time critical section of your script use the respective setters.
 function packetFill(self, namedArgs) 
-	-- fill headers
+	namedArgs = namedArgs or {}
 	local headers = self:getHeaders()
 	local args = self:getArgs()
 	local accumulatedLength = 0
 	for i, v in ipairs(headers) do
-		local curMember = args[i]
-		if type(curMember) == "table" then
-			curMember = curMember[2]
-		end
-		local nextHeader = args[i + 1]
-		if type(nextHeader) == "table" then
-			nextHeader = nextHeader[1]
-		end
+		local _, curMember = getHeaderMember(args[i])
+		local nextHeader = getHeaderMember(args[i + 1])
+		
 		namedArgs = v:setDefaultNamedArgs(curMember, namedArgs, nextHeader, accumulatedLength)
 		v:fill(namedArgs, curMember) 
 
@@ -315,10 +310,7 @@ function packetGet(self)
 	local namedArgs = {} 
 	local args = self:getArgs()
 	for i, v in ipairs(self:getHeaders()) do 
-		local member = args[i]
-		if type(member) == "table" then
-			member = member[2]
-		end
+		local _, member = getHeaderMember(args[i])
 		namedArgs = mergeTables(namedArgs, v:get(member)) 
 	end 
 	return namedArgs 
@@ -356,21 +348,14 @@ function packetSetLength(args)
 	-- build the setLength functions for all the headers in this packet type
 	local accumulatedLength = 0
 	for _, v in ipairs(args) do
-		local header, member
-		if type(v) == "table" then
-			header = v[1]
-			member = v[2]
-		else
-			header = v
-			member = v
-		end
+		local header, member = getHeaderMember(v)
 		if header == "ip4" or header == "udp" or header == "ptp" then
 			str = str .. [[
-				self.]] .. header .. [[:setLength(length - ]] .. accumulatedLength .. [[)
+				self.]] .. member .. [[:setLength(length - ]] .. accumulatedLength .. [[)
 				]]
 		elseif header == "ip6" then
 			str = str .. [[
-				self.]] .. header .. [[:setLength(length - ]] .. accumulatedLength + 40 .. [[)
+				self.]] .. member .. [[:setLength(length - ]] .. accumulatedLength + 40 .. [[)
 				]]
 		end
 		if header == "eth" then header = "ethernet" end
@@ -397,19 +382,12 @@ end
 function packetCalculateChecksums(args)
 	local str = ""
 	for _, v in ipairs(args) do
-		local header, member
-		if type(v) == "table" then
-			header = v[1]
-			member = v[2]
-		else
-			header = v
-			member = v
-		end
+		local header, member = getHeaderMember(v)
 		
 		-- if the header has a checksum, call the function
 		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
 			str = str .. [[
-				self.]] .. header .. [[:calculateChecksum()
+				self.]] .. member .. [[:calculateChecksum()
 				]]
 		end
 	end
@@ -444,14 +422,7 @@ function packetMakeStruct(...)
 	
 	-- add the specified headers and build the name
 	for _, v in ipairs(...) do
-		local header, member
-		if type(v) == "table" then
-			header = v[1]
-			member = v[2]
-		else
-			header = v
-			member = v
-		end
+		local header, member = getHeaderMember(v)
 
 		-- alias for eth -> ethernet
 		if header == 'eth' then
