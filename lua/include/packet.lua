@@ -199,7 +199,8 @@ function packetCreate(...)
 
 	packet.resolveLastHeader = packetResolveLastHeader
 
-	packet.setLength = packetSetLength
+	-- runtime critical function, load specific code during runtime
+	packet.setLength = packetSetLength(args)
 
 	-- functions for manual (not offloaded) checksum calculations
 	packet.calculateChecksums = packetCalculateChecksums
@@ -349,10 +350,11 @@ end
 --- Necessary when sending variable sized packets.
 --- @param self The packet
 --- @param length Length of the packet. Value for respective length member of headers get calculated using this value.
---- @todo Runtime critical function: this has to be fast (check with benchmark).
-function packetSetLength(self, length)
+function packetSetLength(args)
+	local str = ""
+	-- build the setLength functions for all the headers in this packet type
 	local accumulatedLength = 0
-	for _, v in ipairs(self:getArgs()) do
+	for _, v in ipairs(args) do
 		local header, member
 		if type(v) == "table" then
 			header = v[1]
@@ -362,12 +364,28 @@ function packetSetLength(self, length)
 			member = v
 		end
 		if header == "ip4" or header == "udp" or header == "ptp" then
-			self[member]:setLength(length - accumulatedLength)
+			str = str .. [[
+				self.]] .. header .. [[:setLength(length - ]] .. accumulatedLength .. [[)
+				]]
 		elseif header == "ip6" then
-			self[member]:setLength(length - (accumulatedLength + 40))
+			str = str .. [[
+				self.]] .. header .. [[:setLength(length - ]] .. accumulatedLength + 40 .. [[)
+				]]
 		end
-		accumulatedLength = accumulatedLength + ffi.sizeof(self[member])
+		if header == "eth" then header = "ethernet" end
+		accumulatedLength = accumulatedLength + ffi.sizeof("struct " .. header .. "_header")
 	end
+
+	-- build complete function
+	str = [[
+		return function(self, length)]] 
+			.. str .. [[
+		end]]
+
+	-- load new function and return it
+	local func = assert(loadstring(str))()
+
+	return func
 end
 
 --- Calculate all checksums manually (not offloading them).
