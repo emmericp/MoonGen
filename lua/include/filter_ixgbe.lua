@@ -1,3 +1,8 @@
+---------------------------------
+--- @file filter_ixgbe.lua
+--- @brief Filter for IXGBE ...
+--- @todo TODO docu
+---------------------------------
 
 local mod = {}
 
@@ -53,7 +58,7 @@ mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
 			struct rte_5tuple_filter *filter, uint16_t rx_queue);
 ]]
 
--- FIXME: this function is highly device dependent
+--- @todo FIXME: this function is highly device dependent
 function mod.l2Filter(dev, etype, queue)
   -- FIXME: ASK: device compatibility???
 	if type(queue) == "table" then
@@ -70,26 +75,27 @@ function mod.l2Filter(dev, etype, queue)
 	dpdkc.write_reg32(dev.id, ETQF[1], bit.bor(ETQF_FILTER_ENABLE, etype))
 	dpdkc.write_reg32(dev.id, ETQS[1], bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue, ETQS_RX_QUEUE_OFFS)))
 end
+
 --- Installs a 5tuple filter on the device.
---  Matching packets will be redirected into the specified rx queue
---  NOTE: this is currently only tested for X540 NICs, and will probably also
---  work for 82599 and other ixgbe NICs. Use on other NICs might result in
---  undefined behavior.
--- @param filter A table describing the filter. Possible fields are
---   src_ip    :  Sourche IPv4 Address
---   dst_ip    :  Destination IPv4 Address
---   src_port  :  Source L4 port
---   dst_port  :  Destination L4 port
---   l4protocol:  L4 Protocol type
---                supported protocols: ip.PROTO_ICMP, ip.PROTO_TCP, ip.PROTO_UDP
---                If a non supported type is given, the filter will only match on
---                protocols, which are not supported.
---  All fields are optional.
---  If a field is not present, or nil, the filter will ignore this field when
---  checking for a match.
--- @param queue RX Queue, where packets, matching this filter will be redirected
--- @param priority optional (default = 1) The priority of this filter rule.
---  7 is the highest priority and 1 the lowest priority.
+---  Matching packets will be redirected into the specified rx queue
+---  NOTE: this is currently only tested for X540 NICs, and will probably also
+---  work for 82599 and other ixgbe NICs. Use on other NICs might result in
+---  undefined behavior.
+--- @param filter A table describing the filter. Possible fields are
+---   src_ip    :  Sourche IPv4 Address
+---   dst_ip    :  Destination IPv4 Address
+---   src_port  :  Source L4 port
+---   dst_port  :  Destination L4 port
+---   l4protocol:  L4 Protocol type
+---                supported protocols: ip.PROTO_ICMP, ip.PROTO_TCP, ip.PROTO_UDP
+---                If a non supported type is given, the filter will only match on
+---                protocols, which are not supported.
+---  All fields are optional.
+---  If a field is not present, or nil, the filter will ignore this field when
+---  checking for a match.
+--- @param queue RX Queue, where packets, matching this filter will be redirected
+--- @param priority optional (default = 1) The priority of this filter rule.
+---  7 is the highest priority and 1 the lowest priority.
 function mod.addHW5tupleFilter(dev, filter, queue, priority)
   local sfilter = ffi.new("struct rte_5tuple_filter")
   sfilter.src_ip_mask   = (filter.src_ip      == nil) and 1 or 0

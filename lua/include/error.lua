@@ -1,3 +1,9 @@
+---------------------------------
+--- @file error.lua
+--- @brief Error ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 mod.errors = {
   [1] = "Operation not permitted",

@@ -34,25 +34,25 @@ function dev:l2Filter(etype, queue)
 end
 
 --- Installs a 5tuple filter on the device.
---  Matching packets will be redirected into the specified rx queue
---  NOTE: this is currently only tested for X540 NICs, and will probably also
---  work for 82599 and other ixgbe NICs. Use on other NICs might result in
---  undefined behavior.
--- @param filter A table describing the filter. Possible fields are
---   src_ip    :  Sourche IPv4 Address
---   dst_ip    :  Destination IPv4 Address
---   src_port  :  Source L4 port
---   dst_port  :  Destination L4 port
---   l4protocol:  L4 Protocol type
---                supported protocols: ip.PROTO_ICMP, ip.PROTO_TCP, ip.PROTO_UDP
---                If a non supported type is given, the filter will only match on
---                protocols, which are not supported.
---  All fields are optional.
---  If a field is not present, or nil, the filter will ignore this field when
---  checking for a match.
--- @param queue RX Queue, where packets, matching this filter will be redirected
--- @param priority optional (default = 1) The priority of this filter rule.
---  7 is the highest priority and 1 the lowest priority.
+---  Matching packets will be redirected into the specified rx queue
+---  NOTE: this is currently only tested for X540 NICs, and will probably also
+---  work for 82599 and other ixgbe NICs. Use on other NICs might result in
+---  undefined behavior.
+--- @param filter A table describing the filter. Possible fields are
+---   src_ip    :  Sourche IPv4 Address
+---   dst_ip    :  Destination IPv4 Address
+---   src_port  :  Source L4 port
+---   dst_port  :  Destination L4 port
+---   l4protocol:  L4 Protocol type
+---                supported protocols: ip.PROTO_ICMP, ip.PROTO_TCP, ip.PROTO_UDP
+---                If a non supported type is given, the filter will only match on
+---                protocols, which are not supported.
+---  All fields are optional.
+---  If a field is not present, or nil, the filter will ignore this field when
+---  checking for a match.
+--- @param queue RX Queue, where packets, matching this filter will be redirected
+--- @param priority optional (default = 1) The priority of this filter rule.
+---  7 is the highest priority and 1 the lowest priority.
 function dev:addHW5tupleFilter(filter, queue, priority)
   fun = deviceDependent[self:getPciId()].addHW5tupleFilter
   if fun then
@@ -128,11 +128,11 @@ mod.mg_filter_5tuple = mg_filter_5tuple
 mg_filter_5tuple.__index = mg_filter_5tuple
 
 --- Creates a new 5tuple filter / packet classifier
--- @param socket optional (default: socket of calling thread), CPU socket, where memory for the filter should be allocated.
--- @param acx experimental use only. should be nil.
--- @param numCategories number of categories, this filter should support
--- @param maxNRules optional (default = 10), maximum number of rules.
--- @return a wrapper table for the created filter
+--- @param socket optional (default: socket of calling thread), CPU socket, where memory for the filter should be allocated.
+--- @param acx experimental use only. should be nil.
+--- @param numCategories number of categories, this filter should support
+--- @param maxNRules optional (default = 10), maximum number of rules.
+--- @return a wrapper table for the created filter
 function mod.create5TupleFilter(socket, acx, numCategories, maxNRules)
   socket = socket or select(2, dpdk.getCore())
   maxNRules = maxNRules or 10
@@ -168,13 +168,13 @@ end
 
 
 --- Bind an array of result values to a filter category.
--- One array of values can be boun to multiple categories. After classification
--- it will contain mixed values of all categories it was bound to.
--- @param values Array of values to be bound to a category. May also be a number. In this case
---  a new Array will be allocated and bound to the specified category.
--- @param category optional (default = bind the specified array to all not yet bound categories),
---  The category the array should be bound to
--- @return the array, which was bound
+--- One array of values can be boun to multiple categories. After classification
+--- it will contain mixed values of all categories it was bound to.
+--- @param values Array of values to be bound to a category. May also be a number. In this case
+---  a new Array will be allocated and bound to the specified category.
+--- @param category optional (default = bind the specified array to all not yet bound categories),
+---  The category the array should be bound to
+--- @return the array, which was bound
 function mg_filter_5tuple:bindValuesToCategory(values, category)
   if type(values) == "number" then
     values = ffi.new("uint32_t[?]", values)
@@ -195,15 +195,15 @@ function mg_filter_5tuple:bindValuesToCategory(values, category)
 end
 
 --- Bind a BitMask to a filter category.
--- On Classification the corresponding bits in the bitmask are set, when a rule
--- matches a packet, for the corresponding category.
--- One Bitmask can be bound to multiple categories. The result will be a bitwise OR
--- of the Bitmasks, which would be filled for each category.
--- @param bitmask Bitmask to be bound to a category. May also be a number. In this case
---  a new BitMask will be allocated and bound to the specified category.
--- @param category optional (default = bind the specified bitmask to all not yet bound categories),
---  The category the bitmask should be bound to
--- @return the bitmask, which was bound
+--- On Classification the corresponding bits in the bitmask are set, when a rule
+--- matches a packet, for the corresponding category.
+--- One Bitmask can be bound to multiple categories. The result will be a bitwise OR
+--- of the Bitmasks, which would be filled for each category.
+--- @param bitmask Bitmask to be bound to a category. May also be a number. In this case
+---  a new BitMask will be allocated and bound to the specified category.
+--- @param category optional (default = bind the specified bitmask to all not yet bound categories),
+---  The category the bitmask should be bound to
+--- @return the bitmask, which was bound
 function mg_filter_5tuple:bindBitmaskToCategory(bitmask, category)
   if type(bitmask) == "number" then
     bitmask = mbitmask.createBitMask(bitmask)
@@ -225,16 +225,16 @@ end
 
 
 --- Allocates memory for one 5 tuple rule
--- @return ctype object "struct mg_5tuple_rule"
+--- @return ctype object "struct mg_5tuple_rule"
 function mg_filter_5tuple:allocateRule()
   return ffi.new("struct mg_5tuple_rule")
 end
 
 --- Adds a rule to the filter
--- @param rule the rule to be added (ctype "struct mg_5tuple_rule")
--- @priority priority of the rule. Higher number -> higher priority
--- @category_mask bitmask for the categories, this rule should apply
--- @value 32bit integer value associated with this rule. Value is not allowed to be 0
+--- @param rule the rule to be added (ctype "struct mg_5tuple_rule")
+--- @priority priority of the rule. Higher number -> higher priority
+--- @category_mask bitmask for the categories, this rule should apply
+--- @value 32bit integer value associated with this rule. Value is not allowed to be 0
 function mg_filter_5tuple:addRule(rule, priority, category_mask, value)
   if(value == 0) then
     error("ERROR: Adding a rule with a 0 value is not allowed")
@@ -244,7 +244,7 @@ function mg_filter_5tuple:addRule(rule, priority, category_mask, value)
 end
 
 --- Builds the filter with the currently added rules. Should be executed after adding rules
--- @param optional (default = number of Categories, set at 5tuple filter creation time) numCategories maximum number of categories, which are in use.
+--- @param optional (default = number of Categories, set at 5tuple filter creation time) numCategories maximum number of categories, which are in use.
 function mg_filter_5tuple:build(numCategories)
   numCategories = numCategories or self.numRealCategories
   self.built = true
@@ -253,12 +253,12 @@ function mg_filter_5tuple:build(numCategories)
 end
 
 --- Perform packet classification for a burst of packets
--- Will do memory violation, when Masks or Values are not correctly bound to categories.
--- @param pkts Array of mbufs. Mbufs should contain valid IPv4 packets with a
---  normal ethernet header (no VLAN tags). A L4 Protocol header has to be
---  present, to avoid reading at invalid memory address. -- FIXME: check if this is true
--- @param inMask bitMask, specifying on which packets the filter should be applied
--- @return 0 on successfull completion.
+--- Will do memory violation, when Masks or Values are not correctly bound to categories.
+--- @param pkts Array of mbufs. Mbufs should contain valid IPv4 packets with a
+---  normal ethernet header (no VLAN tags). A L4 Protocol header has to be
+---  present, to avoid reading at invalid memory address. -- FIXME: check if this is true
+--- @param inMask bitMask, specifying on which packets the filter should be applied
+--- @return 0 on successfull completion.
 function mg_filter_5tuple:classifyBurst(pkts, inMask)
   if not self.built then
     print("Warning: New rules have been added without building the filter!")

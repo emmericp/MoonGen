@@ -1,3 +1,9 @@
+---------------------------------
+--- @file distribute.lua
+--- @brief Distribute ...
+--- @todo TODO docu
+---------------------------------
+
 local ffi = require "ffi"
 local dpdk = require "dpdk"
 local serpent = require "Serpent"
