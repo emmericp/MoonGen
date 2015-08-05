@@ -237,6 +237,13 @@ function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
 	end
 end
 
+function bufArray:offloadIPSec(idx, mode, sec_type)
+	for i = 0, self.size - 1 do
+		local buf = self.array[i]
+		buf:offloadIPSec(idx, mode, sec_type)
+	end
+end
+
 --- If called, IP chksum offloading will be done for the first n packets
 --	in the bufArray.
 --	@param ipv4 optional (default = true) specifies, if the buffers contain ipv4 packets

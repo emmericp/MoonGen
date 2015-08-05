@@ -51,6 +51,12 @@ function pkt:hasTimestamp()
 	return bit.bor(self.ol_flags, dpdk.PKT_RX_IEEE1588_TMST) ~= 0
 end
 
+function pkt:getSecFlags()
+	local secp = bit.rshift(bit.band(self.ol_flags, dpdk.PKT_RX_IPSEC_SECP), 11)
+	local secerr = bit.rshift(bit.band(self.ol_flags, bit.bor(dpdk.PKT_RX_SECERR_MSB, dpdk.PKT_RX_SECERR_LSB)), 12)
+	return secp, secerr
+end
+
 --- Set the time to wait before the packet is sent for software rate-controlled send methods.
 --- @param delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)
 function pkt:setDelay(delay)
@@ -81,6 +87,61 @@ function pkt:dump(bytes)
 	self:get():dump(bytes or self.pkt.pkt_len)
 end
 
+-------------------------------------------------------------------------------------------------------
+--- IPSec offloading
+-------------------------------------------------------------------------------------------------------
+
+-- @idx SA_IDX to use
+-- @sec_type IPSec type to use ("esp"/"ah")
+-- @esp_mode ESP mode to use encrypt(1) or authenticate(0)
+function pkt:offloadIPSec(idx, sec_type, esp_mode)
+	local mode = esp_mode or 0
+	local t = nil
+	if sec_type == "esp" then
+		t = 1
+	elseif sec_type == "ah" then
+		t = 0
+	else
+		error("Wrong IPSec type (esp/ah)")
+	end
+
+	-- Set IPSec offload flag in advanced data transmit descriptor.
+	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPSEC)
+
+	-- Set 10 bit SA_IDX
+	--if idx < 0 or idx > 1023 then
+	--	error("SA_IDX has to be in range 0-2013")
+	--end
+	--self.ol_ipsec.sec.sa_idx = idx
+	self.ol_ipsec.data = bit.bor(self.ol_ipsec.data, bit.lshift(bit.band(idx, 0x3FF), 0))
+
+	-- Set ESP enc/auth mode
+	--if mode ~= 0 and mode ~= 1 then
+	--	error("Wrong IPSec mode")
+	--end
+	--self.ol_ipsec.sec.mode = mode
+	self.ol_ipsec.data = bit.bor(self.ol_ipsec.data, bit.lshift(bit.band(mode, 0x1), 20))
+
+	-- Set IPSec ESP/AH type
+	--if sec_type == "esp" then
+	--	self.ol_ipsec.sec.type = 1
+	--elseif sec_type == "ah" then
+	--	self.ol_ipsec.sec.type = 0
+	--else
+	--	error("Wrong IPSec type (esp/ah)")
+	--end
+	self.ol_ipsec.data = bit.bor(self.ol_ipsec.data, bit.lshift(bit.band(t, 0x1), 19))
+end
+
+-- @len ESP Trailer length in bytes
+function pkt:setESPTrailerLength(len)
+	--Disable range check for performance reasons
+	--if len < 0 or len > 511 then
+	--	error("ESP trailer length has to be in range 0-511")
+	--end
+	--self.ol_ipsec.sec.esp_len = len -- dont use bitfields
+	self.ol_ipsec.data = bit.bor(self.ol_ipsec.data, bit.lshift(bit.band(len, 0x1FF), 10))
+end
 
 -------------------------------------------------------------------------------------------------------
 ---- Checksum offloading

@@ -37,6 +37,17 @@ ffi.cdef[[
 		} hash;
 	};
 
+	union rte_ipsec {
+		uint32_t data;
+		//struct {
+		//	uint16_t sa_idx:10;
+		//	uint16_t esp_len:9;
+		//	uint8_t type:1;
+		//	uint8_t mode:1;
+		//	uint16_t unused:11; /**< These 11 bits are unused. */
+		//} sec;
+	};
+
 	struct rte_mbuf {
 		void* pool;
 		void* data;
@@ -47,6 +58,7 @@ ffi.cdef[[
 		uint8_t reserved;
 		uint16_t ol_flags;
 		struct rte_pktmbuf pkt;
+		union rte_ipsec ol_ipsec;
 	};
 
 	struct mempool {
