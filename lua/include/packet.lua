@@ -232,11 +232,18 @@ end
 --- @return Name of the header
 --- @return Name of the member
 function getHeaderMember(v)
-		if type(v) == "table" then
-			return v[1], v[2]
+	if type(v) == "table" then
+		return v[1], v[2]
+	else
+		-- only the header name
+		-- special alias for ethernet
+		if v == "ethernet" or v == "eth" then
+			return "ethernet", "eth"
 		else
+			-- otherwise header name = member name
 			return v, v
 		end
+	end
 end
 
 --- Get all headers of a packet as list.
@@ -412,7 +419,6 @@ function packetSetLength(args)
 				self.]] .. member .. [[:setLength(length - ]] .. accumulatedLength + 40 .. [[)
 				]]
 		end
-		if header == "eth" then header = "ethernet" end
 		accumulatedLength = accumulatedLength + ffi.sizeof("struct " .. header .. "_header")
 	end
 
@@ -494,19 +500,12 @@ function packetMakeStruct(...)
 	-- add the specified headers and build the name
 	for _, v in ipairs(...) do
 		local header, member = getHeaderMember(v)
-		-- alias for eth -> ethernet but only for the header-struct, not for the name
-		if header == 'eth' then
-			header = 'ethernet'
-		end
 
 		-- add header
 		str = str .. [[
 		struct ]] .. header .. '_header ' .. member .. [[;
 		]]
 
-		if header == 'ethernet' then
-			header = 'eth'
-		end
 		-- build name
 		name = name .. "__" .. header .. "_" .. member
 	end
