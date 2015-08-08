@@ -208,7 +208,7 @@ local function getStats(self)
 	mod.addStats(self.mpps, true)
 	mod.addStats(self.mbit, true)
 	mod.addStats(self.wireMbit, true)
-	return self.mpps, self.mbit, self.wireMbit
+	return self.mpps, self.mbit, self.wireMbit, self.total, self.totalBytes
 end
 
 local function finalizeCounter(self, sleep)
