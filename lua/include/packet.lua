@@ -242,6 +242,10 @@ function packetCreate(...)
 
 	-- create struct
 	local packetName, ctype = packetMakeStruct(args)
+	if not packetName then
+		printf("WARNING: Failed to create new packet type.")
+		return
+	end
 
 	-- functions of the packet
 	packet.getArgs = function() return args end
@@ -289,11 +293,18 @@ end
 --- @return Name of the header
 --- @return Name of the member
 function getHeaderMember(v)
-		if type(v) == "table" then
-			return v[1], v[2]
+	if type(v) == "table" then
+		return v[1], v[2]
+	else
+		-- only the header name
+		-- special alias for ethernet
+		if v == "ethernet" or v == "eth" then
+			return "ethernet", "eth"
 		else
+			-- otherwise header name = member name
 			return v, v
 		end
+	end
 end
 
 --- Get all headers of a packet as list.
@@ -383,20 +394,70 @@ end
 function packetResolveLastHeader(self)
 	local name = self:getName()
 	local headers = self:getHeaders()
-	local next_header = headers[#headers]:resolveNextHeader()
-	
-	if not next_header then
+	local nextHeader = headers[#headers]:resolveNextHeader()
+
+	-- unable to resolve: either there is no next header, or MoonGen does not support it yet
+	-- either case, we stop and return current type of packet
+	if not nextHeader then
 		return self
 	else
-		next_member = next_header
+		local newName
 		
-		if next_header == "ethernet" then
-			next_member = "eth"
+		-- we know the next header, append it
+		name = name .. "__" .. nextHeader .. "_"
+
+		-- if simple struct (headername = membername) already exists we can directly cast
+		nextMember = nextHeader
+		newName = name .. nextMember
+
+		if not pkt.packetStructs[newName] then
+			-- check if a similar struct with this header order exists
+			newName = name
+			local found = nil
+			for k, v in pairs(pkt.packetStructs) do
+				if string.find(k, newName) and not string.find(string.gsub(k, newName, ""), "__") then
+					-- the type matches and there are no further headers following (which would have been indicated by another "__")
+					found = k
+					break
+				end
+			end
+			
+			if found then
+				newName = found
+			else
+				-- last resort: build new packet type. However, one has to consider that one header 
+				-- might occur multiple times! In this case the member must get a new (unique!) name.
+				local args = self:getArgs()
+				local newArgs = {}
+				local counter = 1
+				local newMember = nextMember
+			
+				-- build new args information and in the meantime check for duplicates
+				for i, v in ipairs(args) do
+					local header, member = getHeaderMember(v)
+					if member == newMember then
+						-- found duplicate, increase counter for newMember and keep checking for this one now
+						counter = counter + 1
+						newMember = nextMember .. "_" .. counter
+						-- TODO this assumes that there never will be a <member_X+1> before a <member_X>
+					end
+					newArgs[i] = v
+				end
+
+				-- add new header and member
+				newArgs[#newArgs + 1] = { nextHeader, newMember }
+
+				-- create new packet. It is unlikely that exactly this packet type with this made up naming scheme will be used
+				-- Therefore, we don't really want to "safe" the cast function
+				pkt.TMP_PACKET = packetCreate(unpack(newArgs))
+				
+				-- name of the new packet type
+				newName = newName .. newMember
+			end
 		end
-		-- TODO if same header exists multiple times rename member
-		name = name .. "__" .. next_header .. "_" .. next_member .. "*"
-		-- TODO if packet does not exist, create it
-		return ffi.cast(name, self):resolveLastHeader()
+
+		-- finally, cast the packet to the next better fitting packet type and continue resolving
+		return ffi.cast(newName .. "*", self):resolveLastHeader()
 	end
 end
 
@@ -419,7 +480,6 @@ function packetSetLength(args)
 				self.]] .. member .. [[:setLength(length - ]] .. accumulatedLength + 40 .. [[)
 				]]
 		end
-		if header == "eth" then header = "ethernet" end
 		accumulatedLength = accumulatedLength + ffi.sizeof("struct " .. header .. "_header")
 	end
 
@@ -465,6 +525,18 @@ function packetCalculateChecksums(args)
 	return func
 end
 
+--- Table that contains the names and args of all created packet structs
+pkt.packetStructs = {}
+
+-- List all created packet structs enlisted in packetStructs
+-- Debugging function
+function listPacketStructs()
+	printf("All available packet structs:")
+	for k, v in pairs(pkt.packetStructs) do
+		printf(k)
+	end
+end
+
 --- Creates a packet struct (cdata) consisting of different headers.
 --- Simply list the headers in the order you want them to be in a packet.
 --- If you want the member to be named differently, use the following syntax:
@@ -474,6 +546,11 @@ end
 --- makeStruct('eth', { 'ip4', 'ip' }, 'udp') --- creates an UDP packet struct
 --- --- the ip4 member of the packet is named 'ip'
 --- @endcode
+--- The name of the created (internal) struct looks as follows: 
+--- struct __HEADER1_MEMBER1__HEADER2_MEMBER2 ... 
+--- Only the "__" (double underscore) has the special meaning of "a new header starts with name 
+--- <everything until "_" (single underscore)>, followed by the member name <everything after "_" 
+--- until next header starts (indicated by next __)>"
 --- @param args list of keywords/tables of keyword-member pairs
 --- @return name name of the struct
 --- @return ctype ctype of the struct
@@ -485,11 +562,6 @@ function packetMakeStruct(...)
 	for _, v in ipairs(...) do
 		local header, member = getHeaderMember(v)
 
-		-- alias for eth -> ethernet
-		if header == 'eth' then
-			header = 'ethernet'
-		end
-
 		-- add header
 		str = str .. [[
 		struct ]] .. header .. '_header ' .. member .. [[;
@@ -498,7 +570,7 @@ function packetMakeStruct(...)
 		-- build name
 		name = name .. "__" .. header .. "_" .. member
 	end
-
+	
 	-- add rest of the struct
 	str = [[
 	struct __attribute__((__packed__)) ]] 
@@ -510,10 +582,23 @@ function packetMakeStruct(...)
 		union payload_t payload;
 	};	
 	]]
-	-- add struct definition, return full name and typeof
-	ffi.cdef(str)
+
 	name = "struct " .. name
-	return name, ffi.typeof(name .. "*")
+
+	-- check uniqueness of packet type (name of struct)
+	if pkt.packetStructs[name] then
+		printf("WARNING: Struct with name \"" .. name .. "\" already exists. Skipping.")
+		return
+	else
+		-- add struct definition
+		ffi.cdef(str)
+		
+		-- add to list of existing structs
+		pkt.packetStructs[name] = {...}
+
+		-- return full name and typeof
+		return name, ffi.typeof(name .. "*")
+	end
 end
 
 
