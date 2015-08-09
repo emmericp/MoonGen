@@ -15,7 +15,7 @@ function master(txPorts, minIp, numIps, rate)
 	rate = rate or 0
 	for currentTxPort in txPorts:gmatch("(%d+),?") do
 		currentTxPort = tonumber(currentTxPort) 
-		local txDev = device.config({ port = currentTxPort })
+		local txDev = device.config{ port = currentTxPort }
 		txDev:wait()
 		txDev:getTxQueue(0):setRate(rate)
 		dpdk.launchLua("loadSlave", currentTxPort, 0, minIp, numIps)
@@ -36,7 +36,7 @@ function loadSlave(port, queue, minA, numIPs)
 	-- min TCP packet size for IPv6 is 74 bytes (+ CRC)
 	local packetLen = ipv4 and 60 or 74
 	
-	--continue normally
+	-- continue normally
 	local queue = device.get(port):getTxQueue(queue)
 	local mem = memory.createMemPool(function(buf)
 		buf:getTcpPacket(ipv4):fill{ 
@@ -49,17 +49,13 @@ function loadSlave(port, queue, minA, numIPs)
 			pktLength=packetLen }
 	end)
 
-	local lastPrint = dpdk.getTime()
-	local totalSent = 0
-	local lastTotal = 0
-	local lastSent = 0
 	local bufs = mem:bufArray(128)
 	local counter = 0
 	local c = 0
 
 	local txStats = stats:newDevTxCounter(queue, "plain")
 	while dpdk.running() do
-		-- faill packets and set their size 
+		-- fill packets and set their size 
 		bufs:alloc(packetLen)
 		for i, buf in ipairs(bufs) do 			
 			local pkt = buf:getTcpPacket(ipv4)
@@ -83,7 +79,7 @@ function loadSlave(port, queue, minA, numIPs)
 		--offload checksums to NIC
 		bufs:offloadTcpChecksums(ipv4)
 		
-		totalSent = totalSent + queue:send(bufs)
+		queue:send(bufs)
 		txStats:update()
 	end
 	txStats:finalize()
