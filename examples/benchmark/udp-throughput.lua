@@ -8,29 +8,13 @@ function master(...)
 	if #devices == 0 then
 		return print("Usage: port [port...]")
 	end
-	map(devices, function(dev) return device.config(dev) end)
+	map(devices, function(dev) return device.config{ port = dev } end)
 	device.waitForLinks()
 	for i, dev in ipairs(devices) do
 		-- TODO: detect NUMA node and start on the right socket
 		dpdk.launchLua("loadSlave", dev, dev:getTxQueue(0), 256)
 	end
 	dpdk.waitForSlaves()
-end
-
-function counterSlave(devices)
-	local counters = {}
-	for i, dev in ipairs(devices) do
-		counters[i] = stats:newDevTxCounter(dev, "plain")
-	end
-	while dpdk.running() do
-		for _, ctr in ipairs(counters) do
-			ctr:update()
-		end
-		dpdk.sleepMillisIdle(10)
-	end
-	for _, ctr in ipairs(counters) do
-		ctr:update()
-	end
 end
 
 
