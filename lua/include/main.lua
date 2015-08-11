@@ -58,9 +58,9 @@ local function master(_, file, ...)
 		return
 	end
 	local devices = dev.getDevices()
-	printf("Found %d usable ports:", #devices)
+	printf("Found %d usable devices:", #devices)
 	for _, device in ipairs(devices) do
-		printf("   Ports %d: %s (%s)", device.id, device.mac, device.name)
+		printf("   Device %d: %s (%s)", device.id, device.mac, device.name)
 	end
 	dpdk.userScript = file -- needs to be passed to slave cores
 	local args = parseCommandLineArgs(...)
