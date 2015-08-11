@@ -313,18 +313,30 @@ function mod.waitForLinks(...)
 end
 
 
---- Wait until the device is fully initialized and up to 9 seconds to establish a link.
---- This function then reports the current link state on stdout
-function dev:wait()
-	local link = self:getLinkStatus()
+--- Wait until the device is fully initialized and up to maxWait seconds to establish a link.
+-- @param maxWait maximum number of seconds to wait for the link, default = 9
+-- This function then reports the current link state on stdout
+function dev:wait(maxWait)
+	maxWait = maxWait or 9
+	local link
+	repeat
+		link = self:getLinkStatus()
+		if maxWait > 0 then
+			dpdk.sleepMillisIdle(1000)
+			maxWait = maxWait - 1
+		else
+			break
+		end
+	until link.status
 	self.speed = link.speed
 	printf("Device %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
 	return link.status
 end
 
+
 function dev:getLinkStatus()
 	local link = ffi.new("struct rte_eth_link")
-	dpdkc.rte_eth_link_get(self.id, link)
+	dpdkc.rte_eth_link_get_nowait(self.id, link)
 	return { status = link.link_status == 1, duplexAutoneg = link.link_duplex == 0, duplex = link.link_duplex == 2, speed = link.link_speed }
 end
 
@@ -393,6 +405,7 @@ function dev:getTxStats()
 	local badPkts = tonumber(dpdkc.get_bad_pkts_sent(self.id))
 	local badBytes = tonumber(dpdkc.get_bad_bytes_sent(self.id))
 	return dpdkc.read_reg32(self.id, GPTC) - badPkts, dpdkc.read_reg32(self.id, GOTCL) + dpdkc.read_reg32(self.id, GOTCH) * 2^32 - badBytes
+	--return 0 - badPkts, dpdkc.read_reg32(self.id, 0x00328000) + dpdkc.read_reg32(self.id, 0x00328004) * 2^32 - badBytes
 end
 
 
