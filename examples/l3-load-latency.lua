@@ -101,6 +101,10 @@ end
 
 function timerSlave(txQueue, rxQueue, size, flows)
 	doArp()
+	if size < 84 then
+		printf("WARNING: packet size %d is smaller than minimum timestamp size 84. Timestamped packets will be larger than load packets.", size)
+		size = 84
+	end
 	rxQueue.dev:filterTimestamps(rxQueue)
 	local timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	local hist = hist:new()
