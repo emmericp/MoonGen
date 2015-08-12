@@ -87,6 +87,12 @@ ffi.cdef[[
 		int l4type;
 		int iptype;
 	};
+	enum rte_l4type {
+		RTE_FDIR_L4TYPE_NONE = 0,       /**< None. */
+		RTE_FDIR_L4TYPE_UDP,            /**< UDP. */
+		RTE_FDIR_L4TYPE_TCP,            /**< TCP. */
+		RTE_FDIR_L4TYPE_SCTP,           /**< SCTP. */
+	};
 
 
 	struct rte_fdir_masks {

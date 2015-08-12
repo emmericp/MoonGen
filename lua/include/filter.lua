@@ -84,8 +84,8 @@ function dev:filterTimestamps(queue, offset, ntype, ver)
 	local value = value or bit.lshift(ver, 8) + mtype
 	local filter = ffi.new("struct rte_fdir_filter")
 	filter.flex_bytes = value
+	filter.l4type = dpdkc.RTE_FDIR_L4TYPE_UDP
 	local mask = ffi.new("struct rte_fdir_masks")
-	mask.only_ip_flow = 1
 	mask.flexbytes = 1
 	dpdkc.rte_eth_dev_fdir_set_masks(self.id, mask)
 	dpdkc.rte_eth_dev_fdir_add_perfect_filter(self.id, filter, 1, queue, 0)
