@@ -4,7 +4,9 @@ LuaJIT + DPDK = fast and flexible packet generator for 10 GBit Ethernet and beyo
 MoonGen uses hardware features for accurate and precise latency measurements and rate control.
 
 You have to write a simple script for your use case.
-Read [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua) to get started.
+The example [l3-load-latency.lua](https://github.com/emmericp/MoonGen/blob/master/examples/l3-load-latency.lua?ts=4) is a good starting point.
+
+[API documentation](http://scholzd.github.io/MoonGen/index.html) (preliminary)
 
 Detailed evaluation: [Paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) (Accepted at IMC 2015, [BibTeX entry](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2014arXiv1410.3322E&data_type=BIBTEX&db_key=PRE&nocookieset=1))
 
@@ -21,7 +23,7 @@ Lua script, it can be used to implement advanced test scripts. E.g. one can use
 two instances of MoonGen that establish a connection with each other. This
 setup can be used to benchmark middle-boxes like firewalls.
 
-Reading the example script [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua) is a good way to learn more about our scripting API as this script uses most features of MoonGen.
+Reading the example script [l3-load-latency.lua](https://github.com/emmericp/MoonGen/blob/master/examples/l3-load-latency.lua?ts=4) is a good way to learn more about our scripting API as this script uses most features of MoonGen.
 
 MoonGen focuses on four main points:
 
@@ -119,9 +121,7 @@ The effects of the switch on the packet spacing needs to be analyzed carefully, 
 
 
 # API Documentation
-MoonGen uses LuaDoc. However, our build system does not yet auto-publish the generated documentation.
-
-TODO: fix this
+[Preliminary documentation](http://scholzd.github.io/MoonGen/index.html)
 
 
 # Installation
