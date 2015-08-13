@@ -22,6 +22,7 @@ local deviceDependent = {}
 deviceDependent[device.PCI_ID_X540] = require "filter_ixgbe"
 deviceDependent[device.PCI_ID_X520] = require "filter_ixgbe"
 deviceDependent[device.PCI_ID_82599] = require "filter_ixgbe"
+deviceDependent[device.PCI_ID_XL710] = require "filter_i40e"
 
 
 function dev:l2Filter(etype, queue)
