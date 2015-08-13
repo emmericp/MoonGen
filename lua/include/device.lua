@@ -387,24 +387,6 @@ function mod.getDevices()
 	return result
 end
 
--- FIXME: only tested on X540, 82599 and 82580 chips
--- these functions must be wrapped in a device-specific way
--- rx stats
-local GPRC	= 0x00004074
-local GORCL = 0x00004088
-local GORCH	= 0x0000408C
-
--- tx stats
-local GPTC	= 0x00004080
-local GOTCL	= 0x00004090
-local GOTCH	= 0x00004094
-
---- get the number of packets received since the last call to this function
-function dev:getRxStats()
-	return dpdkc.read_reg32(self.id, GPRC), dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
-end
-
-
 local function readCtr32(id, addr, last)
 	local val = dpdkc.read_reg32(id, addr)
 	local diff = val - last
@@ -435,6 +417,40 @@ local function readCtr48(id, addr, last)
 	end
 	return diff, val
 end
+
+-- FIXME: only tested on X540, 82599 and 82580 chips
+-- these functions must be wrapped in a device-specific way
+-- rx stats
+local GPRC	= 0x00004074
+local GORCL = 0x00004088
+local GORCH	= 0x0000408C
+
+-- tx stats
+local GPTC	= 0x00004080
+local GOTCL	= 0x00004090
+local GOTCH	= 0x00004094
+
+local lastGorc = 0
+local lastUprc = 0
+local lastMprc = 0
+local lastBprc = 0
+
+--- get the number of packets received since the last call to this function
+function dev:getRxStats()
+	local devId = self:getPciId()
+	if devId == mod.PCI_ID_XL710 then
+		local uprc, mprc, bprc, gorc
+		uprc, lastUprc = readCtr32(self.id, 0x003005A0, lastUprc)
+		mprc, lastMprc = readCtr32(self.id, 0x003005C0, lastMprc)
+		bprc, lastBprc = readCtr32(self.id, 0x003005E0, lastBprc)
+		gorc, lastGorc = readCtr48(self.id, 0x00300000, lastGorc)
+		return uprc + mprc + bprc, gorc
+	else
+		return dpdkc.read_reg32(self.id, GPRC), dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
+	end
+end
+
+
 
 local lastGotc = 0
 local lastUptc = 0
