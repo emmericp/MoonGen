@@ -57,6 +57,25 @@ function pkt:getSecFlags()
 	return secp, secerr
 end
 
+--- Offload VLAN tagging to the NIC for this packet.
+function pkt:setVlan(vlan, pcp, cfi)
+	local tci = vlan + bit.lshift(pcp or 0, 13) + bit.lshift(cfi or 0, 12)
+	self.pkt.vlan_tci = tci
+	self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_VLAN_PKT)
+end
+
+local VLAN_VALID_MASK = bit.bor(dpdk.PKT_RX_VLAN_PKT, dpdk.PKT_TX_VLAN_PKT)
+
+--- Get the VLAN associated with a received packet.
+function pkt:getVlan()
+	if bit.bor(self.ol_flags, VLAN_VALID_MASK) == 0 then
+		return nil
+	end
+	local tci = self.pkt.vlan_tci
+	return bit.band(tci, 0xFFF), bit.rshift(tci, 13), bit.band(bit.rshift(tci, 12), 1)
+end
+
+
 --- Set the time to wait before the packet is sent for software rate-controlled send methods.
 --- @param delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)
 function pkt:setDelay(delay)

@@ -89,13 +89,14 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
   };
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
-      .mq_mode = rss_enable ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
+			.mq_mode = rss_enable ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
 			.split_hdr_size = 0,
 			.header_split = 0,
 			.hw_ip_checksum = 1,
 			.hw_vlan_filter = 0,
 			.jumbo_frame = 0,
 			.hw_strip_crc = 1,
+			.hw_vlan_strip = 1,
 		},
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,

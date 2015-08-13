@@ -288,6 +288,16 @@ function bufArray:offloadTcpChecksums(ipv4, l2Len, l3Len)
 	end
 end
 
+--- Offloads VLAN tags on all packets.
+-- Equivalent to calling pkt:setVlan(vlan, pcp, cfi) on all packets.
+function bufArray:setVlans(vlan, pcp, cfi)
+	local tci = vlan + bit.lshift(pcp or 0, 13) + bit.lshift(cfi or 0, 12)
+	for i = 0, self.size - 1 do
+		self.array[i].pkt.vlan_tci = tci
+		self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_VLAN_PKT)
+	end
+end
+
 --- Allocates buffers from the memory pool and fills the array
 function bufArray:alloc(size)
 	dpdkc.alloc_mbufs(self.mem, self.array, self.size, size)
