@@ -29,10 +29,11 @@ ffi.cdef[[
 ]]
 
 mod.PCI_ID_X540		= 0x80861528
-mod.PCI_ID_X520         = 0x8086154D
+mod.PCI_ID_X520		= 0x8086154D
 mod.PCI_ID_82599	= 0x808610FB
 mod.PCI_ID_82580	= 0x8086150E
 mod.PCI_ID_82576	= 0x80861526
+mod.PCI_ID_XL710	= 0x80861583
 
 function mod.init()
 	dpdkc.rte_pmd_init_all_export();
@@ -360,11 +361,13 @@ function dev:getSocket()
 end
 
 local deviceNames = {
-	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
-	[mod.PCI_ID_82580]	= "82580 Gigabit Network Connection",
 	[mod.PCI_ID_82576]	= "82576 Gigabit Network Connection",
+	[mod.PCI_ID_82580]	= "82580 Gigabit Network Connection",
+	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
+	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter", -- Dell-branded NIC with an 82599
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
-	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter" }
+	[mod.PCI_ID_XL710]	= "Ethernet Controller LX710 for 40GbE QSFP+",
+}
 
 function dev:getName()
 	local id = self:getPciId()
@@ -401,11 +404,59 @@ function dev:getRxStats()
 	return dpdkc.read_reg32(self.id, GPRC), dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
 end
 
+
+local function readCtr32(id, addr, last)
+	local val = dpdkc.read_reg32(id, addr)
+	local diff = val - last
+	if diff < 0 then
+		diff = 2^32 + diff
+	end
+	return diff, val
+end
+
+local function readCtr48(id, addr, last)
+	local addrl = addr
+	local addrh = addr + 4
+	-- TODO: we probably need a memory fence here
+	-- however, the intel driver doesn't use a fence here so I guess that should work
+	local h = dpdkc.read_reg32(id, addrh)
+	local l = dpdkc.read_reg32(id, addrl)
+	local h2 = dpdkc.read_reg32(id, addrh) -- check for overflow during read
+	if h2 ~= h then
+		-- overflow during the read
+		-- we can just read the lower value again (1 overflow every 850ms max)
+		l = dpdkc.read_reg32(self.id, 0x00300680)
+		h = h2 -- use the new high value
+	end
+	local val = l + h * 2^32 -- 48 bits, double is fine
+	local diff = val - last
+	if diff < 0 then
+		diff = 2^48 + diff
+	end
+	return diff, val
+end
+
+local lastGotc = 0
+local lastUptc = 0
+local lastMptc = 0
+local lastBptc = 0
+
 function dev:getTxStats()
 	local badPkts = tonumber(dpdkc.get_bad_pkts_sent(self.id))
 	local badBytes = tonumber(dpdkc.get_bad_bytes_sent(self.id))
-	return dpdkc.read_reg32(self.id, GPTC) - badPkts, dpdkc.read_reg32(self.id, GOTCL) + dpdkc.read_reg32(self.id, GOTCH) * 2^32 - badBytes
-	--return 0 - badPkts, dpdkc.read_reg32(self.id, 0x00328000) + dpdkc.read_reg32(self.id, 0x00328004) * 2^32 - badBytes
+	-- FIXME: this should really be split up into separate functions/files
+	local devId = self:getPciId()
+	if devId == mod.PCI_ID_XL710 then
+		local uptc, mptc, bptc, gotc
+		uptc, lastUptc = readCtr32(self.id, 0x003009C0, lastUptc)
+		mptc, lastMptc = readCtr32(self.id, 0x003009E0, lastMptc)
+		bptc, lastBptc = readCtr32(self.id, 0x00300A00, lastBptc)
+		gotc, lastGotc = readCtr48(self.id, 0x00300680, lastGotc)
+		return uptc + mptc + bptc - badPkts, gotc - badBytes
+	else
+		-- TODO: check for ixgbe
+		return dpdkc.read_reg32(self.id, GPTC) - badPkts, dpdkc.read_reg32(self.id, GOTCL) + dpdkc.read_reg32(self.id, GOTCH) * 2^32 - badBytes
+	end
 end
 
 
