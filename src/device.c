@@ -32,6 +32,14 @@ void write_reg32(uint8_t port, uint32_t reg, uint32_t val) {
 	*(volatile uint32_t*)(registers[port] + reg) = val;
 }
 
+uint64_t read_reg64(uint8_t port, uint32_t reg) {
+	return *(volatile uint64_t*)(registers[port] + reg);
+}
+
+void write_reg64(uint8_t port, uint32_t reg, uint64_t val) {
+	*(volatile uint64_t*)(registers[port] + reg) = val;
+}
+
 static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
