@@ -36,7 +36,9 @@ function master(...)
 	device.waitForLinks()
 	-- max 1kpps timestamping traffic timestamping
 	-- rate will be somewhat off for high-latency links at low rates
-	txDev:getTxQueue(0):setRate(rate - (size + 4) * 8 / 1000)
+	if rate > 0 then
+		txDev:getTxQueue(0):setRate(rate - (size + 4) * 8 / 1000)
+	end
 	dpdk.launchLua("loadSlave", txDev:getTxQueue(0), rxDev, size, flows)
 	dpdk.launchLua("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), size, flows)
 	dpdk.launchLua(arp.arpTask, {
