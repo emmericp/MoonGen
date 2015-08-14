@@ -58,20 +58,16 @@ mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
 			struct rte_5tuple_filter *filter, uint16_t rx_queue);
 ]]
 
---- @todo FIXME: this function is highly device dependent
 function mod.l2Filter(dev, etype, queue)
-  -- FIXME: ASK: device compatibility???
 	if type(queue) == "table" then
 		if queue.dev ~= dev then
 			error("Queue must belong to the device being configured")
 		end
 		queue = queue.qid
 	end
-	-- TODO: support for other NICs
 	if queue == -1 then
-		queue = 63
+		queue = 127
 	end
-  --printf("devid %d, queue %d", dev.id, queue)
 	dpdkc.write_reg32(dev.id, ETQF[1], bit.bor(ETQF_FILTER_ENABLE, etype))
 	dpdkc.write_reg32(dev.id, ETQS[1], bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue, ETQS_RX_QUEUE_OFFS)))
 end
