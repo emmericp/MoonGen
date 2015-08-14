@@ -47,6 +47,8 @@ INCLUDE_DIRECTORIES(
 	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/include
 	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/lib/librte_pmd_ixgbe/ixgbe
 	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/lib/librte_pmd_ixgbe
+	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/lib/librte_pmd_i40e/i40e
+	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/lib/librte_pmd_i40e
 	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
 	 ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )

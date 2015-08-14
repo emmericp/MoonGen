@@ -59,12 +59,6 @@ mg_5tuple_add_HWfilter_ixgbe(uint8_t port_id, uint16_t index,
 ]]
 
 function mod.l2Filter(dev, etype, queue)
-	if type(queue) == "table" then
-		if queue.dev ~= dev then
-			error("Queue must belong to the device being configured")
-		end
-		queue = queue.qid
-	end
 	if queue == -1 then
 		queue = 127
 	end

@@ -26,12 +26,18 @@ deviceDependent[device.PCI_ID_XL710] = require "filter_i40e"
 
 
 function dev:l2Filter(etype, queue)
-  local fun = deviceDependent[self:getPciId()].l2Filter
-  if fun then
-    return fun(self, etype, queue)
-  else
-    errorf("l2Filter not supported, or not yet implemented for this device")
-  end
+	if type(queue) == "table" then
+		if queue.dev.id ~= self.id then
+			error("Queue must belong to the device being configured")
+		end
+		queue = queue.qid
+	end
+	local fun = deviceDependent[self:getPciId()].l2Filter
+	if fun then
+		return fun(self, etype, queue)
+	else
+		errorf("l2Filter not supported, or not yet implemented for this device")
+	end
 end
 
 --- Installs a 5tuple filter on the device.

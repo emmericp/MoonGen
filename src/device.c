@@ -6,6 +6,8 @@
 #include <rte_mbuf.h>
 #include <ixgbe_type.h>
 #include <rte_mbuf.h>
+#include <i40e_type.h>
+#include <i40e_ethdev.h>
 #include "device.h"
 
 // default descriptors per queue
@@ -168,6 +170,18 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	tctl &= ~(1 << 3); // PSP
 	write_reg32(port, 0x0400, tctl);
 	return rc; 
+}
+
+void* get_eth_dev(int port) {
+	return &rte_eth_devices[port];
+}
+
+void* get_i40e_dev(int port) {
+	return I40E_DEV_PRIVATE_TO_HW(rte_eth_devices[port].data->dev_private);
+}
+
+int get_i40e_vsi_seid(int port) {
+	return I40E_DEV_PRIVATE_TO_PF(rte_eth_devices[port].data->dev_private)->main_vsi->seid;
 }
 
 uint64_t get_mac_addr(int port, char* buf) {
