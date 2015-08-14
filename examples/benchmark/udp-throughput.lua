@@ -3,25 +3,42 @@ local memory	= require "memory"
 local device	= require "device"
 local stats		= require "stats"
 
+local PKT_SIZE	= 60
+
 function master(...)
 	local devices = { ... }
 	if #devices == 0 then
-		return print("Usage: port [port...]")
+		return print("Usage: port[:numcores] [port:[numcores] ...]")
 	end
-	map(devices, function(dev) return device.config{ port = dev } end)
+	for i, v in ipairs(devices) do
+		local id, cores
+		if type(v) == "string" then
+			id, cores = tonumberall(v:match("(%d+):(%d+)"))
+		else
+			id, cores = v, 1
+		end
+		if not id or not cores then
+			print("could not parse " .. tostring(v))
+			return
+		end
+		devices[i] = { device.config{ port = id, txQueues = cores }, cores }
+	end
 	device.waitForLinks()
 	for i, dev in ipairs(devices) do
 		-- TODO: detect NUMA node and start on the right socket
-		dpdk.launchLua("loadSlave", dev, dev:getTxQueue(0), 256)
+		local dev, cores = unpack(dev)
+		for i = 1, cores do
+			dpdk.launchLua("loadSlave", dev, dev:getTxQueue(i - 1), 256, i == 1)
+		end
 	end
 	dpdk.waitForSlaves()
 end
 
 
-function loadSlave(dev, queue, numFlows)
+function loadSlave(dev, queue, numFlows, showStats)
 	local mem = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
-			pktLength = 60,
+			pktLength = PKT_SIZE,
 			ethSrc = queue,
 			ethDst = "10:11:12:13:14:15",
 			ip4Dst = "192.168.1.1",
@@ -34,7 +51,7 @@ function loadSlave(dev, queue, numFlows)
 	local flow = 0
 	local ctr = stats:newDevTxCounter(dev, "plain")
 	while dpdk.running() do
-		bufs:alloc(60)
+		bufs:alloc(PKT_SIZE)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
 			pkt.ip4.src:set(baseIP + flow)
@@ -43,8 +60,8 @@ function loadSlave(dev, queue, numFlows)
 		-- UDP checksums are optional, so just IP checksums are sufficient here
 		bufs:offloadIPChecksums()
 		queue:send(bufs)
-		ctr:update()
+		if showStats then ctr:update() end
 	end
-	ctr:finalize()
+	if showStats then ctr:finalize() end
 end
 
