@@ -1,5 +1,5 @@
 --- This script implements a simple QoS test by generating two flows and measuring their latencies.
-local dpdk		= require "dpdk"
+local mg		= require "dpdk" -- TODO: rename dpdk module to "moongen"
 local memory	= require "memory"
 local device	= require "device"
 local ts		= require "timestamping"
@@ -47,19 +47,19 @@ function master(txPort, rxPort, bgRate, fgRate)
 	txDev:getTxQueue(0):setRate(bgRate)
 	txDev:getTxQueue(1):setRate(fgRate)
 	-- background traffic
-	dpdk.launchLua("loadSlave", txDev:getTxQueue(0), PORT_BG)
+	mg.launchLua("loadSlave", txDev:getTxQueue(0), PORT_BG)
 	-- high priority traffic (different UDP port)
-	dpdk.launchLua("loadSlave", txDev:getTxQueue(1), PORT_FG)
+	mg.launchLua("loadSlave", txDev:getTxQueue(1), PORT_FG)
 	-- count the incoming packets
-	dpdk.launchLua("counterSlave", rxDev:getRxQueue(0))
+	mg.launchLua("counterSlave", rxDev:getRxQueue(0))
 	-- measure latency from a second queue
 	timerSlave(txDev:getTxQueue(2), rxDev:getRxQueue(1), PORT_BG, PORT_FG, fgRate / (fgRate + bgRate))
 	-- wait until all tasks are finished
-	dpdk.waitForSlaves()
+	mg.waitForSlaves()
 end
 
 function loadSlave(queue, port)
-	dpdk.sleepMillis(100) -- wait a few milliseconds to ensure that the rx thread is running
+	mg.sleepMillis(100) -- wait a few milliseconds to ensure that the rx thread is running
 	-- TODO: implement barriers
 	local mem = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
@@ -78,7 +78,7 @@ function loadSlave(queue, port)
 	local baseIP = parseIPAddress(IP_SRC)
 	-- a buf array is essentially a very thing wrapper around a rte_mbuf*[], i.e. an array of pointers to packet buffers
 	local bufs = mem:bufArray()
-	while dpdk.running() do
+	while mg.running() do
 		-- allocate buffers from the mem pool and store them in this array
 		bufs:alloc(PKT_SIZE)
 		for _, buf in ipairs(bufs) do
@@ -104,7 +104,7 @@ function counterSlave(queue)
 	-- however, queue statistics are also not yet implemented and the DPDK abstraction is somewhat annoying
 	local bufs = memory.bufArray()
 	local ctrs = {}
-	while dpdk.running(100) do
+	while mg.running(100) do
 		local rx = queue:recv(bufs)
 		for i = 1, rx do
 			local buf = bufs[i]
@@ -139,10 +139,10 @@ function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 	local timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	local histBg, histFg = hist(), hist()
 	-- wait one second, otherwise we might start timestamping before the load is applied
-	dpdk.sleepMillis(1000)
+	mg.sleepMillis(1000)
 	local baseIP = parseIPAddress(IP_SRC)
 	local rateLimit = timer:new(0.001)
-	while dpdk.running() do
+	while mg.running() do
 		local port = math.random() <= ratio and port or bgPort
 		local lat = timestamper:measureLatency(PKT_SIZE, function(buf)
 			local pkt = buf:getUdpPacket()
@@ -167,7 +167,7 @@ function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 		rateLimit:wait()
 		rateLimit:reset()
 	end
-	dpdk.sleepMillis(100) -- to prevent overlapping stdout
+	mg.sleepMillis(100) -- to prevent overlapping stdout
 	histBg:save("hist-background.csv")
 	histFg:save("hist-foreground.csv")
 	histBg:print("Background traffic")
