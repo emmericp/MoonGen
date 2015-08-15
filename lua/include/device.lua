@@ -109,7 +109,7 @@ local devices = {}
 --- @todo FIXME: add description for speed and dropEnable parameters.
 function mod.config(...)
   local args = {...}
-  if #args > 1 then
+  if #args > 1 or type((...)) == "number" then
     -- this is for legacy compatibility when calling the function  without named arguments
     print("[WARNING] You are using a deprecated method for invoking device.config. config(...) should be used with named arguments. For details: see documentation")
     if not args[2] or type(args[2]) == "number" then
