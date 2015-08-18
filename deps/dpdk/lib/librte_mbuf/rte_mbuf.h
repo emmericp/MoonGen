@@ -96,11 +96,15 @@ struct rte_ctrlmbuf {
 #define PKT_RX_IPV6_HDR_EXT  0x0100 /**< RX packet with extended IPv6 header. */
 #define PKT_RX_IEEE1588_PTP  0x0200 /**< RX IEEE1588 L2 Ethernet PT Packet. */
 #define PKT_RX_IEEE1588_TMST 0x0400 /**< RX IEEE1588 L2/L4 timestamped packet.*/
+#define PKT_RX_IPSEC_SECP    0x0800 /**< RX Security operation processed by NIC. */
+#define PKT_RX_SECERR_LSB    0x1000 /**< RX Security Error reporting (LSB). */
+#define PKT_RX_SECERR_MSB    0x2000 /**< RX Security Error reporting (MSB). */
 
 #define PKT_TX_VLAN_PKT      0x0800 /**< TX packet is a 802.1q VLAN packet. */
 #define PKT_TX_IP_CKSUM      0x1000 /**< IP cksum of TX pkt. computed by NIC. */
 #define PKT_TX_IPV4_CSUM     0x1000 /**< Alias of PKT_TX_IP_CKSUM. */
 #define PKT_TX_NO_CRC_CSUM   0x0001 /**< Disable CRC calculation. Note: overlaps with RX_VLAN_PKT. */
+#define PKT_TX_IPSEC         0x0002 /**< Enable IPSec offload. Note: overlaps with RX_RSS_HASH. */
 #define PKT_TX_IPV4          PKT_RX_IPV4_HDR /**< IPv4 with no IP checksum offload. */
 #define PKT_TX_IPV6          PKT_RX_IPV6_HDR /**< IPv6 packet */
 /*
@@ -121,7 +125,7 @@ struct rte_ctrlmbuf {
 /**
  * Bit Mask to indicate what bits required for building TX context
  */
-#define PKT_TX_OFFLOAD_MASK (PKT_TX_VLAN_PKT | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)
+#define PKT_TX_OFFLOAD_MASK (PKT_TX_VLAN_PKT | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK | PKT_TX_IPSEC)
 
 /** Offload features */
 union rte_vlan_macip {
@@ -132,6 +136,17 @@ union rte_vlan_macip {
 		uint16_t vlan_tci;
 		/**< VLAN Tag Control Identifier (CPU order). */
 	} f;
+};
+
+union rte_ipsec {
+	uint32_t data;
+	//struct {
+	//	uint16_t sa_idx:10;
+	//	uint16_t esp_len:9;
+	//	uint8_t type:1;
+	//	uint8_t mode:1;
+	//	uint16_t unused:11; /**< These 11 bits are unused. */
+	//} sec;
 };
 
 /*
@@ -217,6 +232,7 @@ struct rte_mbuf {
 		uint32_t metadata32[0];
 		uint64_t metadata64[0];
 	};
+	union rte_ipsec ol_ipsec;
 } __rte_cache_aligned;
 
 #define RTE_MBUF_METADATA_UINT8(mbuf, offset)              \

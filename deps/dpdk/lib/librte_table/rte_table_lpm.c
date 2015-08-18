@@ -318,6 +318,7 @@ rte_table_lpm_lookup(
 		uint64_t pkt_mask = 1LLU << i;
 
 		if (pkt_mask & pkts_mask) {
+      printf("pktmaskmatch\n");
 			struct rte_mbuf *pkt = pkts[i];
 			uint32_t ip = rte_bswap32(
 				RTE_MBUF_METADATA_UINT32(pkt, lpm->offset));

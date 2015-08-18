@@ -358,12 +358,16 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 static inline void
 ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		volatile struct ixgbe_adv_tx_context_desc *ctx_txd,
-		uint16_t ol_flags, uint32_t vlan_macip_lens)
+		uint16_t ol_flags, uint32_t vlan_macip_lens, uint32_t ipsec)
 {
+	//cf. table 7-35 (chapter 7.2.3.2.3 Advanced Transmit Context Descriptor)
 	uint32_t type_tucmd_mlhl;
+	uint32_t seqnum_seed = 0;
 	uint32_t mss_l4len_idx;
 	uint32_t ctx_idx;
 	uint32_t cmp_mask;
+	union rte_ipsec myipsec;
+	myipsec.data = ipsec;
 
 	ctx_idx = txq->ctx_curr;
 	cmp_mask = 0;
@@ -376,6 +380,36 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	if (ol_flags & PKT_TX_IP_CKSUM) {
 		type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4;
 		cmp_mask |= TX_MAC_LEN_CMP_MASK;
+	}
+
+	if (ol_flags & PKT_TX_IPSEC) {
+		uint16_t sec_sa_idx = myipsec.data & 0x3FF;
+		uint16_t sec_esp_len = (myipsec.data >> 10) & 0x1FF;
+		uint8_t sec_type = (myipsec.data >> 19) & 0x1;
+		uint8_t sec_mode = (myipsec.data >> 20) & 0x1;
+		/*
+		printf("========== Hello DPDK ==========\n");
+		printf("IPSEC:  0x%x\n", ipsec);
+		printf("SAIDX:  %d\n", sec_sa_idx);
+		printf("ESPLEN: %d\n", sec_esp_len);
+		printf("TYPE:   %d\n", sec_type);
+		printf("MODE:   %d\n", sec_mode);
+		printf("=========== End DPDK ===========\n");
+		*/
+
+		//Set SA_IDX, TUCMD(Encryption) and TUCMD(IPSEC_TYPE) dynamically
+		//TUCMD is 11 bits, Encryption (bit 5) 1=ESP-encryption 0=ESP-auth, IPSEC_TYPE (bit 4) 1=ESP 0=AH
+		//If set, IPSec type is ESP, otherwise AH
+		if(sec_type == 1) {
+			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_TYPE_ESP;
+			//If set, ESP shall also be encrypted, otherwise just authenticated
+			if(sec_mode)
+				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPSEC_ENCRYPT_EN;
+			//Set length of the ESP trailer
+			type_tucmd_mlhl |= sec_esp_len;
+		}
+		//Set Idx into the SA table
+		seqnum_seed |= sec_sa_idx;
 	}
 
 	/* Specify which HW CTX to upload. */
@@ -413,7 +447,7 @@ ixgbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
 	ctx_txd->mss_l4len_idx   = rte_cpu_to_le_32(mss_l4len_idx);
-	ctx_txd->seqnum_seed     = 0;
+	ctx_txd->seqnum_seed     = rte_cpu_to_le_32(seqnum_seed);
 }
 
 /*
@@ -453,6 +487,13 @@ tx_desc_cksum_flags_to_olinfo(uint16_t ol_flags)
 	tmp  = l4_olinfo[(ol_flags & PKT_TX_L4_MASK)  != PKT_TX_L4_NO_CKSUM];
 	tmp |= l3_olinfo[(ol_flags & PKT_TX_IP_CKSUM) != 0];
 	return tmp;
+}
+
+static inline uint32_t
+tx_desc_ipsec_flags_to_olinfo(uint16_t ol_flags)
+{
+	static const uint32_t ipsec_olinfo[2] = {0, IXGBE_ADVTXD_POPTS_IPSEC};
+	return ipsec_olinfo[(ol_flags & PKT_TX_IPSEC) != 0];
 }
 
 static inline uint32_t
@@ -552,6 +593,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_used;
 	uint16_t tx_ol_req;
 	uint32_t vlan_macip_lens;
+	uint32_t ipsec;
 	uint32_t ctx = 0;
 	uint32_t new_ctx;
 
@@ -580,6 +622,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		ol_flags = tx_pkt->ol_flags;
 		vlan_macip_lens = tx_pkt->pkt.vlan_macip.data;
+		ipsec = tx_pkt->ol_ipsec.data;
 
 		/* If hardware offload required */
 		tx_ol_req = (uint16_t)(ol_flags & PKT_TX_OFFLOAD_MASK);
@@ -730,7 +773,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				}
 
 				ixgbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
-				    vlan_macip_lens);
+				    vlan_macip_lens, ipsec);
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;
@@ -744,6 +787,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 */
 			cmd_type_len  |= tx_desc_vlan_flags_to_cmdtype(ol_flags);
 			olinfo_status |= tx_desc_cksum_flags_to_olinfo(ol_flags);
+			olinfo_status |= tx_desc_ipsec_flags_to_olinfo(ol_flags);
 			olinfo_status |= ctx << IXGBE_ADVTXD_IDX_SHIFT;
 		}
 
@@ -1164,6 +1208,31 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		rxdp = &rx_ring[rx_id];
 		staterr = rxdp->wb.upper.status_error;
+
+		//int dd = 0; //descriptor done
+		//int eop = 0; //end of packet
+		int secp = 0; //security offload processed
+
+		//if(staterr & IXGBE_RXDADV_STAT_DD)
+		//	dd = 1;
+		//if(staterr & IXGBE_RXDADV_STAT_EOP)
+		//	eop = 1;
+		if(staterr & IXGBE_RXDADV_IPSEC_STATUS_SECP)
+			secp = 1;
+
+		//uint16_t packet_type = rxdp->wb.lower.lo_dword.hs_rss.pkt_info >> 4; //Bit 13 missing (but unused)
+		uint32_t exterr = staterr >> 20;
+		uint16_t secerr = exterr & 0x180; //only bits 7 & 8, i.e. SECERR
+		secerr = secerr >> 7; //move to left
+		/*
+		printf("========== HELLO DPDK ==========\n");
+		printf("Paket Type: 0x%x\n", packet_type); //Bit 11 should be 0 (non L2 pkt), Bit 8=ESP, Bit 9=AH (p. 304)
+		printf("RXADV: Status Error 0x%x\n", staterr);
+		printf("RXADV: SECERR 0x%x\n", secerr);
+		printf("RXADV: DD(%d), EOP(%d), SECP(%d)\n", dd, eop, secp);
+		printf("=========== END DPDK ===========\n");
+		*/
+
 		if (! (staterr & rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD)))
 			break;
 		rxd = *rxdp;
@@ -1268,6 +1337,8 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				rx_desc_status_to_pkt_flags(staterr));
 		pkt_flags = (uint16_t)(pkt_flags |
 				rx_desc_error_to_pkt_flags(staterr));
+		pkt_flags |= ((secp << 11) & PKT_RX_IPSEC_SECP);
+		pkt_flags |= ((secerr << 12) & (PKT_RX_SECERR_MSB | PKT_RX_SECERR_LSB));
 		rxm->ol_flags = pkt_flags;
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))

@@ -1,3 +1,9 @@
+---------------------------------
+--- @file dpdkc.lua
+--- @brief DPDKc ...
+--- @todo TODO docu
+---------------------------------
+
 --- low-level dpdk wrapper
 local ffi = require "ffi"
 
@@ -31,6 +37,17 @@ ffi.cdef[[
 		} hash;
 	};
 
+	union rte_ipsec {
+		uint32_t data;
+		//struct {
+		//	uint16_t sa_idx:10;
+		//	uint16_t esp_len:9;
+		//	uint8_t type:1;
+		//	uint8_t mode:1;
+		//	uint16_t unused:11; /**< These 11 bits are unused. */
+		//} sec;
+	};
+
 	struct rte_mbuf {
 		void* pool;
 		void* data;
@@ -41,6 +58,7 @@ ffi.cdef[[
 		uint8_t reserved;
 		uint16_t ol_flags;
 		struct rte_pktmbuf pkt;
+		union rte_ipsec ol_ipsec;
 	};
 
 	struct mempool {
@@ -68,6 +86,12 @@ ffi.cdef[[
 		} ip_dst;
 		int l4type;
 		int iptype;
+	};
+	enum rte_l4type {
+		RTE_FDIR_L4TYPE_NONE = 0,       /**< None. */
+		RTE_FDIR_L4TYPE_UDP,            /**< UDP. */
+		RTE_FDIR_L4TYPE_TCP,            /**< TCP. */
+		RTE_FDIR_L4TYPE_SCTP,           /**< SCTP. */
 	};
 
 
@@ -126,6 +150,15 @@ ffi.cdef[[
 		uint64_t olbbytes;
 		/**< Total number of good bytes transmitted to loopback,VF Only */
 	};
+
+  struct mg_rss_hash_mask{
+    uint8_t ipv4 :1;
+    uint8_t tcp_ipv4 :1;
+    uint8_t udp_ipv4 :1;
+    uint8_t ipv6 :1;
+    uint8_t tcp_ipv6 :1;
+    uint8_t udp_ipv6 :1;
+  };
 ]]
 
 -- dpdk functions and wrappers
@@ -155,16 +188,22 @@ ffi.cdef[[
 	uint64_t get_mac_addr(int port, char* buf);
 	void rte_eth_link_get(uint8_t port, struct rte_eth_link* link);
 	void rte_eth_link_get_nowait(uint8_t port, struct rte_eth_link* link);
-	int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en);
+	//int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en);
+  int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions);
 	void get_mac_addr(int port, char* buf);
 	uint32_t get_pci_id(uint8_t port);
 	uint32_t read_reg32(uint8_t port, uint32_t reg);
+	uint64_t read_reg64(uint8_t port, uint32_t reg);
 	void write_reg32(uint8_t port, uint32_t reg, uint32_t val);
-	void sync_clocks(uint8_t port1, uint8_t port2);
+	void write_reg64(uint8_t port, uint32_t reg, uint64_t val);
+	void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh);
 	int32_t get_clock_difference(uint8_t port1, uint8_t port2);
 	uint8_t get_socket(uint8_t port);
 	void rte_eth_promiscuous_enable(uint8_t port);
 	void rte_eth_promiscuous_disable(uint8_t port);
+	void* get_eth_dev(int port);
+	void* get_i40e_dev(int port);
+	int get_i40e_vsi_seid(int port);
 
 	// rx & tx
 	uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);

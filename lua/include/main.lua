@@ -1,3 +1,9 @@
+---------------------------------
+--- @file main.lua
+--- @brief Main ...
+--- @todo TODO docu
+---------------------------------
+
 -- globally available utility functions
 require "utils"
 -- all available headers, packets, ... and their utility functions
@@ -52,9 +58,9 @@ local function master(_, file, ...)
 		return
 	end
 	local devices = dev.getDevices()
-	printf("Found %d usable ports:", #devices)
+	printf("Found %d usable devices:", #devices)
 	for _, device in ipairs(devices) do
-		printf("   Ports %d: %s (%s)", device.id, device.mac, device.name)
+		printf("   Device %d: %s (%s)", device.id, device.mac, device.name)
 	end
 	dpdk.userScript = file -- needs to be passed to slave cores
 	local args = parseCommandLineArgs(...)
@@ -86,8 +92,12 @@ local function slave(taskId, userscript, args)
 	local buf = ffi.new("char[?]", #vals + 1)
 	ffi.copy(buf, vals)
 	dpdkc.store_result(taskId, buf)
-	dev.reclaimTxBuffers()
-	memory.freeMemPools()
+	local ok, err = pcall(dev.reclaimTxBuffers)
+	if ok then
+		memory.freeMemPools()
+	else
+		printf("Could not reclaim tx memory: %s", err)
+	end
 	--require("jit.p").stop()
 end
 

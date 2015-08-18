@@ -1,3 +1,10 @@
+------------------------------------------------------------------------
+--- @file headers.lua
+--- @brief C struct definitions for all protocol headers and respective 
+--- additional structs for instance addresses.
+--- Please check the source code for more information.
+------------------------------------------------------------------------
+
 local ffi = require "ffi"
 
 -- structs
@@ -28,6 +35,14 @@ ffi.cdef[[
 		uint8_t 	uint8[16];
 		uint32_t	uint32[4];
 		uint64_t	uint64[2];
+	};
+
+	union ipsec_iv {
+		uint32_t	uint32[2];
+	};
+
+	union ipsec_icv {
+		uint32_t	uint32[4];
 	};
 	
 
@@ -124,6 +139,22 @@ ffi.cdef[[
 		uint8_t		reserved[3];
 		uint8_t		vni[3];
 		uint8_t		reserved2;
+	};
+
+	struct __attribute__((__packed__)) esp_header {
+		uint32_t	spi;
+		uint32_t	sqn;
+		union ipsec_iv	iv;
+	};
+
+	struct __attribute__((__packed__)) ah_header {
+		uint8_t		nextHeader;
+		uint8_t		len;
+		uint16_t	reserved;
+		uint32_t	spi;
+		uint32_t	sqn;
+		union ipsec_iv	iv;
+		union ipsec_icv	icv;
 	};
 ]]
 

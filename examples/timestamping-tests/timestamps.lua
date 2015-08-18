@@ -21,6 +21,7 @@ function runTest(txQueue, rxQueue)
 	while dpdk.running() do
 		hist:update(timestamper:measureLatency())
 	end
+	hist:save("histogram.csv")
 	hist:print()
 end
 

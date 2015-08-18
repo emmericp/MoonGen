@@ -832,7 +832,7 @@ test_failing_mbuf_sanity_check(void)
 static int
 test_mbuf(void)
 {
-	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) != 128);
 
 	/* create pktmbuf pool if it does not exist */
 	if (pktmbuf_pool == NULL) {
