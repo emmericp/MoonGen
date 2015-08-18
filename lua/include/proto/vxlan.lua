@@ -1,3 +1,14 @@
+------------------------------------------------------------------------
+--- @file vxlan.lua
+--- @brief VXLAN utility.
+--- Utility functions for the vxlan_header struct
+--- defined in \ref headers.lua . \n
+--- Includes:
+--- - VXLAN constants
+--- - VXLAN header utility
+--- - Definition of VXLAN packets
+------------------------------------------------------------------------
+
 local ffi = require "ffi"
 local pkt = require "packet"
 
@@ -80,13 +91,15 @@ function vxlanHeader:getReserved2String()
 	return format("0x%02x", self:getReserved2())
 end
 
---- Set all members of the vxlan header.
--- Per default, all members are set to default values specified in the respective set function.
--- Optional named arguments can be used to set a member to a user-provided value.
--- @param args Table of named arguments. Available arguments: vxlanFlags, vxlanVNI, vxlanReserved, vxlanReserved2
--- @param pre prefix for namedArgs. Default 'vxlan'.
--- @usage fill() -- only default values
--- @usage fill{ vxlanFlags=1 } -- all members are set to default values with the exception of vxlanFlags, ...
+--- Set all members of the ip header.
+--- Per default, all members are set to default values specified in the respective set function.
+--- Optional named arguments can be used to set a member to a user-provided value.
+--- @param args Table of named arguments. Available arguments: Flags, Reserved, VNI, Reserved2
+--- @param pre prefix for namedArgs. Default 'vxlan'.
+--- @code
+--- fill() --- only default values
+--- fill{ vxlanFlags=1 } --- all members are set to default values with the exception of vxlanFlags
+--- @endcode
 function vxlanHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "vxlan"
@@ -98,9 +111,9 @@ function vxlanHeader:fill(args, pre)
 end
 
 --- Retrieve the values of all members.
--- @param pre prefix for namedArgs. Default 'vxlan'.
--- @return Table of named arguments. For a list of arguments see "See also".
--- @see vxlanHeader:fill
+--- @param pre prefix for namedArgs. Default 'vxlan'.
+--- @return Table of named arguments. For a list of arguments see "See also".
+--- @see vxlanHeader:fill
 function vxlanHeader:get(pre)
 	pre = pre or "vxlan"
 
@@ -114,7 +127,7 @@ function vxlanHeader:get(pre)
 end
 
 --- Retrieve the values of all members.
--- @return Values in string format.
+--- @return Values in string format.
 function vxlanHeader:getString()
 	return "VXLAN flags " .. self:getFlagsString() 
 		.. " res " .. self:getReservedString()
@@ -122,10 +135,24 @@ function vxlanHeader:getString()
 		.. " res " .. self:getReserved2String()
 end
 
+--- Resolve which header comes after this one (in a packet).
+--- For instance: in tcp/udp based on the ports.
+--- This function must exist and is only used when get/dump is executed on
+--- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
+--- @return String next header (e.g. 'udp', 'icmp', nil)
 function vxlanHeader:resolveNextHeader()
 	return nil
 end	
 
+--- Change the default values for namedArguments (for fill/get).
+--- This can be used to for instance calculate a length value based on the total packet length.
+--- See proto/ip4.setDefaultNamedArgs as an example.
+--- This function must exist and is only used by packet.fill.
+--- @param pre The prefix used for the namedArgs, e.g. 'ip4'
+--- @param namedArgs Table of named arguments (see See Also)
+--- @param nextHeader The header following after this header in a packet
+--- @param accumulatedLength The so far accumulated length for previous headers in a packet
+--- @see ip4Header:fill
 function vxlanHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
 end
@@ -134,7 +161,6 @@ end
 --- Packets
 ----------------------------------------------------------------------------------
 
--- TODO replace eth with 802.1Q (NYI)
 pkt.getVxlanPacket = packetCreate("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
 
 
