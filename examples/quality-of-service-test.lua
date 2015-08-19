@@ -47,9 +47,13 @@ function master(txPort, rxPort, bgRate, fgRate)
 	txDev:getTxQueue(0):setRate(bgRate)
 	txDev:getTxQueue(1):setRate(fgRate)
 	-- background traffic
-	mg.launchLua("loadSlave", txDev:getTxQueue(0), PORT_BG)
+	if bgRate > 0 then
+		mg.launchLua("loadSlave", txDev:getTxQueue(0), PORT_BG)
+	end
 	-- high priority traffic (different UDP port)
-	mg.launchLua("loadSlave", txDev:getTxQueue(1), PORT_FG)
+	if fgRate > 0 then
+		mg.launchLua("loadSlave", txDev:getTxQueue(1), PORT_FG)
+	end
 	-- count the incoming packets
 	mg.launchLua("counterSlave", rxDev:getRxQueue(0))
 	-- measure latency from a second queue
