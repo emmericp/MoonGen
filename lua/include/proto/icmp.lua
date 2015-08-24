@@ -254,6 +254,7 @@ end
 --- @param namedArgs Table of named arguments (see See Also)
 --- @param nextHeader The header following after this header in a packet
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
+--- @return Table of namedArgs
 --- @see icmpHeader:fill
 function icmpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
