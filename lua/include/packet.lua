@@ -107,12 +107,13 @@ function pkt:dump(bytes)
 end
 
 -------------------------------------------------------------------------------------------------------
---- IPSec offloading
+---- IPSec offloading
 -------------------------------------------------------------------------------------------------------
 
--- @idx SA_IDX to use
--- @sec_type IPSec type to use ("esp"/"ah")
--- @esp_mode ESP mode to use encrypt(1) or authenticate(0)
+--- Use IPsec offloading.
+--- @param idx SA_IDX to use
+--- @param sec_type IPSec type to use ("esp"/"ah")
+--- @param esp_mode ESP mode to use encrypt(1) or authenticate(0)
 function pkt:offloadIPSec(idx, sec_type, esp_mode)
 	local mode = esp_mode or 0
 	local t = nil
@@ -152,7 +153,8 @@ function pkt:offloadIPSec(idx, sec_type, esp_mode)
 	self.ol_ipsec.data = bit.bor(self.ol_ipsec.data, bit.lshift(bit.band(t, 0x1), 19))
 end
 
--- @len ESP Trailer length in bytes
+--- Set the ESP trailer length
+--- @param len ESP Trailer length in bytes
 function pkt:setESPTrailerLength(len)
 	--Disable range check for performance reasons
 	--if len < 0 or len > 511 then

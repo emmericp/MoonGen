@@ -260,7 +260,7 @@ end
 --- Read AES 128 bit Key and Salt from the Hardware TX SA table
 --- @param port The port/interface to use
 --- @param idx Index into the TX SA table (0-1023)
---- @param return Key and Salt (as hex string)
+--- @return Key and Salt (as hex string)
 function mod.tx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
 		error("Idx must be in range 0-1023")
@@ -444,7 +444,7 @@ end
 --- @param port The port/interface to use
 --- @param idx Index into the RX IP table (0-127)
 --- @param is_ipv4 IP Version expected (true/false)
---- @param return The IP(v4/v6)-Address (as string) and a IP Version Flag (true=IPv4, false=IPv6)
+--- @return The IP(v4/v6)-Address (as string) and a IP Version Flag (true=IPv4, false=IPv6)
 function mod.rx_get_ip(port, idx, is_ipv4)
 	if idx > 127 or idx < 0 then
 		error("Idx must be in range 0-127")
