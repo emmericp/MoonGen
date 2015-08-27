@@ -18,32 +18,41 @@ local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, 
 local format = string.format
 
 ---------------------------------------------------------------------------
---- vxlan constants 
+---- vxlan constants 
 ---------------------------------------------------------------------------
 
 local vxlan = {}
 
 
 ---------------------------------------------------------------------------
---- vxlan header
+---- vxlan header
 ---------------------------------------------------------------------------
 
+--- Module for vxlan_header struct (see \ref headers.lua).
 local vxlanHeader = {}
 vxlanHeader.__index = vxlanHeader
 
+--- Set the flags.
+--- @param int VXLAN header flags as 8 bit integer.
 function vxlanHeader:setFlags(int)
 	int = int or 8 -- '00001000'
 	self.flags = int
 end
 
+--- Retrieve the flags.
+--- @return Flags as 8 bit integer.
 function vxlanHeader:getFlags()
 	return self.flags
 end
 
+--- Retrieve the flags.
+--- @return Flags as string.
 function vxlanHeader:getFlagsString()
 	return format("0x%02x", self:getFlags())
 end
 
+--- Set the first reserved field.
+--- @param int VXLAN header first reserved field as 24 bit integer.
 function vxlanHeader:setReserved(int)
 	int = int or 0
 	
@@ -53,14 +62,20 @@ function vxlanHeader:setReserved(int)
 	self.reserved[2] = band(int, 0x0000FF)
 end
 
+--- Retrieve the first reserved field.
+--- @return First reserved field as 24 bit integer.
 function vxlanHeader:getReserved()
 	return bor(lshift(self.reserved[0], 16), bor(lshift(self.reserved[1], 8), self.reserved[2]))
 end
 
+--- Retrieve the first reserved field.
+--- @return First reserved field as string.
 function vxlanHeader:getReservedString()
 	return format("0x%06x", self:getReserved())
 end
 
+--- Set the VXLAN network identifier (VNI).
+--- @param int VXLAN header VNI as 24 bit integer.
 function vxlanHeader:setVNI(int)
 	int = int or 0
 	
@@ -70,23 +85,33 @@ function vxlanHeader:setVNI(int)
 	self.vni[2] = band(int, 0x0000FF)
 end
 
+--- Retrieve the VXLAN network identifier (VNI).
+--- @return VNI as 24 bit integer.
 function vxlanHeader:getVNI()
 	return bor(lshift(self.vni[0], 16), bor(lshift(self.vni[1], 8), self.vni[2]))
 end
 
+--- Retrieve the VXLAN network identifier (VNI).
+--- @return VNI as string.
 function vxlanHeader:getVNIString()
 	return format("0x%06x", self:getVNI())
 end
 
+--- Set the second reserved field.
+--- @param int VXLAN header second reserved field as 8 bit integer.
 function vxlanHeader:setReserved2(int)
 	int = int or 0
 	self.reserved2 = int
 end
 
+--- Retrieve the second reserved field.
+--- @return Second reserved field as 8 bit integer.
 function vxlanHeader:getReserved2()
 	return self.reserved2
 end
 
+--- Retrieve the second reserved field.
+--- @return Second reserved field as string.
 function vxlanHeader:getReserved2String()
 	return format("0x%02x", self:getReserved2())
 end
@@ -152,20 +177,21 @@ end
 --- @param namedArgs Table of named arguments (see See Also)
 --- @param nextHeader The header following after this header in a packet
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
+--- @return Table of namedArgs
 --- @see ip4Header:fill
 function vxlanHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
 end
 
 ----------------------------------------------------------------------------------
---- Packets
+---- Packets
 ----------------------------------------------------------------------------------
 
 pkt.getVxlanPacket = packetCreate("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
 
 
 ------------------------------------------------------------------------
---- Metatypes
+---- Metatypes
 ------------------------------------------------------------------------
 
 ffi.metatype("struct vxlan_header", vxlanHeader)
