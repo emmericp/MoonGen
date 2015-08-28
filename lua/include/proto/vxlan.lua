@@ -166,7 +166,7 @@ end
 --- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
 --- @return String next header (e.g. 'udp', 'icmp', nil)
 function vxlanHeader:resolveNextHeader()
-	return nil
+	return 'eth'
 end	
 
 --- Change the default values for namedArguments (for fill/get).
