@@ -271,23 +271,25 @@ end
 --- Print a hex dump of cdata.
 --- @param data The cdata to be dumped.
 --- @param bytes Number of bytes to dump.
-function dumpHex(data, bytes)
+--- @param stream the stream to write to, defaults to io.stdout
+function dumpHex(data, bytes, stream)
 	local data = ffi.cast("uint8_t*", data)
+	stream = stream or io.stdout
 	for i = 0, bytes - 1 do
 		if i % 16 == 0 then -- new line
-			write(format("  0x%04x:   ", i))
+			stream:write(format("  0x%04x:   ", i))
 		end
 
-		write(format("%02x", data[i]))
+		stream:write(format("%02x", data[i]))
 		
 		if i % 2  == 1 then -- group 2 bytes
-			write(" ")
+			stream:write(" ")
 		end
 		if i % 16 == 15 then -- end of 16 byte line
-			write("\n")
+			stream:write("\n")
 		end
 	end
-	write("\n\n")
+	stream:write("\n\n")
 end
 
 --- Merge tables.
