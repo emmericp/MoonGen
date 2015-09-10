@@ -4,6 +4,7 @@
 --- @todo TODO docu
 --- @todo local unpackers ... crashes lua2dox parser
 ---------------------------------
+require "colors"
 
 local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
 local write = io.write

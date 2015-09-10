@@ -2,11 +2,11 @@ local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local stats		= require "stats"
-
+local log 		= require "log"
 
 function master(txPorts, minIp, numIps, rate)
 	if not txPorts then
-		printf("usage: txPort1[,txPort2[,...]] [minIP numIPs rate]")
+		log:info("usage: txPort1[,txPort2[,...]] [minIP numIPs rate]")
 		return
 	end
 	txPorts = tostring(txPorts)
@@ -25,12 +25,11 @@ end
 
 function loadSlave(port, queue, minA, numIPs)
 	--- parse and check ip addresses
-
 	local minIP, ipv4 = parseIPAddress(minA)
 	if minIP then
-		printf("INFO: Detected an %s address.", minIP and "IPv4" or "IPv6")
+		log:info("Detected an %s address.", minIP and "IPv4" or "IPv6")
 	else
-		errorf("ERROR: Invalid minIP: %s", minA)
+		log:fatal("Invalid minIP: %s", minA)
 	end
 
 	-- min TCP packet size for IPv6 is 74 bytes (+ CRC)
@@ -84,5 +83,3 @@ function loadSlave(port, queue, minA, numIPs)
 	end
 	txStats:finalize()
 end
-
-
