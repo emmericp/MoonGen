@@ -17,7 +17,11 @@ log.DEBUG = 0
 log.level = log.INFO
 
 function log:setLevel(level)
+	local prevLevel = self.level
 	self.level = self[level] or self.INFO
+	if not prevLevel == self.level then
+		self:info("Changed log level to %s.", self[level] and level  or "INFO")
+	end
 end
 
 -- file logging
@@ -51,7 +55,7 @@ function log:fatal(str, ...)
 		self:writeToLog("[FATAL] " .. str)
 	end
 	
-	error(red(str))
+	error(red(str), 2)
 end
 
 function log:error(str, ...)

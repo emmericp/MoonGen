@@ -1,9 +1,9 @@
 
 ------
----- Bash Color Codes
+---- Color Codes
 ------
 
-local colorBash = {
+local colorCode = {
 	black	= "0;30",
 	red		= "0;31",
 	bred 	= "1;31",
@@ -14,8 +14,8 @@ local colorBash = {
 	none	= "0"
 }
 
-function getColorBash(color)
-	color = colorBash[color] or colorBash["none"]
+function getColorCode(color)
+	color = colorCode[color] or colorCode["none"]
 	return "\027[" .. color .. "m"
 end
 
@@ -24,7 +24,7 @@ end
 ------
 
 function getColorizedString(str, color)
-	return getColorBash(color)  .. str .. getColorBash()
+	return getColorCode(color)  .. str .. getColorCode()
 end
 
 function red(str, ...)

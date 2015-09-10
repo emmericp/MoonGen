@@ -4,6 +4,11 @@
 --- @todo TODO docu
 ---------------------------------
 
+-- set up logger before doing anything else
+local log 		= require "log"
+-- set log level
+log:setLevel("INFO")
+
 -- globally available utility functions
 require "utils"
 -- all available headers, packets, ... and their utility functions
@@ -16,7 +21,6 @@ local stp		= require "StackTracePlus"
 local ffi		= require "ffi"
 local memory	= require "memory"
 local serpent	= require "Serpent"
-local log 		= require "log"
 
 -- TODO: add command line switches for this and other luajit-debugging features
 --require("jit.v").on()
