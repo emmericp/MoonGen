@@ -8,6 +8,7 @@ local mod = {}
 
 local dpdk		= require "dpdk"
 local device	= require "device"
+local log 		= require "log"
 
 function mod.average(data)
 	local sum = 0
@@ -148,7 +149,7 @@ local function newCounter(ctrType, name, dev, format, file)
 		closeFile = true
 	end
 	if not formatters[format] then
-		error("unsupported output format " .. format)
+		log:fatal("Unsupported output format " .. format)
 	end
 	return {
 		name = name,
@@ -249,7 +250,7 @@ function mod:newDevRxCounter(name, dev, format, file)
 	-- use device if queue objects are passed
 	dev = dev and dev.dev or dev
 	if type(dev) ~= "table" then
-		error("bad device")
+		log:fatal("Bad device")
 	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
@@ -369,7 +370,7 @@ function mod:newDevTxCounter(name, dev, format, file)
 	-- use device if queue objects are passed
 	dev = dev and dev.dev or dev
 	if type(dev) ~= "table" then
-		error("bad device")
+		log:fatal("Bad device")
 	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)

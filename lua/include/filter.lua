@@ -12,6 +12,7 @@ local ffi = require "ffi"
 local dpdk = require "dpdk"
 local mbitmask = require "bitmask"
 local err = require "error"
+local log = require "log"
 
 mod.DROP = -1
 
@@ -28,7 +29,7 @@ deviceDependent[device.PCI_ID_XL710] = require "filter_i40e"
 function dev:l2Filter(etype, queue)
 	if type(queue) == "table" then
 		if queue.dev.id ~= self.id then
-			error("Queue must belong to the device being configured")
+			log:fatal("Queue must belong to the device being configured")
 		end
 		queue = queue.qid
 	end
@@ -36,7 +37,7 @@ function dev:l2Filter(etype, queue)
 	if fun then
 		return fun(self, etype, queue)
 	else
-		errorf("l2Filter not supported, or not yet implemented for this device")
+		log:fatal("l2Filter not supported, or not yet implemented for this device")
 	end
 end
 
@@ -65,7 +66,7 @@ function dev:addHW5tupleFilter(filter, queue, priority)
   if fun then
     return fun(self, filter, queue, priority)
   else
-    errorf("addHW5tupleFilter not supported, or not yet implemented for this device")
+    log:fatal("addHW5tupleFilter not supported, or not yet implemented for this device")
   end
 end
 
@@ -84,7 +85,7 @@ function dev:filterTimestamps(queue, offset, ntype, ver)
 	end
 	offset = offset or 21
 	if offset ~= 21 then
-		error("other offsets are not yet supported")
+		log:fatal("Other offsets are not yet supported")
 	end
 	mtype = mtype or 0
 	ver = ver or 2
@@ -156,7 +157,7 @@ function mod.create5TupleFilter(socket, acx, numCategories, maxNRules)
   local result =  setmetatable({
     acx = acx or ffi.gc(ffi.C.mg_5tuple_create_filter(socket, maxNRules), function(self)
       -- FIXME: why is destructor never called?
-      print "5tuple garbage"
+      log:debug("5tuple garbage")
       ffi.C.mg_5tuple_destruct_filter(self)
     end),
     built = false,
@@ -190,12 +191,12 @@ function mg_filter_5tuple:bindValuesToCategory(values, category)
     -- bind bitmask to all categories, which do not yet have an associated bitmask
     for i = 1,self.numRealCategories do
       if (self.out_values[i-1] == nil) then
-        print("assigned default at category " .. tostring(i))
+        log:debug("Assigned default at category " .. tostring(i))
         self.out_values[i-1] = values
       end
     end
   else
-    print("assigned bitmask to category " .. tostring(category))
+    log:debug("Assigned bitmask to category " .. tostring(category))
     self.out_values[category-1] = values
   end
   return values
@@ -219,12 +220,12 @@ function mg_filter_5tuple:bindBitmaskToCategory(bitmask, category)
     -- bind bitmask to all categories, which do not yet have an associated bitmask
     for i = 1,self.numRealCategories do
       if (self.out_masks[i-1] == nil) then
-        print("assigned default at category " .. tostring(i))
+        log:debug("Assigned default at category " .. tostring(i))
         self.out_masks[i-1] = bitmask.bitmask
       end
     end
   else
-    print("assigned bitmask to category " .. tostring(category))
+    log:debug("Assigned bitmask to category " .. tostring(category))
     self.out_masks[category-1] = bitmask.bitmask
   end
   return bitmask
@@ -244,7 +245,7 @@ end
 --- @value 32bit integer value associated with this rule. Value is not allowed to be 0
 function mg_filter_5tuple:addRule(rule, priority, category_mask, value)
   if(value == 0) then
-    error("ERROR: Adding a rule with a 0 value is not allowed")
+    log:fatal("Adding a rule with a 0 value is not allowed")
   end
   self.buit = false
   return ffi.C.mg_5tuple_add_rule(self.acx, rule, priority, category_mask, value)
@@ -268,7 +269,7 @@ end
 --- @return 0 on successfull completion.
 function mg_filter_5tuple:classifyBurst(pkts, inMask)
   if not self.built then
-    print("Warning: New rules have been added without building the filter!")
+    log:warn("New rules have been added without building the filter!")
   end
   --numCategories = numCategories or self.numCategories
   return ffi.C.mg_5tuple_classify_burst(self.acx, pkts.array, inMask.bitmask, self.numCategories, self.numRealCategories, self.out_masks, self.out_values)

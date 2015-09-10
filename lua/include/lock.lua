@@ -8,6 +8,7 @@ local mod = {}
 
 local ffi	= require "ffi"
 local stp	= require "StackTracePlus"
+local log	= require "log"
 
 ffi.cdef [[
 	struct lock { };
@@ -65,7 +66,7 @@ function lock:__call(func, ...)
 	self:unlock()
 	if not ok then
 		-- FIXME: this output is going to be ugly because it will output the local err as well :>
-		error("caught error in lock-wrapped call, inner error: " .. err, 2)
+		log:fatal("Caught error in lock-wrapped call, inner error: " .. err, 2)
 	end
 end
 

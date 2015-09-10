@@ -7,6 +7,7 @@
 local ffi = require "ffi"
 local dpdk = require "dpdk"
 local serpent = require "Serpent"
+local log = require "log"
 
 ffi.cdef [[
 struct mg_distribute_queue{
@@ -101,7 +102,7 @@ function mod.createDistributor(socket, entryOffset, nrOutputs, alwaysFlush)
 
   return setmetatable({
     cfg = ffi.gc(ffi.C.mg_distribute_create(entryOffset, nrOutputs, alwaysFlush), function(self)
-      print "lpm garbage"
+      log:debug("lpm garbage")
       ffi.C.mg_NOT_YET_IMPLEMENTED(self) -- FIXME
     end),
     socket = socket
@@ -125,7 +126,7 @@ function mg_distribute:registerOutput(outputNumber, txQueue, bufferSize, timeout
   local portID = txQueue.id
   local queueID = txQueue.qid
 
-  print ("register output NR " .. tostring(outputNumber) .. " -> port = " .. tostring(portID) .. " queue = " .. tostring(queueID) .. " timeout = " .. tostring(cycles_timeout))
+  log:info("register output NR " .. tostring(outputNumber) .. " -> port = " .. tostring(portID) .. " queue = " .. tostring(queueID) .. " timeout = " .. tostring(cycles_timeout))
   ffi.C.mg_distribute_register_output(self.cfg, outputNumber, portID, queueID, bufferSize, cycles_timeout)
 end
 

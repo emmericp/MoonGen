@@ -8,6 +8,7 @@ local histogram = {}
 histogram.__index = histogram
 
 local serpent = require "Serpent"
+local log = require "log"
 
 function histogram:create()
 	local histo = setmetatable({}, histogram)
@@ -128,7 +129,7 @@ function histogram:save(file)
 	if self.dirty then self:calc() end
 	local close = false
 	if type(file) ~= "userdata" then
-		printf("Saving histogram to '%s'", file)
+		log:info("Saving histogram to '%s'", file)
 		file = io.open(file, "w+")
 		close = true
 	end

@@ -12,6 +12,7 @@ local ffi = require "ffi"
 local dpdk = require "dpdk"
 local mbitmask = require "bitmask"
 local err = require "error"
+local log = require "log"
 
 local ETQF_BASE			= 0x00005128
 local ETQS_BASE			= 0x0000EC00
@@ -96,7 +97,7 @@ function mod.addHW5tupleFilter(dev, filter, queue, priority)
 
   sfilter.priority = priority or 1
   if(sfilter.priority > 7 or sfilter.priority < 1) then
-    ferror("Filter priority has to be a number from 1 to 7")
+    log:fatal("Filter priority has to be a number from 1 to 7")
     return
   end
 
@@ -126,7 +127,7 @@ function mod.addHW5tupleFilter(dev, filter, queue, priority)
   end
 
   if (state ~= 0) then
-    errorf("Filter not successfully added: %s", err.getstr(-state))
+    log:fatal("Filter not successfully added: %s", err.getstr(-state))
   end
 
   return idx

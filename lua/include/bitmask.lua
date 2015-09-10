@@ -4,6 +4,7 @@
 --- @todo TODO docu
 ---------------------------------
 
+local log = require "log"
 local ffi = require "ffi"
 ffi.cdef [[
 struct mg_bitmask{
@@ -39,7 +40,7 @@ local mg_bitMask = {}
 function mod.createBitMask(size)
   return setmetatable({
     bitmask = ffi.gc(ffi.C.mg_bitmask_create(size), function (self)
-      print("I HAVE BEEN DESTRUCTED")
+      log:debug("I HAVE BEEN DESTRUCTED")
       ffi.C.mg_bitmask_free(self)
     end )
   }, mg_bitMask)
