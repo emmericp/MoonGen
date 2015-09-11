@@ -3,4 +3,4 @@
 *.swo
 *.swn
 doc/html/
-log/*
+*.log

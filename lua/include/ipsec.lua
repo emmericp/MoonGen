@@ -9,7 +9,7 @@ local mod = {}
 local dpdkc	= require "dpdkc"
 local dpdk	= require "dpdk"
 local ffi	= require "ffi"
-local log 	? require "log"
+local log 	= require "log"
 
 -- Intel X540 registers
 local SECTXCTRL		= 0x00008800
@@ -406,7 +406,7 @@ end
 --- @param ip_addr IP(v4/v6)-Address to set (as string)
 function mod.rx_set_ip(port, idx, ip_addr)
 	if idx > 127 or idx < 0 then
-		log_fatal("Idx must be in range 0-127")
+		log:fatal("Idx must be in range 0-127")
 	end
 
 	local ip, is_ipv4 = parseIPAddress(ip_addr)

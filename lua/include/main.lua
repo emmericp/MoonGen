@@ -8,6 +8,8 @@
 local log 		= require "log"
 -- set log level
 log:setLevel("INFO")
+-- enable logging to file
+--log:fileEnable()
 
 -- globally available utility functions
 require "utils"

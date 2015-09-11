@@ -363,7 +363,7 @@ end
 
 local deviceNames = {
 	[mod.PCI_ID_82576]	= "82576 Gigabit Network Connection",
-	[mod.PCI_ID_82580]	= green("82580 Gigabit Network Connection"),
+	[mod.PCI_ID_82580]	= "82580 Gigabit Network Connection",
 	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
 	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter", -- Dell-branded NIC with an 82599
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
@@ -372,7 +372,7 @@ local deviceNames = {
 
 function dev:getName()
 	local id = self:getPciId()
-	return deviceNames[id] or red(("unknown NIC (PCI ID %x:%x)"):format(bit.rshift(id, 16), bit.band(id, 0xFFFF)))
+	return deviceNames[id] and green(deviceNames[id]) or red(("unknown NIC (PCI ID %x:%x)"):format(bit.rshift(id, 16), bit.band(id, 0xFFFF)))
 end
 
 function mod.getDeviceName(port)
