@@ -60,7 +60,7 @@ end
 --- Disable logging to file
 function log:fileDisable()
 	self.fileEnabled = false
-	self:info("Disabled logging to " .. log.filei .. "'")
+	self:info("Disabled logging to " .. log.file .. "'")
 end
 
 -- current file log level 
