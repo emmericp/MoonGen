@@ -639,6 +639,14 @@ function packetMakeStruct(...)
 end
 
 
+--- Raw packet type
+
+local payloadType = ffi.typeof("union payload_t*")
+
+function pkt:getRawPacket()
+	return payloadType(self.pkt.data)
+end
+
 ---------------------------------------------------------------------------
 ---- Metatypes
 ---------------------------------------------------------------------------
