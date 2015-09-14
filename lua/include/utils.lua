@@ -164,8 +164,9 @@ end
 
 --- Parse a string to a MAC address
 --- @param mac address in string format
+--  @param number return as number
 --- @return address in mac_address format or nil if invalid address
-function parseMacAddress(mac)
+function parseMacAddress(mac, number)
 	local bytes = {string.match(mac, '(%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)')}
 	if bytes == nil then
 		return
@@ -180,11 +181,19 @@ function parseMacAddress(mac)
 		end
 	end
 	
-	addr = ffi.new("struct mac_address")
-	for i = 0, 5 do
-		addr.uint8[i] = bytes[i + 1]
+	if number then
+		local acc = 0
+		for i = 1, 6 do
+			acc = acc + bytes[i] * 256 ^ (i - 1)
+		end
+		return acc
+	else
+		addr = ffi.new("struct mac_address")
+		for i = 0, 5 do
+			addr.uint8[i] = bytes[i + 1]
+		end
+		return addr 
 	end
-	return  addr 
 end
 
 --- Parse a string to an IP address
