@@ -13,7 +13,9 @@ local status, ssh = pcall(require, 'utils.ssh')
 if status then
     table.insert(actors, ssh)
 end
-table.insert(actors, require "utils.manual")
+
+local manual = require "utils.manual"
+table.insert(actors, manual)
 
 local mod = {}
 mod.__index = mod
@@ -120,6 +122,13 @@ function mod.getIPRouteCount()
     end
 end
 
+function mod.getDeviceName()
+    return manual.getDeviceName()
+end
+
+function mod.getDeviceOS()
+    return manual.getDeviceOS()
+end
 
 
 

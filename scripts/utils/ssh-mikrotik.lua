@@ -15,7 +15,7 @@ function mod.delInterfaceIP(interface, ip, pfx)
 end
 
 function mod.clearIPFilters()
-    return mod.exec("/ip firewall filter remove [/ip firewall filter find chain=forward]")
+    return mod.exec("/ip firewall filter remove [/ip firewall filter find]")
 end
 
 function mod.addIPFilter(src, sPfx, dst, dPfx)

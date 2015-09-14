@@ -59,7 +59,7 @@ function benchmark:undoConfig()
     for k, v in ipairs(self.undoStack) do
         --work in stack order
         local elem = self.undoStack[len - k + 1]
-        elem.foo(unpack(args))
+        elem.foo(unpack(elem.args))
     end
     --clear stack
     self.undoStack = {}

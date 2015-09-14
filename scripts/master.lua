@@ -14,6 +14,8 @@ local frameloss     = require "benchmarks.frameloss"
 local backtoback    = require "benchmarks.backtoback"
 local utils         = require "utils.utils"
 
+local testreport    = require "utils.testreport"
+
 local conf          = require "config"
 
 local FRAME_SIZES   = {64, 128, 256, 512, 1024, 1280, 1518}
@@ -87,7 +89,7 @@ function master()
         conf.setSNMPComm(arguments.snmpcomm)
     elseif arguments.asksnmpcomm == "true" then
         io.write("snmp community: ")
-        conf.setSSHPass(io.read())
+        conf.setSNMPComm(io.read())
     end
     
     if type(arguments.host) == "string" then
@@ -135,6 +137,12 @@ function master()
         })
     end
     
+    -- create testresult folder if not exist
+    -- there is no clean lua way without using 3rd party libs
+    local folderName = "testresults_" .. date
+	os.execute("mkdir -p " .. folderName)    
+    
+    local report = testreport.new(folderName .. "/rfc_2544_testreport.tex")
     local results = {}
     
     local thBench = throughput.benchmark()
@@ -149,20 +157,21 @@ function master()
         numIterations = numIterations,
     })
     local rates = {}
-    local file = io.open("results_throughput_" .. date, "w")
+    local file = io.open(folderName .. "/throughput.csv", "w")
     log(file, thBench:getCSVHeader(), true)
     for _, frameSize in ipairs(FRAME_SIZES) do
         local result, avgRate = thBench:bench(frameSize)
         rates[frameSize] = avgRate
-        table.insert(results, result)
+        
         -- save and report results
+        table.insert(results, result)
         log(file, thBench:resultToCSV(result), true)
+        report:addThroughput(result, duration, maxLossRate, rateThreshold)
     end
-    thBench:toTikz("plot_throughput_" .. date, unpack(results))
+    thBench:toTikz(folderName .. "/plot_throughput", unpack(results))
     file:close()
     
     results = {}
-    local rates = {[64]=4.4294859, [128]=4.2199164,[256]=4.3201431, [512]=2.3495472,[1024]=1.1972835,[1280]=0.9615123,[1518]=0.8127189}
     local latBench = latency.benchmark()
     latBench:init({
         txQueues = {txDev:getTxQueue(1), txDev:getTxQueue(2), txDev:getTxQueue(3), txDev:getTxQueue(4)},
@@ -173,15 +182,17 @@ function master()
         dut = dut,
     })
     
-    file = io.open("results_latency_" .. date, "w")
+    file = io.open(folderName .. "/latency.csv", "w")
     log(file, latBench:getCSVHeader(), true)
     for _, frameSize in ipairs(FRAME_SIZES) do
         local result = latBench:bench(frameSize, math.ceil(rates[frameSize] * (frameSize + 20) * 8))
+        
         -- save and report results        
         table.insert(results, result)
         log(file, latBench:resultToCSV(result), true)
+        report:addLatency(result, duration)
     end
-    latBench:toTikz("plot_latency_" .. date, unpack(results))
+    latBench:toTikz(folderName .. "/plot_latency", unpack(results))
     file:close()
     
     results = {}
@@ -194,36 +205,42 @@ function master()
         skipConf = dskip,
         dut = dut,
     })
-    file = io.open("results_frameloss_" .. date, "w")
+    file = io.open(folderName .. "/frameloss.csv", "w")
     log(file, flBench:getCSVHeader(), true)
     for _, frameSize in ipairs(FRAME_SIZES) do
         local result = flBench:bench(frameSize)
+        
         -- save and report results
         table.insert(results, result)
         log(file, flBench:resultToCSV(result), true)
+        report:addFrameloss(result, duration)
     end
-    latBench:toTikz("plot_frameloss_" .. date, unpack(results))
+    flBench:toTikz(folderName .. "/plot_frameloss", unpack(results))
     file:close()
     
     results = {}
     local btbBench = backtoback.benchmark()
     btbBench:init({
-        txQueues = {txDev:getTxQueue(1), txDev:getTxQueue(2), txDev:getTxQueue(3)},
+        txQueues = {txDev:getTxQueue(1)},
         rxQueues = {rxDev:getRxQueue(0)},
         granularity = btbThreshold,
         skipConf = dskip,
         numIterations = numIterations,
         dut = dut,
     })
-    file = io.open("results_backtoback_" .. date, "w")
+    file = io.open(folderName .. "/backtoback.csv", "w")
     log(file, btbBench:getCSVHeader(), true)
     for _, frameSize in ipairs(FRAME_SIZES) do
         local result = btbBench:bench(frameSize)
+        
         -- save and report results
         table.insert(results, result)
         log(file, btbBench:resultToCSV(result), true)
+        report:addBackToBack(result, btbBench.duration, btbThreshold, txDev:getLinkStatus().speed)
     end
-    latBench:toTikz("plot_backtoback_" .. date, unpack(results))
+    btbBench:toTikz(folderName .. "/plot_backtoback", unpack(results))
     file:close()
+
+    report:finalize()
     
 end

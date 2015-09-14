@@ -57,7 +57,7 @@ function benchmark:undoConfig()
     for k, v in ipairs(self.undoStack) do
         --work in stack order
         local elem = self.undoStack[len - k + 1]
-        elem.foo(unpack(args))
+        elem.foo(unpack(elem.args))
     end
     --clear stack
     self.undoStack = {}
@@ -107,7 +107,7 @@ function benchmark:toTikz(filename, ...)
         
         local sum = 0
         for k, v in ipairs(bins) do
-            local x = (k-1) * binWidth
+            local x = (k-1) * binWidth + min
             histo:addPoint(x / 1000, v / numSamples * 100)
             sum = sum + v
             cdf:addPoint(x / 1000, sum / numSamples)
@@ -151,18 +151,24 @@ function benchmark:bench(frameSize, rate)
     end
     
     -- traffic generator
+    local loadSlaves = {}
     for i=1, numQueues do
-        dpdk.launchLua("latencyLoadSlave", self.txQueues[i], port, frameSize, self.duration, mod, bar)
+        table.insert(loadSlaves, dpdk.launchLua("latencyLoadSlave", self.txQueues[i], port, frameSize, self.duration, mod, bar))
     end
     
     local hist = latencyTimerSlave(self.txQueues[numQueues+1], self.rxQueues[1], port, frameSize, self.duration, bar)
     hist:print()
+    
+    local spkts = 0
+    for _, sl in pairs(loadSlaves) do
+        spkts = spkts + sl:wait()
+    end
 
     if not self.skipConf then
         self:undoConfig()
     end
     hist.frameSize = frameSize
-    hist.rate = rate
+    hist.rate = spkts / 10^6 / self.duration
     return hist
 end
 
@@ -225,7 +231,7 @@ function latencyLoadSlave(queue, port, frameSize, duration, modifier, bar)
 
     -- benchmark phase
     local totalSent = 0
-    t:reset(duration)
+    t:reset(duration + 2)
     while t:running() do
         totalSent = totalSent + sendBufs(bufs, port)
     end
@@ -247,7 +253,7 @@ function latencyTimerSlave(txQueue, rxQueue, port, frameSize, duration, bar)
     -- sync with load slave and wait additional few milliseconds to ensure 
     -- the traffic generator has started
     bar:wait()
-    dpdk.sleepMillis(100)
+    dpdk.sleepMillis(1000)
     
     local t = timer:new(duration)
     while t:running() do

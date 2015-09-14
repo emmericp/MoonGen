@@ -1,6 +1,9 @@
 local mod = {}
 mod.__index = mod
 
+local namespaces = require "namespaces"
+local ns = namespaces.get()
+
 function confirm()
     local answer
     repeat
@@ -54,6 +57,22 @@ end
 function mod.getIPRouteCount()
     io.write("configure: get ip route count: ")
     return tonumber(io.read())
+end
+
+function mod.getDeviceName()
+    if type(ns.deviceName) ~= string then
+        io.write("configure: get device name: ")
+        ns.deviceName = io.read()
+    end
+    return ns.deviceName
+end
+
+function mod.getDeviceOS()    
+    if type(ns.deviceOS) ~= string then
+        io.write("configure: get device OS: ")
+        ns.deviceOS = io.read()
+    end
+    return ns.deviceOS
 end
 
 return mod

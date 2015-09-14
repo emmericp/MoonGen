@@ -61,7 +61,7 @@ function benchmark:undoConfig()
     for k, v in ipairs(self.undoStack) do
         --work in stack order
         local elem = self.undoStack[len - k + 1]
-        elem.foo(unpack(args))
+        elem.foo(unpack(elem.args))
     end
     --clear stack
     self.undoStack = {}
@@ -235,37 +235,22 @@ function backtobackLoadSlave(queue, frameSize, modifier, bar, granularity, durat
     dpdk.sleepMicros(100)
     bar:reinit(2)
     
-    local maxPkts = math.ceil((queue.dev:getLinkStatus().speed * 10^6 / ((frameSize + 20) * 8)) * duration) -- theoretical max packets send in about `duration` seconds with linkspeed
+    local linkSpeed = queue.dev:getLinkStatus().speed
+    local maxPkts = math.ceil((linkSpeed * 10^6 / ((frameSize + 20) * 8)) * duration) -- theoretical max packets send in about `duration` seconds with linkspeed
     local count = maxPkts
     local longest = 0
     local binSearch = utils.binarySearch(0, maxPkts)
     local first = true
 
+
     while dpdk.running() do
-        
-        --[[        
-        local bufs = mem:bufArray(count)
-        print("loadSlave mem:bufArray(count)")
-        -- allocate buffers from the mem pool and store them in this array
-        
-        bufs:alloc(frameSize - 4)
-        print("loadSlave bufs:alloc")
-        for _, buf in ipairs(bufs) do
-            local pkt = buf:getUdpPacket()
-            -- set packet udp port
-            pkt.udp:setDstPort(port)
-            -- apply modifier like ip or mac randomisation to packet
-            --modifierFoo(pkt)
+        local t = timer.new(0.5)
+        queue:setRate(10)
+        while t:running() do
+            sendBurst(64, mem, queue, frameSize - 4, UDP_PORT+1)
         end
-        -- send packets
-        bufs:offloadUdpChecksums()
-        
-        dpdk.sleepMillis(500)
-        
-        local sent = queue:send(bufs)
-        print("loadSlave queue:send()")
-        --]]
-        
+        queue:setRate(linkSpeed)
+
         local sent = sendBurst(count, mem, queue, frameSize - 4, UDP_PORT)
         
         rsns.sent = sent
@@ -292,7 +277,7 @@ function backtobackLoadSlave(queue, frameSize, modifier, bar, granularity, durat
             printf("loadSlave: sent %d and received %d => changing from %d to %d", sent, rsns.received, count, nextCount)
             count = nextCount
         end
-        dpdk.sleepMicros(1000)
+        dpdk.sleepMillis(2000)
     end
     return longest
 end
@@ -355,7 +340,7 @@ function backtobackCounterSlave(queue, frameSize, bar, granularity, duration)
             printf("counterSlave: sent %d and received %d => changing from %d to %d", rsns.sent, counter, count, nextCount)
             count = nextCount
         end
-        dpdk.sleepMicros(1000)
+        dpdk.sleepMillis(2000)
     end
     return longest
 end
@@ -366,7 +351,7 @@ if standalone then
         local args = utils.parseArguments(arg)
         local txPort, rxPort = args.txport, args.rxport
         if not txPort or not rxPort then
-            return print("usage: --txport <txport> --rxport <rxport> --duration <duration> --numiterations <numiterations>")
+            return print("usage: --txport <txport> --rxport <rxport> --duration <duration> --iterations <num iterations>")
         end
         
         local rxDev, txDev
@@ -410,7 +395,7 @@ if standalone then
             rxQueues = {rxDev:getRxQueue(0)}, 
             granularity = 100,
             duration = args.duration,
-            numIterations = args.numiterations,
+            numIterations = args.iterations,
             skipConf = true,
         })
         

@@ -7,11 +7,11 @@ mod.__index = mod
 local session = nil
 
 function mod.addInterfaceIP(interface, ip, pfx)
-    return -1
+    return session:addIp(ip, pfx, interface)
 end
 
 function mod.delInterfaceIP(interface, ip, pfx)
-    return -1
+    return session:delIp(ip, pfx, interface)
 end
 
 function mod.clearIPFilters()
@@ -31,12 +31,11 @@ function mod.clearIPRoutes()
 end
 
 function mod.addIPRoute(dst, pfx, gateway, interface)
-    session:addRouteEntry(dst, pfx, gateway, inteface, 4)
-    return -1
+    return session:addRouteEntry(dst, pfx, gateway, inteface, 4)
 end
 
 function mod.delIPRoute(dst, pfx, gateway, interface)
-    return -1
+    return session:deleteRouteEntry(dst, pfx, gateway)
 end
 
 function mod.getIPRouteCount()
