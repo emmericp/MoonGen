@@ -10,6 +10,7 @@ local memory	= require "memory"
 local ffi		= require "ffi"
 local serpent	= require "Serpent"
 local dpdk		= require "dpdk"
+local log		= require "log"
 
 ffi.cdef [[
 	// dummy
@@ -86,7 +87,7 @@ end
 
 
 function mod:newFastPipe()
-	error("NYI")
+	log:fatal("NYI")
 end
 
 return mod

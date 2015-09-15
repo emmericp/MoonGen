@@ -14,6 +14,7 @@ local device	= require "device"
 local eth		= require "proto.ethernet"
 local memory	= require "memory"
 local timer		= require "timer"
+local log		= require "log"
 
 require "proto.ptp"
 
@@ -164,7 +165,7 @@ local function startTimerIxgbe(port, id)
 	elseif id == device.PCI_ID_82599 or id == device.PCI_ID_X520 then
 		dpdkc.write_reg32(port, TIMINCA, bit.bor(2, bit.lshift(2, TIMINCA_IP_OFFS)))
 	else -- should not happen
-		errorf("unsupported ixgbe device %s", device.getDeviceName(port))
+		log:fatal("Unsupported ixgbe device %s", device.getDeviceName(port))
 	end
 end
 
@@ -175,7 +176,7 @@ local function startTimerIgb(port, id)
 		dpdkc.write_reg32(port, TSAUXC, bit.band(dpdkc.read_reg32(port, TSAUXC), bit.bnot(TSAUXC_DISABLE)))
 
 	else
-		errorf("unsupported igb device %s", device.getDeviceName(port))
+		log:fatal("Unsupported igb device %s", device.getDeviceName(port))
 	end
 end
 
@@ -252,7 +253,7 @@ function rxQueue:enableTimestamps(udpPort)
 	local f = enableFuncs[id]
 	f = f and f[1]
 	if not f then
-		errorf("RX time stamping on device type %s is not supported", self.dev:getName())
+		log:fatal("RX time stamping on device type %s is not supported", self.dev:getName())
 	end
 	f(self.id, self.qid, udpPort, id)
 end
@@ -262,7 +263,7 @@ function rxQueue:enableTimestampsAllPackets()
 	local f = enableFuncs[id]
 	f = f and f[3]
 	if not f then
-		errorf("Time stamping all RX packets on device type %s is not supported", self.dev:getName())
+		log:fatal("Time stamping all RX packets on device type %s is not supported", self.dev:getName())
 	end
 	f(self.id, self.qid, id)
 end
@@ -273,7 +274,7 @@ function txQueue:enableTimestamps(udpPort)
 	local f = enableFuncs[id]
 	f = f and f[2]
 	if not f then
-		errorf("TX time stamping on device type %s is not supported", self.dev:getName())
+		log:fatal("TX time stamping on device type %s is not supported", self.dev:getName())
 	end
 	f(self.id, self.qid, udpPort, id)
 end
@@ -341,13 +342,13 @@ function mod.syncClocks(dev1, dev2)
 	local regs1 = timeRegisters[dev1:getPciId()]
 	local regs2 = timeRegisters[dev2:getPciId()]
 	if regs1[1] ~= regs2[1] then
-		error("NICs incompatible, cannot sync clocks")
+		log:fatal("NICs incompatible, cannot sync clocks")
 	end
 	if regs1[2] ~= regs2[2]
 		or regs1[3] ~= regs2[3]
 		or regs1[4] ~= regs2[4]
 		or regs1[5] ~= regs2[5] then
-		error("NYI: NICs use different timestamp registers")
+		log:fatal("NYI: NICs use different timestamp registers")
 	end
 	dpdkc.sync_clocks(dev1.id, dev2.id, select(2, unpack(regs1)))
 end
@@ -483,7 +484,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 		return
 	else
 		-- uhm, how did this happen? an unsupported NIC should throw an error earlier
-		print("Warning: failed to timestamp packet on transmission")
+		log:warn("Failed to timestamp packet on transmission")
 		timer:new(maxWait):wait()
 	end
 end

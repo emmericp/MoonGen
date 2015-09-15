@@ -13,6 +13,7 @@ require "utils"
 require "headers"
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
+local log = require "log"
 
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
@@ -127,7 +128,7 @@ function pkt:offloadIPSec(idx, sec_type, esp_mode)
 	elseif sec_type == "ah" then
 		t = 0
 	else
-		error("Wrong IPSec type (esp/ah)")
+		log:fatal("Wrong IPSec type (esp/ah)")
 	end
 
 	-- Set IPSec offload flag in advanced data transmit descriptor.
@@ -269,7 +270,7 @@ function packetCreate(...)
 	-- create struct
 	local packetName, ctype = packetMakeStruct(args)
 	if not packetName then
-		printf("WARNING: Failed to create new packet type.")
+		log:warn("Failed to create new packet type.")
 		return
 	end
 
@@ -624,7 +625,7 @@ function packetMakeStruct(...)
 
 	-- check uniqueness of packet type (name of struct)
 	if pkt.packetStructs[name] then
-		printf("WARNING: Struct with name \"" .. name .. "\" already exists. Skipping.")
+		log:warn("Struct with name \"" .. name .. "\" already exists. Skipping.")
 		return
 	else
 		-- add struct definition
@@ -632,6 +633,8 @@ function packetMakeStruct(...)
 		
 		-- add to list of existing structs
 		pkt.packetStructs[name] = {...}
+
+		log:debug("Created struct %s", name)
 
 		-- return full name and typeof
 		return name, ffi.typeof(name .. "*")

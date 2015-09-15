@@ -12,6 +12,7 @@ local dpdkc = require "dpdkc"
 local dpdk	= require "dpdk"
 local ns	= require "namespaces"
 local serpent = require "Serpent"
+local log 	= require "log"
 
 ffi.cdef [[
 	void* malloc(size_t size);
@@ -196,7 +197,7 @@ end
 
 do
 	local function alloc()
-		error("buf array not associated with a memory pool", 2)
+		log:fatal("buf array not associated with a memory pool", 2)
 	end
 	
 	--- Create a new array of memory buffers (initialized to nil).

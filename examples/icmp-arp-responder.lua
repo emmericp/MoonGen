@@ -2,6 +2,7 @@ local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local utils 	= require "utils"
+local log		= require "log"
 
 local arp		= require "proto.arp"
 local ip		= require "proto.ip4"
@@ -14,7 +15,7 @@ function master(funny, port, ...)
 	end
 	port = tonumber(port)
 	if not port or select("#", ...) == 0 or ... == nil then
-		printf("usage: [--do-funny-things] port ip [ip...]")
+		log:info("usage: [--do-funny-things] port ip [ip...]")
 		return
 	end
 	
@@ -54,8 +55,8 @@ end
 
 function pingResponder(dev, funny)
 	if funny then
-		print("Note: most ping 'clients' do not support the --do-funny-things option and ignore our responses :(")
-		print("One notable exception is Linux ping from the iputils package")
+		log:info("Most ping 'clients' do not support the --do-funny-things option and ignore our responses :(")
+		log:info("One notable exception is Linux ping from the iputils package")
 	end
 
 	local devMac = dev:getMac()

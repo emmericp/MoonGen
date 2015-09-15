@@ -2,6 +2,7 @@ local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local stats		= require "stats"
+local log		= require "log"
 local lpm     = require "lpm"
 local serpent = require "Serpent"
 local ffi     = require "ffi"
@@ -30,7 +31,7 @@ function master(txPort, ...)
   local arpRxQueue = txDev:getRxQueue(5)
   local arpTxQueue = txDev:getTxQueue(3)
   dpdk.launchLuaOnCore(2, arp.arpTask, {rxQueue = arpRxQueue, txQueue = arpTxQueue, ips = {"10.0.0.130", "10.0.0.10", "10.0.0.11", "10.0.0.12", "10.0.0.13", "10.0.0.129"}})
-  print("ARP slave running")
+  log:info("ARP slave running")
 
   -- Create a new routing table.
   -- The Table entry is given as our user specified C datatype:
@@ -105,7 +106,7 @@ function slave(lpmTable, distributor, rxQueues, maxBurstSize)
       -- try to receive a maximum of maxBurstSize of packets/mbufs:
       nrx = rxQueue:tryRecv(bufs, 0)
       if (nrx > 0) then
-        print("rxed on queue " .. tostring(rxQueue.qid))
+        log:info("rxed on queue " .. tostring(rxQueue.qid))
         -- prepare in_mask for the received packets
         in_mask:clearAll()
         in_mask:setN(nrx)

@@ -10,6 +10,7 @@ local ffi		= require "ffi"
 local serpent	= require "Serpent"
 local stp		= require "StackTracePlus"
 local lock		= require "lock"
+local log		= require "log"
 
 ffi.cdef [[
 	struct namespace { };
@@ -42,7 +43,7 @@ end
 --- @param key the key, must be a string
 function namespace:__index(key)
 	if type(key) ~= "string" then
-		error("table index must be a string")
+		log:fatal("Table index must be a string")
 	end
 	if key == "forEach" then
 		return namespace.forEach
@@ -58,10 +59,10 @@ end
 --- @param val the value to store, will be serialized
 function namespace:__newindex(key, val)
 	if type(key) ~= "string" then
-		error("table index must be a string")
+		log:fatal("Table index must be a string")
 	end
 	if key == "forEach" or key == "lock" then
-		error(key .. " is reserved", 2)
+		log:fatal(key .. " is reserved", 2)
 	end
 	if val == nil then
 		C.namespace_delete(self, key)
@@ -95,7 +96,7 @@ function namespace:forEach(func)
 	cb:free()
 	if caughtError then
 		-- this is gonna be an ugly error message, but at least we get the full call stack
-		error("error while calling callback, inner error: " .. caughtError)
+		log:fatal("Error while calling callback, inner error: " .. caughtError)
 	end
 end
 

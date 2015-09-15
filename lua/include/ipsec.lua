@@ -9,6 +9,7 @@ local mod = {}
 local dpdkc	= require "dpdkc"
 local dpdk	= require "dpdk"
 local ffi	= require "ffi"
+local log 	= require "log"
 
 -- Intel X540 registers
 local SECTXCTRL		= 0x00008800
@@ -51,7 +52,7 @@ end
 -- Helper function to clear a single bit
 function clear_bit32(reg32, idx)
 	if idx < 0 or idx > 31 then
-		error("Idx must be in range 0-31")
+		log:fatal("Idx must be in range 0-31")
 	end
 	local mask = bit.bnot(bit.lshift(0x1, idx))
 	return bit.band(reg32, mask)
@@ -60,7 +61,7 @@ end
 -- Helper function to set a single bit
 function set_bit32(reg32, idx)
 	if idx < 0 or idx > 31 then
-		error("Idx must be in range 0-31")
+		log:fatal("Idx must be in range 0-31")
 	end
 	return bit.bor(reg32, bit.lshift(0x1, idx))
 end
@@ -78,7 +79,7 @@ end
 function set_bits32(reg32, from, to, value)
 	local upper_limit = math.pow(2, ((from-to)+1))-1 --i.e. (2^num_bits)-1
 	if value < 0 or value > upper_limit then
-		error("Value must be in range 0-"..upper_limit)
+		log:fatal("Value must be in range 0-"..upper_limit)
 	end
 	local tmp = clear_bits32(reg32, from, to)
 	return bit.bor(tmp, bit.lshift(value, to))
@@ -225,13 +226,13 @@ end
 --- @param salt 32 bit AES salt (as hex string)
 function mod.tx_set_key(port, idx, key, salt)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 	if string.len(key) ~= 32 then
-		error("Key must be 128 bit (hex string).")
+		log:fatal("Key must be 128 bit (hex string).")
 	end
 	if string.len(salt) ~= 8 then
-		error("Salt must be 32 bit (hex string).")
+		log:fatal("Salt must be 32 bit (hex string).")
 	end
 
 	local key_3 = tonumber(string.sub(key,  1,  8), 16) --MSB
@@ -263,7 +264,7 @@ end
 --- @return Key and Salt (as hex string)
 function mod.tx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 
 	-- Prepare command to read key from SA_IDX
@@ -297,13 +298,13 @@ end
 --- @param decrypt ESP mode (1=ESP decrypt and authenticate, 0=ESP authenticate only)
 function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 	if string.len(key) ~= 32 then
-		error("Key must be 128 bit (hex string).")
+		log:fatal("Key must be 128 bit (hex string).")
 	end
 	if string.len(salt) ~= 8 then
-		error("Salt must be 32 bit (hex string).")
+		log:fatal("Salt must be 32 bit (hex string).")
 	end
 
 	local ipv6 = nil
@@ -312,7 +313,7 @@ function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	elseif ip_ver == 6 then
 		ipv6 = 1
 	else
-		error("IP version must be either 4 or 6")
+		log:fatal("IP version must be either 4 or 6")
 	end
 
 	local esp = nil
@@ -321,12 +322,12 @@ function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	elseif proto == "ah" then
 		esp = 0
 	else
-		error("Protocol must be either 'esp' or 'ah'")
+		log:fatal("Protocol must be either 'esp' or 'ah'")
 	end
 
 	local esp_mode = decrypt or 0
 	if esp_mode ~= 1 and esp_mode ~= 0 then
-		error("ESP Decrypt must be either 0 or 1")
+		log:fatal("ESP Decrypt must be either 0 or 1")
 	end
 
 	local key_3 = tonumber(string.sub(key,  1,  8), 16) --MSB
@@ -369,7 +370,7 @@ end
 ---          IPv6 Flag (1=SA is valid for IPv6, 0=SA is valid for IPv4)
 function mod.rx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 
 	-- Prepare command to read from KEY_TABLE at TB_IDX
@@ -405,7 +406,7 @@ end
 --- @param ip_addr IP(v4/v6)-Address to set (as string)
 function mod.rx_set_ip(port, idx, ip_addr)
 	if idx > 127 or idx < 0 then
-		error("Idx must be in range 0-127")
+		log:fatal("Idx must be in range 0-127")
 	end
 
 	local ip, is_ipv4 = parseIPAddress(ip_addr)
@@ -447,7 +448,7 @@ end
 --- @return The IP(v4/v6)-Address (as string) and a IP Version Flag (true=IPv4, false=IPv6)
 function mod.rx_get_ip(port, idx, is_ipv4)
 	if idx > 127 or idx < 0 then
-		error("Idx must be in range 0-127")
+		log:fatal("Idx must be in range 0-127")
 	end
 	if is_ipv4 == nil then
 		is_ipv4 = true
@@ -493,13 +494,13 @@ end
 --- @param ip_idx Reference to the IP table. This must match the idx of the corresponding IP table entry.
 function mod.rx_set_spi(port, idx, spi, ip_idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 	if spi > 0xFFFFFFFF or spi < 0 then
-		error("Spi must be in range 0x0-0xFFFFFFFF")
+		log:fatal("Spi must be in range 0x0-0xFFFFFFFF")
 	end
 	if ip_idx > 127 or ip_idx < 0 then
-		error("IP_Idx must be in range 0-127")
+		log:fatal("IP_Idx must be in range 0-127")
 	end
 
 	-- Prepare command to write SPI_TABLE at TB_IDX
@@ -525,7 +526,7 @@ end
 --- @return The SPI and the corresponding Index into the IP table
 function mod.rx_get_spi(port, idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 
 	-- Prepare command to read from SPI_TABLE at TB_IDX

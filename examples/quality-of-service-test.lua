@@ -7,6 +7,7 @@ local filter	= require "filter"
 local stats		= require "stats"
 local hist		= require "histogram"
 local timer		= require "timer"
+local log		= require "log"
 
 local PKT_SIZE	= 124 -- without CRC
 -- check out l3-load-latency.lua if you want to get this via ARP
@@ -20,7 +21,7 @@ local PORT_BG	= 43
 
 function master(txPort, rxPort, bgRate, fgRate)
 	if not txPort or not rxPort then
-		return print("usage: txPort rxPort [bgRate [fgRate]]")
+		return log:info("usage: txPort rxPort [bgRate [fgRate]]")
 	end
 	fgRate = fgRate or 100
 	bgRate = bgRate or 1500
@@ -41,8 +42,8 @@ function master(txPort, rxPort, bgRate, fgRate)
 	end
 	-- wait until the links are up
 	device.waitForLinks()
-	printf("Sending %d MBit/s background traffic to UDP port %d", bgRate, PORT_BG)
-	printf("Sending %d MBit/s foreground traffic to UDP port %d", fgRate, PORT_FG)
+	log:info("Sending %d MBit/s background traffic to UDP port %d", bgRate, PORT_BG)
+	log:info("Sending %d MBit/s foreground traffic to UDP port %d", fgRate, PORT_FG)
 	-- setup rate limiters for CBR traffic
 	-- see l2-poisson.lua for an example with different traffic patterns
 	txDev:getTxQueue(0):setRate(bgRate)

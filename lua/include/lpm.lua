@@ -11,6 +11,7 @@ local band, lshift, rshift = bit.band, bit.lshift, bit.rshift
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 local serpent = require "Serpent"
+local log = require "log"
 require "memory"
 --local burst = require "burst"
 
@@ -87,7 +88,7 @@ function mod.createLpm4Table(socket, table, entry_ctype)
   return setmetatable({
     table = table or ffi.gc(ffi.C.mg_table_lpm_create(params, socket, ffi.sizeof(entry_ctype)), function(self)
       -- FIXME: why is destructor never called?
-      print "lpm garbage"
+      log:debug("lpm garbage")
       ffi.C.mg_table_lpm_free(self)
     end),
     entry_ctype = entry_ctype
@@ -185,7 +186,7 @@ function mod.decrementTTL(pkts, in_mask, out_mask, ipv4)
       end
     end
   else
-    errorf("TTL decrement for ipv6 not yet implemented")
+    log:fatal("TTL decrement for ipv6 not yet implemented")
   end
 end
 
