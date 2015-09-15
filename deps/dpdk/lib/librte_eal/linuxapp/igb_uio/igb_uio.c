@@ -83,7 +83,11 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 	unsigned long max_vfs;
 	struct pci_dev *pdev = container_of(dev, struct pci_dev, dev);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 2, 0)
 	if (0 != strict_strtoul(buf, 0, &max_vfs))
+#else
+	if (0 != kstrtoul(buf, 0, &max_vfs))
+#endif
 		return -EINVAL;
 
 	if (0 == max_vfs)
@@ -287,7 +291,9 @@ igbuio_dom0_mmap_phys(struct uio_info *info, struct vm_area_struct *vma)
 
 	idx = (int)vma->vm_pgoff;
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+#if defined(HAVE_PTE_MASK_PAGE_IOMAP)
 	vma->vm_page_prot.pgprot |= _PAGE_IOMAP;
+#endif
 
 	return remap_pfn_range(vma,
 			vma->vm_start,

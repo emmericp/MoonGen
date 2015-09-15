@@ -9,6 +9,7 @@ local hist		= require "histogram"
 local timer		= require "timer"
 
 local PKT_SIZE	= 124 -- without CRC
+-- check out l3-load-latency.lua if you want to get this via ARP
 local ETH_DST	= "10:11:12:13:14:15" -- src mac is taken from the NIC
 local IP_SRC	= "192.168.0.1"
 local NUM_FLOWS	= 256 -- src ip will be IP_SRC + random(0, NUM_FLOWS - 1)
@@ -31,12 +32,12 @@ function master(txPort, rxPort, bgRate, fgRate)
 	-- however, this example scripts shows the explicit configuration instead of implicit magic
 	if txPort == rxPort then
 		-- sending and receiving from the same port
-		txDev = device.config(txPort, 2, 3)
+		txDev = device.config{ port = txPort, rxQueues = 2, txQueues = 3}
 		rxDev = txDev
 	else
 		-- two different ports, different configuration
-		txDev = device.config(txPort, 1, 3)
-		rxDev = device.config(rxPort, 2)
+		txDev = device.config{ port = txPort, rxQueues = 1, txQueues = 3}
+		rxDev = device.config{ port = rxPort, rxQueues = 2 }
 	end
 	-- wait until the links are up
 	device.waitForLinks()
@@ -135,7 +136,6 @@ function counterSlave(queue)
 end
 
 
--- TODO refactor this to use the new API
 function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 	local txDev = txQueue.dev
 	local rxDev = rxQueue.dev

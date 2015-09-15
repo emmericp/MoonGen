@@ -569,6 +569,12 @@ function txQueue:send(bufs)
 	return bufs.size
 end
 
+function txQueue:sendN(bufs, n)
+	self.used = true
+	dpdkc.send_all_packets(self.id, self.qid, bufs.array, n);
+	return n
+end
+
 function txQueue:start()
 	assert(dpdkc.rte_eth_dev_tx_queue_start(self.id, self.qid) == 0)
 end

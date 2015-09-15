@@ -255,7 +255,9 @@ function mod:newDevRxCounter(name, dev, format, file)
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
 	obj.sleep = 100
-	return setmetatable(obj, devRxCounter)
+	setmetatable(obj, devRxCounter)
+	obj:getThroughput() -- reset stats on the NIC
+	return obj
 end
 
 --- Create a new rx counter that can be updated by passing packet buffers to it.
@@ -375,7 +377,9 @@ function mod:newDevTxCounter(name, dev, format, file)
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
 	obj.sleep = 50
-	return setmetatable(obj, devTxCounter)
+	setmetatable(obj, devTxCounter)
+	obj:getThroughput() -- reset stats on the NIC
+	return obj
 end
 
 --- Create a new tx counter that can be updated by passing packet buffers to it.

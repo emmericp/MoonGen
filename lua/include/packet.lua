@@ -102,9 +102,14 @@ function pkt:get()
 end
 
 --- Dumps the packet data cast to the best fitting packet struct.
---- @param bytes number of bytes to dump, optional
-function pkt:dump(bytes)
-	self:get():dump(bytes or self.pkt.pkt_len)
+--- @param bytes number of bytes to dump, optional (default = packet size)
+--- @param stream the stream to write to, optional (default = io.stdout)
+function pkt:dump(bytes, stream)
+	if type(bytes) == "userdata" then
+		stream = bytes
+		bytes = nil
+	end
+	self:get():dump(bytes or self.pkt.pkt_len, stream or io.stdout)
 end
 
 -------------------------------------------------------------------------------------------------------
@@ -352,20 +357,31 @@ end
 --- Print a hex dump of a packet.
 --- @param self the packet
 --- @param bytes Number of bytes to dump. If no size is specified the payload is truncated.
-function packetDump(self, bytes) 
+--- @param stream the IO stream to write to, optional (default = io.stdout)
+function packetDump(self, bytes, stream) 
+	if type(bytes) == "userdata" then
+		-- if someone calls this directly on a packet
+		stream = bytes
+		bytes = nil
+	end
 	bytes = bytes or ffi.sizeof(self:getName())
+	stream = stream or io.stdout
 
 	-- print timestamp
-	write(getTimeMicros())
+	stream:write(getTimeMicros())
 
 	-- headers in cleartext
 	for i, v in ipairs(self:getHeaders()) do
 		local str = v:getString()
-		if i == 1 then write(" " .. str .. "\n") else print(str) end
+		if i == 1 then
+			stream:write(" " .. str .. "\n")
+		else
+			stream:write(str .. "\n")
+		end
 	end
 
 	-- hex dump
-	dumpHex(self, bytes)
+	dumpHex(self, bytes, stream)
 end
 	
 --- Set all members of all headers.
@@ -625,6 +641,14 @@ function packetMakeStruct(...)
 	end
 end
 
+
+--- Raw packet type
+
+local payloadType = ffi.typeof("union payload_t*")
+
+function pkt:getRawPacket()
+	return payloadType(self.pkt.data)
+end
 
 ---------------------------------------------------------------------------
 ---- Metatypes
