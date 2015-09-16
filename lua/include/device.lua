@@ -361,6 +361,20 @@ function dev:setPromisc(enable)
 	end
 end
 
+function dev:addMac(mac)
+	local rc = dpdkc.rte_eth_dev_mac_addr_add(self.id, parseMacAddress(mac), 0)
+	if rc ~= 0 then
+		log:fatal("could not add mac: %d", rc)
+	end
+end
+
+function dev:removeMac(mac)
+	local rc = dpdkc.rte_eth_dev_mac_addr_remove(self.id, parseMacAddress(mac))
+	if rc ~= 0 then
+		log:fatal("could not remove mac: %d", rc)
+	end
+end
+
 function dev:getPciId()
 	return dpdkc.get_pci_id(self.id)
 end
