@@ -170,7 +170,8 @@ local function startTimerIxgbe(port, id)
 end
 
 local function startTimerIgb(port, id)
-	if id == device.PCI_ID_82580 then
+	if id == device.PCI_ID_82580
+	or id == device.PCI_ID_I350 then
 		-- start the timer
 		dpdkc.write_reg32(port, TIMINCA_82580, 1)
 		dpdkc.write_reg32(port, TSAUXC, bit.band(dpdkc.read_reg32(port, TSAUXC), bit.bnot(TSAUXC_DISABLE)))
@@ -245,7 +246,9 @@ local enableFuncs = {
 	[device.PCI_ID_X540]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_X520]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_82599]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
-	[device.PCI_ID_82580]	= { enableRxTimestampsIgb, enableTxTimestampsIgb, enableRxTimestampsAllIgb } }
+	[device.PCI_ID_82580]	= { enableRxTimestampsIgb, enableTxTimestampsIgb, enableRxTimestampsAllIgb },
+	[device.PCI_ID_I350]	= { nil, nil, enableRxTimestampsAllIgb },
+}
 
 function rxQueue:enableTimestamps(udpPort)
 	udpPort = udpPort or 0

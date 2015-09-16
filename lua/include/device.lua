@@ -33,6 +33,7 @@ mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_X520		= 0x8086154D
 mod.PCI_ID_82599	= 0x808610FB
 mod.PCI_ID_82580	= 0x8086150E
+mod.PCI_ID_I350		= 0x80861521
 mod.PCI_ID_82576	= 0x80861526
 mod.PCI_ID_XL710	= 0x80861583
 
@@ -386,6 +387,7 @@ end
 local deviceNames = {
 	[mod.PCI_ID_82576]	= "82576 Gigabit Network Connection",
 	[mod.PCI_ID_82580]	= "82580 Gigabit Network Connection",
+	[mod.PCI_ID_I350]	= "I350 Gigabit Network Connection",
 	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
 	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter", -- Dell-branded NIC with an 82599
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
