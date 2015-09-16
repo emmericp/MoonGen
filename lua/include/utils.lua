@@ -189,7 +189,7 @@ function parseMacAddress(mac, number)
 		end
 		return acc
 	else
-		addr = ffi.new("struct mac_address")
+		addr = ffi.new("union mac_address")
 		for i = 0, 5 do
 			addr.uint8[i] = bytes[i + 1]
 		end

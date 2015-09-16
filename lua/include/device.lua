@@ -634,11 +634,11 @@ function rxQueue:recv(bufArray)
 end
 
 function rxQueue:getMacAddr()
-  return ffi.cast("struct mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+  return ffi.cast("union mac_address", ffi.C.rte_eth_macaddr_get(self.id))
 end
 
 function txQueue:getMacAddr()
-  return ffi.cast("struct mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+  return ffi.cast("union mac_address", ffi.C.rte_eth_macaddr_get(self.id))
 end
 
 function rxQueue:recvAll(bufArray)

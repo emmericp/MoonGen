@@ -76,8 +76,8 @@ function macAddr:setString(mac)
 end
 
 --- Test equality of two MAC addresses.
---- @param lhs Address in 'struct mac_address' format.
---- @param rhs Address in 'struct mac_address' format.
+--- @param lhs Address in 'union mac_address' format.
+--- @param rhs Address in 'union mac_address' format.
 --- @return true if equal, false otherwise.
 function macAddr.__eq(lhs, rhs)
 	local isMAC = istype(macAddrType, lhs) and istype(macAddrType, rhs) 

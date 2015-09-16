@@ -170,13 +170,13 @@ function arpHeader:getOperationString()
 end
 
 --- Set the hardware source address.
---- @param addr Address in 'struct mac_address' format.
+--- @param addr Address in 'union mac_address' format.
 function arpHeader:setHardwareSrc(addr)
 	self.sha:set(addr)
 end
 
 --- Retrieve the hardware source address.
---- @return Address in 'struct mac_address' format.
+--- @return Address in 'union mac_address' format.
 function arpHeader:getHardwareSrc()
 	return self.sha:get()
 end
@@ -194,13 +194,13 @@ function arpHeader:getHardwareSrcString()
 end
 
 --- Set the hardware destination address.
---- @param addr Address in 'struct mac_address' format.
+--- @param addr Address in 'union mac_address' format.
 function arpHeader:setHardwareDst(addr)
 	self.tha:set(addr)
 end
 
 --- Retrieve the hardware destination address.
---- @return Address in 'struct mac_address' format.
+--- @return Address in 'union mac_address' format.
 function arpHeader:getHardwareDst()
 	return self.tha:get()
 end
@@ -293,7 +293,7 @@ function arpHeader:fill(args, pre)
 	args[prSrc] = args[prSrc] or "0.1.2.3"
 	args[prDst] = args[prDst] or "4.5.6.7"
 	
-	-- if for some reason the address is in 'struct mac_address'/'union ipv4_address' format, cope with it
+	-- if for some reason the address is in 'union mac_address'/'union ipv4_address' format, cope with it
 	if type(args[hwSrc]) == "string" then
 		self:setHardwareSrcString(args[hwSrc])
 	else
