@@ -154,7 +154,6 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 			return rc;
 		}
 	}
-	rte_eth_promiscuous_enable(port);
 	rc = rte_eth_dev_start(port);
 	// save memory address of the register file
 	struct rte_eth_dev_info dev_info;

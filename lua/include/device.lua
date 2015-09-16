@@ -193,6 +193,7 @@ function mod.config(...)
   if rss_enabled == 1 then
     dev:setRssNQueues(args.rssNQueues)
   end
+  dev:setPromisc(true)
   return dev
 end
 
@@ -245,7 +246,6 @@ function dev:setRssNQueues(n)
     log:fatal("Error setting up RETA table: " .. errors.getstr(-ret))
   end
 end
-
 
 
 function mod.get(id)
@@ -351,6 +351,14 @@ end
 function dev:getMac()
 	-- TODO: optimize
 	return parseMacAddress(self:getMacString())
+end
+
+function dev:setPromisc(enable)
+	if enable then
+		dpdkc.rte_eth_promiscuous_enable(self.id)
+	else
+		dpdkc.rte_eth_promiscuous_disable(self.id)
+	end
 end
 
 function dev:getPciId()
