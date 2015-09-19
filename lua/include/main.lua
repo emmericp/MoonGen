@@ -58,6 +58,18 @@ local function parseCommandLineArgs(...)
 	return args
 end
 
+local function checkOS()
+	local name, major, minor = getOS()
+	if name ~= "Linux" then
+		return log:warn("Could not detect Linux version")
+	end
+	if major >= 4 or major == 3 and minor > 13 then
+		log:warn("You are running Linux >= 3.14, DDIO might not be working with DPDK in this setup!")
+		log:warn("This can cause a huge performance impact (one memory access per packet!) preventing MoonGen from reaching line rate.")
+		log:warn("Try using an older kernel (we recommend 3.13) if you see a low performance or huge cache miss ratio.")
+	end
+end
+
 local function master(_, file, ...)
 	MOONGEN_TASK_NAME = "master"
 	if not dpdk.init() then
@@ -69,6 +81,7 @@ local function master(_, file, ...)
 	for _, device in ipairs(devices) do
 		printf("   Device %d: %s (%s)", device.id, device.mac, device.name)
 	end
+	checkOS()
 	dpdk.userScript = file -- needs to be passed to slave cores
 	local args = parseCommandLineArgs(...)
 	arg = args -- for cliargs in busted
