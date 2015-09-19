@@ -6,6 +6,21 @@
 #include <rte_mbuf.h>
 #include <ixgbe_type.h>
 #include <rte_mbuf.h>
+
+// i40e_ethdev depends on i40e_type.h but doesn't include it
+// some macro names clash with ixgbe macros included in some of the DPDK header
+// TODO: find a better solution like one file per driver
+#undef UNREFERENCED_4PARAMETER
+#undef UNREFERENCED_3PARAMETER
+#undef UNREFERENCED_2PARAMETER
+#undef UNREFERENCED_1PARAMETER
+#undef DEBUGOUT
+#undef DEBUGFUNC
+#undef DEBUGOUT1
+#undef DEBUGOUT2
+#undef DEBUGOUT3
+#undef DEBUGOUT6
+#undef DEBUGOUT7
 #include <i40e_type.h>
 #include <i40e_ethdev.h>
 #include "device.h"
