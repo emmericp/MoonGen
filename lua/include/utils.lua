@@ -96,6 +96,10 @@ function printCsv(...)
 	return print(toCsv(...))
 end
 
+function trim(str)
+	return str:match("^%s*(.-)%s*$")
+end
+
 --- Get the time to wait (in byte-times) for the next packet based on a poisson process.
 --- @param average the average wait time between two packets
 --- @returns the number of byte-times to wait to achieve the given average wait-time
