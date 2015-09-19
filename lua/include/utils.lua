@@ -361,3 +361,30 @@ end })
 function unpackAll(tbl)
 	return unpackers[table.maxn(tbl)](tbl)
 end
+
+function run(cmd)
+	local file = io.popen(cmd, "r")
+	if not file then
+		return false
+	end
+	local s = assert(file:read('*a'))
+	file:close()
+	return s
+end
+
+--- Get the operation system type and version
+-- @return osName, major, minor, patch
+function getOS()
+	local os = run("uname")
+	if not os then
+		return nil
+	end
+	local ver = run("uname -r")
+	if not ver then
+		return os, 0, 0, 0
+	end
+	local major, minor, patch = tonumberall(ver:match("(%d+)%.(%d+)%.(%d+)"))
+	return trim(os), major, minor, patch
+end
+
+
