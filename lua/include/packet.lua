@@ -94,6 +94,10 @@ function pkt:setSize(size)
 	self.pkt.data_len = size
 end
 
+function pkt:getSize()
+	return self.pkt.pkt_len
+end
+
 --- Returns the packet data cast to the best fitting packet struct. 
 --- Starting with ethernet header.
 --- @return packet data as cdata of best fitting packet
