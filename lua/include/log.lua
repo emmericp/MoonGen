@@ -136,7 +136,7 @@ function log:error(str, ...)
 	str = "[ERROR] " .. str:format(...)
 		
 	if self.ERROR >= self.level then
-		print(bred(str))
+		print(bred("%s", str))
 	end	
 
 	if self.fileEnabled and self.ERROR >= self.fileLevel then
@@ -151,7 +151,7 @@ function log:warn(str, ...)
 	str = "[WARN]  " .. str:format(...)
 		
 	if self.WARN >= self.level then
-		print(yellow(str))
+		print(yellow("%s", str))
 	end	
 
 	if self.fileEnabled and self.WARN >= self.fileLevel then
@@ -166,7 +166,7 @@ function log:info(str, ...)
 	str = "[INFO]  " .. str:format(...)
 		
 	if self.INFO >= self.level then
-		print(white(str))
+		print(white("%s", str))
 	end	
 
 	if self.fileEnabled and self.INFO >= self.fileLevel then
