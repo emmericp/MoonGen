@@ -1,4 +1,4 @@
-package.path = package.path .. "scripts/?.lua"
+package.path = package.path .. "rfc2544/?.lua"
 
 local standalone = false
 if master == nil then

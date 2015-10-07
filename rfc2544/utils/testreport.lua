@@ -7,7 +7,7 @@ local texHdr = [[
 \documentclass{article}
 \usepackage{multirow}
 \usepackage{graphicx}
-\usepackage{tabu}
+\usepackage{longtable,tabu}
 \usepackage[margin=1in]{geometry}
 \renewcommand{\thesubsection}{\arabic{subsection}}
 \begin{document}
@@ -115,7 +115,7 @@ function mod:writeThroughput(file)
     tex = tex:gsub("##ACCURACY##", string.format("%d Mbps", self.throughput.accuracy))
     file:write(tex)
     file:write(vspaceTex)
-    file:write("\\begin{tabu} to \\textwidth {X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]} \\hline\n")
+    file:write("\\begin{longtabu} to \\textwidth {X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]} \\hline\n")
     file:write("Frame Size (bytes) & Iteration & Total Tx Frames & Total Rx Frames & Throughput (Mpps) & Throughput (Mbps)\\\\ \\hline\n")
     table.sort(self.throughput, function(e1, e2) return e1.k < e2.k end)
     for _, p in ipairs(self.throughput) do
@@ -132,7 +132,7 @@ function mod:writeThroughput(file)
             file:write(string.format(" & %d & %d & %d & %.3f & %.3f\\\\\n", i , r.spkts, r.rpkts, r.mpps, r.mpps * 8 * (r.frameSize + 20)))
         end
     end
-    file:write("\\hline\n\\end{tabu}\n")
+    file:write("\\hline\n\\end{longtabu}\n")
     local img = imgTex:gsub("##IMG##", "plot_throughput_mpps") 
     file:write(img)
     file:write("\\newpage\n")
@@ -143,15 +143,15 @@ function mod:writeLatency(file)
     tex = tex:gsub("##DURATION##", string.format("%d s", self.latency.duration))
     file:write(tex)
     file:write(vspaceTex)
-    file:write("\\begin{tabu} to \\textwidth {X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]X[4,c,m]} \\hline\n")
+    file:write("\\begin{longtabu} to \\textwidth {X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]X[4,r,m]} \\hline\n")
     file:write("Frame Size (bytes) & Throughput (Mpps) & Latency Min ($\\mu$s)& Latency Avg ($\\mu$s)& Latency Max ($\\mu$s)& \\\\ \\hline\n")
     for _, p in ipairs(self.latency) do
         local histo = p.v
-		histo:calc()
+        histo:calc()
         local n = #histo.sortedHisto
         file:write(string.format("%d & %.3f & %.1f & %.1f & %.1f & \\includegraphics[width=\\linewidth]{plot_latency_histo_%d} \\\\\n", p.k, histo.rate, histo.sortedHisto[1].k, histo.avg, histo.sortedHisto[n].k ,p.k))
     end
-    file:write("\\hline\n\\end{tabu}\n\\newpage\n")
+    file:write("\\hline\n\\end{longtabu}\n\\newpage\n")
 end
 
 function mod:writeFrameloss(file)
@@ -159,7 +159,7 @@ function mod:writeFrameloss(file)
     tex = tex:gsub("##DURATION##", string.format("%d s", self.frameloss.duration))
     file:write(tex)
     file:write(vspaceTex)
-    file:write("\\begin{tabu} to \\textwidth {X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]} \\hline\n")
+    file:write("\\begin{longtabu} to \\textwidth {X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]} \\hline\n")
     file:write("Frame Size (bytes) & Load (\\%) &  Total Tx Frames & Total Rx Frames & Total Frames Lost  & Frame Loss (\\%) \\\\ \\hline\n")
     for _, p in ipairs(self.frameloss) do
         local n = #p.v
@@ -170,7 +170,7 @@ function mod:writeFrameloss(file)
         end
         file:write("\\hline\n")
     end
-    file:write("\\end{tabu}")
+    file:write("\\end{longtabu}")
     local img = imgTex:gsub("##IMG##", "plot_frameloss_percent") 
     file:write(img)
 end
@@ -182,7 +182,7 @@ function mod:writeBackToBack(file)
     tex = tex:gsub("##RATE##", string.format("%d Mbps", self.btb.rate))
     file:write(tex)
     file:write(vspaceTex)
-    file:write("\\begin{tabu} to \\textwidth {X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]X[-1,c,m]} \\hline\n")
+    file:write("\\begin{longtabu} to \\textwidth {X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]X[-1,r,m]} \\hline\n")
     file:write("Frame Size (bytes) & Burst size min & Burst size avg & Burst size max & Theoretical maximum\\\\ \\hline\n")
     for _, p in ipairs(self.btb) do
         local sum, avg = 0, 0
@@ -194,7 +194,7 @@ function mod:writeBackToBack(file)
         avg = sum / #p.v
         file:write(string.format("%d & %d & %.1f & %d & %d\\\\\n", p.k, min, avg, max, math.ceil(self.btb.rate / (p.k + 20) / 8 * self.btb.duration * 10^6)))
     end
-    file:write("\\hline\n\\end{tabu}\n")
+    file:write("\\hline\n\\end{longtabu}\n")
     local img = imgTex:gsub("##IMG##", "plot_backtoback") 
     file:write(img)
 end

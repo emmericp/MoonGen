@@ -2,16 +2,29 @@ local actors = {}
 local status, snmp = pcall(require, 'utils.snmp')
 if status then
     table.insert(actors, snmp)
+else
+    print "unable to load snmp module"
 end
 
 local status, sshMikrotik = pcall(require, 'utils.ssh-mikrotik')
 if status then
     table.insert(actors, sshMikrotik)
+else
+    print "unable to load mikrotik ssh module"
+end
+
+local status, sshFreeBSD = pcall(require, 'utils.ssh-freebsd')
+if status then                                                                  
+    table.insert(actors, sshFreeBSD)
+else
+    print "unable to load freeBSD ssh module"
 end
 
 local status, ssh = pcall(require, 'utils.ssh')
 if status then
     table.insert(actors, ssh)
+else
+    print "unable to load linux ssh module"
 end
 
 local manual = require "utils.manual"
@@ -21,105 +34,113 @@ local mod = {}
 mod.__index = mod
 
 function mod.addInterfaceIP(interface, ip, pfx)
-    local status
+    local status = -1
     for k, actor in ipairs(actors) do
         status = actor.addInterfaceIP(interface, ip, pfx)
         if status == 0 then
             break
         end
     end
-    
+    return status
 end
 
 function mod.delInterfaceIP(interface, ip, pfx)
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         status = actor.delInterfaceIP(interface, ip, pfx)
         if status == 0 then
             break
         end
     end
-    
+    return status
 end
 
 function mod.clearIPFilters()
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         status = actor.clearIPFilters()
         if status == 0 then
             break
         end
     end
+    return status
 end
 
 function mod.addIPFilter(src, sPfx, dst, dPfx)
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         status = actor.addIPFilter(src, sPfx, dst, dPfx)
         if status == 0 then
             break
         end
     end
+    return status
 end
 
 function mod.delIPFilter(src, sPfx, dst, dPfx)
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         status = actor.delIPFilter(src, sPfx, dst, dPfx)
         if status == 0 then
             break
         end
     end
+    return status
 end
 
 function mod.clearIPRoutes()
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         actor.clearIPRoutes()
         if status == 0 then
             break
         end
     end
+    return status
 end
 
 function mod.addIPRoute(dst, pfx, gateway, interface)
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         status = actor.addIPRoute(dst, pfx, gateway, interface)
         if status == 0 then
             break
         end
     end
+    return status
 end
 
 function mod.delIPRoute(dst, pfx, gateway, interface)
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         status = actor.delIPRoute(dst, pfx, gateway, interface)
         if status == 0 then
             break
         end
     end
+    return status
 end
 
 function mod.addIPRouteRange(firstIP, lastIP)
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         status = actor.addIPRouteRange(firstIP, lastIP)
         if status == 0 then
             break
         end
     end
+    return status
 end
 
 function mod.getIPRouteCount()
-    local status
+    local status = -1
     for _, actor in ipairs(actors) do
         status = actor.getIPRouteCount()
         if status == 0 then
             break
         end
     end
+    return status
 end
 
 function mod.getDeviceName()

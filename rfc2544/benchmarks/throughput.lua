@@ -1,4 +1,4 @@
-package.path = package.path .. "scripts/?.lua"
+package.path = package.path .. "rfc2544/?.lua"
 
 local standalone = false
 if master == nil then
@@ -234,6 +234,7 @@ function benchmark:bench(frameSize)
             printf("changing rate from %d MBit/s to %d MBit/s", lastRate, rate)
             -- TODO: maybe wait for resettlement of DUT (RFC2544)
             port = port + 1
+	    dpdk.sleepMillis(100)
         --device.reclaimTxBuffers()
         end
     end
@@ -306,7 +307,7 @@ function throughputLoadSlave(queue, port, frameSize, duration, modifier, bar)
     -- warmup phase to wake up card
     local timer = timer:new(0.1)
     while timer:running() do
-        sendBufs(bufs, port + 1)
+        sendBufs(bufs, port - 1)
     end
 
     -- benchmark phase    

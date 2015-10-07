@@ -1,7 +1,7 @@
-package.path = package.path .. "scripts/?.lua;../scripts/?.lua;"
+package.path = package.path .. "rfc2544/?.lua;../rfc2544/?.lua;"
 
 if master == nil then
-	master = "dummy"
+    master = "dummy"
 end
 
 local dpdk          = require "dpdk"
@@ -140,7 +140,7 @@ function master()
     -- create testresult folder if not exist
     -- there is no clean lua way without using 3rd party libs
     local folderName = "testresults_" .. date
-	os.execute("mkdir -p " .. folderName)    
+    os.execute("mkdir -p " .. folderName)    
     
     local report = testreport.new(folderName .. "/rfc_2544_testreport.tex")
     local results = {}

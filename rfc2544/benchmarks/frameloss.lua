@@ -1,4 +1,4 @@
-package.path = package.path .. "scripts/?.lua"
+package.path = package.path .. "rfc2544/?.lua"
 
 local standalone = false
 if master == nil then
@@ -255,7 +255,7 @@ function framelossLoadSlave(queue, port, frameSize, duration, modifier, bar)
     -- warmup phase to wake up card
     local timer = timer:new(0.1)
     while timer:running() do
-        sendBufs(bufs, port + 1)
+        sendBufs(bufs, port - 1)
     end
     
     -- benchmark phase
