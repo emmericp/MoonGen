@@ -436,7 +436,7 @@ local function arpTask(qs)
 		end
 
 		for _, ip in pairs(nic.ips) do
-			ipToMac[parseIPAddress(ip)] = nic.txQueue.dev:getMac()
+			ipToMac[parseIPAddress(ip)] = nic.txQueue.dev:getMacString()
 		end
 		nic.txQueue.dev:l2Filter(eth.TYPE_ARP, nic.rxQueue)
 	end
@@ -467,11 +467,11 @@ local function arpTask(qs)
 							txBufs:alloc(60)
 							-- TODO: a single-packet API would be nice for things like this
 							local pkt = txBufs[1]:getArpPacket()
-							pkt.eth:setSrc(mac)
+							pkt.eth:setSrcString(mac)
 							pkt.eth:setDst(rxPkt.eth:getSrc())
 							pkt.arp:setOperation(arp.OP_REPLY)
 							pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
-							pkt.arp:setHardwareSrc(mac)
+							pkt.arp:setHardwareSrcString(mac)
 							pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
 							pkt.arp:setProtoSrc(ip)
 							nic.txQueue:send(txBufs)
@@ -504,10 +504,10 @@ local function arpTask(qs)
 			pkt.arp:setProtoDst(ip)
 			-- TODO: do not send requests on all devices, but only the relevant
 			for _, nic in pairs(qs) do
-				local mac = nic.txQueue.dev:getMac()
-				pkt.eth:setSrc(mac)
+				local mac = nic.txQueue.dev:getMacString()
+				pkt.eth:setSrcString(mac)
 				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
-				pkt.arp:setHardwareSrc(mac)
+				pkt.arp:setHardwareSrcString(mac)
 				nic.txQueue:send(txBufs)
 			end
 		end)
