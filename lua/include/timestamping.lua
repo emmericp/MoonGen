@@ -374,6 +374,8 @@ local timestamper = {}
 timestamper.__index = timestamper
 
 --- Create a new timestamper.
+--- A NIC can only be used by one thread at a time due to clock synchronization.
+--- Best current pratice is to use only one timestamping thread to avoid problems.
 function mod:newTimestamper(txQueue, rxQueue, mem, udp)
 	mem = mem or memory.createMemPool(function(buf)
 		-- defaults are good enough for us here
@@ -402,6 +404,7 @@ function mod:newTimestamper(txQueue, rxQueue, mem, udp)
 	}, timestamper)
 end
 
+--- See newTimestamper()
 function mod:newUdpTimestamper(txQueue, rxQueue, mem)
 	return self:newTimestamper(txQueue, rxQueue, mem, true)
 end
