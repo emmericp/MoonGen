@@ -188,6 +188,8 @@ end
 ----------------------------------------------------------------------------------
 
 pkt.getVxlanPacket = packetCreate("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
+-- the raw version (only the encapsulating headers, everything else is payload)
+pkt.getVxlanEncapsulationPacket = packetCreate("eth", "ip4", "udp", "vxlan")
 
 
 ------------------------------------------------------------------------
