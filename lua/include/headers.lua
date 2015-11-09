@@ -9,7 +9,6 @@ local ffi = require "ffi"
 
 -- structs
 ffi.cdef[[
-	// TODO: vlan support (which can be offloaded to the NIC to simplify scripts)
 	
 	union payload_t {
 		uint8_t	uint8[0];
@@ -22,8 +21,9 @@ ffi.cdef[[
 	//	---- Address structs
 	//  -----------------------------------------------------
 
-	struct __attribute__ ((__packed__)) mac_address {
+	union __attribute__((__packed__)) mac_address {
 		uint8_t		uint8[6];
+		uint64_t	uint64[0]; // for efficient reads
 	};
 
 	union ip4_address {
@@ -50,9 +50,11 @@ ffi.cdef[[
 	// ---- Header structs
 	// -----------------------------------------------------
 
+	// TODO: there should also be a variant with a VLAN tag
+	// note that this isn't necessary for most cases as offloading should be preferred
 	struct __attribute__((__packed__)) ethernet_header {
-		struct mac_address	dst;
-		struct mac_address	src;
+		union mac_address	dst;
+		union mac_address	src;
 		uint16_t		type;
 	};
 
@@ -62,9 +64,9 @@ ffi.cdef[[
 		uint8_t		hln;
 		uint8_t		pln;
 		uint16_t	op;
-		struct mac_address	sha;
+		union mac_address	sha;
 		union ip4_address	spa;
-		struct mac_address	tha;
+		union mac_address	tha;
 		union ip4_address	tpa;
 	};
 	

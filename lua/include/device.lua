@@ -10,8 +10,9 @@ local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 local dpdk		= require "dpdk"
 local memory	= require "memory"
-local serpent = require "Serpent"
-local errors = require "error"
+local serpent 	= require "Serpent"
+local errors 	= require "error"
+local log 		= require "log"
 require "headers"
 
 -- FIXME: fix this ugly duplicated code enum
@@ -32,6 +33,7 @@ mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_X520		= 0x8086154D
 mod.PCI_ID_82599	= 0x808610FB
 mod.PCI_ID_82580	= 0x8086150E
+mod.PCI_ID_I350		= 0x80861521
 mod.PCI_ID_82576	= 0x80861526
 mod.PCI_ID_XL710	= 0x80861583
 
@@ -111,7 +113,7 @@ function mod.config(...)
   local args = {...}
   if #args > 1 or type((...)) == "number" then
     -- this is for legacy compatibility when calling the function  without named arguments
-    print("[WARNING] You are using a deprecated method for invoking device.config. config(...) should be used with named arguments. For details: see documentation")
+    log:warn("You are using a deprecated method for invoking device.config. config(...) should be used with named arguments. For details: see documentation")
     if not args[2] or type(args[2]) == "number" then
       args.port       = args[1]
       args.rxQueues   = args[2]
@@ -134,7 +136,7 @@ function mod.config(...)
     -- here we receive named arguments
     args = args[1]
   else
-    errorf("Device config needs at least one argument.")
+    log:fatal("Device config needs at least one argument.")
   end
 
   args.rxQueues = args.rxQueues or 1
@@ -147,14 +149,14 @@ function mod.config(...)
   -- FIXME: should n = 2^k-1 here too?
   args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
   if devices[args.port] and devices[args.port].initialized then
-    printf("[WARNING] Device %d already configured, skipping initilization", args.port)
+    log:warn("Device %d already configured, skipping initilization", args.port)
     return mod.get(args.port)
   end
   args.speed = args.speed or 0
   args.dropEnable = args.dropEnable == nil and true
   if args.rxQueues == 0 or args.txQueues == 0 then
     -- dpdk does not like devices without rx/tx queues :(
-    errorf("cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
+    log:fatal("Cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
   end
   -- configure rss stuff
   local rss_enabled = 0
@@ -185,13 +187,14 @@ function mod.config(...)
   -- TODO: support options
   local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask)
   if rc ~= 0 then
-    errorf("could not configure device %d: error %d", args.port, rc)
+    log:fatal("Could not configure device %d: error %d", args.port, rc)
   end
   local dev = mod.get(args.port)
   dev.initialized = true
   if rss_enabled == 1 then
     dev:setRssNQueues(args.rssNQueues)
   end
+  dev:setPromisc(true)
   return dev
 end
 
@@ -218,11 +221,11 @@ int rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
 
 function dev:setRssNQueues(n)
   if(n>16)then
-    errorf("Maximum possible numbers of RSS queues is 16")
+    log:fatal("Maximum possible numbers of RSS queues is 16")
     return
   end
   if(({[1]=1, [2]=1, [4]=1, [8]=1, [16]=1})[n] == nil) then
-    printf("[WARNING] RSS distribution to queues will not be fair. Fair distribution is only achieved with a number of Queues equal to 1, 2, 4, 8 or 16. However you are currently using %d queues", n)
+    log:warn("RSS distribution to queues will not be fair. Fair distribution is only achieved with a number of Queues equal to 1, 2, 4, 8 or 16. However you are currently using %d queues", n)
   end
   local reta = ffi.new("struct rte_eth_rss_reta")
 
@@ -241,10 +244,9 @@ function dev:setRssNQueues(n)
   -- to the reta_config struct, as lua can not do 64bit unsigned int operations.
   local ret = ffi.C.mg_rte_eth_dev_rss_reta_update(self.id, reta)
   if (ret ~= 0) then
-    errorf("ERROR setting up RETA table: " .. errors.getstr(-ret))
+    log:fatal("Error setting up RETA table: " .. errors.getstr(-ret))
   end
 end
-
 
 
 function mod.get(id)
@@ -258,10 +260,10 @@ function mod.get(id)
 		local devSocket = devices[id]:getSocket()
 		local core, threadSocket = dpdk.getCore()
 		if devSocket ~= threadSocket then
-			printf("[WARNING] You are trying to use %s (attached to the CPU socket %d) from a thread on core %d on socket %d!",
+			log:warn("You are trying to use %s (attached to the CPU socket %d) from a thread on core %d on socket %d!",
 				devices[id], devSocket, core, threadSocket)
-			printf("[WARNING] This can significantly impact the performance or even not work at all")
-			printf("[WARNING] You can change the used CPU cores in dpdk-conf.lua or by using dpdk.launchLuaOnCore(core, ...)")
+			log:warn("This can significantly impact the performance or even not work at all")
+			log:warn("You can change the used CPU cores in dpdk-conf.lua or by using dpdk.launchLuaOnCore(core, ...)")
 		end
 	end
 	return devices[id]
@@ -300,7 +302,7 @@ function mod.waitForLinks(...)
 	else
 		ports = { ... }
 	end
-	print("Waiting for devices to come up...")
+	log:info("Waiting for devices to come up...")
 	local portsUp = 0
 	local portsSeen = {} -- do not wait twice if a port occurs more than once (e.g. if rx == tx)
 	for i, port in ipairs(ports) do
@@ -310,7 +312,7 @@ function mod.waitForLinks(...)
 			portsUp = portsUp + (port:wait() and 1 or 0)
 		end
 	end
-	printf("%d devices are up.", portsUp)
+	log:info(green("%d devices are up.", portsUp))
 end
 
 
@@ -330,7 +332,7 @@ function dev:wait(maxWait)
 		end
 	until link.status
 	self.speed = link.speed
-	printf("Device %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
+	log:info("Device %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
 	return link.status
 end
 
@@ -352,6 +354,28 @@ function dev:getMac()
 	return parseMacAddress(self:getMacString())
 end
 
+function dev:setPromisc(enable)
+	if enable then
+		dpdkc.rte_eth_promiscuous_enable(self.id)
+	else
+		dpdkc.rte_eth_promiscuous_disable(self.id)
+	end
+end
+
+function dev:addMac(mac)
+	local rc = dpdkc.rte_eth_dev_mac_addr_add(self.id, parseMacAddress(mac), 0)
+	if rc ~= 0 then
+		log:fatal("could not add mac: %d", rc)
+	end
+end
+
+function dev:removeMac(mac)
+	local rc = dpdkc.rte_eth_dev_mac_addr_remove(self.id, parseMacAddress(mac))
+	if rc ~= 0 then
+		log:fatal("could not remove mac: %d", rc)
+	end
+end
+
 function dev:getPciId()
 	return dpdkc.get_pci_id(self.id)
 end
@@ -363,6 +387,7 @@ end
 local deviceNames = {
 	[mod.PCI_ID_82576]	= "82576 Gigabit Network Connection",
 	[mod.PCI_ID_82580]	= "82580 Gigabit Network Connection",
+	[mod.PCI_ID_I350]	= "I350 Gigabit Network Connection",
 	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
 	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter", -- Dell-branded NIC with an 82599
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
@@ -371,7 +396,7 @@ local deviceNames = {
 
 function dev:getName()
 	local id = self:getPciId()
-	return deviceNames[id] or ("unknown NIC (PCI ID %x:%x)"):format(bit.rshift(id, 16), bit.band(id, 0xFFFF))
+	return deviceNames[id] and green(deviceNames[id]) or red(("unknown NIC (PCI ID %x:%x)"):format(bit.rshift(id, 16), bit.band(id, 0xFFFF)))
 end
 
 function mod.getDeviceName(port)
@@ -495,11 +520,11 @@ local RTTDQSEL = 0x00004904
 --- Note that this changes the inter-arrival times as the rate control of both queues is independent.
 function txQueue:setRate(rate)
 	if self.dev:getPciId() ~= mod.PCI_ID_82599 and self.dev:getPciId() ~= mod.PCI_ID_X540 and self.dev:getPciId() ~= mod.PCI_ID_X520 then
-		error("tx rate control not yet implemented for this NIC")
+		log:fatal("TX rate control not yet implemented for this NIC")
 	end
 	local speed = self.dev:getLinkStatus().speed
 	if speed <= 0 then
-		print("WARNING: link down, assuming 10 GbE connection")
+		log:warn("Link down, assuming 10 GbE connection")
 		speed = 10000
 	end
 	if rate <= 0 then
@@ -514,10 +539,10 @@ function txQueue:setRate(rate)
 	-- ethernet frame is 64 byte when it is actually 84 byte (8 byte preamble/SFD, 12 byte IFG)
 	-- TODO: software fallback for bugged rates and unsupported NICs
 	if rate >= (64 * 64) / (84 * 84) and rate < 1 then
-		print("WARNING: rates with a payload rate >= 64/84% do not work properly with small packets due to a hardware bug, see documentation for details")
+		log:warn("Rates with a payload rate >= 64/84%% do not work properly with small packets due to a hardware bug, see documentation for details")
 	end
 	if rate <= 0 then
-		error("rate must be > 0")
+		log:fatal("Rate must be > 0")
 	end
 	if rate >= 1 then
 		self:setTxRateRaw(0, true)
@@ -568,6 +593,12 @@ function txQueue:send(bufs)
 	return bufs.size
 end
 
+function txQueue:sendN(bufs, n)
+	self.used = true
+	dpdkc.send_all_packets(self.id, self.qid, bufs.array, n);
+	return n
+end
+
 function txQueue:start()
 	assert(dpdkc.rte_eth_dev_tx_queue_start(self.id, self.qid) == 0)
 end
@@ -587,7 +618,7 @@ do
 		elseif method == "size" then
 			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, bufs.size, mempool)
 		else
-			errorf("unknown delay method %s", method)
+			log:fatal("Unknown delay method %s", method)
 		end
 		return bufs.size
 	end
@@ -619,15 +650,15 @@ function rxQueue:recv(bufArray)
 end
 
 function rxQueue:getMacAddr()
-  return ffi.cast("struct mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+  return ffi.cast("union mac_address", ffi.C.rte_eth_macaddr_get(self.id))
 end
 
 function txQueue:getMacAddr()
-  return ffi.cast("struct mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+  return ffi.cast("union mac_address", ffi.C.rte_eth_macaddr_get(self.id))
 end
 
 function rxQueue:recvAll(bufArray)
-	error("NYI")
+	log:fatal("NYI")
 end
 
 --- Receive packets from a rx queue with a timeout.

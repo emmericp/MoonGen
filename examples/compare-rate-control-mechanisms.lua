@@ -11,6 +11,7 @@ local filter	= require "filter"
 local timer		= require "timer"
 local stats		= require "stats"
 local hist		= require "histogram"
+local log		= require "log"
 
 -- required here because this script creates *a lot* of mempools
 memory.enableCache()
@@ -22,7 +23,7 @@ local PKT_SIZE = 60
 function master(...)
 	local txPort, rxPort, maxRate, steps = tonumberall(...)
 	if not txPort or not rxPort then
-		errorf("usage: txPort rxPort [maxRate (Mpps)] [steps]")
+		return log:info("usage: txPort rxPort [maxRate (Mpps)] [steps]")
 	end
 	local minRate = 0.02
 	maxRate = maxRate or 7.44
@@ -40,7 +41,7 @@ function master(...)
 		table.insert(results, result)
 		for i = 1, REPS do
 			for _, method in ipairs{"hardware", "software"} do
-				printf("Testing rate %f Mpps with %s rate control, test run %d", rate, method, i)
+				log:info("Testing rate %f Mpps with %s rate control, test run %d", rate, method, i)
 				txQueue:setRateMpps(method == "hardware" and rate or 0)
 				local loadTask = dpdk.launchLua("loadSlave", txQueue, rxDev, method == "software" and rate)
 				local timerTask = dpdk.launchLua("timerSlave", txDev, rxDev, txQueueTs, rxQueueTs, ("%s-%s-%d"):format(method, rate, i))
@@ -101,7 +102,7 @@ function loadSlave(queue, rxDev, rate)
 	txStats:finalize()
 	rxStats:finalize()
 	local loss = txStats.total - rxStats.total
-	printf("Packet loss: %d (%f%%)", loss, loss / txStats.total * 100)
+	log:info("Packet loss: %d (%f%%)", loss, loss / txStats.total * 100)
 end
 
 function timerSlave(txDev, rxDev, txQueue, rxQueue, id)

@@ -4,6 +4,7 @@
 --- @todo TODO docu
 --- @todo local unpackers ... crashes lua2dox parser
 ---------------------------------
+require "colors"
 
 local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
 local write = io.write
@@ -95,6 +96,10 @@ function printCsv(...)
 	return print(toCsv(...))
 end
 
+function trim(str)
+	return str:match("^%s*(.-)%s*$")
+end
+
 --- Get the time to wait (in byte-times) for the next packet based on a poisson process.
 --- @param average the average wait time between two packets
 --- @returns the number of byte-times to wait to achieve the given average wait-time
@@ -164,8 +169,9 @@ end
 
 --- Parse a string to a MAC address
 --- @param mac address in string format
+--  @param number return as number
 --- @return address in mac_address format or nil if invalid address
-function parseMacAddress(mac)
+function parseMacAddress(mac, number)
 	local bytes = {string.match(mac, '(%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)')}
 	if bytes == nil then
 		return
@@ -180,11 +186,19 @@ function parseMacAddress(mac)
 		end
 	end
 	
-	addr = ffi.new("struct mac_address")
-	for i = 0, 5 do
-		addr.uint8[i] = bytes[i + 1]
+	if number then
+		local acc = 0
+		for i = 1, 6 do
+			acc = acc + bytes[i] * 256 ^ (i - 1)
+		end
+		return acc
+	else
+		addr = ffi.new("union mac_address")
+		for i = 0, 5 do
+			addr.uint8[i] = bytes[i + 1]
+		end
+		return addr 
 	end
-	return  addr 
 end
 
 --- Parse a string to an IP address
@@ -271,23 +285,25 @@ end
 --- Print a hex dump of cdata.
 --- @param data The cdata to be dumped.
 --- @param bytes Number of bytes to dump.
-function dumpHex(data, bytes)
+--- @param stream the stream to write to, defaults to io.stdout
+function dumpHex(data, bytes, stream)
 	local data = ffi.cast("uint8_t*", data)
+	stream = stream or io.stdout
 	for i = 0, bytes - 1 do
 		if i % 16 == 0 then -- new line
-			write(format("  0x%04x:   ", i))
+			stream:write(format("  0x%04x:   ", i))
 		end
 
-		write(format("%02x", data[i]))
+		stream:write(format("%02x", data[i]))
 		
 		if i % 2  == 1 then -- group 2 bytes
-			write(" ")
+			stream:write(" ")
 		end
 		if i % 16 == 15 then -- end of 16 byte line
-			write("\n")
+			stream:write("\n")
 		end
 	end
-	write("\n\n")
+	stream:write("\n\n")
 end
 
 --- Merge tables.
@@ -345,3 +361,30 @@ end })
 function unpackAll(tbl)
 	return unpackers[table.maxn(tbl)](tbl)
 end
+
+function run(cmd)
+	local file = io.popen(cmd, "r")
+	if not file then
+		return false
+	end
+	local s = assert(file:read('*a'))
+	file:close()
+	return s
+end
+
+--- Get the operation system type and version
+-- @return osName, major, minor, patch
+function getOS()
+	local os = run("uname")
+	if not os then
+		return nil
+	end
+	local ver = run("uname -r")
+	if not ver then
+		return os, 0, 0, 0
+	end
+	local major, minor, patch = tonumberall(ver:match("(%d+)%.(%d+)%.(%d+)"))
+	return trim(os), major, minor, patch
+end
+
+

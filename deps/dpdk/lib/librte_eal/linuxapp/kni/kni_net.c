@@ -600,6 +600,7 @@ kni_net_header(struct sk_buff *skb, struct net_device *dev,
 /*
  * Re-fill the eth header
  */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0))
 static int
 kni_net_rebuild_header(struct sk_buff *skb)
 {
@@ -611,6 +612,7 @@ kni_net_rebuild_header(struct sk_buff *skb)
 
 	return 0;
 }
+#endif /* < 4.1.0  */
 
 /**
  * kni_net_set_mac - Change the Ethernet Address of the KNI NIC
@@ -630,7 +632,9 @@ static int kni_net_set_mac(struct net_device *netdev, void *p)
 
 static const struct header_ops kni_net_header_ops = {
 	.create  = kni_net_header,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0))
 	.rebuild = kni_net_rebuild_header,
+#endif /* < 4.1.0  */
 	.cache   = NULL,  /* disable caching */
 };
 

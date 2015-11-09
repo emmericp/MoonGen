@@ -7,6 +7,7 @@ local hist		= require "histogram"
 local stats		= require "stats"
 local timer		= require "timer"
 local arp		= require "proto.arp"
+local log		= require "log"
 
 -- set addresses here
 local DST_MAC		= nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
@@ -26,7 +27,7 @@ local ARP_IP	= SRC_IP_BASE
 function master(...)
 	local txPort, rxPort, rate, flows, size = tonumberall(...)
 	if not txPort or not rxPort then
-		return print("usage: txPort rxPort [rate [flows [pktSize]]]")
+		return log:info("usage: txPort rxPort [rate [flows [pktSize]]]")
 	end
 	flows = flows or 4
 	rate = rate or 2000
@@ -64,14 +65,14 @@ end
 
 local function doArp()
 	if not DST_MAC then
-		printf("Performing ARP lookup on %s", GW_IP)
+		log:info("Performing ARP lookup on %s", GW_IP)
 		DST_MAC = arp.blockingLookup(GW_IP, 5)
 		if not DST_MAC then
-			printf("ARP lookup failed, using default destination mac address")
+			log:info("ARP lookup failed, using default destination mac address")
 			return
 		end
 	end
-	printf("Destination mac: %s", DST_MAC)
+	log:info("Destination mac: %s", DST_MAC)
 end
 
 function loadSlave(queue, rxDev, size, flows)
@@ -104,7 +105,7 @@ end
 function timerSlave(txQueue, rxQueue, size, flows)
 	doArp()
 	if size < 84 then
-		printf("WARNING: packet size %d is smaller than minimum timestamp size 84. Timestamped packets will be larger than load packets.", size)
+		log:warn("Packet size %d is smaller than minimum timestamp size 84. Timestamped packets will be larger than load packets.", size)
 		size = 84
 	end
 	rxQueue.dev:filterTimestamps(rxQueue)

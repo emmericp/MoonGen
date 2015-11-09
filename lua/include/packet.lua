@@ -13,6 +13,7 @@ require "utils"
 require "headers"
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
+local log = require "log"
 
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
@@ -93,6 +94,10 @@ function pkt:setSize(size)
 	self.pkt.data_len = size
 end
 
+function pkt:getSize()
+	return self.pkt.pkt_len
+end
+
 --- Returns the packet data cast to the best fitting packet struct. 
 --- Starting with ethernet header.
 --- @return packet data as cdata of best fitting packet
@@ -101,18 +106,24 @@ function pkt:get()
 end
 
 --- Dumps the packet data cast to the best fitting packet struct.
---- @param bytes number of bytes to dump, optional
-function pkt:dump(bytes)
-	self:get():dump(bytes or self.pkt.pkt_len)
+--- @param bytes number of bytes to dump, optional (default = packet size)
+--- @param stream the stream to write to, optional (default = io.stdout)
+function pkt:dump(bytes, stream)
+	if type(bytes) == "userdata" then
+		stream = bytes
+		bytes = nil
+	end
+	self:get():dump(bytes or self.pkt.pkt_len, stream or io.stdout)
 end
 
 -------------------------------------------------------------------------------------------------------
---- IPSec offloading
+---- IPSec offloading
 -------------------------------------------------------------------------------------------------------
 
--- @idx SA_IDX to use
--- @sec_type IPSec type to use ("esp"/"ah")
--- @esp_mode ESP mode to use encrypt(1) or authenticate(0)
+--- Use IPsec offloading.
+--- @param idx SA_IDX to use
+--- @param sec_type IPSec type to use ("esp"/"ah")
+--- @param esp_mode ESP mode to use encrypt(1) or authenticate(0)
 function pkt:offloadIPSec(idx, sec_type, esp_mode)
 	local mode = esp_mode or 0
 	local t = nil
@@ -121,7 +132,7 @@ function pkt:offloadIPSec(idx, sec_type, esp_mode)
 	elseif sec_type == "ah" then
 		t = 0
 	else
-		error("Wrong IPSec type (esp/ah)")
+		log:fatal("Wrong IPSec type (esp/ah)")
 	end
 
 	-- Set IPSec offload flag in advanced data transmit descriptor.
@@ -152,7 +163,8 @@ function pkt:offloadIPSec(idx, sec_type, esp_mode)
 	self.ol_ipsec.data = bit.bor(self.ol_ipsec.data, bit.lshift(bit.band(t, 0x1), 19))
 end
 
--- @len ESP Trailer length in bytes
+--- Set the ESP trailer length
+--- @param len ESP Trailer length in bytes
 function pkt:setESPTrailerLength(len)
 	--Disable range check for performance reasons
 	--if len < 0 or len > 511 then
@@ -262,7 +274,7 @@ function packetCreate(...)
 	-- create struct
 	local packetName, ctype = packetMakeStruct(args)
 	if not packetName then
-		printf("WARNING: Failed to create new packet type.")
+		log:warn("Failed to create new packet type.")
 		return
 	end
 
@@ -352,20 +364,31 @@ end
 --- Print a hex dump of a packet.
 --- @param self the packet
 --- @param bytes Number of bytes to dump. If no size is specified the payload is truncated.
-function packetDump(self, bytes) 
+--- @param stream the IO stream to write to, optional (default = io.stdout)
+function packetDump(self, bytes, stream) 
+	if type(bytes) == "userdata" then
+		-- if someone calls this directly on a packet
+		stream = bytes
+		bytes = nil
+	end
 	bytes = bytes or ffi.sizeof(self:getName())
+	stream = stream or io.stdout
 
 	-- print timestamp
-	write(getTimeMicros())
+	stream:write(getTimeMicros())
 
 	-- headers in cleartext
 	for i, v in ipairs(self:getHeaders()) do
 		local str = v:getString()
-		if i == 1 then write(" " .. str .. "\n") else print(str) end
+		if i == 1 then
+			stream:write(" " .. str .. "\n")
+		else
+			stream:write(str .. "\n")
+		end
 	end
 
 	-- hex dump
-	dumpHex(self, bytes)
+	dumpHex(self, bytes, stream)
 end
 	
 --- Set all members of all headers.
@@ -608,7 +631,7 @@ function packetMakeStruct(...)
 
 	-- check uniqueness of packet type (name of struct)
 	if pkt.packetStructs[name] then
-		printf("WARNING: Struct with name \"" .. name .. "\" already exists. Skipping.")
+		log:warn("Struct with name \"" .. name .. "\" already exists. Skipping.")
 		return
 	else
 		-- add struct definition
@@ -617,11 +640,21 @@ function packetMakeStruct(...)
 		-- add to list of existing structs
 		pkt.packetStructs[name] = {...}
 
+		log:debug("Created struct %s", name)
+
 		-- return full name and typeof
 		return name, ffi.typeof(name .. "*")
 	end
 end
 
+
+--- Raw packet type
+
+local payloadType = ffi.typeof("union payload_t*")
+
+function pkt:getRawPacket()
+	return payloadType(self.pkt.data)
+end
 
 ---------------------------------------------------------------------------
 ---- Metatypes

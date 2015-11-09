@@ -4,11 +4,11 @@ LuaJIT + DPDK = fast and flexible packet generator for 10 GBit Ethernet and beyo
 MoonGen uses hardware features for accurate and precise latency measurements and rate control.
 
 You have to write a simple script for your use case.
-The example [l3-load-latency.lua](https://github.com/emmericp/MoonGen/blob/master/examples/l3-load-latency.lua?ts=4) is a good starting point.
+The example [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua?ts=4) is a good starting point as it makes use of a lot of different features of MoonGen.
 
 [API documentation](http://scholzd.github.io/MoonGen/index.html) (preliminary)
 
-Detailed evaluation: [Paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) (Accepted at IMC 2015, [BibTeX entry](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2014arXiv1410.3322E&data_type=BIBTEX&db_key=PRE&nocookieset=1))
+Detailed evaluation: [Paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) (Accepted at IMC 2015, [BibTeX entry](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015-BibTeX.txt))
 
 # MoonGen Packet Generator
 
@@ -32,7 +32,7 @@ MoonGen focuses on four main points:
 * Precise and accurate timestamping: Timestamping with sub-microsecond precision on commodity hardware
 * Precise and accurate rate control: Reliable generation of arbitrary traffic patterns on commodity hardware
 
-You can have a look at [our slides from a recent talk](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/Slides.pdf) or read a draft of [our paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) [1] for a more detailed discussion of MoonGen's internals.
+You can have a look at [our slides from a recent talk](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/Slides.pdf) or read [our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) [1] for a more detailed discussion of MoonGen's internals.
 
 
 # Architecture
@@ -54,7 +54,7 @@ MoonGen therefore starts a new and completely independent LuaJIT VM for each thr
 The new VMs receive serialized arguments: the function to execute and arguments like the queue to send packets from.
 Threads only share state through the underlying library.
 
-The example script [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua) shows how this threading model can be used to implement a typical load generation task.
+The example script [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua?ts=4) shows how this threading model can be used to implement a typical load generation task.
 It implements a QoS test by sending two different types of packets and measures their throughput and latency. It does so by starting two packet generation tasks: one for the background traffic and one for the prioritized traffic.
 A third task is used to categorize and count the incoming packets.
 
@@ -64,7 +64,7 @@ Intel commodity NICs like the 82599, X540, and 82580 support time stamping in ha
 The NICs implement this to support the IEEE 1588 PTP protocol, but this feature can be used to timestamp almost arbitrary UDP packets.
 The NICs achieve sub-microsecond precision and accuracy.
 
-A more detailed evaluation can be found in [our paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) [1].
+A more detailed evaluation can be found in [our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) [1].
 
 # Rate Control
 Precise control of inter-packet gaps is an important feature for reproducible tests.
@@ -96,7 +96,7 @@ MoonGen therefore implements two ways to prevent this problem.
 Intel 10 GbE NICs (82599 and X540) support rate control in hardware.
 This can be used to generate CBR or bursty traffic with precise inter-departure times.
 
-[Our paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) [1] features a detailed evaluation of this feature and compares it to software methods.
+[Our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) [1] features a detailed evaluation of this feature and compares it to software methods.
 
 ## Better Software Rate Control
 The hardware supports only CBR traffic. Other traffic patterns, especially a Poisson distribution, are desirable.
@@ -113,7 +113,7 @@ A bad packet is a packet that is not accepted by the DuT (device under test) and
 We currently use packets with an invalid CRC and an invalid length if necessary.
 All common NICs drop such packets immediately in hardware as further processing of a corrupted packet is pointless.
 This does not affect the running software.
-[Our paper](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf) contains a measurement which shows that this is the case.
+[Our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) contains a measurement which shows that this is the case.
 
 If the DuT's NIC does not do this or if a hardware device is to be tested, then a switch can be used to remove these packets from the stream to generate 'real' space on the wire.
 The effects of the switch on the packet spacing needs to be analyzed carefully, e.g. with MoonGen's inter-arrival.lua example script.
@@ -182,7 +182,7 @@ We decided for DPDK as back end for the following reasons:
 Note that this might change. Using DPDK also comes with disadvantages like its bloated build system and configuration.
 
 # References
-[1] Paul Emmerich, Sebastian Gallenmüller, Florian Wohlfart, Daniel Raumer, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator, 2015. Draft. Accepted at IMC 2015. [Preprint available](http://arxiv.org/ftp/arxiv/papers/1410/1410.3322.pdf).  [BibTeX](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2014arXiv1410.3322E&data_type=BIBTEX&db_key=PRE&nocookieset=1).
+[1] Paul Emmerich, Sebastian Gallenmüller, Daniel Raumer, Florian Wohlfart, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator, 2015. Accepted at IMC 2015. [Preprint available](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf).  [BibTeX](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015-BibTeX.txt).
 
 [2] Alessio Botta, Alberto Dainotti, and Antonio Pescapé. Do you trust your software-based traffic generator? In *IEEE Communications Magazine*, 48(9):158–165, 2010.
 

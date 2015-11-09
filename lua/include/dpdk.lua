@@ -9,6 +9,7 @@ local mod = {}
 local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 local serpent	= require "Serpent"
+local log 		= require "log"
 
 -- DPDK constants (lib/librte_mbuf/rte_mbuf.h)
 -- TODO: import more constants here
@@ -54,11 +55,11 @@ function mod.init()
 			setfenv(cfgScript, setmetatable({ DPDKConfig = function(arg) cfg = arg end }, { __index = _G }))
 			local ok, err = pcall(cfgScript)
 			if not ok then
-				print("could not load DPDK config: " .. err)
+				log:error("Could not load DPDK config: " .. err)
 				return false
 			end
 			if not cfg then
-				print("config file does not contain DPDKConfig statement")
+				log:error("Config file does not contain DPDKConfig statement")
 				return false
 			end
 			cfg.name = f
@@ -66,7 +67,7 @@ function mod.init()
 		end
 	end
 	if not cfg then
-		print("no DPDK config found, using defaults")
+		log:warn("No DPDK config found, using defaults")
 		cfg = {}
 	end
 	local coreMask
@@ -89,8 +90,8 @@ function mod.init()
 			end
 		end
 		if cfg.cores >= 2^32 then
-			print("Warning: more than 32 cores are currently not supported in bitmask format, sorry")
-			print("Use a table as a work-around")
+			log:warn("More than 32 cores are currently not supported in bitmask format, sorry")
+			log:warn("Use a table as a work-around")
 			return
 		end
 	elseif type(cfg.cores) == "table" then
@@ -122,7 +123,7 @@ ffi.cdef[[
 
 local function checkCore()
 	if MOONGEN_TASK_NAME ~= "master" then
-		error("[ERROR] This function is only available on the master task.", 2)
+		log:fatal("This function is only available on the master task.", 2)
 	end
 end
 
@@ -201,7 +202,7 @@ function mod.launchLua(...)
 			return mod.launchLuaOnCore(core, ...)
 		end
 	end
-	error("not enough cores to start this lua task")
+	log:fatal("Not enough cores to start this lua task")
 end
 
 ffi.cdef [[

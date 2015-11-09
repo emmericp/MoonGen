@@ -50,35 +50,34 @@ eth.BROADCAST = "ff:ff:ff:ff:ff:ff"
 --- Module for mac_address struct (see \ref headers.lua).
 local macAddr = {}
 macAddr.__index = macAddr
-local macAddrType = ffi.typeof("struct mac_address")
+local macAddrType = ffi.typeof("union mac_address")
 
 --- Retrieve the MAC address.
---- @return Address in 'struct mac_address' format.
+--- @return Address as number
 function macAddr:get()
-	local addr = macAddrType()
-	for i = 0, 5 do
-		addr.uint8[i] = self.uint8[i]
-	end
-	return addr
+	return tonumber(bit.band(self.uint64[0], 0xFFFFFFFFFFFFULL))
 end
 
 --- Set the MAC address.
---- @param addr Address in 'struct mac_address' format.
+--- @param addr Address as number
 function macAddr:set(addr)
-	for i = 0, 5 do
-		self.uint8[i] = addr.uint8[i]
-	end
+	self.uint8[0] = bit.band(addr, 0xFF)
+	self.uint8[1] = bit.band(bit.rshift(addr, 8), 0xFF)
+	self.uint8[2] = bit.band(bit.rshift(addr, 16), 0xFF)
+	self.uint8[3] = bit.band(bit.rshift(addr, 24), 0xFF)
+	self.uint8[4] = bit.band(bit.rshift(addr + 0ULL, 32ULL), 0xFF)
+	self.uint8[5] = bit.band(bit.rshift(addr + 0ULL, 40ULL), 0xFF)
 end
 
 --- Set the MAC address.
 --- @param mac Address in string format.
 function macAddr:setString(mac)
-	self:set(parseMacAddress(mac))
+	self:set(parseMacAddress(mac, true))
 end
 
 --- Test equality of two MAC addresses.
---- @param lhs Address in 'struct mac_address' format.
---- @param rhs Address in 'struct mac_address' format.
+--- @param lhs Address in 'union mac_address' format.
+--- @param rhs Address in 'union mac_address' format.
 --- @return true if equal, false otherwise.
 function macAddr.__eq(lhs, rhs)
 	local isMAC = istype(macAddrType, lhs) and istype(macAddrType, rhs) 
@@ -107,25 +106,25 @@ local etherHeader = {}
 etherHeader.__index = etherHeader
 
 --- Set the destination MAC address.
---- @param addr Address in 'struct mac_address' format.
+--- @param addr Address as number
 function etherHeader:setDst(addr)
 	self.dst:set(addr)
 end
 
 --- Retrieve the destination MAC address.
---- @return Address in 'struct mac_address' format.
+--- @return Address as number
 function etherHeader:getDst(addr)
 	return self.dst:get()
 end
 
 --- Set the source MAC address.
---- @param addr Address in 'struct mac_address' format.
+--- @param addr Address as number
 function etherHeader:setSrc(addr)
 	self.src:set(addr)
 end
 
 --- Retrieve the source MAC address.
---- @return Address in 'struct mac_address' format.
+--- @return Address as number
 function etherHeader:getSrc(addr)
 	return self.src:get()
 end
@@ -278,6 +277,7 @@ end
 --- @param namedArgs Table of named arguments (see See Also)
 --- @param nextHeader The header following after this header in a packet
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
+--- @return Table of namedArgs
 --- @see etherHeader:fill
 function etherHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	-- only set Type
@@ -307,7 +307,7 @@ pkt.getEthPacket = pkt.getEthernetPacket
 ---- Metatypes
 ----------------------------------------------------------------------------------
 
-ffi.metatype("struct mac_address", macAddr)
+ffi.metatype("union mac_address", macAddr)
 ffi.metatype("struct ethernet_header", etherHeader)
 
 

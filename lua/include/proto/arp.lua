@@ -170,13 +170,13 @@ function arpHeader:getOperationString()
 end
 
 --- Set the hardware source address.
---- @param addr Address in 'struct mac_address' format.
+--- @param addr Address in 'union mac_address' format.
 function arpHeader:setHardwareSrc(addr)
 	self.sha:set(addr)
 end
 
 --- Retrieve the hardware source address.
---- @return Address in 'struct mac_address' format.
+--- @return Address in 'union mac_address' format.
 function arpHeader:getHardwareSrc()
 	return self.sha:get()
 end
@@ -194,13 +194,13 @@ function arpHeader:getHardwareSrcString()
 end
 
 --- Set the hardware destination address.
---- @param addr Address in 'struct mac_address' format.
+--- @param addr Address in 'union mac_address' format.
 function arpHeader:setHardwareDst(addr)
 	self.tha:set(addr)
 end
 
 --- Retrieve the hardware destination address.
---- @return Address in 'struct mac_address' format.
+--- @return Address in 'union mac_address' format.
 function arpHeader:getHardwareDst()
 	return self.tha:get()
 end
@@ -293,7 +293,7 @@ function arpHeader:fill(args, pre)
 	args[prSrc] = args[prSrc] or "0.1.2.3"
 	args[prDst] = args[prDst] or "4.5.6.7"
 	
-	-- if for some reason the address is in 'struct mac_address'/'union ipv4_address' format, cope with it
+	-- if for some reason the address is in 'union mac_address'/'union ipv4_address' format, cope with it
 	if type(args[hwSrc]) == "string" then
 		self:setHardwareSrcString(args[hwSrc])
 	else
@@ -387,6 +387,7 @@ end
 --- @param namedArgs Table of named arguments (see See Also)
 --- @param nextHeader The header following after this header in a packet
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
+--- @return Table of namedArgs
 --- @see arpHeader:fill
 function arpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	return namedArgs
@@ -435,7 +436,7 @@ local function arpTask(qs)
 		end
 
 		for _, ip in pairs(nic.ips) do
-			ipToMac[parseIPAddress(ip)] = nic.txQueue.dev:getMac()
+			ipToMac[parseIPAddress(ip)] = nic.txQueue.dev:getMacString()
 		end
 		nic.txQueue.dev:l2Filter(eth.TYPE_ARP, nic.rxQueue)
 	end
@@ -466,11 +467,11 @@ local function arpTask(qs)
 							txBufs:alloc(60)
 							-- TODO: a single-packet API would be nice for things like this
 							local pkt = txBufs[1]:getArpPacket()
-							pkt.eth:setSrc(mac)
+							pkt.eth:setSrcString(mac)
 							pkt.eth:setDst(rxPkt.eth:getSrc())
 							pkt.arp:setOperation(arp.OP_REPLY)
 							pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
-							pkt.arp:setHardwareSrc(mac)
+							pkt.arp:setHardwareSrcString(mac)
 							pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
 							pkt.arp:setProtoSrc(ip)
 							nic.txQueue:send(txBufs)
@@ -503,10 +504,10 @@ local function arpTask(qs)
 			pkt.arp:setProtoDst(ip)
 			-- TODO: do not send requests on all devices, but only the relevant
 			for _, nic in pairs(qs) do
-				local mac = nic.txQueue.dev:getMac()
-				pkt.eth:setSrc(mac)
+				local mac = nic.txQueue.dev:getMacString()
+				pkt.eth:setSrcString(mac)
 				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
-				pkt.arp:setHardwareSrc(mac)
+				pkt.arp:setHardwareSrcString(mac)
 				nic.txQueue:send(txBufs)
 			end
 		end)

@@ -6,6 +6,7 @@ local filter	= require "filter"
 local stats		= require "stats"
 local timer		= require "timer"
 local histogram	= require "histogram"
+local log		= require "log"
 
 
 local PKT_SIZE = 60
@@ -13,7 +14,7 @@ local PKT_SIZE = 60
 function master(...)
 	local txPort, rxPort, rate = tonumberall(...)
 	if not txPort or not rxPort then
-		errorf("usage: txPort rxPort [rate (Mpps)]")
+		return log:info("usage: txPort rxPort [rate (Mpps)]")
 	end
 	rate = rate or 2
 	local txDev = device.config(txPort, 2, 2)

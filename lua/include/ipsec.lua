@@ -1,8 +1,15 @@
+---------------------------------
+--- @file ipsec.lua
+--- @brief IPsec (ESP/AH) offloading.
+--- @todo Documentation
+---------------------------------
+
 local mod = {}
 
 local dpdkc	= require "dpdkc"
 local dpdk	= require "dpdk"
 local ffi	= require "ffi"
+local log 	= require "log"
 
 -- Intel X540 registers
 local SECTXCTRL		= 0x00008800
@@ -45,7 +52,7 @@ end
 -- Helper function to clear a single bit
 function clear_bit32(reg32, idx)
 	if idx < 0 or idx > 31 then
-		error("Idx must be in range 0-31")
+		log:fatal("Idx must be in range 0-31")
 	end
 	local mask = bit.bnot(bit.lshift(0x1, idx))
 	return bit.band(reg32, mask)
@@ -54,7 +61,7 @@ end
 -- Helper function to set a single bit
 function set_bit32(reg32, idx)
 	if idx < 0 or idx > 31 then
-		error("Idx must be in range 0-31")
+		log:fatal("Idx must be in range 0-31")
 	end
 	return bit.bor(reg32, bit.lshift(0x1, idx))
 end
@@ -72,7 +79,7 @@ end
 function set_bits32(reg32, from, to, value)
 	local upper_limit = math.pow(2, ((from-to)+1))-1 --i.e. (2^num_bits)-1
 	if value < 0 or value > upper_limit then
-		error("Value must be in range 0-"..upper_limit)
+		log:fatal("Value must be in range 0-"..upper_limit)
 	end
 	local tmp = clear_bits32(reg32, from, to)
 	return bit.bor(tmp, bit.lshift(value, to))
@@ -94,9 +101,9 @@ function dump_regs(port)
 	--print("SECTXBUFFAF: 0x"..uhex32(reg))
 end
 
--- Enable the Hardware Crypto Engine
--- This function must be called before using any other IPSec functions
--- @port The port/interface to use
+--- Enable the Hardware Crypto Engine.
+--- This function must be called before using any other IPSec functions
+--- @param port The port/interface to use
 function mod.enable(port)
 	--print("IPsec enable, port: "..port)
 	--dump_regs(port)
@@ -154,9 +161,9 @@ function mod.enable(port)
 	--dump_regs(port)
 end
 
--- Disable the Hardware Crypto Engine
--- This function should be called after using the other IPSec functions
--- @port The port/interface to use
+--- Disable the Hardware Crypto Engine.
+--- This function should be called after using the other IPSec functions
+--- @param port The port/interface to use
 function mod.disable(port)
 	--print("IPsec disable, port: "..port)
 	dump_regs(port)
@@ -212,20 +219,20 @@ function mod.disable(port)
 	dump_regs(port)
 end
 
--- Write AES 128 bit Key and Salt into the Hardware TX SA table
--- @port: The port/interface to use
--- @idx: Index into TX SA table (0-1023)
--- @key: 128 bit AES key  (as hex string)
--- @salt: 32 bit AES salt (as hex string)
+--- Write AES 128 bit Key and Salt into the Hardware TX SA table
+--- @param port The port/interface to use
+--- @parma idx Index into TX SA table (0-1023)
+--- @param key 128 bit AES key  (as hex string)
+--- @param salt 32 bit AES salt (as hex string)
 function mod.tx_set_key(port, idx, key, salt)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 	if string.len(key) ~= 32 then
-		error("Key must be 128 bit (hex string).")
+		log:fatal("Key must be 128 bit (hex string).")
 	end
 	if string.len(salt) ~= 8 then
-		error("Salt must be 32 bit (hex string).")
+		log:fatal("Salt must be 32 bit (hex string).")
 	end
 
 	local key_3 = tonumber(string.sub(key,  1,  8), 16) --MSB
@@ -251,13 +258,13 @@ function mod.tx_set_key(port, idx, key, salt)
 	--pass SA_IDX via 'TX context descriptor' to use this SA!
 end
 
--- Read AES 128 bit Key and Salt from the Hardware TX SA table
--- @port: The port/interface to use
--- @idx: Index into the TX SA table (0-1023)
--- @return: Key and Salt (as hex string)
+--- Read AES 128 bit Key and Salt from the Hardware TX SA table
+--- @param port The port/interface to use
+--- @param idx Index into the TX SA table (0-1023)
+--- @return Key and Salt (as hex string)
 function mod.tx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 
 	-- Prepare command to read key from SA_IDX
@@ -281,23 +288,23 @@ function mod.tx_get_key(port, idx)
 	return key, uhex32(_salt)
 end
 
--- Write AES 128 bit Key and Salt into the Hardware RX SA table
--- @port: the port/interface to use
--- @idx: Index into SA RX table (0-1023)
--- @key: 128 bit AES key  (as hex string)
--- @salt: 32 bit AES salt (as hex string)
--- @ip_ver: IP Version for which this SA is valid (4 or 6)
--- @proto: IPSec protocol type to use ("esp" or "ah")
--- @decrypt: ESP mode (1=ESP decrypt and authenticate, 0=ESP authenticate only)
+--- Write AES 128 bit Key and Salt into the Hardware RX SA table
+--- @param port the port/interface to use
+--- @param idx Index into SA RX table (0-1023)
+--- @param key 128 bit AES key  (as hex string)
+--- @param salt 32 bit AES salt (as hex string)
+--- @param ip_ver IP Version for which this SA is valid (4 or 6)
+--- @param proto IPSec protocol type to use ("esp" or "ah")
+--- @param decrypt ESP mode (1=ESP decrypt and authenticate, 0=ESP authenticate only)
 function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 	if string.len(key) ~= 32 then
-		error("Key must be 128 bit (hex string).")
+		log:fatal("Key must be 128 bit (hex string).")
 	end
 	if string.len(salt) ~= 8 then
-		error("Salt must be 32 bit (hex string).")
+		log:fatal("Salt must be 32 bit (hex string).")
 	end
 
 	local ipv6 = nil
@@ -306,7 +313,7 @@ function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	elseif ip_ver == 6 then
 		ipv6 = 1
 	else
-		error("IP version must be either 4 or 6")
+		log:fatal("IP version must be either 4 or 6")
 	end
 
 	local esp = nil
@@ -315,12 +322,12 @@ function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	elseif proto == "ah" then
 		esp = 0
 	else
-		error("Protocol must be either 'esp' or 'ah'")
+		log:fatal("Protocol must be either 'esp' or 'ah'")
 	end
 
 	local esp_mode = decrypt or 0
 	if esp_mode ~= 1 and esp_mode ~= 0 then
-		error("ESP Decrypt must be either 0 or 1")
+		log:fatal("ESP Decrypt must be either 0 or 1")
 	end
 
 	local key_3 = tonumber(string.sub(key,  1,  8), 16) --MSB
@@ -353,17 +360,17 @@ function mod.rx_set_key(port, idx, key, salt, ip_ver, proto, decrypt)
 	dpdkc.write_reg32(port, IPSRXIDX, value)
 end
 
--- Read AES 128 bit Key and Salt from the Hardware RX SA table
--- @port: The port/interface to use
--- @idx: Index into the RX SA table (0-1023)
--- @return: Key and Salt (as hex string),
---          Valid Flag (1=SA is valid, 0=SA is invalid)
---          Proto Flag (1=ESP, 0=AH)
---          Decrypt Flag (1=ESP decrypt and authenticate, 0=ESP authenticate only)
---          IPv6 Flag (1=SA is valid for IPv6, 0=SA is valid for IPv4)
+--- Read AES 128 bit Key and Salt from the Hardware RX SA table
+--- @param port The port/interface to use
+--- @param idx Index into the RX SA table (0-1023)
+--- @return Key and Salt (as hex string),
+---          Valid Flag (1=SA is valid, 0=SA is invalid),
+---          Proto Flag (1=ESP, 0=AH),
+---          Decrypt Flag (1=ESP decrypt and authenticate, 0=ESP authenticate only),
+---          IPv6 Flag (1=SA is valid for IPv6, 0=SA is valid for IPv4)
 function mod.rx_get_key(port, idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 
 	-- Prepare command to read from KEY_TABLE at TB_IDX
@@ -393,13 +400,13 @@ function mod.rx_get_key(port, idx)
 	return key, uhex32(_salt), valid, proto, decrypt, ipv6
 end
 
--- Write IP-Address into the Hardware RX IP table
--- @port: The port/interface to use
--- @idx: Index into the RX IP table (0-127).
--- @ip_addr: IP(v4/v6)-Address to set (as string)
+--- Write IP-Address into the Hardware RX IP table
+--- @param port The port/interface to use
+--- @param idx Index into the RX IP table (0-127).
+--- @param ip_addr IP(v4/v6)-Address to set (as string)
 function mod.rx_set_ip(port, idx, ip_addr)
 	if idx > 127 or idx < 0 then
-		error("Idx must be in range 0-127")
+		log:fatal("Idx must be in range 0-127")
 	end
 
 	local ip, is_ipv4 = parseIPAddress(ip_addr)
@@ -434,14 +441,14 @@ function mod.rx_set_ip(port, idx, ip_addr)
         dpdkc.write_reg32(port, IPSRXIDX, value)
 end
 
--- Read IP-Address from the Hardware RX IP table
--- @port: The port/interface to use
--- @idx: Index into the RX IP table (0-127)
--- @is_ipv4: IP Version expected (true/false)
--- @return: The IP(v4/v6)-Address (as string) and a IP Version Flag (true=IPv4, false=IPv6)
+--- Read IP-Address from the Hardware RX IP table
+--- @param port The port/interface to use
+--- @param idx Index into the RX IP table (0-127)
+--- @param is_ipv4 IP Version expected (true/false)
+--- @return The IP(v4/v6)-Address (as string) and a IP Version Flag (true=IPv4, false=IPv6)
 function mod.rx_get_ip(port, idx, is_ipv4)
 	if idx > 127 or idx < 0 then
-		error("Idx must be in range 0-127")
+		log:fatal("Idx must be in range 0-127")
 	end
 	if is_ipv4 == nil then
 		is_ipv4 = true
@@ -479,21 +486,21 @@ function mod.rx_get_ip(port, idx, is_ipv4)
 	return ip, is_ipv4
 end
 
--- Write SPI into the Hardware RX SPI table
--- This table functions as 'glue' between the received packet (SPI), IP and KEY table.
--- @port: The port/interface to use
--- @idx: Index into the RX SPI table (0-1023). This must match the idx of the corresponding KEY table entry.
--- @spi: SPI to write (0-0xFFFFFFFF)
--- @ip_idx: Reference to the IP table. This must match the idx of the corresponding IP table entry.
+--- Write SPI into the Hardware RX SPI table
+--- This table functions as 'glue' between the received packet (SPI), IP and KEY table.
+--- @param port The port/interface to use
+--- @param idx Index into the RX SPI table (0-1023). This must match the idx of the corresponding KEY table entry.
+--- @param spi SPI to write (0-0xFFFFFFFF)
+--- @param ip_idx Reference to the IP table. This must match the idx of the corresponding IP table entry.
 function mod.rx_set_spi(port, idx, spi, ip_idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 	if spi > 0xFFFFFFFF or spi < 0 then
-		error("Spi must be in range 0x0-0xFFFFFFFF")
+		log:fatal("Spi must be in range 0x0-0xFFFFFFFF")
 	end
 	if ip_idx > 127 or ip_idx < 0 then
-		error("IP_Idx must be in range 0-127")
+		log:fatal("IP_Idx must be in range 0-127")
 	end
 
 	-- Prepare command to write SPI_TABLE at TB_IDX
@@ -513,13 +520,13 @@ function mod.rx_set_spi(port, idx, spi, ip_idx)
         dpdkc.write_reg32(port, IPSRXIDX, value)
 end
 
--- Read SPI from the Hardware RX SPI table
--- @port: The port/interface to use
--- @idx: Index into the RX SPI table (0-1023)
--- @return: The SPI and the corresponding Index into the IP table
+--- Read SPI from the Hardware RX SPI table
+--- @param port The port/interface to use
+--- @param idx Index into the RX SPI table (0-1023)
+--- @return The SPI and the corresponding Index into the IP table
 function mod.rx_get_spi(port, idx)
 	if idx > 1023 or idx < 0 then
-		error("Idx must be in range 0-1023")
+		log:fatal("Idx must be in range 0-1023")
 	end
 
 	-- Prepare command to read from SPI_TABLE at TB_IDX
@@ -538,9 +545,9 @@ function mod.rx_get_spi(port, idx)
 	return bswap(spi), ip_idx
 end
 
--- Calculate the length of extra padding needed, in order to achive a 4 byte alignment.
--- @payload_len The lenght of the original IP packet
--- @return The number of extra padding bytes needed
+--- Calculate the length of extra padding needed, in order to achive a 4 byte alignment.
+--- @param payload_len The lenght of the original IP packet
+--- @return The number of extra padding bytes needed
 function mod.calc_extra_pad(payload_len)
 	local idx = math.ceil(payload_len/4)
 	local idx8  = idx * 4
@@ -548,9 +555,9 @@ function mod.calc_extra_pad(payload_len)
 	return extra_pad
 end
 
--- Calculate the length of extra padding included in this packet for 4 byte alignment.
--- @buf The rte_mbuf containing the hw-decrypted ESP packet
--- @return The number of extra padding bytes included in this packet
+--- Calculate the length of extra padding included in this packet for 4 byte alignment.
+--- @param buf The rte_mbuf containing the hw-decrypted ESP packet
+--- @return The number of extra padding bytes included in this packet
 function mod.get_extra_pad(buf)
 	local pkt = buf:getIPPacket()
 	local payload_len = pkt.ip4:getLength()-20 --IP4 Length less 20 bytes IP4 Header
@@ -559,11 +566,11 @@ function mod.get_extra_pad(buf)
 	return esp_padding_len-2 --subtract default padding of 2 bytes, which is always there
 end
 
--- Calculate a ESP Trailer and the corresponding Padding and append to the packet payload.
--- Only relevant for ESP/Ecryption mode
--- @buf rte_mbuf to add esp trailer to
--- @payload_len real payload length in bytes
--- @next_hdr type of encapsulated packet
+--- Calculate a ESP Trailer and the corresponding Padding and append to the packet payload.
+--- Only relevant for ESP/Ecryption mode
+--- @param buf rte_mbuf to add esp trailer to
+--- @param payload_len real payload length in bytes
+--- @param next_hdr type of encapsulated packet
 function mod.add_esp_trailer(buf, payload_len, next_hdr)
 	local pkt = buf:getEspPacket()
 	local idx = math.ceil(payload_len/4)
@@ -585,11 +592,11 @@ function mod.add_esp_trailer(buf, payload_len, next_hdr)
 	buf:setESPTrailerLength(esp_trailer_len)
 end
 
--- Decapsulate a hw-decrypted ESP packet
--- @buf The rte_mbuf containing the hw-decrypted ESP packet
--- @len Length of the hw-decrypted IP/ESP packet
--- @eth_mem memoryPool to allocate new ethernet packets from
--- @return A new rte_mbuf containing the original (inner) IP packet
+--- Decapsulate a hw-decrypted ESP packet
+--- @param buf The rte_mbuf containing the hw-decrypted ESP packet
+--- @param len Length of the hw-decrypted IP/ESP packet
+--- @param eth_mem memoryPool to allocate new ethernet packets from
+--- @return A new rte_mbuf containing the original (inner) IP packet
 function mod.esp_vpn_decapsulate(buf, len, eth_mem)
 	local extra_pad = mod.get_extra_pad(buf)
 	-- eth(14), pkt(len), pad(extra_pad), outer_ip(20), esp_header(16), esp_trailer(20)
@@ -604,11 +611,11 @@ function mod.esp_vpn_decapsulate(buf, len, eth_mem)
 	return mybuf
 end
 
--- Encapsulate an IP packet into a new IP header and ESP header and trailer
--- @buf The rte_mbuf containing the original IP packet
--- @len Length of the original IP packet
--- @esp_mem memoryPool to allocate new esp packets from
--- @return A new rte_mbuf containing the encapsulated IP/ESP packet
+--- Encapsulate an IP packet into a new IP header and ESP header and trailer
+--- @param buf The rte_mbuf containing the original IP packet
+--- @param len Length of the original IP packet
+--- @param esp_mem memoryPool to allocate new esp packets from
+--- @return A new rte_mbuf containing the encapsulated IP/ESP packet
 function mod.esp_vpn_encapsulate(buf, len, esp_mem)
 	local extra_pad = mod.calc_extra_pad(len) --for 4 byte alignment
 	-- eth(14), ip4(20), esp(16), pkt(len), pad(extra_pad), esp_trailer(20)

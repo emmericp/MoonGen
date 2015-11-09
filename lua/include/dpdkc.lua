@@ -204,6 +204,8 @@ ffi.cdef[[
 	void* get_eth_dev(int port);
 	void* get_i40e_dev(int port);
 	int get_i40e_vsi_seid(int port);
+	int rte_eth_dev_mac_addr_add(uint8_t port, void* mac, uint32_t pool);
+	int rte_eth_dev_mac_addr_remove(uint8_t port, void* mac);
 
 	// rx & tx
 	uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
