@@ -25,7 +25,7 @@ TestSend = {}
         assertEquals(1,2)
     end
 
-    function TestSend:master()
+    function TestSend:start()
         local txPort = 13;
         local rxPort = 14;
         local rate = 100;
@@ -33,11 +33,12 @@ TestSend = {}
         local txDev = device.config(txPort, 2, 2)
         local rxDev = device.config(rxPort, 2, 2)
         device.waitForLinks()
-        dpdk.launchLua("loadSlave", txDev, rxDev, txDev:getTxQueue(0), rate, PKT_SIZE)
+        dpdk.launchLua("send", txDev, rxDev, txDev:getTxQueue(0), rate, PKT_SIZE)
         dpdk.waitForSlaves()
+        assertEquals(1,2)
     end
 
-    function TestSend:loadSlave(queue, port)
+    function TestSend:send(queue, port)
         mg.sleepMillis(100) -- wait a few milliseconds to ensure that the rx thread is running
         -- TODO: implement barriers
         local mem = memory.createMemPool(function(buf)
