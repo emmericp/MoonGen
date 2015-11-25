@@ -1,0 +1,3 @@
+-- Network Card Pairings
+-- Format: a=b
+13=14
