@@ -13,12 +13,13 @@ local IP_DST	= "10.0.0.1"
 local PORT_SRC	= 1234
 
     function master()
-        local txPort = 13;
-        local rxPort = 14;
+        local txPort = 7;
+        local rxPort = 11;
         local rate = 100;
-
-        local txDev = device.config(txPort, 2, 2)
-        local rxDev = device.config(rxPort, 2, 2)
+        
+        local txDev = device.config{ port = txPort, rxQueues = 2, txQueues = 3}
+        local rxDev = device.config{ port = rxPort, rxQueues = 2, txQueues = 3}
+    
         device.waitForLinks()
         dpdk.launchLua("slave", txDev, rxDev, txDev:getTxQueue(0), rate, PKT_SIZE)
         dpdk.waitForSlaves()
