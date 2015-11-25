@@ -12,6 +12,13 @@ local timer		= require "timer"
 local log		= require "log"
 
 local PKT_SIZE  = 60 -- without CRC
+local ETH_DST	= "10:11:12:13:14:15" -- src mac is taken from the NIC
+local IP_SRC	= "192.168.0.1"
+local NUM_FLOWS	= 256 -- src ip will be IP_SRC + random(0, NUM_FLOWS - 1)
+local IP_DST	= "10.0.0.1"
+local PORT_SRC	= 1234
+local PORT_FG	= 42
+local PORT_BG	= 43
 
 TestSend = {}
     function TestSend:master()
