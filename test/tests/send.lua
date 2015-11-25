@@ -1,7 +1,7 @@
 EXPORT_ASSERT_TO_GLOBALS = true
 local luaunit   = require('luaunit')
 
-local mg		= require "dpdk" -- TODO: rename dpdk module to "moongen"
+local dpdk		= require "dpdk" -- TODO: rename dpdk module to "moongen"
 local memory	= require "memory"
 local device	= require "device"
 local ts		= require "timestamping"
