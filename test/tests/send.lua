@@ -1,5 +1,5 @@
 EXPORT_ASSERT_TO_GLOBALS = true
-require('luaunit')
+local luaunit   = require('luaunit')
 
 local mg		= require "dpdk" -- TODO: rename dpdk module to "moongen"
 local memory	= require "memory"
@@ -20,12 +20,7 @@ local PORT_SRC	= 1234
 local PORT_FG	= 42
 local PORT_BG	= 43
 
-TestSend = {}
-    function TestSend:test()
-        assertEquals(1,2)
-    end
-
-    function TestSend:start()
+    function master()
         local txPort = 13;
         local rxPort = 14;
         local rate = 100;
@@ -33,12 +28,12 @@ TestSend = {}
         local txDev = device.config(txPort, 2, 2)
         local rxDev = device.config(rxPort, 2, 2)
         device.waitForLinks()
-        dpdk.launchLua("send", txDev, rxDev, txDev:getTxQueue(0), rate, PKT_SIZE)
+        dpdk.launchLua("slave", txDev, rxDev, txDev:getTxQueue(0), rate, PKT_SIZE)
         dpdk.waitForSlaves()
         assertEquals(1,2)
     end
 
-    function TestSend:send(queue, port)
+    function slave(queue, port)
         mg.sleepMillis(100) -- wait a few milliseconds to ensure that the rx thread is running
         -- TODO: implement barriers
         local mem = memory.createMemPool(function(buf)
@@ -76,6 +71,9 @@ TestSend = {}
         txCtr:finalize()
     end
 
-lu = LuaUnit.new()
-lu:setOutputType("tap")
-os.exit( lu:runSuite() )
+function testSend()
+    f = master()
+    luaunit.assertIsFunction(f)
+end
+
+os.exit( luaunit.LuaUnit.run() )
