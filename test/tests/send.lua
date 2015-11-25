@@ -21,6 +21,10 @@ local PORT_FG	= 42
 local PORT_BG	= 43
 
 TestSend = {}
+    function TestSend:test()
+        assertEquals(1,2)
+    end
+
     function TestSend:master()
         local txPort = 13;
         local rxPort = 14;
