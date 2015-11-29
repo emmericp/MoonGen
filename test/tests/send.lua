@@ -12,21 +12,36 @@ local NUM_FLOWS	= 256 -- src ip will be IP_SRC + random(0, NUM_FLOWS - 1)
 local IP_DST	= "10.0.0.1"
 local PORT_SRC	= 1234
 
+
+local txDev, rxDev
+local rate = 100
+
+
+TestSend = {}
+
     function master()
-        local txPort = 7;
-        local rxPort = 11;
-        local rate = 100;
-        
-        local txDev = device.config{ port = txPort, rxQueues = 2, txQueues = 3}
-        local rxDev = device.config{ port = rxPort, rxQueues = 2, txQueues = 3}
-    
+		local testPorts = { 10, 11 }
+        local testDevs = {}
+		for i, v in ipairs(testPorts) do
+			testDevs[i] = device.config{ port = testPorts[i], rxQueues = 2, txQueues = 3}
+		end
         device.waitForLinks()
-        dpdk.launchLua("slave", txDev, rxDev, txDev:getTxQueue(0), rate, PKT_SIZE)
-        dpdk.waitForSlaves()
+
+		--for i, v in ipairs(testPorts) do
+		for i = 1, #testPorts do
+			TestSend["testNic" .. testPorts[i]] = function()
+				slave(testDevs[i])
+			end
+		end
+
+		os.exit( luaunit.LuaUnit.run() )
     end
 
     function slave(queue, port)
-        mg.sleepMillis(100)
+		print("Testing stuff: ", queue)
+		luaunit.assertTrue(false)
+		--do return true end
+        dpdk.sleepMillis(100)
         local mem = memory.createMemPool(function(buf)
             buf:getUdpPacket():fill{
                 pktLength = PKT_SIZE,
@@ -42,7 +57,7 @@ local PORT_SRC	= 1234
         local baseIP = parseIPAddress(IP_SRC)
         local bufs = mem:bufArray()
     
-        while mg.running() do
+        while dpdk.running() do
             bufs:alloc(PKT_SIZE)
         
             for _, buf in ipairs(bufs) do
@@ -57,9 +72,4 @@ local PORT_SRC	= 1234
         txCtr:finalize()
     end
 
-function testSend()
-    f = master()
-    luaunit.assertIsFunction(f)
-end
 
-os.exit( luaunit.LuaUnit.run() )
