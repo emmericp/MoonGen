@@ -5,14 +5,16 @@ local dpdk      = require "dpdk" -- TODO: rename dpdk module to "moongen"
 local memory	= require "memory"
 local device	= require "device"
 local timer 	= require "timer"
-local config    = require "../config.lua"
+
+package.path 	= package.path .. ";../tconfig.lua"
+local tconfig   = require "tconfig"
 
 local PKT_SIZE  = 60 -- without CRC
 
 TestSend = {}
 
     function master()
-		local testPorts = config.ports
+	local testPorts = tconfig.ports()
     
         local testDevs = {}
 		for i, v in ipairs(testPorts) do
