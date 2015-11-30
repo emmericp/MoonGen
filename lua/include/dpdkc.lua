@@ -248,7 +248,7 @@ ffi.cdef[[
 	void write_reg32(uint8_t port, uint32_t reg, uint32_t val);
 	void write_reg64(uint8_t port, uint32_t reg, uint64_t val);
 	void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh);
-	int32_t get_clock_difference(uint8_t port1, uint8_t port2);
+	int32_t get_clock_difference(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh);
 	uint8_t get_socket(uint8_t port);
 	void rte_eth_promiscuous_enable(uint8_t port);
 	void rte_eth_promiscuous_disable(uint8_t port);

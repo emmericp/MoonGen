@@ -251,7 +251,7 @@ uint8_t get_socket(uint8_t port) {
 
 // FIXME: doesn't support syncing between different NIC families (e.g. GbE vs. 10 GBE)
 // this is somewhat tricky because they use a different timer granularity
-void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timh, uint32_t timl, uint32_t adjl, uint32_t adjh) {
+void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh) {
 	// resetting SYSTIML twice prevents a race-condition when SYSTIML is just about to overflow into SYSTIMH
 	write_reg32(port1, timl, 0);
 	write_reg32(port2, timl, 0);
@@ -300,13 +300,14 @@ void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timh, uint32_t timl, uin
 }
 
 // for calibration
-uint32_t get_clock_difference(uint8_t port1, uint8_t port2) {
+int32_t get_clock_difference(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh) {
 	// TODO: this should take the delay between reading the two registers into account
 	// however, this is not necessary for the current use case (measuring clock drift)
-	volatile uint32_t p1time = read_reg32(port1, IXGBE_SYSTIML);
-	volatile uint32_t p2time = read_reg32(port2, IXGBE_SYSTIML);
-	volatile uint32_t p1timeh = read_reg32(port1, IXGBE_SYSTIMH);
-	volatile uint32_t p2timeh = read_reg32(port2, IXGBE_SYSTIMH);
+	volatile uint32_t p1time = read_reg32(port1, timl);
+	volatile uint32_t p2time = read_reg32(port2, timl);
+	volatile uint32_t p1timeh = read_reg32(port1, timh);
+	volatile uint32_t p2timeh = read_reg32(port2, timh);
+
 	return (((int64_t) p1timeh << 32) | p1time) - (((int64_t) p2timeh << 32) | p2time);
 }
 

@@ -461,12 +461,12 @@ function dev:getTimestampScale()
 end
 
 local timeRegisters = {
-	[device.PCI_ID_XL710]	= { 1, PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ_DUMMY, PRTTSYN_ADJ },
-	[device.PCI_ID_X710]	= { 1, PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ_DUMMY, PRTTSYN_ADJ },
-	[device.PCI_ID_X540]	= { 1, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
-	[device.PCI_ID_X520]    = { 1, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
-	[device.PCI_ID_82599]	= { 1, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
-	[device.PCI_ID_82580]	= { 2, SYSTIMEL_82580, SYSTIMEH_82580, TIMEADJL_82580, TIMEADJH_82580 }, }
+	[device.PCI_ID_XL710]	= { 1, PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ, PRTTSYN_ADJ_DUMMY },
+	[device.PCI_ID_X710]	= { 1, PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ, PRTTSYN_ADJ_DUMMY },
+	[device.PCI_ID_X540]	= { 2, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
+	[device.PCI_ID_X520]    = { 2, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
+	[device.PCI_ID_82599]	= { 2, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
+	[device.PCI_ID_82580]	= { 3, SYSTIMEL_82580, SYSTIMEH_82580, TIMEADJL_82580, TIMEADJH_82580 }, }
 
 function mod.syncClocks(dev1, dev2)
 	local regs1 = timeRegisters[dev1:getPciId()]
@@ -484,7 +484,17 @@ function mod.syncClocks(dev1, dev2)
 end
 
 function mod.getClockDiff(dev1, dev2)
-	return dpdkc.get_clock_difference(dev1.id, dev2.id) * 6.4
+	local regs1 = timeRegisters[dev1:getPciId()]
+	local regs2 = timeRegisters[dev2:getPciId()]
+	if regs1[1] ~= regs2[1] then
+		log:fatal("NICs incompatible, cannot sync clocks")
+	end
+	if regs1[2] ~= regs2[2]
+		or regs1[3] ~= regs2[3] then
+		log:fatal("NYI: NICs use different timestamp registers")
+	end
+	local timestampScale = timestampScales[dev1:getPciId()]
+	return dpdkc.get_clock_difference(dev1.id, dev2.id, regs1[2], regs1[3]) * timestampScale
 end
 
 function mod.readTimestampsSoftware(queue, memory)
