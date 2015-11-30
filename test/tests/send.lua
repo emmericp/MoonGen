@@ -27,22 +27,22 @@ TestSend = {}
 		os.exit( luaunit.LuaUnit.run() )
     end
 
-    function slave(queue)
-        print("Testing stuff: ", queue)
+    function slave(dev)
+	local queue = dev:getTxQueue(0)
+        print("Testing stuff: ", dev)
         dpdk.sleepMillis(100)
         local mem = memory.createMemPool(function(buf)
             buf:getEthernetPacket():fill{
                 pktLength = PKT_SIZE,
-                ethSrc = queue[1],
+                ethSrc = "10:11:12:13:14:15",
                 ethDst = "10:11:12:13:14:15",
             }
         end)
         local bufs = mem:bufArray()
         local runtime = timer:new(10)
         while runtime:running() and dpdk.running() do
-            bufs:alloc(size)
+            bufs:alloc(PKT_SIZE)
             queue:send(bufs)
-            ctr:update()
         end
         return 1
     end
