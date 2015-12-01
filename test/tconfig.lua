@@ -7,7 +7,7 @@ local tconfig = {}
 	end
 
 	function tconfig.pairs()
-		return pairs
+		return cpairs
 	end
 
 return tconfig

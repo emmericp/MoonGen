@@ -18,18 +18,17 @@ TestSend = {}
     
         local testDevs = {}
 		for i, v in ipairs(testPairs) do
-			testDevs[i][1] = device.config{ port = testPorts[i][1], rxQueues = 2, txQueues = 3 }
-			testDevs[i][2] = device.config{ port = testPorts[i][2], rxQueues = 2, txQueues = 3 }
+			testDevs[i] = device.config{ port = testPairs[i], rxQueues = 2, txQueues = 3 }
 		end
-        device.waitForLinks()
+        	device.waitForLinks()
 
-		for i = 1, #testPorts do
-			TestSend["testNic" .. testPorts[i]] = function()
-				sendSlave( testDevs[i][1], testDevs[i][2] )
-                luaunit.assertTrue( receiveSlave( testDevs[i][2] ) )
+		for i = 1, #testDevs, 2 do
+			TestSend["testNic" .. testDevs[i]] = function()
+				sendSlave( testDevs[i], testDevs[i+1] )
+                		luaunit.assertTrue( receiveSlave( testDevs[i+1] ) )
             
-				sendSlave( testDevs[i][2], testDevs[i][1] )
-                luaunit.assertTrue( receiveSlave( testDevs[i][1] ) )
+				sendSlave( testDevs[i+1], testDevs[i] )
+                		luaunit.assertTrue( receiveSlave( testDevs[i] ) )
 			end
 		end
 		os.exit( luaunit.LuaUnit.run() )
