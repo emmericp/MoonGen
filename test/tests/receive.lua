@@ -34,7 +34,7 @@ TestSend = {}
 			luaunit.assertTrue( receiveSlave( testDevs[i+1] ) )
 			sendSlave( testDevs[i+1], testDevs[i] )
 			luaunit.assertTrue( receiveSlave( testDevs[i] ) )
-           	 end
+		end
 	end
 	os.exit( luaunit.LuaUnit.run() )
     end
@@ -59,13 +59,13 @@ TestSend = {}
             queue:send(bufs)
         end
     
-        return 1 -- Test Successful
+        return 1
     end
 
     function receiveSlave(dev)
         print("Testing Receive Capability: ", dev)
     
-        return 1
+        return 1 -- Test Successful
     end
 
 
