@@ -14,13 +14,18 @@ local PKT_SIZE  = 60 -- without CRC
 TestSend = {}
 
     function master()
-	local testPairs = tconfig.pairs()
+        local testPairs = tconfig.pairs()
+        local testPorts
+    
+        for i = 1, #testPairs do
+            testPorts[i*2-1] = testPairs[i][1]
+            testPorts[i*2] = testPairs[i][2]
     
         local testDevs = {}
-		for i, v in ipairs(testPairs) do
-			testDevs[i] = device.config{ port = testPairs[i], rxQueues = 2, txQueues = 3 }
+		for i, v in ipairs(testPorts) do
+			testDevs[i] = device.config{ port = testPorts[i], rxQueues = 2, txQueues = 3}
 		end
-        	device.waitForLinks()
+        device.waitForLinks()
 
 		for i = 1, #testDevs, 2 do
 			TestSend["testNic" .. testDevs[i]] = function()
