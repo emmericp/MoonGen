@@ -145,7 +145,7 @@ local function newCounter(ctrType, name, dev, format, file)
 	file = file or io.stdout
 	local closeFile = false
 	if type(file) == "string" then
-		file = io.open("w+")
+		file = io.open(file, "w+")
 		closeFile = true
 	end
 	if not formatters[format] then
