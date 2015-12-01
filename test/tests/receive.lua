@@ -15,11 +15,12 @@ TestSend = {}
 
     function master()
         local testPairs = tconfig.pairs()
-        local testPorts
+        local testPorts = {}
     
         for i = 1, #testPairs do
             testPorts[i*2-1] = testPairs[i][1]
             testPorts[i*2] = testPairs[i][2]
+	end
     
         local testDevs = {}
 		for i, v in ipairs(testPorts) do
