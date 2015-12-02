@@ -50,7 +50,8 @@ TestSend = {}
             bufs:alloc(PKT_SIZE)
             queue:send(bufs)
         end
-    
+	
+	bufs:freeAll()    
         return 1 -- Test Successful
     end
 

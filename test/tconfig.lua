@@ -1,5 +1,5 @@
-local ports 	= {7,8,11,12,13,14}
-local cpairs	= {{7,11},{8,12},{13,14}}
+local ports 	= {14,15}
+local cpairs	= {{14,15}}
 
 local tconfig = {}
 	function tconfig.ports()

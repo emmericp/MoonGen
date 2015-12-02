@@ -58,18 +58,22 @@ TestSend = {}
             bufs:alloc(PKT_SIZE)
             queue:send(bufs)
         end
-    
+
+	bufs:freeAll()    
         return 1
     end
 
     function receiveSlave(dev)
         print("Testing Receive Capability: ", dev)
-    
-        local queue = dev:getTxQueue(1)
-        while dpdk.running(100) do
-            queue:recv(bufs)
+	
+	local bufs = memory.bufArray()    
+        local queue = dev:getRxQueue(1)
+	local runtime = timer:new(10)
+        while runtime:running() and dpdk.running() do
+            queue:tryRecv(bufs, 100)
         end
-    
+	
+	bufs:freeAll()    
         return 1 -- Test Successful
     end
 
