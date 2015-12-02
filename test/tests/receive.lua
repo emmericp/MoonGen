@@ -65,6 +65,11 @@ TestSend = {}
     function receiveSlave(dev)
         print("Testing Receive Capability: ", dev)
     
+        local queue = dev:getTxQueue(1)
+        while dpdk.running(100) do
+            queue:recv(bufs)
+        end
+    
         return 1 -- Test Successful
     end
 
