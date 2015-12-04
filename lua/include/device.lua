@@ -37,6 +37,8 @@ mod.PCI_ID_I350		= 0x80861521
 mod.PCI_ID_82576	= 0x80861526
 mod.PCI_ID_XL710	= 0x80861583
 
+mod.PCI_ID_82599_VF	= 0x808610ed
+
 function mod.init()
 	dpdkc.rte_pmd_init_all_export();
 	dpdkc.rte_eal_pci_probe();
@@ -392,6 +394,7 @@ local deviceNames = {
 	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter", -- Dell-branded NIC with an 82599
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
 	[mod.PCI_ID_XL710]	= "Ethernet Controller LX710 for 40GbE QSFP+",
+	[mod.PCI_ID_82599_VF]	= "Intel Corporation 82599 Ethernet Controller Virtual Function",
 }
 
 function dev:getName()
