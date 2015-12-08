@@ -127,3 +127,16 @@ else
 	l=$(expr $i - $k)
 	printf "${ORA}[WARNING] Detected ${k} card(s). ${l} port(s) empty.${NON}\n"
 fi
+
+rm -f speed.txt
+
+#--Store
+rm -f tconfig.lua
+echo -e "local tconfig = {}\n" >> tconfig.lua
+echo -e "local cards = {$crds}\n" >> tconfig.lua
+echo 'function tconfig.cards()' >> tconfig.lua
+echo -e "\treturn cards" >> tconfig.lua
+echo -e "end\n" >> tconfig.lua
+echo 'return tconfig' >> tconfig.lua
+
+printf "${GRE}[SUCCESS] Configuration successful.${NON}\n"
