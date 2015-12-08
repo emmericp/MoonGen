@@ -3,11 +3,15 @@ NON='\033[0m'
 
 printf "${WHI}[INFO] Starting configuration.${NON}\n"
 
+rm -f tconfig.lua
+echo 'local tconfig = {}' >> tconfig.lua
+
 #--------------------------#
 #-Get devices from MoonGen-#
 #--Fecht output          --#
 #--Strip devices out     --#
-#--Format & Store        --#
+#--Format                --#
+#--Write to config       --#
 #--------------------------#
 
 printf "${WHI}[INFO] Detecting available network ports and cards.${NON}\n"
@@ -21,7 +25,7 @@ echo "$output" > devices.txt
 sed -n -E -i -e '/(.*Found.*)/,$ p' devices.txt
 sed -i '1 d' devices.txt
 
-#--Format & Store
+#--Format
 crds="{"
 i=$(expr 0)
 j=$(expr 0)
@@ -44,11 +48,12 @@ do
 	if [ "$prt" -ne '-1' ]
 	then
 		j=$(expr $j + 1)
-		crds="$crds{$prt:$adr},"
+		crds="$crds{$prt,\"$adr\"},"
 	fi
 done < devices.txt
 crds=${crds::-1}"}"
 
+#--Write
 RED='\033[0;31m'
 GRE='\033[0;32m'
 ORA='\033[0;33m'
@@ -63,8 +68,20 @@ else
 	printf"${ORA}[WARNING] Detected ${j} cards. ${l} ports empty.${NON}\n"
 fi
 
+echo "local cards = $crds" >> tconfig.lua
+echo "function tconfig.ports()" >> tconfig.lua
+echo -e "\treturn ports" >> tconfig.lua
+echo 'end' >> tconfig.lua
+
 #---------------------------------#
 #-Fetch device speed from MoonGen-#
 #---------------------------------#
 
 printf "${WHI}[INFO] Detecting network card speed.${NON}\n"
+
+
+
+
+
+#-Fin
+echo 'return tconfig' >> tconfig.lua
