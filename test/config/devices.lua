@@ -1,4 +1,8 @@
-local dpdk	= require "dpdk" -- TODO: rename dpdk module to "moongen"
-local memory	= require "memory"
-local device	= require "device"
-local timer	= require "timer"
+local dpdk	= require "dpdk"
+
+function master()
+	slave()
+end
+
+function slave()
+end
