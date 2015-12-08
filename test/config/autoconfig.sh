@@ -18,7 +18,7 @@ printf "${WHI}[INFO] Detecting available network ports and cards.${NON}\n"
 
 #--Fetch
 output=$(../../build/MoonGen devices.lua)
-rm devices.txt
+rm -f devices.txt
 echo "$output" > devices.txt
 
 #--Strip
@@ -69,19 +69,35 @@ else
 fi
 
 echo "local cards = $crds" >> tconfig.lua
-echo "function tconfig.ports()" >> tconfig.lua
-echo -e "\treturn ports" >> tconfig.lua
+echo "function tconfig.cards()" >> tconfig.lua
+echo -e "\treturn cards" >> tconfig.lua
 echo 'end' >> tconfig.lua
+
+rm devices.txt
+
+#--Temporarily finalize tconfig.lua
+echo "return tconfig" >> tconfig.lua
 
 #---------------------------------#
 #-Fetch device speed from MoonGen-#
+#--Fetch output                 --#
+#--Strip speed per device       --#
+#--Format                       --#
+#--Store                        --#
 #---------------------------------#
 
 printf "${WHI}[INFO] Detecting network card speed.${NON}\n"
 
+#--Fetch Output
 
+output=$(../../build/MoonGen speed.lua)
+rm -f speed.txt
+echo "$output" > speed.txt
+echo "$output"
 
+#--Strip
+sed -n -E -i -e '/(.*to come up.*)/,$ p' speed.txt
+sed -i '1 d' speed.txt
+sed -i '$ d' speed.txt
 
-
-#-Fin
-echo 'return tconfig' >> tconfig.lua
+#--Format
