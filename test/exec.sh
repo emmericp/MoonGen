@@ -1,6 +1,6 @@
-#-------------------------#
-#-Variables for later use-#
-#-------------------------#
+#-----------#
+#-Variables-#
+#-----------#
 
 #Path to log file
 file='logs/log'$(date '+%Y-%m-%d:%H:%M:%S')'.txt'

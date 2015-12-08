@@ -13,10 +13,9 @@ local PKT_SIZE  = 60 -- without CRC
 
 TestSend = {}
 
-    function master()
-        local testPairs = tconfig.pairs()
-    
-        local testPorts = {}
+function master()
+	local testPairs = tconfig.pairs()
+	local testPorts = {}
         for i = 1, #testPairs do
         	testPorts[i*2-1] = testPairs[i][1]
         	testPorts[i*2] = testPairs[i][2]
@@ -39,7 +38,7 @@ TestSend = {}
 	os.exit( luaunit.LuaUnit.run() )
     end
 
-    function sendSlave(dev, target)
+function sendSlave(dev, target)
         local queue = dev:getTxQueue(0)
         local tqueue = target:getTxQueue(0)
         dpdk.sleepMillis(100)
@@ -61,9 +60,9 @@ TestSend = {}
 
 	bufs:freeAll()    
         return 1
-    end
+end
 
-    function receiveSlave(dev)
+function receiveSlave(dev)
         print("Testing Receive Capability: ", dev)
 	
 	local bufs = memory.bufArray()    
@@ -75,6 +74,4 @@ TestSend = {}
 	
 	bufs:freeAll()    
         return 1 -- Test Successful
-    end
-
-
+end
