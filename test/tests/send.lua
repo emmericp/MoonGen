@@ -31,25 +31,25 @@ function master()
 end
 
 function slave(dev)
-        print("Testing Send Capability: ", dev)
-    
-        local queue = dev:getTxQueue(0)
-        dpdk.sleepMillis(100)
-    
-        local mem = memory.createMemPool(function(buf)
-            buf:getEthernetPacket():fill{
-                pktLength = PKT_SIZE,
-                ethSrc = "10:11:12:13:14:15", --random src
-                ethDst = "10:11:12:13:14:15", --random dst
-            }
-        end)
-    
-        local bufs = mem:bufArray()
-        local runtime = timer:new(10)
-        while runtime:running() and dpdk.running() do
-            bufs:alloc(PKT_SIZE)
-            queue:send(bufs)
-        end
+	print("Testing Send Capability: ", dev)
+
+	local queue = dev:getTxQueue(0)
+	dpdk.sleepMillis(100)
+ 
+	local mem = memory.createMemPool(function(buf)
+			buf:getEthernetPacket():fill{
+				pktLength = PKT_SIZE,
+				ethSrc = "10:11:12:13:14:15", --random src
+				ethDst = "10:11:12:13:14:15", --random dst
+			}
+		end)
+	
+	local bufs = mem:bufArray()
+	local runtime = timer:new(10)
+	while runtime:running() and dpdk.running() do
+		bufs:alloc(PKT_SIZE)
+		queue:send(bufs)
+	end
 	
 	bufs:freeAll()    
         return 1 -- Test Successful
