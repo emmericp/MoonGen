@@ -93,7 +93,6 @@ printf "${WHI}[INFO] Detecting network card speed.${NON}\n"
 output=$(../../build/MoonGen speed.lua)
 rm -f speed.txt
 echo "$output" > speed.txt
-echo "$output"
 
 #--Strip
 sed -n -E -i -e '/(.*to come up.*)/,$ p' speed.txt
@@ -101,3 +100,8 @@ sed -i '1 d' speed.txt
 sed -i '$ d' speed.txt
 
 #--Format
+while read line
+do
+	speed=$(echo "$line" | sed -r 's#(.*:.* )([0-9]*)( MBit/s.*)#\2#g')
+	echo "$speed"
+done < speed.txt
