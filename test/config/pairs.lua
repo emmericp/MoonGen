@@ -27,6 +27,7 @@ end
 function broadcastSlave(dev, port)
 	local queue = dev:getTxQueue(0)
 	
+	print(queue)
 	dpdk.sleepMillis(100)
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
@@ -64,4 +65,3 @@ function receiveSlave(dev)
 	end
 	bufs:freeAll()
 end
-	
