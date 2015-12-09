@@ -15,39 +15,55 @@ function master()
 	end
 	device.waitForLinks()
 	for i=1, #devs do
-		slave(devs[i])
-		--dpdk.launchLua("slave", devs[i])
+		slave = dpdk.launchLua("broadcastSlave", devs[i], cards[i][1])
+		for j=1, #devs do
+			receiveSlave(devs[j])
+		end
+		slave:wait()
 	end
 end
 
-function slave(dev)
-	local txqueue = dev:getTxQueue(0)
-	local rxqueue = dev:getRxQueue(0)
+function broadcastSlave(dev, port)
+	local queue = dev:getTxQueue(0)
+	
 	dpdk.sleepMillis(100)
 	local mem = memory.createMemPool(function(buf)
-		buf:getEthernetPacket():fill{
-			ethSrc = txqueue,
+		buf:getUdpPacket():fill{
+			pktLength = PKT_SIZE,
+			ethSrc = queue,
 			ethDst = "FF:FF:FF:FF:FF:FF:FF:FF"
 		}
 	end)
 
 	local bufs = mem:bufArray()
-	local runtime = timer:new(0.0001)
-	local count = 0
-	while runtime:running() and dpdk.running() do
+	while dpdk.running() do
 		-- Send
 		bufs:alloc(PKT_SIZE)
-		txqueue:send(bufs)
+		queue:send(bufs)
+	end
+	bufs:freeAll()
+end
 
-		-- Receive
-		--local rx = rxqueue:tryRecv(bufs)
-		
+function receiveSlave(dev)
+	dpdk.sleepMillis(100)
+	local queue = dev:getRxQueue(0)
+	local bufs = memory.bufArray()
+	runtime = timer:new(0.001)
+	while runtime:running() and dpdk.running() do
+		--receive
+		maxWait = 1000
+		local rx = queue:tryRecv(bufs, maxWait)
+		for i=1, rx do
+			local buf = bufs[i]
+			local pkt = buf:getUdpPacket()
+			print(pkt)
+			--local port = pkt.udp:getDstPort()
+			--print(port)
+		end
 		--local buf = bufs[1]
 		--local pkt = buf:getEthernetPacket()
-		--local src = pkt:getDstPort()
-	
-		count = count + 1
-		print(count)
+		--local port = pkt:getDstPort()
+		--print(port)
 	end
 	bufs:freeAll()
 end
