@@ -18,7 +18,7 @@ function master()
 	for i=1, #devs do
 		slave = dpdk.launchLua("broadcastSlave", devs[i], cards[i][1])
 		for j=1, #devs do
-			receiveSlave(devs[j])
+			receiveSlave(devs[j],j)
 		end
 		slave:wait()
 	end
@@ -26,8 +26,7 @@ end
 
 function broadcastSlave(dev, port)
 	local queue = dev:getTxQueue(0)
-	
-	print(queue)
+	print("send")
 	dpdk.sleepMillis(100)
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
@@ -44,11 +43,14 @@ function broadcastSlave(dev, port)
 		bufs:alloc(PKT_SIZE)
 		queue:send(bufs)
 	end
+	print("terminate")
 	bufs:freeAll()
+	print("terminated")
 end
 
-function receiveSlave(dev)
+function receiveSlave(dev,i)
 	dpdk.sleepMillis(100)
+	print("receive:", i)
 	local queue = dev:getRxQueue(0)
 	local bufs = memory.bufArray()
 	runtime = timer:new(0.001)
