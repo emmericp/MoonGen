@@ -5,6 +5,7 @@ local timer	= require "timer"
 package.path 	= package.path .. ";tconfig.lua"
 local tconfig	= require "tconfig"
 
+memory.enableCache()
 local PKT_SIZE	= 100
 
 function master()
@@ -28,7 +29,7 @@ function broadcastSlave(dev, port)
 	
 	dpdk.sleepMillis(100)
 	local mem = memory.createMemPool(function(buf)
-		buf:getUdpPacket():fill{
+		buf:getEthernetPacket():fill{
 			pktLength = PKT_SIZE,
 			ethSrc = queue,
 			ethDst = "FF:FF:FF:FF:FF:FF:FF:FF"
@@ -36,6 +37,7 @@ function broadcastSlave(dev, port)
 	end)
 
 	local bufs = mem:bufArray()
+
 	while dpdk.running() do
 		-- Send
 		bufs:alloc(PKT_SIZE)
@@ -55,15 +57,10 @@ function receiveSlave(dev)
 		local rx = queue:tryRecv(bufs, maxWait)
 		for i=1, rx do
 			local buf = bufs[i]
-			local pkt = buf:getUdpPacket()
-			print(pkt)
-			--local port = pkt.udp:getDstPort()
-			--print(port)
+			local pkt = buf:getEthernetPacket()
+			local mac = pkt.eth:getSrcString()
+			print(mac)
 		end
-		--local buf = bufs[1]
-		--local pkt = buf:getEthernetPacket()
-		--local port = pkt:getDstPort()
-		--print(port)
 	end
 	bufs:freeAll()
 end
