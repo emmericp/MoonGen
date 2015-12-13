@@ -1,6 +1,14 @@
+#Color Codes
 WHI='\033[1;37m'
+RED='\033[0;31m'
+GRE='\033[0;32m'
+ORA='\033[0;33m'
 NON='\033[0m'
 
+#Functions
+function join { local IFS="$1"; shift; echo "$*"; }
+
+#Start
 printf "${WHI}[INFO] Starting configuration.${NON}\n"
 
 rm -f tconfig.lua
@@ -54,13 +62,9 @@ done < devices.txt
 crds=${crds::-1}
 
 #--Write
-RED='\033[0;31m'
-GRE='\033[0;32m'
-ORA='\033[0;33m'
-
 if [ $i -eq 0 ]
 then
-	printf "${RED}[FAILURE] Detected 0 ports! Autoconfig terminated.${NON}\n"
+	printf "${RED}[FAIL] Detected 0 ports! Autoconfig terminated.${NON}\n"
 	exit
 else
 	printf "${GRE}[SUCCESS] Detected ${j} port(s).\n"
@@ -117,11 +121,11 @@ then
 	printf "${GRE}[SUCCESS] Detected ${k} card(s).${NON}\n"
 elif [ $k -eq 0 ]
 then
-	printf "${RED}[FAILURE] Detected 0 cards! Autoconfig terminated.${NON}\n"
+	printf "${RED}[FAIL] Detected 0 cards! Autoconfig terminated.${NON}\n"
 	exit
 else
 	l=$(expr $i - $k)
-	printf "${ORA}[WARNING] Detected ${k} card(s). ${l} port(s) empty.${NON}\n"
+	printf "${ORA}[WARN] Detected ${k} card(s). ${l} port(s) empty.${NON}\n"
 fi
 
 rm -f speed.txt
@@ -135,9 +139,9 @@ echo -e "\treturn cards" >> tconfig.lua
 echo -e "end\n" >> tconfig.lua
 echo 'return tconfig' >> tconfig.lua
 
-#--------------------#
-#Gather device-pairs-#
-#--------------------#
+#---------------------#
+#-Gather device-pairs-#
+#---------------------#
 
 printf "${WHI}[INFO] Detecting network card pairs.${NON}\n"
 
@@ -151,6 +155,7 @@ sed -n -E -i -e '/(.*devices are up.*)/,$ p' pairs.txt
 sed -i '1 d' pairs.txt
 
 #--Format
+pairs=()
 while read line
 do
 	if [[ $line == **":"**":"**":"**":"**":"**" - "**":"**":"**":"**":"**":"** ]]
@@ -171,13 +176,22 @@ do
 				port1=$port2
 				port2=$port3
 			fi
+			pair="{$port1,$port2}"
 			printf "${WHI}[INFO] Pairing: $port1 - $port2${NON}\n"
 
-			#-Save Pairing if not already in existance
-			#TODO
+			#-Save Pairing if not already in existence
+			if ! [[ " ${pairs[@]} " =~ " ${pair} " ]]
+			then
+				pairs+=($pair)
+			fi
+		else
+			printf "${ORA}[WARN] Not a pairing within the system.${NON}\n"
 		fi
 	fi
 done < pairs.txt
+
+pairs=$(join , "${pairs[@]}")
+echo "$pairs"
 
 #--Store
 #TODO
