@@ -5,7 +5,7 @@ local timer	= require "timer"
 package.path 	= package.path .. ";tconfig.lua"
 local tconfig	= require "tconfig"
 
-memory.enableCache()
+--memory.enableCache()
 local PKT_SIZE	= 100
 
 function master()
@@ -63,7 +63,7 @@ function receiveSlave(dev,card)
 			local mac = pkt.eth:getSrcString()
 			if not (mac == lmac) then
 				lmac = mac
-				print(card[2], " - ", lmac)
+				print(lmac, " - ", card[2])
 			end
 		end
 		bufs:free(rx)

@@ -78,16 +78,11 @@ echo "return tconfig" >> tconfig.lua
 
 #---------------------------------#
 #-Fetch device speed from MoonGen-#
-#--Fetch output                 --#
-#--Strip speed per device       --#
-#--Format                       --#
-#--Store                        --#
 #---------------------------------#
 
 printf "${WHI}[INFO] Detecting network cards.${NON}\n"
 
 #--Fetch Output
-
 output=$(../../build/MoonGen speed.lua)
 rm -f speed.txt
 echo "$output" > speed.txt
@@ -105,10 +100,11 @@ crds=""
 k=$(expr 0)
 while read line
 do
+	#TODO: Filter all mal-formated lines
 	printf "$line\n"
 	speed=$(echo "$line" | sed -r 's#(.*:.* )([0-9]*)( MBit/s.*)#\2#g')
 	if [ $speed  -gt 0 ];
-	then 
+	then
 		crds=$crds"{"${crar[0]}","$speed"},"
 		k=$(expr $k + 1)
 	fi
@@ -138,5 +134,52 @@ echo 'function tconfig.cards()' >> tconfig.lua
 echo -e "\treturn cards" >> tconfig.lua
 echo -e "end\n" >> tconfig.lua
 echo 'return tconfig' >> tconfig.lua
+
+#--------------------#
+#Gather device-pairs-#
+#--------------------#
+
+printf "${WHI}[INFO] Detecting network card pairs.${NON}\n"
+
+#--Fetch Output
+output=$(../../build/MoonGen pairs.lua)
+rm -f pairs.txt
+echo "$output" > pairs.txt
+
+#--Strip
+sed -n -E -i -e '/(.*devices are up.*)/,$ p' pairs.txt
+sed -i '1 d' pairs.txt
+
+#--Format
+while read line
+do
+	if [[ $line == **":"**":"**":"**":"**":"**" - "**":"**":"**":"**":"**":"** ]]
+	then
+		mac1=$(echo "$line" | sed -r 's#^(..:..:..:..:..:..).*#\1#g')
+		mac2=$(echo "$line" | sed -r 's#.*(..:..:..:..:..:..)$#\1#g')
+		mac1=$(echo "$mac1" | tr '[:lower:]' '[:upper:]')
+		printf "${WHI}[INFO] Detected: ${mac1} -> ${mac2}${NON}\n"
+		port1=$(echo "$crds" | sed -r "s#.*\{([0-9]*),\"$mac1\",([0-9]*)\}.*#\1#g")
+		port2=$(echo "$crds" | sed -r "s#.*\{([0-9]*),\"$mac2\",([0-9]*)\}.*#\1#g")
+
+		if [[ "$port1" =~ ^-?[0-9]+$ ]] && [[ "$port2" =~ ^-?[0-9]+$ ]]
+		then
+			#-Order Ports
+			if [ "$port1" -gt "$port2" ]
+			then
+				port3=$port1
+				port1=$port2
+				port2=$port3
+			fi
+			printf "${WHI}[INFO] Pairing: $port1 - $port2${NON}\n"
+
+			#-Save Pairing if not already in existance
+			#TODO
+		fi
+	fi
+done < pairs.txt
+
+#--Store
+#TODO
 
 printf "${GRE}[SUCCESS] Configuration successful.${NON}\n"
