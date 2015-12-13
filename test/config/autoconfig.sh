@@ -34,6 +34,7 @@ sed -n -E -i -e '/(.*Found.*)/,$ p' devices.txt
 sed -i '1 d' devices.txt
 
 #--Format
+$crds=()
 i=$(expr 0)
 j=$(expr 0)
 while read line
@@ -56,10 +57,9 @@ do
 	if [ "$prt" -ne '-1' ]
 	then
 		j=$(expr $j + 1)
-		crds="$crds{$prt,\"$adr\"},"
+		crds+=("{$prt,\"$adr\"}")
 	fi
 done < devices.txt
-crds=${crds::-1}
 
 #--Write
 if [ $i -eq 0 ]
@@ -70,7 +70,8 @@ else
 	printf "${GRE}[SUCCESS] Detected ${j} port(s).\n"
 fi
 
-echo "local cards = {$crds}" >> tconfig.lua
+cards=$(join , "${crds[@]}")
+echo "local cards = {$cards}" >> tconfig.lua
 echo "function tconfig.cards()" >> tconfig.lua
 echo -e "\treturn cards" >> tconfig.lua
 echo 'end' >> tconfig.lua
@@ -97,10 +98,6 @@ sed -i '1 d' speed.txt
 sed -i '$ d' speed.txt
 
 #--Format
-crds=$(echo $crds | tr -d '{')
-crar=$(echo "${crds::-1}" | sed "s/},/\n/g")
-readarray -t crar <<< "$crar"
-crds=""
 k=$(expr 0)
 while read line
 do
@@ -109,12 +106,11 @@ do
 	speed=$(echo "$line" | sed -r 's#(.*:.* )([0-9]*)( MBit/s.*)#\2#g')
 	if [ $speed  -gt 0 ];
 	then
-		crds=$crds"{"${crar[0]}","$speed"},"
+		crds[${k}]= {"$crds[{k}]"::-1}","$speed"}"
 		k=$(expr $k + 1)
 	fi
-	crar=("${crar[@]:1}")
 done < speed.txt
-crds=${crds::-1}
+cards=$(join , "${crds[@]}")
 
 if [ $i -eq $k ]
 then
@@ -133,7 +129,7 @@ rm -f speed.txt
 #--Store
 rm -f tconfig.lua
 echo -e "local tconfig = {}\n" >> tconfig.lua
-echo -e "local cards = {$crds}\n" >> tconfig.lua
+echo -e "local cards = {$cards}\n" >> tconfig.lua
 echo 'function tconfig.cards()' >> tconfig.lua
 echo -e "\treturn cards" >> tconfig.lua
 echo -e "end\n" >> tconfig.lua
@@ -164,8 +160,8 @@ do
 		mac2=$(echo "$line" | sed -r 's#.*(..:..:..:..:..:..)$#\1#g')
 		mac1=$(echo "$mac1" | tr '[:lower:]' '[:upper:]')
 		printf "${WHI}[INFO] Detected: ${mac1} -> ${mac2}${NON}\n"
-		port1=$(echo "$crds" | sed -r "s#.*\{([0-9]*),\"$mac1\",([0-9]*)\}.*#\1#g")
-		port2=$(echo "$crds" | sed -r "s#.*\{([0-9]*),\"$mac2\",([0-9]*)\}.*#\1#g")
+		port1=$(echo "$cards" | sed -r "s#.*\{([0-9]*),\"$mac1\",([0-9]*)\}.*#\1#g")
+		port2=$(echo "$cards" | sed -r "s#.*\{([0-9]*),\"$mac2\",([0-9]*)\}.*#\1#g")
 
 		if [[ "$port1" =~ ^-?[0-9]+$ ]] && [[ "$port2" =~ ^-?[0-9]+$ ]]
 		then
