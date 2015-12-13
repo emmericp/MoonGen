@@ -16,17 +16,16 @@ function master()
 	end
 	device.waitForLinks()
 	for i=1, #devs do
-		slave = dpdk.launchLua("broadcastSlave", devs[i], i)
+		slave = dpdk.launchLua("broadcastSlave", devs[i])
 		for j=1, #devs do
-			receiveSlave(devs[j],j)
+			receiveSlave(devs[j],cards[j])
 		end
 		slave:wait()
 	end
 end
 
-function broadcastSlave(dev, i)
+function broadcastSlave(dev)
 	local queue = dev:getTxQueue(0)
-	print("send:", i)
 	dpdk.sleepMillis(100)
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
@@ -48,12 +47,12 @@ function broadcastSlave(dev, i)
 	end
 end
 
-function receiveSlave(dev,i)
+function receiveSlave(dev,card)
 	dpdk.sleepMillis(100)
-	print("receive:", i)
 	local queue = dev:getRxQueue(0)
 	local bufs = memory.bufArray()
 	runtime = timer:new(0.001)
+	local lmac = "NONE"
 	while runtime:running() and dpdk.running() do
 		--receive
 		maxWait = 1000
@@ -62,7 +61,10 @@ function receiveSlave(dev,i)
 			local buf = bufs[i]
 			local pkt = buf:getEthernetPacket()
 			local mac = pkt.eth:getSrcString()
-			print(mac)
+			if not (mac == lmac) then
+				lmac = mac
+				print(card[2], " - ", lmac)
+			end
 		end
 		bufs:free(rx)
 	end
