@@ -34,7 +34,7 @@ sed -n -E -i -e '/(.*Found.*)/,$ p' devices.txt
 sed -i '1 d' devices.txt
 
 #--Format
-$crds=()
+crds=()
 i=$(expr 0)
 j=$(expr 0)
 while read line
@@ -106,7 +106,8 @@ do
 	speed=$(echo "$line" | sed -r 's#(.*:.* )([0-9]*)( MBit/s.*)#\2#g')
 	if [ $speed  -gt 0 ];
 	then
-		crds[${k}]= {"$crds[{k}]"::-1}","$speed"}"
+		crd=${crds[${k}]}
+		crds[${k}]=$(echo "${crd::-1},$speed}")
 		k=$(expr $k + 1)
 	fi
 done < speed.txt
@@ -160,8 +161,8 @@ do
 		mac2=$(echo "$line" | sed -r 's#.*(..:..:..:..:..:..)$#\1#g')
 		mac1=$(echo "$mac1" | tr '[:lower:]' '[:upper:]')
 		printf "${WHI}[INFO] Detected: ${mac1} -> ${mac2}${NON}\n"
-		port1=$(echo "$cards" | sed -r "s#.*\{([0-9]*),\"$mac1\",([0-9]*)\}.*#\1#g")
-		port2=$(echo "$cards" | sed -r "s#.*\{([0-9]*),\"$mac2\",([0-9]*)\}.*#\1#g")
+		port1=$(echo "$cards" | sed -r "s#.*\{([0-9]*),\"$mac1\".*#\1#g")
+		port2=$(echo "$cards" | sed -r "s#.*\{([0-9]*),\"$mac2\".*#\1#g")
 
 		if [[ "$port1" =~ ^-?[0-9]+$ ]] && [[ "$port2" =~ ^-?[0-9]+$ ]]
 		then
@@ -187,9 +188,15 @@ do
 done < pairs.txt
 
 pairs=$(join , "${pairs[@]}")
-echo "$pairs"
 
 #--Store
-#TODO
+rm -f pairs.txt
+sed -i '$ d' tconfig.lua
+
+echo "local pairs = {$pairs}" >> tconfig.lua
+echo -e "\nfunction tconfig.pairs()" >> tconfig.lua
+echo -e "\treturn pairs" >> tconfig.lua
+echo -e "end\n" >> tconfig.lua
+echo "return tconfig" >> tconfig.lua
 
 printf "${GRE}[SUCCESS] Configuration successful.${NON}\n"
