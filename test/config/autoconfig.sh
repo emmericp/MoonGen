@@ -122,7 +122,7 @@ then
 	exit
 else
 	l=$(expr $i - $k)
-	printf "${ORA}[WARN] Detected ${k} card(s). ${l} port(s) empty.${NON}\n"
+	printf "${GRE}[SUCESS] Detected ${k} card(s).${NON}\n${ORA}[WARN] ${l} port(s) empty.${NON}\n"
 fi
 
 rm -f speed.txt
