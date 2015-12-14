@@ -6,8 +6,7 @@ local memory	= require "memory"
 local device	= require "device"
 local timer 	= require "timer"
 
-package.path 	= package.path .. ";../tconfig.lua"
-local tconfig   = require "tconfig"
+local tconfig   = dofile("config/tconfig.lua")
 
 local PKT_SIZE  = 60 -- without CRC
 

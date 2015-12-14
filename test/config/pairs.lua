@@ -2,8 +2,8 @@ local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
-package.path 	= package.path .. ";tconfig.lua"
-local tconfig	= require "tconfig"
+
+local tconfig	= dofile(arg[1] .. "/tconfig.lua")
 
 --memory.enableCache()
 local PKT_SIZE	= 100
@@ -16,11 +16,11 @@ function master()
 	end
 	device.waitForLinks()
 	for i=1, #devs do
-		slave = dpdk.launchLua("broadcastSlave", devs[i])
+		broadcastSlave(devs[i])
 		for j=1, #devs do
 			receiveSlave(devs[j],cards[j])
 		end
-		slave:wait()
+		--slave:wait()
 	end
 end
 

@@ -8,11 +8,14 @@ NON='\033[0m'
 #Functions
 function join { local IFS="$1"; shift; echo "$*"; }
 
+#Directory
+dir="$(dirname "$0")"
+
 #Start
 printf "${WHI}[INFO] Starting configuration.${NON}\n"
 
-rm -f tconfig.lua
-echo 'local tconfig = {}' >> tconfig.lua
+rm -f $dir/tconfig.lua
+echo 'local tconfig = {}' >> $dir/tconfig.lua
 
 #--------------------------#
 #-Get devices from MoonGen-#
@@ -25,13 +28,13 @@ echo 'local tconfig = {}' >> tconfig.lua
 printf "${WHI}[INFO] Detecting available network ports and cards.${NON}\n"
 
 #--Fetch
-output=$(../../build/MoonGen devices.lua)
-rm -f devices.txt
-echo "$output" > devices.txt
+output=$($dir/../../build/MoonGen $dir/devices.lua $dir)
+rm -f $dir/devices.txt
+echo "$output" > $dir/devices.txt
 
 #--Strip
-sed -n -E -i -e '/(.*Found.*)/,$ p' devices.txt
-sed -i '1 d' devices.txt
+sed -n -E -i -e '/(.*Found.*)/,$ p' $dir/devices.txt
+sed -i '1 d' $dir/devices.txt
 
 #--Format
 crds=()
@@ -59,7 +62,7 @@ do
 		j=$(expr $j + 1)
 		crds+=("{$prt,\"$adr\"}")
 	fi
-done < devices.txt
+done < $dir/devices.txt
 
 #--Write
 if [ $i -eq 0 ]
@@ -71,15 +74,15 @@ else
 fi
 
 cards=$(join , "${crds[@]}")
-echo "local cards = {$cards}" >> tconfig.lua
-echo "function tconfig.cards()" >> tconfig.lua
-echo -e "\treturn cards" >> tconfig.lua
-echo 'end' >> tconfig.lua
+echo "local cards = {$cards}" >> $dir/tconfig.lua
+echo "function tconfig.cards()" >> $dir/tconfig.lua
+echo -e "\treturn cards" >> $dir/tconfig.lua
+echo 'end' >> $dir/tconfig.lua
 
-rm devices.txt
+rm $dir/devices.txt
 
 #--Temporarily finalize tconfig.lua
-echo "return tconfig" >> tconfig.lua
+echo "return tconfig" >> $dir/tconfig.lua
 
 #---------------------------------#
 #-Fetch device speed from MoonGen-#
@@ -88,14 +91,15 @@ echo "return tconfig" >> tconfig.lua
 printf "${WHI}[INFO] Detecting network cards.${NON}\n"
 
 #--Fetch Output
-output=$(../../build/MoonGen speed.lua)
-rm -f speed.txt
-echo "$output" > speed.txt
+output=$($dir/../../build/MoonGen $dir/speed.lua $dir)
+rm -f $dir/speed.txt
+echo "$output" > $dir/speed.txt
+rm $dir/tconfig.lua
 
 #--Strip
-sed -n -E -i -e '/(.*to come up.*)/,$ p' speed.txt
-sed -i '1 d' speed.txt
-sed -i '$ d' speed.txt
+sed -n -E -i -e '/(.*to come up.*)/,$ p' $dir/speed.txt
+sed -i '1 d' $dir/speed.txt
+sed -i '$ d' $dir/speed.txt
 
 #--Format
 k=$(expr 0)
@@ -110,7 +114,7 @@ do
 		crds[${k}]=$(echo "${crd::-1},$speed}")
 		k=$(expr $k + 1)
 	fi
-done < speed.txt
+done < $dir/speed.txt
 cards=$(join , "${crds[@]}")
 
 if [ $i -eq $k ]
@@ -125,16 +129,16 @@ else
 	printf "${GRE}[SUCESS] Detected ${k} card(s).${NON}\n${ORA}[WARN] ${l} port(s) empty.${NON}\n"
 fi
 
-rm -f speed.txt
+rm -f $dir/speed.txt
 
 #--Store
-rm -f tconfig.lua
-echo -e "local tconfig = {}\n" >> tconfig.lua
-echo -e "local cards = {$cards}\n" >> tconfig.lua
-echo 'function tconfig.cards()' >> tconfig.lua
-echo -e "\treturn cards" >> tconfig.lua
-echo -e "end\n" >> tconfig.lua
-echo 'return tconfig' >> tconfig.lua
+rm -f $dir/tconfig.lua
+echo -e "local tconfig = {}\n" >> $dir/tconfig.lua
+echo -e "local cards = {$cards}\n" >> $dir/tconfig.lua
+echo 'function tconfig.cards()' >> $dir/tconfig.lua
+echo -e "\treturn cards" >> $dir/tconfig.lua
+echo -e "end\n" >> $dir/tconfig.lua
+echo 'return tconfig' >> $dir/tconfig.lua
 
 #---------------------#
 #-Gather device-pairs-#
@@ -143,16 +147,17 @@ echo 'return tconfig' >> tconfig.lua
 printf "${WHI}[INFO] Detecting network card pairs.${NON}\n"
 
 #--Fetch Output
-output=$(../../build/MoonGen pairs.lua)
-rm -f pairs.txt
-echo "$output" > pairs.txt
+output=$($dir/../../build/MoonGen $dir/pairs.lua $dir)
+rm -f $dir/pairs.txt
+echo "$output" > $dir/pairs.txt
 
 #--Strip
-sed -n -E -i -e '/(.*devices are up.*)/,$ p' pairs.txt
-sed -i '1 d' pairs.txt
+sed -n -E -i -e '/(.*devices are up.*)/,$ p' $dir/pairs.txt
+sed -i '1 d' $dir/pairs.txt
 
 #--Format
 pairs=()
+n=$(expr 0)
 while read line
 do
 	if [[ $line == **":"**":"**":"**":"**":"**" - "**":"**":"**":"**":"**":"** ]]
@@ -179,24 +184,26 @@ do
 			#-Save Pairing if not already in existence
 			if ! [[ " ${pairs[@]} " =~ " ${pair} " ]]
 			then
+				n=$(expr $n + 1)
 				pairs+=($pair)
 			fi
 		else
 			printf "${ORA}[WARN] Not a pairing within the system.${NON}\n"
 		fi
 	fi
-done < pairs.txt
+done < $dir/pairs.txt
 
 pairs=$(join , "${pairs[@]}")
 
 #--Store
-rm -f pairs.txt
-sed -i '$ d' tconfig.lua
+#rm -f $dir/pairs.txt
+sed -i '$ d' $dir/tconfig.lua
 
-echo "local pairs = {$pairs}" >> tconfig.lua
-echo -e "\nfunction tconfig.pairs()" >> tconfig.lua
-echo -e "\treturn pairs" >> tconfig.lua
-echo -e "end\n" >> tconfig.lua
-echo "return tconfig" >> tconfig.lua
+echo "local pairs = {$pairs}" >> $dir/tconfig.lua
+echo -e "\nfunction tconfig.pairs()" >> $dir/tconfig.lua
+echo -e "\treturn pairs" >> $dir/tconfig.lua
+echo -e "end\n" >> $dir/tconfig.lua
+echo "return tconfig" >> $dir/tconfig.lua
 
+printf "${GRE}[SUCCESS] Detected $n pairs.${NON}\n"
 printf "${GRE}[SUCCESS] Configuration successful.${NON}\n"
