@@ -115,6 +115,17 @@ do
 		k=$(expr $k + 1)
 	fi
 done < $dir/speed.txt
+
+m="0"
+while [ $m -lt ${#crds[@]} ]
+do
+	if ! [[ ${crds[${m}]} == *,*,* ]]
+	then
+		unset crds[${m}]
+	fi
+m=$[$m+1]
+done
+
 cards=$(join , "${crds[@]}")
 
 if [ $i -eq $k ]
