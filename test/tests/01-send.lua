@@ -14,8 +14,7 @@ TestSend = {}
 
 function master()
 	local cards = tconfig.cards()
-    
-        local devs = {}
+	local devs = {}
 		for i=1, #cards  do
 			devs[i] = device.config{ port = cards[i][1], rxQueues = 2, txQueues = 3}
 		end
@@ -52,5 +51,5 @@ function slave(dev, rate)
 		i = i + 1
 	end
 
-        return rate < i
+	return rate < i
 end
