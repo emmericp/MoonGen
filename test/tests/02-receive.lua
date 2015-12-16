@@ -76,10 +76,9 @@ function receiveSlave(dev, packages)
 	local runtime = timer:new(1)
 
 	local received = 0
-	maxwait = 10
         while runtime:running() and dpdk.running() do
-        	local rx = queue:tryRecv(bufs, maxWait)
-		print("TEST")
+        	local rx = queue:tryRecv(bufs, 100)
+
 		for i=1, rx do
 			local buf = bufs[i]
 			local pkt = buf:getEthernetPacket()
