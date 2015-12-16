@@ -162,7 +162,7 @@ local function startTimerIxgbe(port, id)
 	-- start system timer, this differs slightly between the two currently supported ixgbe-chips
 	if id == device.PCI_ID_X540 then
 		dpdkc.write_reg32(port, TIMEINCA, 1)
-	elseif id == device.PCI_ID_82599 or id == device.PCI_ID_X520 then
+	elseif id == device.PCI_ID_82599 or id == device.PCI_ID_X520 or id == device.PCI_ID_X520_T2 then
 		dpdkc.write_reg32(port, TIMINCA, bit.bor(2, bit.lshift(2, TIMINCA_IP_OFFS)))
 	else -- should not happen
 		log:fatal("Unsupported ixgbe device %s", device.getDeviceName(port))
@@ -245,6 +245,7 @@ end
 local enableFuncs = {
 	[device.PCI_ID_X540]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_X520]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
+	[device.PCI_ID_X520_T2]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_82599]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_82580]	= { enableRxTimestampsIgb, enableTxTimestampsIgb, enableRxTimestampsAllIgb },
 	[device.PCI_ID_I350]	= { nil, nil, enableRxTimestampsAllIgb },
