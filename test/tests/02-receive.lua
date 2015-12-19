@@ -67,21 +67,19 @@ function sendSlave(dev, target)
 	return i
 end
 
-function receiveSlave(dev, packages)
-	print("Testing Receive Capability: ", dev)
-	
-	local bufs = memory.bufArray()    
+function receiveSlave(dev,packages)
+	dpdk.sleepMillis(100)
 	local queue = dev:getRxQueue(0)
-	local runtime = timer:new(1)
-
-	local received = 0
+	local bufs = memory.bufArray()
+	runtime = timer:new(1)
 	while runtime:running() and dpdk.running() do
-		local rx = queue:tryRecv(bufs, 100)
+		--receive
+		maxWait = 100
+		local rx = queue:tryRecv(bufs, maxWait)
 		for i=1, rx do
 			local buf = bufs[i]
 			local pkt = buf:getEthernetPacket()
-			print(pkt)
 		end
+		bufs:free(rx)
 	end
-	return 1 -- Test Successful
 end
