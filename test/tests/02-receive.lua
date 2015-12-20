@@ -6,9 +6,9 @@ local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
 
-local tconfig	= dofile("config/tconfig.lua")
+local tconfig	= require "tconfig"
 
-local PKT_SIZE	= 20 -- without CRC
+local PKT_SIZE	= 124 -- without CRC
 
 TestSend = {}
 
@@ -42,8 +42,8 @@ end
 function sendSlave(dev, target)
 	local queue = dev:getTxQueue(0)
 	dpdk.sleepMillis(100)
-	
-	print(target)    
+
+	print (dev)
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
 			pktLength = PKT_SIZE,
@@ -54,7 +54,7 @@ function sendSlave(dev, target)
 	
 	local bufs = mem:bufArray()
 	local max = 1000
-	local runtime = timer:new(0.1)
+	local runtime = timer:new(0.01)
 	local i = 0
 
 	while runtime:running() and dpdk.running() and i < max do
@@ -63,23 +63,31 @@ function sendSlave(dev, target)
 		i = i + 1
 	end
 
-	print(i)
 	return i
 end
 
-function receiveSlave(dev,packages)
+function receiveSlave(dev, packages)
+	print(dev)
 	dpdk.sleepMillis(100)
+
 	local queue = dev:getRxQueue(0)
 	local bufs = memory.bufArray()
-	runtime = timer:new(1)
+	runtime = timer:new(0.01)
+	local total = 0
+
 	while runtime:running() and dpdk.running() do
 		--receive
 		maxWait = 100
 		local rx = queue:tryRecv(bufs, maxWait)
-		for i=1, rx do
+		local i = 0
+		while  i < rx do
 			local buf = bufs[i]
-			local pkt = buf:getEthernetPacket()
+			--local pkt = buf:getEthernetPacket()
+			i = i + 1
 		end
+		total = total + i
 		bufs:free(rx)
 	end
+
+	return total >= packages
 end
