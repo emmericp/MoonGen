@@ -1,93 +1,70 @@
-EXPORT_ASSERT_TO_GLOBALS = true
-
-local luaunit	= require "luaunit"
-local dpdk	= require "dpdk" -- TODO: rename dpdk module to "moongen"
+local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
 
 local tconfig	= require "tconfig"
 
-local PKT_SIZE	= 124 -- without CRC
-
-TestSend = {}
+--memory.enableCache()
+local PKT_SIZE	= 100
 
 function master()
-	local pairs = tconfig.pairs()
 	local cards = tconfig.cards()
+	local pairs = tconfig.pairs()
 
-	local ports = {}
-	for i = 1, #pairs do
-		ports[i*2-1] = pairs[i][1]
-		ports[i*2] = pairs[i][2]
-	end
-    
 	local devs = {}
-	for i=1, #ports do
-		devs[i] = device.config{ port = ports[i], rxQueues = 2, txQueues = 3}
+	for i=1, #pairs, 2 do
+		devs[i] = device.config{ port = cards[pairs[i][1]+1][1], rxQueues = 2, txQueues = 3}
+		devs[i+1] = device.config{ port = cards[pairs[i][2]+1][1], rqQueue = 2, txQueue = 3}
 	end
 	device.waitForLinks()
-
-	for i = 1, #devs, 2 do
-		TestSend["testNic" .. ports[i] .. " " .. ports[i+1]] = function()
-			local packages = sendSlave( devs[i], cards[tonumber(ports[i+1])+1][2] )
-			luaunit.assertTrue ( receiveSlave( devs[i+1], packages ) )
-			packages = sendSlave( devs[i+1], cards[tonumber(ports[i])+1][2] )
-			luaunit.assertTrue( receiveSlave( devs[i], packages ) )
-		end
+	for i=1, #devs,2 do
+		sendSlave(devs[i]:getTxQueue(0))
+		sendSlave(devs[i+1]:getTxQueue(0))
+		receiveSlave(devs[i]:getRxQueue(0))
+		receiveSlave(devs[i+1]:getRxQueue(0))
 	end
-	os.exit( luaunit.LuaUnit.run() )
 end
 
-function sendSlave(dev, target)
-	local queue = dev:getTxQueue(0)
+function sendSlave(queue)
 	dpdk.sleepMillis(100)
-
-	print (dev)
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
 			pktLength = PKT_SIZE,
 			ethSrc = queue,
-			ethDst = target
+			ethDst = "FF:FF:FF:FF:FF:FF:FF:FF"
 		}
 	end)
-	
-	local bufs = mem:bufArray()
-	local max = 1000
-	local runtime = timer:new(0.01)
-	local i = 0
 
-	while runtime:running() and dpdk.running() and i < max do
+	local bufs = mem:bufArray()
+
+	local i = 0
+	local max = 100
+	local runtime = timer:new(1)
+	while dpdk.running() and runtime:running() and i < max do
+		-- Send
 		bufs:alloc(PKT_SIZE)
 		queue:send(bufs)
 		i = i + 1
 	end
-
 	return i
 end
 
-function receiveSlave(dev, packages)
-	print(dev)
+function receiveSlave(queue)
 	dpdk.sleepMillis(100)
-
-	local queue = dev:getRxQueue(0)
 	local bufs = memory.bufArray()
-	runtime = timer:new(0.01)
-	local total = 0
-
+	runtime = timer:new(10)
+	local packets = 0
 	while runtime:running() and dpdk.running() do
 		--receive
-		maxWait = 100
+		maxWait = 1
 		local rx = queue:tryRecv(bufs, maxWait)
-		local i = 0
-		while  i < rx do
+		for i=1, rx do
 			local buf = bufs[i]
-			--local pkt = buf:getEthernetPacket()
-			i = i + 1
+			local pkt = buf:getEthernetPacket()
+			packets = packets + 1
 		end
-		total = total + i
 		bufs:free(rx)
 	end
-
-	return total >= packages
+	print(packets)
 end

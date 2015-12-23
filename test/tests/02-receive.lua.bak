@@ -1,0 +1,93 @@
+EXPORT_ASSERT_TO_GLOBALS = true
+
+local luaunit	= require "luaunit"
+local dpdk	= require "dpdk" -- TODO: rename dpdk module to "moongen"
+local memory	= require "memory"
+local device	= require "device"
+local timer	= require "timer"
+
+local tconfig	= require "tconfig"
+
+local PKT_SIZE	= 124 -- without CRC
+
+TestSend = {}
+
+function master()
+	local pairs = tconfig.pairs()
+	local cards = tconfig.cards()
+
+	local ports = {}
+	for i = 1, #pairs do
+		ports[i*2-1] = pairs[i][1]
+		ports[i*2] = pairs[i][2]
+	end
+    
+	local devs = {}
+	for i=1, #ports do
+		devs[i] = device.config{ port = ports[i], rxQueues = 2, txQueues = 3}
+	end
+	device.waitForLinks()
+
+	for i = 1, #devs, 2 do
+		TestSend["testNic" .. ports[i] .. " " .. ports[i+1]] = function()
+			local packages = {}
+			packages[1] = sendSlave (devs[i]:getTxQueue(0), cards[tonumber(ports[i+1])+1][2]) 
+			packages[2] = sendSlave (devs[i+1]:getTxQueue(0), cards[tonumber(ports[i])+1][2])
+			luaunit.assertTrue(receiveSlave(devs[i]:getRxQueue(0), 0))
+			luaunit.assertTrue(receiveSlave(devs[i+1]:getRxQueue(0), 0))
+
+			--local packages = sendSlave( devs[i], cards[tonumber(ports[i+1])+1][2] )
+			--luaunit.assertTrue ( receiveSlave( devs[i+1], packages ) )
+			--packages = sendSlave( devs[i+1], cards[tonumber(ports[i])+1][2] )
+			--luaunit.assertTrue( receiveSlave( devs[i], packages ) )
+		end
+	end
+	os.exit( luaunit.LuaUnit.run() )
+end
+
+function sendSlave(txQueue, target)
+	dpdk.sleepMillis(10)
+
+	local mem = memory.createMemPool(function(buf)
+		buf:getEthernetPacket():fill{
+			pktLength = PKT_SIZE,
+			ethSrc = txQueue,
+			ethDst = "FF:FF:FF:FF:FF:FF:FF:FF"
+		}
+	end)
+	
+	local bufs = mem:bufArray()
+
+	local i = 0
+	local runtime = timer:new(1)
+
+	while dpdk.running() and runtime:running() do
+		bufs:alloc(PKT_SIZE)
+		txQueue:send(bufs)
+		i = i + 1
+	end
+	return i
+end
+
+function receiveSlave(rxQueue, packages)
+	dpdk.sleepMillis(100)
+
+	local bufs = memory.bufArray()
+	runtime = timer:new(10)
+	local total = 0
+
+	while runtime:running() and dpdk.running() do
+		--receive
+		maxWait = 0.1
+		local rx = rxQueue:tryRecv(bufs, maxWait)
+		local i = 0
+		while  i < rx do
+			local buf = bufs[i]
+			i = i + 1
+		end
+		total = total + i
+		bufs:free(rx)
+	end
+	print(total)
+	return total >= packages
+end

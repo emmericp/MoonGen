@@ -3,7 +3,7 @@ local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
 
-local tconfig	= dofile(arg[1] .. "/tconfig.lua")
+local tconfig	= require "tconfig"
 
 --memory.enableCache()
 local PKT_SIZE	= 100

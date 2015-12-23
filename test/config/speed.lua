@@ -1,7 +1,7 @@
 local dpdk 	= require "dpdk"
 local device 	= require "device"
 
-local tconfig 	= dofile(arg[1] .. "/tconfig.lua")
+local tconfig 	= require "tconfig"
 
 function master()
 	local cards = tconfig.cards()
