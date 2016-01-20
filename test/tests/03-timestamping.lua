@@ -24,8 +24,10 @@ function master()
 	device.waitForLinks()
 	
 	for i=1, #devs, 2 do
-		slave(devs[i+1]:getRxQueue(0), devs[i]:getTxQueue(0))
-		slave(devs[i]:getRxQueue(0), devs[i+1]:getTxQueue(0))
+		Tests["TestNic" .. i] = function ()
+			luaunit.assertTrue(slave(devs[i+1]:getRxQueue(0), devs[i]:getTxQueue(0)))
+			luaunit.assertTrue(slave(devs[i]:getRxQueue(0), devs[i+1]:getTxQueue(0)))
+		end
 	end
 	os.exit(luaunit.LuaUnit.run())
 end
