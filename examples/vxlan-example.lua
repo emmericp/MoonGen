@@ -4,6 +4,7 @@ local device	= require "device"
 local stats	= require "stats"
 local proto	= require "proto.proto"
 local log 	= require "log"
+local ffi 	= require "ffi"
 
 function master(txPort, rxPort, isEndpoint, isTunneled, rate)
 	if not txPort or not rxPort or not isEndpoint or not isTunneled then
@@ -51,7 +52,7 @@ local decRemoteEth	= "90:e2:ba:0a:0b:0c" -- MoonGen counter/load slave
 local decEthType 	= 1
 
 local decPacketLen	= 60
-local encapsulationLen	= 14 + 20 + 8 + 4
+local encapsulationLen	= 14 + 20 + 8 + 8
 local encPacketLen 	= encapsulationLen + decPacketLen
 
 function loadSlave(sendTunneled, port, queue)
@@ -69,6 +70,9 @@ function loadSlave(sendTunneled, port, queue)
 				ethDst=encVtepEth, 
 				ip4Src=encRemoteIP,
 				ip4Dst=encVtepIP,
+
+				vxlanReserved2=0xf,
+				vxlanVNI=1000,
 
 				innerEthSrc=decVtepEth,
 				innerEthDst=decRemoteEth,
@@ -134,16 +138,16 @@ function counterSlave(receiveInner, dev)
 			local buf = bufs[1]
 			if receiveInner then
 				local pkt = buf:getEthernetPacket()
-				if pkt.eth:getSrcString() == decRemoteEth 
-					and pkt.eth:getDstString() == decVtepEth
-					and pkt.eth:getType() == decEthType then
+				--if pkt.eth:getSrcString() == decRemoteEth 
+				--	and pkt.eth:getDstString() == decVtepEth
+				--	and pkt.eth:getType() == decEthType then
 					
 					if c < 1 then
 						printf(red("Received"))
 						buf:dump()
 						c = c + 1
 					end
-				end
+				--end
 			else
 				local pkt = buf:getVxlanPacket()
 				if isVxlanPacket(pkt) then
@@ -163,26 +167,29 @@ function counterSlave(receiveInner, dev)
 end
 
 function decapsulateSlave(rxDev, txPort, queue)
-	local queue = device.get(txPort):getTxQueue(queue)
-	
+	local txDev = device.get(txPort)
+
 	local mem = memory.createMemPool(function(buf)
 		buf:getRawPacket():fill{ 
 			-- we take everything from the received encapsulated packet's payload
 		}
 	end)
 	local rxBufs = memory.bufArray()
+	local txBufs = mem:bufArray()
 	local c = 0
 
 	local rxStats = stats:newDevRxCounter(rxDev, "plain")
-	local txStats = stats:newDevTxCounter(queue, "plain")
+	local txStats = stats:newDevTxCounter(txDev, "plain")
 	
 	log:info("Starting vtep decapsulation task")
+
+	local rxQ = rxDev:getRxQueue(0)
+	local txQ = txDev:getTxQueue(queue)
 	while mg.running() do
-		local rx = rxDev:getRxQueue(0):tryRecv(rxBufs, 0)
-		local txBufs = mem:bufArray(rx)
+		local rx = rxQ:tryRecv(rxBufs, 0)
 		
 		-- alloc empty tx packet
-		txBufs:alloc()
+		txBufs:alloc(decPacketLen, 60)
 		
 		for i = 1, rx do
 			local rxBuf = rxBufs[i]
@@ -201,11 +208,11 @@ function decapsulateSlave(rxDev, txPort, queue)
 				txBufs[i]:setSize(payloadSize)
 			end
 		end
-		-- free received packet
-		rxBufs:freeAll()
-
 		-- send decapsulated packet
-		queue:send(txBufs)
+		txQ:sendN(txBufs, rx)                                           
+                
+		-- free received packet                                         
+                rxBufs:free(rx)	
 		
 		-- update statistics
 		rxStats:update()
@@ -224,7 +231,9 @@ function encapsulateSlave(rxDev, txPort, queue)
 			ethSrc=encVtepEth, 
 			ethDst=encRemoteEth, 
 			ip4Src=encVtepIP,
-			ip4Dst=encRemoteIP }
+			ip4Dst=encRemoteIP,
+			
+			vxlanVNI=1000,}
 	end)
 	
 	local rxBufs = memory.bufArray()
@@ -239,7 +248,7 @@ function encapsulateSlave(rxDev, txPort, queue)
 		local txBufs = mem:bufArray(rx)
 		
 		-- alloc tx packet with VXLAN template
-		txBufs:alloc()
+		txBufs:alloc(encPacketLen)
 		
 		-- check if we received any packets
 		for i = 1, rx do
@@ -250,13 +259,13 @@ function encapsulateSlave(rxDev, txPort, queue)
 			local rawSize = rxBufs[i]:getSize()
 			
 			-- use template VXLAN packet
-			local txPkt = txBufs[i]:getVxlanPacket()
+			local txPkt = txBufs[i]:getVxlanEncapsulationPacket()
 
 			-- copy raw payload (whole frame) to encapsulated packet payload
 			ffi.copy(txPkt.payload, rxPkt.payload, rawSize)
 
 			-- update size
-			local totalSize = encapsulationLength + rawSize
+			local totalSize = encapsulationLen + rawSize
 			-- for the actual buffer
 			txBufs[i]:setSize(totalSize)
 			-- for the IP/UDP header
