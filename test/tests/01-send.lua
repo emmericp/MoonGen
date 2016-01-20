@@ -6,9 +6,9 @@ local memory	= require "memory"
 local device	= require "device"
 local timer 	= require "timer"
 
-local tconfig   = dofile("../config/tconfig.lua")
+local tconfig   = require "tconfig"
 
-local PKT_SIZE  = 1600 -- without CRC
+local PKT_SIZE  = 124 -- without CRC
 
 TestSend = {}
 
@@ -51,5 +51,5 @@ function slave(dev, rate)
 		i = i + 1
 	end
 
-	return rate < i
+	return rate < i/13
 end
