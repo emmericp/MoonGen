@@ -614,7 +614,12 @@ function packetMakeStruct(...)
 		-- build name
 		name = name .. "__" .. header .. "_" .. member
 	end
-	
+
+	-- handle raw packet
+	if name == "" then
+		name = "raw"
+	end
+
 	-- add rest of the struct
 	str = [[
 	struct __attribute__((__packed__)) ]] 
@@ -649,12 +654,7 @@ end
 
 
 --- Raw packet type
-
-local payloadType = ffi.typeof("union payload_t*")
-
-function pkt:getRawPacket()
-	return payloadType(self.pkt.data)
-end
+pkt.getRawPacket = packetCreate()
 
 ---------------------------------------------------------------------------
 ---- Metatypes
