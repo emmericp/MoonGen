@@ -5,38 +5,33 @@ GRE='\033[0;32m'
 ORA='\033[0;33m'
 NON='\033[0m'
 
-#Functions
+#Helper Functions
 function join { local IFS="$1"; shift; echo "$*"; }
 
-#Directory
+#Current Execute Directory
 dir="$(dirname "$0")"
 
-#Start
+#-------#
+#-START-#
+#-------#
 printf "${WHI}[INFO] Starting configuration.${NON}\n"
 
 rm -f $dir/tconfig.lua
 echo 'local tconfig = {}' >> $dir/tconfig.lua
 
-#--------------------------#
-#-Get devices from MoonGen-#
-#--Fecht output          --#
-#--Strip devices out     --#
-#--Format                --#
-#--Write to config       --#
-#--------------------------#
-
+#Device Detection
 printf "${WHI}[INFO] Detecting available network ports and cards.${NON}\n"
 
-#--Fetch
+#-Fetch Moongen Output
 output=$($dir/../../build/MoonGen $dir/devices.lua $dir)
 rm -f $dir/devices.txt
 echo "$output" > $dir/devices.txt
 
-#--Strip
+#-Strip Required Information
 sed -n -E -i -e '/(.*Found.*)/,$ p' $dir/devices.txt
 sed -i '1 d' $dir/devices.txt
 
-#--Format
+#-Format Information
 crds=()
 i=$(expr 0)
 j=$(expr 0)
@@ -64,13 +59,13 @@ do
 	fi
 done < $dir/devices.txt
 
-#--Write
+#-Store Information
 if [ $i -eq 0 ]
 then
 	printf "${RED}[FAIL] Detected 0 ports! Autoconfig terminated.${NON}\n"
 	exit
 else
-	printf "${GRE}[SUCCESS] Detected ${j} port(s).\n"
+	printf "${GRE}[INFO] Detected ${j} port(s).\n"
 fi
 
 cards=$(join , "${crds[@]}")
@@ -81,7 +76,6 @@ echo 'end' >> $dir/tconfig.lua
 
 rm $dir/devices.txt
 
-#--Temporarily finalize tconfig.lua
 echo "return tconfig" >> $dir/tconfig.lua
 
 #---------------------------------#
@@ -130,14 +124,14 @@ cards=$(join , "${crds[@]}")
 
 if [ $i -eq $k ]
 then
-	printf "${GRE}[SUCCESS] Detected ${k} card(s).${NON}\n"
+	printf "${GRE}[INFO] Detected ${k} card(s).${NON}\n"
 elif [ $k -eq 0 ]
 then
 	printf "${RED}[FAIL] Detected 0 cards! Autoconfig terminated.${NON}\n"
 	exit
 else
 	l=$(expr $i - $k)
-	printf "${GRE}[SUCESS] Detected ${k} card(s).${NON}\n${ORA}[WARN] ${l} port(s) empty.${NON}\n"
+	printf "${GRE}[INFO] Detected ${k} card(s).${NON}\n${ORA}[WARN] ${l} port(s) empty.${NON}\n"
 fi
 
 rm -f $dir/speed.txt
@@ -216,5 +210,5 @@ echo -e "\treturn pairs" >> $dir/tconfig.lua
 echo -e "end\n" >> $dir/tconfig.lua
 echo "return tconfig" >> $dir/tconfig.lua
 
-printf "${GRE}[SUCCESS] Detected $n pairs.${NON}\n"
-printf "${GRE}[SUCCESS] Configuration successful.${NON}\n"
+printf "${GRE}[INFO] Detected $n pairs.${NON}\n"
+printf "${GRE}[INFO] Configuration successful.${NON}\n"

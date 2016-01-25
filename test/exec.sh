@@ -1,21 +1,20 @@
-#-----------#
-#-Variables-#
-#-----------#
-
-#Path to log file
-file='logs/log'$(date '+%Y-%m-%d:%H:%M:%S')'.txt'
-
-#Get test script list
-list=$(ls tests/*.lua)
-
-#Moongen Path
-path='../build/MoonGen'
-
-#Colors
+#Color Codes
+WHI='\033[1;37m'
 RED='\033[0;31m'
 GRE='\033[0;32m'
-WHI='\033[1;37m'
-NC='\033[0m'
+ORA='\033[0;33m'
+NON='\033[0m'
+
+#Log File Path
+file='logs/log'$(date '+%Y-%m-%d:%H:%M:%S')'.txt'
+
+#Test Script List
+list=$(ls tests/*.lua)
+
+#Relative Moongen Exec Path
+path='../build/MoonGen'
+
+bash config/autoconfig.sh
 
 #----------------------------#
 #-Execute Tests and evaluate-#
@@ -29,12 +28,6 @@ do
 	echo "$output" > 'temp.txt'
 	eval=$(tail -2 temp.txt)
 	rm temp.txt
-	
-	regex="Ran [0-9]* tests in [0-9]*.[0-9]* seconds\sOK$"
-	#if [[ $eval =~ $regex  ]]
-	#then
-		printf "${GRE}[SUCCESS] $eval${NC}\n"
-	#else
-	#	printf "${RED}[ERROR] Test failed. Please check the log!${NC}\n"
-	#fi
+    
+    printf "$eval${NON}\n"
 done
