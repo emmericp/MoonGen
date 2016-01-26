@@ -1,20 +1,23 @@
-function masterSingle()
+local testlib = {}
+
+function testlib.masterSingle()
 	local cards = tconfig.cards()
 	local devs = {}
-		for i=1, #cards  do
-			devs[i] = device.config{ port = cards[i][1], rxQueues = 2, txQueues = 2 }
-		end
-		device.waitForLinks()
+	for i=1, #cards  do
+		devs[i] = device.config{ port = cards[i][1], rxQueues = 2, txQueues = 2 }
+	end
+	device.waitForLinks()
 
-		for i = 1, #cards do
-			TestSend["testFunction" .. cards[i][1]] = function()
-				luaunit.assertTrue( slave( devs[i], cards[i][3] ) )
+	local Tests = {}
+	for i = 1, #cards do
+		Tests["testFunction" .. cards[i][1]] = function()
+			luaunit.assertTrue( slave( devs[i], cards[i][3] ) )
 		end
 	end
 	os.exit( luaunit.LuaUnit.run() )
 end
 
-function masterMulti()
+function testlib.masterMulti()
 	local cards = tconfig.cards()
 	local pairs = tconfig.pairs()
 
@@ -25,7 +28,8 @@ function masterMulti()
 	end
 	device.waitForLinks()
     
-    local result = 0
+	local Tests = {}
+	local result = 0
 	for i=1, #devs,2 do
 		Tests["testFunction" .. i] = function()
 			result = slave1( devs[i+1]:getTxQueue( 0 ) )
@@ -39,3 +43,4 @@ function masterMulti()
 	os.exit( luaunit.LuaUnit.run() )
 end
 
+return testlib

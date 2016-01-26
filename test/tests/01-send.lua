@@ -1,36 +1,21 @@
 EXPORT_ASSERT_TO_GLOBALS = true
 
-local luaunit   = require "luaunit"
-local dpdk      = require "dpdk" -- TODO: rename dpdk module to "moongen"
+local luaunit	= require "luaunit"
+local dpdk	= require "dpdk" -- TODO: rename dpdk module to "moongen"
 local memory	= require "memory"
 local device	= require "device"
-local timer 	= require "timer"
+local timer	= require "timer"
 
-local tconfig   = require "tconfig"
+local testlib	= require "testlib"
+local tconfig	= require "tconfig"
 
 local PKT_SIZE  = 124 -- without CRC
 
-TestSend = {}
-
 function master()
-	local cards = tconfig.cards()
-	local devs = {}
-		for i=1, #cards  do
-			devs[i] = device.config{ port = cards[i][1], rxQueues = 2, txQueues = 3}
-		end
-		device.waitForLinks()
-
-		for i = 1, #cards do
-			TestSend["testNic" .. cards[i][1]] = function()
-				luaunit.assertTrue( slave( devs[i], cards[i][3] ) )
-		end
-	end
-	os.exit( luaunit.LuaUnit.run() )
+	testlib.masterSingle()
 end
 
 function slave(dev, rate)
-	print("Testing Send Capability: ", dev)
-
 	local queue = dev:getTxQueue(0)
 	dpdk.sleepMillis(100)
  
