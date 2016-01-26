@@ -1,3 +1,5 @@
+local tconfig = require "tconfig"
+
 local testlib = {}
 
 function testlib.masterSingle()
