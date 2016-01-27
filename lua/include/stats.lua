@@ -28,7 +28,7 @@ function mod.percentile(data, p)
 		sortedData[k] = v
 	end
 	table.sort(sortedData)
-	return data[math.ceil(#data * p / 100)]
+	return sortedData[math.ceil(#data * p / 100)]
 end
 
 function mod.stdDev(data)
