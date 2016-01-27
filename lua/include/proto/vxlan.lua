@@ -187,9 +187,11 @@ end
 ---- Packets
 ----------------------------------------------------------------------------------
 
-pkt.getVxlanPacket = packetCreate("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
 -- the raw version (only the encapsulating headers, everything else is payload)
-pkt.getVxlanEncapsulationPacket = packetCreate("eth", "ip4", "udp", "vxlan")
+pkt.getVxlanPacket = packetCreate("eth", "ip4", "udp", "vxlan")
+
+-- Vxlan packet with an inner Ethernet header
+pkt.getVxlanEthernetPacket = packetCreate("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
 
 
 ------------------------------------------------------------------------

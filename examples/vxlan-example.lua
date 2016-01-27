@@ -1,3 +1,10 @@
+-- This script can be used to both simulate and test a VTEP
+-- isEndpoint isTunneled determine what this script does:
+-- 0 0: Send ethernet frames, expect to receive VXLAN packets (the encapsulated ethernet frame)
+-- 0 1: Send VXLAN packet, expect to receive the decapsulated ethernet frame
+-- 1 0: Receive ethernet frames, encapsulate them, send VXLAN packet
+-- 1 1: Receive VXLAN packets, decapsulate them, send ethernet frame
+
 local mg	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
@@ -38,8 +45,10 @@ function master(txPort, rxPort, isEndpoint, isTunneled, rate)
 end
 
 -- vtep is the endpoint when MoonGen de-/encapsulates traffic 
--- enc is facing the l3 network, dec is facing l2 network
+-- enc(capsulated/tunneled traffic) is facing the l3 network, dec(apsulated traffic) is facing l2 network
 -- remote is where we tx/rx traffic with MoonGen (load-/counterslave)
+-- Setup: <interface>:<host>:<interface>
+-- :loadgen/sink:decRemote <-----> decVtep:Vtep:encVtep <-----> encRemote:sink/loadgen:
 local encVtepEth 	= "90:e2:ba:2c:cb:02" -- vtep, public/l3 side
 local encVtepIP		= "10.0.0.1"
 local encRemoteEth	= "90:e2:ba:01:02:03" -- MoonGen load/counter slave
@@ -47,14 +56,14 @@ local encRemoteIP	= "10.0.0.2"
 
 local VNI 		= 1000
 
-local decVtepEth	= "90:e2:ba:1f:8d:44" -- vtep, provate/l2 side
+local decVtepEth	= "90:e2:ba:1f:8d:44" -- vtep, private/l2 side
 local decRemoteEth	= "90:e2:ba:0a:0b:0c" -- MoonGen counter/load slave
 
--- can be any proper payload really, we use this to identify the packets
+-- can be any proper payload really, we use this etherType to identify the packets
 local decEthType 	= 1
 
 local decPacketLen	= 60
-local encapsulationLen	= 14 + 20 + 8 + 8
+local encapsulationLen	= 14 + 20 + 8 + 8 -- Eth, IP, UDP, VXLAN
 local encPacketLen 	= encapsulationLen + decPacketLen
 
 function loadSlave(sendTunneled, port, queue)
@@ -67,7 +76,7 @@ function loadSlave(sendTunneled, port, queue)
 		-- create a with VXLAN encapsulated ethernet packet
 		packetLen = encPacketLen
 		mem = memory.createMemPool(function(buf)
-			buf:getVxlanPacket():fill{ 
+			buf:getVxlanEthernetPacket():fill{ 
 				ethSrc=encRemoteEth, 
 				ethDst=encVtepEth, 
 				ip4Src=encRemoteIP,
@@ -122,6 +131,9 @@ function loadSlave(sendTunneled, port, queue)
 	txStats:finalize()
 end
 
+--- Checks if the content of a packet parsed as Vxlan packet indeed fits with a Vxlan packet
+--- @param pkt A buffer parsed as Vxlan packet
+--- @return true if the content fits a Vxlan packet (etherType, ip4Proto and udpDst fit)
 function isVxlanPacket(pkt)
 	return pkt.eth:getType() == proto.eth.TYPE_IP 
 		and pkt.ip4:getProtocol() == proto.ip4.PROTO_UDP 
@@ -138,6 +150,7 @@ function counterSlave(receiveInner, dev)
 		if rx > 0 then
 			local buf = bufs[1]
 			if receiveInner then
+				-- any ethernet frame
 				local pkt = buf:getEthernetPacket()
 				if c < 1 then
 					printf(red("Received"))
@@ -145,7 +158,8 @@ function counterSlave(receiveInner, dev)
 					c = c + 1
 				end
 			else
-				local pkt = buf:getVxlanPacket()
+				local pkt = buf:getVxlanEthernetPacket()
+				-- any vxlan packet
 				if isVxlanPacket(pkt) then
 					if c < 1 then
 						printf(red("Received"))
@@ -188,7 +202,8 @@ function decapsulateSlave(rxDev, txPort, queue)
 		
 		for i = 1, rx do
 			local rxBuf = rxBufs[i]
-			local rxPkt = rxBuf:getVxlanEncapsulationPacket()
+			local rxPkt = rxBuf:getVxlanPacket()
+			-- if its a vxlan packet, decapsulate it
 			if isVxlanPacket(rxPkt) then
 				-- use template raw packet (empty)
 				local txPkt = txBufs[i]:getRawPacket()
@@ -221,7 +236,7 @@ function encapsulateSlave(rxDev, txPort, queue)
 	local txDev = device.get(txPort)
 	
 	local mem = memory.createMemPool(function(buf)
-		buf:getVxlanEncapsulationPacket():fill{ 
+		buf:getVxlanPacket():fill{ 
 			-- the outer packet, basically defines the VXLAN tunnel 
 			ethSrc=encVtepEth, 
 			ethDst=encRemoteEth, 
@@ -256,7 +271,7 @@ function encapsulateSlave(rxDev, txPort, queue)
 			local rawSize = rxBufs[i]:getSize()
 			
 			-- use template VXLAN packet
-			local txPkt = txBufs[i]:getVxlanEncapsulationPacket()
+			local txPkt = txBufs[i]:getVxlanPacket()
 
 			-- copy raw payload (whole frame) to encapsulated packet payload
 			ffi.copy(txPkt.payload, rxPkt.payload, rawSize)
