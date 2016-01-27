@@ -14,7 +14,18 @@ list=$(ls tests/*.lua)
 #Relative Moongen Exec Path
 path='../build/MoonGen'
 
-bash config/autoconfig.sh
+#Validate Configuration
+if [ -e config/tconfig.lua ]
+	printf "${WHI}[INFO] Configuration file found. "
+	read -r -p "Restart configuration? (Y\N)" response
+	response=${response,,}
+	printf "\n"
+	if [[ $response =~ ^(yes|y)$ ]]
+		bash config/autoconfig.sh
+	fi
+else
+	bash config/autoconfig.sh
+fi
 
 #----------------------------#
 #-Execute Tests and evaluate-#
@@ -26,8 +37,7 @@ do
 	output=$(eval $path $script)
 	echo "$output" >> $file
 	echo "$output" > 'temp.txt'
-	eval=$(tail -2 temp.txt)
 	rm temp.txt
     
-	printf "$eval${NON}\n"
+	printf "$output\n"
 done
