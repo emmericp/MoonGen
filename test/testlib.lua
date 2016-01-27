@@ -1,6 +1,9 @@
-local tconfig = require "tconfig"
+local tconfig	= require "tconfig"
+local device	= require "device"
+local luaunit	= require "luaunit"
 
 local testlib = {}
+Tests = {}
 
 function testlib.masterSingle()
 	local cards = tconfig.cards()
@@ -10,7 +13,6 @@ function testlib.masterSingle()
 	end
 	device.waitForLinks()
 
-	local Tests = {}
 	for i = 1, #cards do
 		Tests["testFunction" .. cards[i][1]] = function()
 			luaunit.assertTrue( slave( devs[i], cards[i][3] ) )
@@ -30,7 +32,6 @@ function testlib.masterMulti()
 	end
 	device.waitForLinks()
     
-	local Tests = {}
 	local result = 0
 	for i=1, #devs,2 do
 		Tests["testFunction" .. i] = function()

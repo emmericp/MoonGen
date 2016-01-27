@@ -16,6 +16,7 @@ function master()
 end
 
 function slave(dev, rate)
+	print ( dev )
 	local queue = dev:getTxQueue(0)
 	dpdk.sleepMillis(100)
  
@@ -36,5 +37,8 @@ function slave(dev, rate)
 		i = i + 1
 	end
 
-	return rate < i/13
+	print (rate)
+	print(i/12.4)
+
+	return rate < i/12.4
 end

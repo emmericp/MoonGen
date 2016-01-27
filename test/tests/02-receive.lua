@@ -4,7 +4,7 @@ local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
 
-local testlib	= reuire "testlib"
+local testlib	= require "testlib"
 local tconfig	= require "tconfig"
 
 local PKT_SIZE	= 100
@@ -30,7 +30,7 @@ function slave1(txQueue)
 	local runtime = timer:new(1)
 	while dpdk.running() and runtime:running() and i < max do
 		bufs:alloc(PKT_SIZE)
-		queue:send(bufs)
+		txQueue:send(bufs)
 		i = i + 1
 	end
 	return i
