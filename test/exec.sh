@@ -29,5 +29,5 @@ do
 	eval=$(tail -2 temp.txt)
 	rm temp.txt
     
-    printf "$eval${NON}\n"
+	printf "$eval${NON}\n"
 done
