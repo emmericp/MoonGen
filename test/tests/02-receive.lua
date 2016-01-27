@@ -4,42 +4,21 @@ local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
 
+local testlib	= require "testlib"
 local tconfig	= require "tconfig"
 
-Tests = {}
-
---memory.enableCache()
 local PKT_SIZE	= 100
 
 function master()
-	local cards = tconfig.cards()
-	local pairs = tconfig.pairs()
-
-	local devs = {}
-	for i=1, #pairs, 2 do
-		devs[i] = device.config{ port = cards[pairs[i][1]+1][1], rxQueues = 2, txQueues = 3}
-		devs[i+1] = device.config{ port = cards[pairs[i][2]+1][1], rqQueue = 2, txQueue = 3}
-	end
-	device.waitForLinks()
-	for i=1, #devs,2 do
-		Tests["testNic" .. i] = function()
-			local sent1 = sendSlave(devs[i+1]:getTxQueue(0))
-			luaunit.assertTrue(receiveSlave(devs[i]:getRxQueue(0), sent1))
-		end
-		Tests["testNic" .. i+1] = function ()
-			local sent2 = sendSlave(devs[i]:getTxQueue(0))
-			luaunit.assertTrue(receiveSlave(devs[i+1]:getRxQueue(0), sent2))
-		end
-	end
-	os.exit( luaunit.LuaUnit.run() )
+	testlib.masterMulti()
 end
 
-function sendSlave(queue)
+function slave1(txQueue)
 	dpdk.sleepMillis(100)
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
 			pktLength = PKT_SIZE,
-			ethSrc = queue,
+			ethSrc = txQueue,
 			ethDst = "FF:FF:FF:FF:FF:FF:FF:FF"
 		}
 	end)
@@ -50,27 +29,22 @@ function sendSlave(queue)
 	local max = 100
 	local runtime = timer:new(1)
 	while dpdk.running() and runtime:running() and i < max do
-		-- Send
 		bufs:alloc(PKT_SIZE)
-		queue:send(bufs)
+		txQueue:send(bufs)
 		i = i + 1
 	end
-	-- print(i)
 	return i
 end
 
-function receiveSlave(queue, sent)
+function slave2(rxQueue, sent)
 	dpdk.sleepMillis(100)
 	local bufs = memory.bufArray()
 	runtime = timer:new(1)
 	local packets = 0
 	while runtime:running() and dpdk.running() do
-		--receive
 		maxWait = 1
-		local rx = queue:tryRecv(bufs, maxWait)
+		local rx = rxQueue:tryRecv(bufs, maxWait)
 		for i=1, rx do
-			-- local buf = bufs[i]
-			-- local pkt = buf:getEthernetPacket()
 			packets = packets + 1
 		end
 		bufs:free(rx)
