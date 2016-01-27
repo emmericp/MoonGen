@@ -300,8 +300,19 @@ function bufArray:setVlans(vlan, pcp, cfi)
 end
 
 --- Allocates buffers from the memory pool and fills the array
+--- Allocates as many buffers as this array is large
+--- @param size	Size of every buffer
 function bufArray:alloc(size)
 	dpdkc.alloc_mbufs(self.mem, self.array, self.size, size)
+end
+
+--- Allocates buffers from the memory pool and fills the array.
+--- Allocates only a maximum of num buffers. If num is larger than the size of this bufArray (self.size) this crashes. An explicit check would cost too much time.
+--- @param size	Size of every buffer
+--- @param num	Number of buffers to allocate. Must not be larger than the size of this bufArray (self.size)
+--- @note num must not be larger than the actual size of this bufArray!
+function bufArray:allocN(size, num)
+	dpdkc.alloc_mbufs(self.mem, self.array, num, size)
 end
 
 --- Free all buffers in the array. Stops when it encounters the first one that is null.

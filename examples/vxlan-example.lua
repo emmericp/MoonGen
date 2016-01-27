@@ -45,6 +45,8 @@ local encVtepIP		= "10.0.0.1"
 local encRemoteEth	= "90:e2:ba:01:02:03" -- MoonGen load/counter slave
 local encRemoteIP	= "10.0.0.2"
 
+local VNI 		= 1000
+
 local decVtepEth	= "90:e2:ba:1f:8d:44" -- vtep, provate/l2 side
 local decRemoteEth	= "90:e2:ba:0a:0b:0c" -- MoonGen counter/load slave
 
@@ -71,8 +73,7 @@ function loadSlave(sendTunneled, port, queue)
 				ip4Src=encRemoteIP,
 				ip4Dst=encVtepIP,
 
-				vxlanReserved2=0xf,
-				vxlanVNI=1000,
+				vxlanVNI=VNI,
 
 				innerEthSrc=decVtepEth,
 				innerEthDst=decRemoteEth,
@@ -138,16 +139,11 @@ function counterSlave(receiveInner, dev)
 			local buf = bufs[1]
 			if receiveInner then
 				local pkt = buf:getEthernetPacket()
-				--if pkt.eth:getSrcString() == decRemoteEth 
-				--	and pkt.eth:getDstString() == decVtepEth
-				--	and pkt.eth:getType() == decEthType then
-					
-					if c < 1 then
-						printf(red("Received"))
-						buf:dump()
-						c = c + 1
-					end
-				--end
+				if c < 1 then
+					printf(red("Received"))
+					buf:dump()
+					c = c + 1
+				end
 			else
 				local pkt = buf:getVxlanPacket()
 				if isVxlanPacket(pkt) then
@@ -176,20 +172,19 @@ function decapsulateSlave(rxDev, txPort, queue)
 	end)
 	local rxBufs = memory.bufArray()
 	local txBufs = mem:bufArray()
-	local c = 0
 
 	local rxStats = stats:newDevRxCounter(rxDev, "plain")
 	local txStats = stats:newDevTxCounter(txDev, "plain")
-	
-	log:info("Starting vtep decapsulation task")
 
 	local rxQ = rxDev:getRxQueue(0)
 	local txQ = txDev:getTxQueue(queue)
+	
+	log:info("Starting vtep decapsulation task")
 	while mg.running() do
 		local rx = rxQ:tryRecv(rxBufs, 0)
 		
 		-- alloc empty tx packet
-		txBufs:alloc(decPacketLen, 60)
+		txBufs:allocN(decPacketLen, rx)
 		
 		for i = 1, rx do
 			local rxBuf = rxBufs[i]
@@ -223,7 +218,7 @@ function decapsulateSlave(rxDev, txPort, queue)
 end
 
 function encapsulateSlave(rxDev, txPort, queue)	
-	local queue = device.get(txPort):getTxQueue(queue)
+	local txDev = device.get(txPort)
 	
 	local mem = memory.createMemPool(function(buf)
 		buf:getVxlanEncapsulationPacket():fill{ 
@@ -233,22 +228,24 @@ function encapsulateSlave(rxDev, txPort, queue)
 			ip4Src=encVtepIP,
 			ip4Dst=encRemoteIP,
 			
-			vxlanVNI=1000,}
+			vxlanVNI=VNI,}
 	end)
 	
 	local rxBufs = memory.bufArray()
-	local c = 0
+	local txBufs = mem:bufArray()
 
 	local rxStats = stats:newDevRxCounter(rxDev, "plain")
-	local txStats = stats:newDevTxCounter(queue, "plain")
+	local txStats = stats:newDevTxCounter(txDev, "plain")
+	
+	local rxQ = rxDev:getRxQueue(0)
+	local txQ = txDev:getTxQueue(queue)
 	
 	log:info("Starting vtep encapsulation task")
 	while mg.running() do
-		local rx = rxDev:getRxQueue(0):tryRecv(rxBufs, 0)
-		local txBufs = mem:bufArray(rx)
+		local rx = rxQ:tryRecv(rxBufs, 0)
 		
 		-- alloc tx packet with VXLAN template
-		txBufs:alloc(encPacketLen)
+		txBufs:allocN(encPacketLen, rx)
 		
 		-- check if we received any packets
 		for i = 1, rx do
@@ -274,11 +271,11 @@ function encapsulateSlave(rxDev, txPort, queue)
 		-- offload checksums
 		txBufs:offloadUdpChecksums()
 
+		-- send encapsulated packet
+		txQ:sendN(txBufs, rx)
+		
 		-- free received packet
 		rxBufs:freeAll()
-
-		-- send encapsulated packet
-		queue:send(txBufs)
 	
 		-- update statistics
 		txStats:update()
