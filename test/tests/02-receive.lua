@@ -37,6 +37,7 @@ function slave1(txQueue)
 end
 
 function slave2(rxQueue, sent)
+	print("[INFO] Testing receive capability.")
 	dpdk.sleepMillis(100)
 	local bufs = memory.bufArray()
 	runtime = timer:new(1)
@@ -49,5 +50,7 @@ function slave2(rxQueue, sent)
 		end
 		bufs:free(rx)
 	end
+	print("[INFO] Packets to receive: " .. sent)
+	print("[INFO] Packets received: " .. packets)
 	return packets >= sent
 end

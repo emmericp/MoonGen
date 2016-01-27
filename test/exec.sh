@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #Color Codes
 WHI='\033[1;37m'
 RED='\033[0;31m'
@@ -6,7 +8,7 @@ ORA='\033[0;33m'
 NON='\033[0m'
 
 #Log File Path
-file='logs/log'$(date '+%Y-%m-%d:%H:%M:%S')'.txt'
+logfile='logs/log'$(date '+%Y-%m-%d:%H:%M:%S')'.txt'
 
 #Test Script List
 list=$(ls tests/*.lua)
@@ -16,11 +18,13 @@ path='../build/MoonGen'
 
 #Validate Configuration
 if [ -e config/tconfig.lua ]
-	printf "${WHI}[INFO] Configuration file found. "
-	read -r -p "Restart configuration? (Y\N)" response
+then
+	printf "${WHI}[INFO] Configuration file found.${NON}\n"
+	read -r -p "Restart configuration? (Y\N): " response
 	response=${response,,}
-	printf "\n"
+
 	if [[ $response =~ ^(yes|y)$ ]]
+	 then
 		bash config/autoconfig.sh
 	fi
 else
@@ -31,13 +35,44 @@ fi
 #-Execute Tests and evaluate-#
 #----------------------------#
 
+tests=$(expr 0)
+fails=$(expr 0)
+failt=$(expr 0)
+
 for script in $list
 do
-	printf "${WHI}[INFO] Running $script${NC}\n"
+	printf "${WHI}[INFO] Running $script${NON}\n"
+	echo "[INFO] Running $script" >> $logfile
 	output=$(eval $path $script)
-	echo "$output" >> $file
+	echo "$output" >> $logfile
 	echo "$output" > 'temp.txt'
+	result=$(sed -n '/Ran [0-9]* tests in [0-9]*.[0-9]* seconds/,$p' < temp.txt)
+	echo "$result" > result.txt
+
+	ltests=$(sed -r 's/.*Ran ([0-9]*).*|.*/\1/g' < result.txt)
+	tests=$(($tests + $ltests))
+	lfails=$(sed -r 's/.*failures=([0-9]*).*|.*/\1/g' < result.txt)
+	lfails=$(($lfails + 0))
+	fails=$(($fails + $lfails))
+
+	if [ "$lfails" -gt 0 ]
+	then
+		printf "${RED}[INFO] Ran $ltests tests. $fails failed!${NON}\n"
+		failt=$(expr $failt + 1)
+	else
+		printf "${GRE}[INFO] Ran $ltests tests successfully!${NON}\n"
+	fi
+
+	unset lfails
+	unset ltests
+	rm result.txt
 	rm temp.txt
-    
-	printf "$output\n"
 done
+
+printf "${WHI}[INFO] Ran a total of $tests tests.${NON}\n"
+if [ "$fails" -gt 0 ]
+then
+	printf "${RED}[INFO] A total of $fails failures in $failt tests occured.\n[INFO] Please check the corresponding log file: $logfile${NON}\n"
+else
+	printf "${GRE}[INFO] No failures detected. Everything running smoothly!${NON}\n"
+fi

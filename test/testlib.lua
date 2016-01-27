@@ -14,7 +14,8 @@ function testlib.masterSingle()
 	device.waitForLinks()
 
 	for i = 1, #cards do
-		Tests["testFunction" .. cards[i][1]] = function()
+		Tests["Tested device: " .. cards[i][1]] = function()
+			print("[INFO] Testing device: ".. cards[i][1])
 			luaunit.assertTrue( slave( devs[i], cards[i][3] ) )
 		end
 	end
@@ -34,11 +35,13 @@ function testlib.masterMulti()
     
 	local result = 0
 	for i=1, #devs,2 do
-		Tests["testFunction" .. i] = function()
+		Tests["Tested device: " .. i] = function()
+			print("[INFO] Testing device: " .. cards[pairs[i][1]+1][1])
 			result = slave1( devs[i+1]:getTxQueue( 0 ) )
 			luaunit.assertTrue( slave2( devs[i]:getRxQueue( 0 ), result ) )
 		end
-		Tests["testFunction" .. i+1] = function ()
+		Tests["Tested device: " .. i+1] = function ()
+			print("[INFO] Testing device: " .. cards[pairs[i][2]+1][1])
 			result = slave1( devs[i]:getTxQueue( 0 ) )
 			luaunit.assertTrue( slave2( devs[i+1]:getRxQueue(0), result ) )
 		end

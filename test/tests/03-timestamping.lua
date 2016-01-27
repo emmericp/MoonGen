@@ -21,6 +21,7 @@ function slave1(txQueue)
 end
 
 function slave2(rxQueue, txQueue)
+	print("[INFO] Testing timestamping.")
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
 	local hist = hist:new()
 	local runtime = timer:new(10)
@@ -28,5 +29,7 @@ function slave2(rxQueue, txQueue)
 		hist:update(timestamper:measureLatency())
 	end
 
+	print("[INFO] Expected standard deviation: < 24.0")
+	print("[INFO] Recorded standard deviation: " .. hist:standardDeviation())
 	return hist:standardDeviation() < 24.0
 end
