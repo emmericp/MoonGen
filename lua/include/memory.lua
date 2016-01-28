@@ -190,6 +190,7 @@ function mempool:bufArray(n)
 	n = n or 63
 	return setmetatable({
 		size = n,
+		maxSize = n,
 		array = ffi.new("struct rte_mbuf*[?]", n),
 		mem = self,
 	}, bufArray)
@@ -210,12 +211,21 @@ do
 		n = n or 63
 		return setmetatable({
 			size = n,
+			maxSize = n,
 			array = ffi.new("struct rte_mbuf*[?]", n),
 			alloc = alloc
 		}, bufArray)
 	end
 
 	mod.bufArray = mod.createBufArray
+end
+
+function bufArray:resize(size)
+	if size > self.maxSize then
+		-- TODO: consider reallocing the struct here
+		error("enlarging a bufArray is currently not supported")
+	end
+	self.size = size
 end
 
 function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
