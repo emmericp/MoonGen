@@ -220,10 +220,13 @@ do
 	mod.bufArray = mod.createBufArray
 end
 
+--- Resize the bufArray
+--- @param size New size of the bufArray
+--- @note Enlarging the bufArray (size > self.maxSize) is not yet supportet
 function bufArray:resize(size)
 	if size > self.maxSize then
 		-- TODO: consider reallocing the struct here
-		error("enlarging a bufArray is currently not supported")
+		log:fatal("enlarging a bufArray is currently not supported")
 	end
 	self.size = size
 end
@@ -317,12 +320,12 @@ function bufArray:alloc(size)
 end
 
 --- Allocates buffers from the memory pool and fills the array.
---- Allocates only a maximum of num buffers. If num is larger than the size of this bufArray (self.size) this crashes. An explicit check would cost too much time.
+--- Allocates only a maximum of num buffers by resizing the size of the bufArray.
 --- @param size	Size of every buffer
---- @param num	Number of buffers to allocate. Must not be larger than the size of this bufArray (self.size)
---- @note num must not be larger than the actual size of this bufArray!
+--- @param num	Number of buffers to allocate.
 function bufArray:allocN(size, num)
-	dpdkc.alloc_mbufs(self.mem, self.array, num, size)
+	self:resize(num)
+	dpdkc.alloc_mbufs(self.mem, self.array, self.size, size)
 end
 
 --- Free all buffers in the array. Stops when it encounters the first one that is null.

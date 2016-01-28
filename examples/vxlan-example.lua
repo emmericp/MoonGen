@@ -197,7 +197,7 @@ function decapsulateSlave(rxDev, txPort, queue)
 	while mg.running() do
 		local rx = rxQ:tryRecv(rxBufs, 0)
 		
-		-- alloc empty tx packet
+		-- alloc empty tx packets
 		txBufs:allocN(decPacketLen, rx)
 		
 		for i = 1, rx do
@@ -219,10 +219,10 @@ function decapsulateSlave(rxDev, txPort, queue)
 			end
 		end
 		-- send decapsulated packet
-		txQ:sendN(txBufs, rx)                                           
-                
+		txQ:send(txBufs)
+		
 		-- free received packet                                         
-                rxBufs:free(rx)	
+                rxBufs:freeAll()	
 		
 		-- update statistics
 		rxStats:update()
@@ -259,7 +259,10 @@ function encapsulateSlave(rxDev, txPort, queue)
 	while mg.running() do
 		local rx = rxQ:tryRecv(rxBufs, 0)
 		
-		-- alloc tx packet with VXLAN template
+		-- alloc "rx" tx packets with VXLAN template
+		-- In the end we only want to send as many packets as we have received in the first place.
+		-- In case this number would be lower than the size of the bufArray, we would have a memory leak (only sending frees the buffer!).
+		-- allocN implicitly resizes the bufArray to that all operations like checksum offloading or sending the packets are only done for the packets that actually exist (would crash otherwise)
 		txBufs:allocN(encPacketLen, rx)
 		
 		-- check if we received any packets
@@ -287,7 +290,7 @@ function encapsulateSlave(rxDev, txPort, queue)
 		txBufs:offloadUdpChecksums()
 
 		-- send encapsulated packet
-		txQ:sendN(txBufs, rx)
+		txQ:send(txBufs)
 		
 		-- free received packet
 		rxBufs:freeAll()
