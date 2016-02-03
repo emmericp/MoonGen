@@ -5,6 +5,7 @@ local dpdk	= require "dpdk" -- TODO: rename dpdk module to "moongen"
 local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
+local log	= require "log"
 
 local testlib	= require "testlib"
 local tconfig	= require "tconfig"
@@ -16,8 +17,8 @@ function master()
 end
 
 function slave(dev, rate)
-	print("[INFO] Testing send capability.")
-	print("[INFO] Expected rate: " .. rate)
+	log:info("Testing send capability.")
+	log:info("Expected rate: " .. rate)
 	local queue = dev:getTxQueue(0)
 	dpdk.sleepMillis(100)
  
@@ -38,6 +39,10 @@ function slave(dev, rate)
 		i = i + 1
 	end
 
-	print("[INFO] Measured rate: " .. i/12.4)
+	log:info("Measured rate: " .. i/12.4)
+	if(rate >= i/12.4) then
+		log:warn("Network card is not operating at full capability.")
+	end
+
 	return rate < i/12.4
 end

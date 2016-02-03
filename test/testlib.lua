@@ -16,7 +16,7 @@ function testlib.masterSingle()
 	for i = 1, #cards do
 		Tests["Tested device: " .. cards[i][1]] = function()
 			print("[INFO] Testing device: ".. cards[i][1])
-			luaunit.assertTrue( slave( devs[i], cards[i][3] ) )
+			luaunit.assertTrue( slave( devs[i] ) )
 		end
 	end
 	os.exit( luaunit.LuaUnit.run() )
@@ -37,13 +37,13 @@ function testlib.masterMulti()
 	for i=1, #devs,2 do
 		Tests["Tested device: " .. i] = function()
 			print("[INFO] Testing device: " .. cards[pairs[i][1]+1][1])
-			result = slave1( devs[i+1]:getTxQueue( 0 ) )
-			luaunit.assertTrue( slave2( devs[i]:getRxQueue( 0 ), result ) )
+			result = slave1( devs[i+1], devs[i] )
+			luaunit.assertTrue( slave2( devs[i], devs[i+1], result ) )
 		end
 		Tests["Tested device: " .. i+1] = function ()
 			print("[INFO] Testing device: " .. cards[pairs[i][2]+1][1])
-			result = slave1( devs[i]:getTxQueue( 0 ) )
-			luaunit.assertTrue( slave2( devs[i+1]:getRxQueue(0), result ) )
+			result = slave1( devs[i], devs[i+1] )
+			luaunit.assertTrue( slave2( devs[i+1], devs[i], result ) )
 		end
 	end
 	os.exit( luaunit.LuaUnit.run() )

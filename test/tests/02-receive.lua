@@ -3,6 +3,7 @@ local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
+local log	= require "log"
 
 local testlib	= require "testlib"
 local tconfig	= require "tconfig"
@@ -13,7 +14,8 @@ function master()
 	testlib.masterMulti()
 end
 
-function slave1(txQueue)
+function slave1(txDev, rxDev)
+	local txQueue = txDev:getTxQueue(0)
 	dpdk.sleepMillis(100)
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
@@ -26,7 +28,7 @@ function slave1(txQueue)
 	local bufs = mem:bufArray(1)
 
 	local i = 0
-	local max = 100
+	local max = 100000
 	local runtime = timer:new(1)
 	while dpdk.running() and runtime:running() and i < max do
 		bufs:alloc(PKT_SIZE)
@@ -36,8 +38,10 @@ function slave1(txQueue)
 	return i
 end
 
-function slave2(rxQueue, sent)
-	print("[INFO] Testing receive capability.")
+function slave2(rxDev, txDev, sent)
+	local rxQueue = rxDev:getRxQueue(0)
+	log:info("Testing receive capability.")
+
 	dpdk.sleepMillis(100)
 	local bufs = memory.bufArray()
 	runtime = timer:new(1)
@@ -50,7 +54,11 @@ function slave2(rxQueue, sent)
 		end
 		bufs:free(rx)
 	end
-	print("[INFO] Packets to receive: " .. sent)
-	print("[INFO] Packets received: " .. packets)
+
+	log:info("Packets to receive: " .. sent)
+	log:info("Packets received: " .. packets)
+	if(packets < sent) then
+		log:warn("Network card did not receive all packages!")
+	end
 	return packets >= sent
 end
