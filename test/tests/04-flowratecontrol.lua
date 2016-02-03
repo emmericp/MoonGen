@@ -29,16 +29,22 @@ function master()
 	local result = 0
 	if(RATE > 0) then
 		for i=i, #devs do
-			--devs[i]:getTxQueue(0):setRate(RATE - (PKT_SIZE + 4) * 8 / 1000)
+			devs[i]:getTxQueue(0):setRate(RATE - (PKT_SIZE + 4) * 8 / 1000)
 		end
 	end
 
 	for i=1, #devs, 2 do
 		Tests["Testing device: " .. i] = function()
 			log:info("Testing device: " .. cards[pairs[i][1]+1][1])
-			dpdk.launchLua( "slave1",  devs[i+1], devs[i] )
-			dpdk.launchLua( "slave2", devs[i], devs[i+1] )
-			dpdk.waitForSlaves()
+			local slave1 = dpdk.launchLua( "slave1",  devs[i+1], devs[i] )
+			local slave2 = dpdk.launchLua( "slave2", devs[i], devs[i+1] )
+			local wait = timer:new(10)
+			timer:wait()
+			
+			local return1 = slave1:wait()
+			local return2 = slave2:wait()
+			
+			luaunit.assertEquals(return1, return2)
 		end
 	end
 	os.exit( luaunit.LuaUnit.run() )
@@ -81,6 +87,8 @@ function slave1(txDev, rxDev)
 	end
 	txCtr:finalize()
 	rxCtr:finalize()
+	
+	return counter
 end
 
 --timerSlave
@@ -105,5 +113,7 @@ function slave2(txDev, rxDev)
 		rateLimit:reset()
 	end
 	dpdk.sleepMillis(300)
-	hist:print()	
+	hist:print()
+	
+	return counter
 end
