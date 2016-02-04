@@ -17,8 +17,8 @@ function master()
 	testlib.masterMulti()
 end
 
-function slave1(txDev, rxDev)
-	return 0
+function slave1(...)
+	return ...
 end
 
 function slave2(rxDev, txDev)
