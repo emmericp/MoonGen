@@ -10,15 +10,18 @@ local log	= require "log"
 local testlib	= require "testlib"
 local tconfig	= require "tconfig"
 
-local PKT_SIZE  = 124 -- without CRC
+memory.enableCache()
+
+local PKT_SIZE  = 124
 
 function master()
+	testlib.setRuntime(1)
 	testlib.masterSingle()
 end
 
-function slave(dev, rate)
+function slave(dev,card)
 	log:info("Testing send capability.")
-	log:info("Expected rate: " .. rate)
+	log:info("Expected rate: " .. card[3] .. " MBit/s")
 	local queue = dev:getTxQueue(0)
 	dpdk.sleepMillis(100)
  
@@ -30,19 +33,21 @@ function slave(dev, rate)
 			}
 		end)
 	
-	local bufs = mem:bufArray()
-	local runtime = timer:new(1)
+	local bufs = mem:bufArray(PKT_SIZE)
 	local i = 0
-	while runtime:running() and dpdk.running() do
+	local runtime = timer:new(testlib.getRuntime())
+
+	while dpdk.running() and runtime:running() do
 		bufs:alloc(PKT_SIZE)
 		queue:send(bufs)
 		i = i + 1
 	end
-
-	log:info("Measured rate: " .. i/12.4)
-	if(rate >= i/12.4) then
+	
+	local rate = math.floor( ( i * (PKT_SIZE + 64 ) ) / ( 1000 ) ) * 1 / testlib.getRuntime()
+	log:info("Measured rate: " .. rate .. " MBit/s")
+	if( card[3] >= rate ) then
 		log:warn("Network card is not operating at full capability.")
 	end
 
-	return rate < i/12.4
+	return card[3] < rate
 end

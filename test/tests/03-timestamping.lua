@@ -14,14 +14,11 @@ local tconfig	= require "tconfig"
 local PKT_SIZE = 124
 
 function master()
-	testlib.masterMulti()
+	testlib.setRuntime(10)
+	testlib.masterPairSingle()
 end
 
-function slave1(...)
-	return ...
-end
-
-function slave2(rxDev, txDev)
+function slave(rxDev, txDev)
 	local rxQueue = rxDev:getRxQueue(0)
 	local txQueue = txDev:getTxQueue(0)
 
@@ -29,7 +26,7 @@ function slave2(rxDev, txDev)
 
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
 	local hist = hist:new()
-	local runtime = timer:new(10)
+	local runtime = timer:new(testlib.getRuntime())
 	while runtime:running() and dpdk.running()  do
 		hist:update(timestamper:measureLatency())
 	end
@@ -37,29 +34,14 @@ function slave2(rxDev, txDev)
 	log:info("Expecting not more than 64ns deviation from average.")
 	local average = hist:avg()
 	log:info("Recorded average: " .. average)
-	local min = average
-	local max = average
+	local minimum = hist:min()
+	local maximum = hist:max()
 	
-	samples = hist.sortedHisto
-	print(samples)
-	log:info("Samples: " .. #samples)
-	
-	--for k,v in ipairs(samples) do
-	--	for y,x in ipairs(v) do
-	--		print(x) 
-	--		if (x < min) then
-	--			min = x
-	--		end
-	--		if (x > max) then
-	--			max = x
-	--		end	
-	--	end
-	--end
-	log:info("Maximum time: " .. max)
-	log:info("Minimum time: " .. min)
-	if((max - average > 64) or (average - min > 64)) then
+	log:info("Maximum time: " .. maximum)
+	log:info("Minimum time: " .. minimum)
+	if((maximum - average > 64) or (average - minimum > 64)) then
 		log:warn("Deviation too large!")
 	end
 	
-	return (max - average <= 64) and (average - min <= 64)
+	return (maximum - average <= 64) and (average - minimum <= 64)
 end
