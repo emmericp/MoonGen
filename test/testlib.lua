@@ -9,7 +9,7 @@
 --	- testlib.setRuntime()
 --		-- Set the runtime for all slaves called
 --	- testlib.masterSingle()
---		-- Starts a slave for all available cards (Called functions: slave(dev))
+--		-- Starts a slave for all available cards (Called functions: slave(dev,card))
 --	- testlib.masterPairSingle()
 --		-- Start two slave for each available card pairing (Names: slave(rxDev, txDev))
 --	- testlib.masterPairMulti()
@@ -17,6 +17,7 @@
 
 local testlib = {}
 
+local dpdk	= require "dpdk"
 local tconfig	= require "tconfig"
 local timer	= require "timer"
 local device	= require "device"
@@ -24,11 +25,17 @@ local luaunit	= require "luaunit"
 local log	= require "log"
 
 testlib.wait = 10
+
 Tests = {}
+
+function testlib.getRuntime()
+	return testlib.wait
+end
 
 -- Set the runtime for all slaves | default 10 seconds
 function testlib.setRuntime( value )
-	self.wait = value
+	testlib.wait = value
+	log:info("Runtime set to " .. testlib:getRuntime() .. " seconds.")
 end
 
 -- Start one slave on every available device
@@ -42,21 +49,21 @@ function testlib.masterSingle()
 	end
 	device.waitForLinks()
 
+	local runtime = timer:new( testlib:getRuntime() )
+	log:info("Current runtime set to " .. testlib:getRuntime() .. " seconds.")
+	
 	-- Iterates over all devices to do the following:
 	--	- Start a slave with the device as input
 	--	- Check the output of the slave if it equals true
 	for i = 1, #cards do
 		
 		Tests[ "Tested device: " .. cards[ i ][ 1 ] ] = function()
-			log:info( "Testing device" .. cards[ i ][ 1 ] )
-			
-			local slave = dpdk.launchLua( "slave" , devs[ i ] )
-			local runtime = timer:new( self.wait )
-			runtime:wait()
-			local return = slave:wait()
-			
+
+			log:info( "Testing device: " .. cards[ i ][ 1 ] )
+			local result = slave( devs[ i ] , cards[ i ] )
+			dpdk.waitForSlaves()
 			luaunit.assertTrue( result )
-			
+
 		end
 		
 	end
@@ -85,10 +92,7 @@ function testlib.masterPairSingle()
 		
 			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
 
-			local slave = dpdk.launchLua( "slave", devs[ i ], devs[ i + 1 ] )
-			local runtime = timer:new( self.wait )
-			runtime:wait()
-			result = slave:wait()
+			local result = slave( devs[ i ], devs[ i + 1 ] )
 
 			luaunit.assertTrue( result )
 		end
@@ -97,10 +101,7 @@ function testlib.masterPairSingle()
 
 			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
 
-			local slave = dpdk.launchLua( "slave", devs[ i + 1 ], devs[ i ] )
-			runtime:reset()
-			runtime:wait()
-			result = slave:wait()
+			local result = slave( devs[ i + 1 ], devs[ i ] )
 
 			luaunit.assertTrue( result )
 			
@@ -136,33 +137,21 @@ function testlib.masterPairMulti()
 		Tests[ "Tested device: " .. i ] = function()
 			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
 			
-			local slave1 = dpdk.launchLua( "slave1" , devs[ i ] , devs[ i + 1 ] )
-			local runtime = timer:new( self.wait )
-			runtime:wait()
-			result = slave1:wait()
+			local result1 = slave1( devs[ i ] , devs[ i + 1 ] )
 			
-			local slave2 = dpdk.launchLua( "slave2" , devs[ i ] , devs[ i + 1 ] , result )
-			runtime:reset()
-			runtime:wait()
-			result = slave2:wait()
+			local result2 = slave2( devs[ i + 1 ] , devs[ i ] , result1 )
 			
-			luaunit.assertTrue( result )
+			luaunit.assertTrue( result2 )
 		end
 		
 		Tests[ "Tested device: " .. i + 1 ] = function ()
 			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
 			
-			local slave1 = dpdk.launchLua( "slave1" , devs[ i + 1 ] , devs[ i ] )
-			local runtime = timer:new( self.wait )
-			runtime:wait()
-			result = slave1:wait()
+			local result1 = slave1( devs[ i + 1 ] , devs[ i ] )
 			
-			local slave2 = dpdk.launchLua( "slave2" , devs[ i + 1 ] , devs[ i ] , result )
-			runtime:reset()
-			runtime:wait()
-			result = slave2:wait()
+			local result2 = slave2( devs[ i ] , devs[ i + 1 ] , result1 )
 			
-			luaunit.assertTrue( result )
+			luaunit.assertTrue( result2 )
 		end
 	end
 	

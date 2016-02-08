@@ -3,13 +3,15 @@ local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local log	= require "log"
+local timer	= require "timer"
 
 local testlib	= require "testlib"
 local tconfig	= require "tconfig"
 
-local PKT_SIZE	= 100
+local PKT_SIZE	= 124
 
 function master()
+	testlib.setRuntime(0.1)
 	testlib.masterPairMulti()
 end
 
@@ -26,9 +28,10 @@ function slave1(txDev, rxDev)
 
 	local bufs = mem:bufArray(1)
 
+	local runtime = timer:new(testlib.getRuntime())
 	local i = 0
-	local max = 100000
-	while dpdk.running() and i < max do
+
+	while dpdk.running() and runtime:running() do
 		bufs:alloc(PKT_SIZE)
 		txQueue:send(bufs)
 		i = i + 1
@@ -43,7 +46,8 @@ function slave2(rxDev, txDev, sent)
 	dpdk.sleepMillis(100)
 	local bufs = memory.bufArray()
 	local packets = 0
-	while dpdk.running() do
+	local runtime = timer:new(testlib.getRuntime())
+	while dpdk.running() and runtime:running() do
 		maxWait = 1
 		local rx = rxQueue:tryRecv(bufs, maxWait)
 		for i=1, rx do
