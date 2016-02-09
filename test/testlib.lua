@@ -9,11 +9,14 @@
 --	- testlib.setRuntime()
 --		-- Set the runtime for all slaves called
 --	- testlib.masterSingle()
---		-- Starts a slave for all available cards (Called functions: slave(dev,card))
+--		-- Starts a slave for all available cards
+--		-- (Called functions: slave(dev,card))
 --	- testlib.masterPairSingle()
---		-- Start two slave for each available card pairing (Names: slave(rxDev, txDev))
+--		-- Start two slave for each available card pairing
+--		-- (Called functions: slave(rxDev, txDev, rxCard, txCard))
 --	- testlib.masterPairMulti()
---		-- Start two pairs of slaves for each available card pairing (Names: slave1(rxDev, txDev), slave2(rxDev, txDev, slave1return))
+--		-- Start two pairs of slaves for each available card pairing
+--		-- (Called functions: slave1(rxDev, txDev), slave2(rxDev, txDev, slave1return))
 
 local testlib = {}
 
@@ -78,10 +81,13 @@ function testlib.masterPairSingle()
 	local cards = tconfig.cards()
 	local pairs = tconfig.pairs()
 	local devs = {}
+	local devInf = {}
 	
 	for i = 1 , #pairs , 2 do
 		devs[ i ]	= device.config{ port = cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] , rxQueues = 2 , txQueues = 2 }
+		devInf[ i ]	= cards[ pairs[ i ][ 1 ] ]
 		devs[ i + 1 ]	= device.config{ port = cards[ pairs[ i ][ 2 ] + 1 ][ 1 ] , rxQueue = 2 , txQueue = 2 }
+		devInf[ i + 1 ]	= cards[ pairs[ i ][ 2 ] ]
 	end
 	device.waitForLinks()
 	
@@ -92,7 +98,7 @@ function testlib.masterPairSingle()
 		
 			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
 
-			local result = slave( devs[ i ], devs[ i + 1 ] )
+			local result = slave( devs[ i ], devs[ i + 1 ] , devInf[ i ] , devInf[ i + 1 ] )
 
 			luaunit.assertTrue( result )
 		end
@@ -101,7 +107,7 @@ function testlib.masterPairSingle()
 
 			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
 
-			local result = slave( devs[ i + 1 ], devs[ i ] )
+			local result = slave( devs[ i + 1 ], devs[ i ] , devInf[ i + 1 ] , devInf[ i ] )
 
 			luaunit.assertTrue( result )
 			

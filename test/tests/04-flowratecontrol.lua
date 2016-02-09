@@ -11,22 +11,18 @@ local tconfig	= require "tconfig"
 local testlib	= require "testlib"
 
 local FLOWS = 4
-local RATE = 2000
+local RATE = 350
 local PKT_SIZE = 124
 
 function master()
-	testlib.masterMulti()
+	testlib.setRuntime( 5 )
+	testlib.masterPairSingle()
 end
 
-function slave1(...)
-	return ...
-end
-
---loadSlave
-function slave2(rxDev, txDev)
+function slave( rxDev , txDev , rxInfo , txInfo )
 	local counter = 0
 
-	local mempool = memory.createMemPool(function(buf)
+	local mempool = memory.createMemPool( function( buf )
 		buf:getEthernetPacket():fill{
 			pktLength = PKT_SIZE,
 			ethSrc = txQueue,
@@ -38,23 +34,30 @@ function slave2(rxDev, txDev)
 
 	local queue = txDev:getTxQueue( 0 )
 
-	local txCtr = stats:newDevTxCounter(queue, "plain")
-	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
+	local maxrate = math.min ( RATE , rxInfo[ 3 ] )
+	RATE = math.floor( math.random( maxrate / 10 , maxrate ) )
+	queue:setRate( RATE )
 
-	while dpdk.running() do
-		bufs:alloc(PKT_SIZE)
-		queue:send(bufs)
+	local txCtr = stats:newDevTxCounter( queue , "plain" )
+	local rxCtr = stats:newDevRxCounter( rxDev , "plain" )
+
+	local runtime = timer:new( testlib.getRuntime() )
+
+	while dpdk.running() and runtime:running() do
+		bufs:alloc( PKT_SIZE )
+		queue:send( bufs )
 		txCtr:update()
 		rxCtr:update()
 	end
+
 	txCtr:finalize()
 	rxCtr:finalize()
 	
-	local mpps, tmbit = txCtr:getStats()
-	local mpps, rmbit = rxCtr:getStats
+	local y , x , tmbit = txCtr:getStats()
+	local y , x , rmbit = rxCtr:getStats()
 	
-	print(RATE)
-	print(tmbit.avg)
-	print(rmbit.avg)
-	return (tmbit.avg - rmbit.avg <= RATE/100) and (tmbit.avg >= RATE) and (rmbit.avg >= RATE)
+	log:info( "Chosen rate: " .. RATE .. " MBit/s" )
+	log:info( "Device sent with: " .. tmbit.avg .. " MBit/s (Average)" )
+	log:info( "Device received: " .. rmbit.avg .. " MBit/s (Average)" )
+	return ( tmbit.avg - rmbit.avg <= RATE / 100 ) and ( tmbit.avg >= RATE ) and ( rmbit.avg >= RATE )
 end

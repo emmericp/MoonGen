@@ -38,6 +38,7 @@ fi
 tests=$(expr 0)
 fails=$(expr 0)
 failt=$(expr 0)
+utest=$(expr 0)
 
 for script in $list
 do
@@ -47,8 +48,10 @@ do
 	echo "$output" >> $logfile
 	echo "$output" > 'temp.txt'
 	result=$(sed -n '/Ran [0-9]* tests in [0-9]*.[0-9]* seconds/,$p' < temp.txt)
+
 	echo "$result" > result.txt
 
+	utest=$(($utest + 1))
 	ltests=$(sed -r 's/.*Ran ([0-9]*).*|.*/\1/g' < result.txt)
 	tests=$(($tests + $ltests))
 	lfails=$(sed -r 's/.*failures=([0-9]*).*|.*/\1/g' < result.txt)
@@ -57,7 +60,7 @@ do
 
 	if [ "$lfails" -gt 0 ]
 	then
-		printf "${RED}[INFO] Ran $ltests tests. $fails failed!${NON}\n"
+		printf "${RED}[INFO] Ran $ltests tests. $lfails failed!${NON}\n"
 		failt=$(expr $failt + 1)
 	else
 		printf "${GRE}[INFO] Ran $ltests tests successfully!${NON}\n"
@@ -69,10 +72,10 @@ do
 	rm temp.txt
 done
 
-printf "${WHI}[INFO] Ran a total of $tests tests.${NON}\n"
+printf "${WHI}[INFO] Ran a total of $tests tests in $utest unit test cases.${NON}\n"
 if [ "$fails" -gt 0 ]
 then
-	printf "${RED}[INFO] A total of $fails failures in $failt tests occured.\n[INFO] Please check the corresponding log file: $logfile${NON}\n"
+	printf "${RED}[INFO] A total of $fails failures in $failt unit test cases occured.\n${ORA}[WARN] Please check the corresponding log file: $logfile${NON}\n"
 else
 	printf "${GRE}[INFO] No failures detected. Everything running smoothly!${NON}\n"
 fi
