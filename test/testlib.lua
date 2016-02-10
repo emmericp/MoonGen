@@ -58,7 +58,7 @@ function testlib.masterSingle()
 	-- Iterates over all devices to do the following:
 	--	- Start a slave with the device as input
 	--	- Check the output of the slave if it equals true
-	for i = 1, #cards do
+	for i = 1 , #cards do
 		
 		Tests[ "Tested device: " .. cards[ i ][ 1 ] ] = function()
 
@@ -83,31 +83,33 @@ function testlib.masterPairSingle()
 	local devs = {}
 	local devInf = {}
 	
-	for i = 1 , #pairs , 2 do
+	for i = 1 , #pairs  do
+
 		devs[ i ]	= device.config{ port = cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] , rxQueues = 2 , txQueues = 2 }
 		devInf[ i ]	= cards[ pairs[ i ][ 1 ] ]
 		devs[ i + 1 ]	= device.config{ port = cards[ pairs[ i ][ 2 ] + 1 ][ 1 ] , rxQueue = 2 , txQueue = 2 }
 		devInf[ i + 1 ]	= cards[ pairs[ i ][ 2 ] ]
+	
 	end
 	device.waitForLinks()
 	
 	
-	for i=1, #devs,2 do
+	for i=1 , #devs , 2 do
 		
 		Tests[ "Tested device: " .. i ] = function()
 		
-			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
+			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] .. " (" .. cards[ pairs[ i ][ 2 ] + 1 ][ 1 ] .. ")" )
 
-			local result = slave( devs[ i ], devs[ i + 1 ] , devInf[ i ] , devInf[ i + 1 ] )
+			local result = slave( devs[ i ] , devs[ i + 1 ] , devInf[ i ] , devInf[ i + 1 ] )
 
 			luaunit.assertTrue( result )
 		end
 		
-		Tests[ "Tested device: " .. i ] = function()
+		Tests[ "Tested device: " .. i + 1 ] = function()
 
-			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
+			log:info( "Testing device: " .. cards[ pairs[ i ][ 2 ] + 1 ][ 1 ] .. " (" .. cards[ pairs [ i ][ 1 ] + 1 ][ 1 ] .. ")" )
 
-			local result = slave( devs[ i + 1 ], devs[ i ] , devInf[ i + 1 ] , devInf[ i ] )
+			local result = slave( devs[ i + 1 ] , devs[ i ] , devInf[ i + 1 ] , devInf[ i ] )
 
 			luaunit.assertTrue( result )
 			
@@ -126,7 +128,7 @@ function testlib.masterPairMulti()
 	local pairs = tconfig.pairs()
 	local devs = {}
 	
-	for i = 1 , #pairs , 2 do
+	for i = 1 , #pairs  do
 		devs[ i ]	= device.config{ port = cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] , rxQueues = 2 , txQueues = 2 }
 		devs[ i + 1 ]	= device.config{ port = cards[ pairs[ i ][ 2 ] + 1 ][ 1 ] , rxQueue = 2 , txQueue = 2 }
 	end
