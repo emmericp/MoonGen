@@ -10,6 +10,20 @@ DPDKConfig {
 	-- the number of memory channels (defaults to auto-detect)
 	--memoryChannels = 2,
 
+	-- the configures requried to run multiple DPDK applications. Refer to
+	-- http://dpdk.org/doc/guides/prog_guide/multi_proc_support.html#running-multiple-independent-dpdk-applications
+	-- for more information.
+	
+	-- a string to be the prefix, corresponding to EAL argument "--file-prefix"
+	--fileprefix = "m1",
+
+	-- A string to specify the socket memory allocation, corresponding to EAL argument "--socket-mem"
+	--socketmem = "2048,2048",
+	--
+	-- PCI black list to avoid resetting PCI device assigned to other DPDK apps.
+	-- Corresponding to ELA argument "--pci-blacklist"
+	-- pciblack = {"0000:81:00.3","0000:81:00.1"},
+
 	-- disable hugetlb, see DPDK documentation for more information
 	--noHugeTlbFs = true,
 }
