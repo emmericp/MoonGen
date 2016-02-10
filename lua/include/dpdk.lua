@@ -38,7 +38,7 @@ end
 local cores
 
 --- Inits DPDK. Called by MoonGen on startup.
-function mod.init()
+function mod.init(cfgfile, ...)
 	-- register drivers
 	dpdkc.register_pmd_drivers()
 	-- TODO: support arbitrary dpdk configurations by allowing configuration in the form ["cmdLine"] = "foo"
@@ -48,6 +48,12 @@ function mod.init()
 		"../lua/dpdk-conf.lua",
 		"/etc/moongen/dpdk-conf.lua"
 	}
+
+	-- Cfg passing through command line has higher priority
+	if cfgfile then
+		table.insert(cfgFileLocations, 1, cfgfile)
+	end
+
 	local cfg
 	for _, f in ipairs(cfgFileLocations) do
 		if fileExists(f) then
@@ -107,6 +113,26 @@ function mod.init()
 	end
 	argv[#argv + 1] = ("-c0x%X"):format(coreMask)
 	argv[#argv + 1] = "-n" .. (cfg.memoryChannels or 4) -- todo: auto-detect
+
+	if cfg.pciblack then
+		if type(cfg.pciblack) == "table" then
+			for i, v in ipairs(cfg.pciblack) do
+				argv[#argv + 1] = "-b" .. v
+			end
+                else
+			log:warn("Need a list for the PCI black list")
+			return
+		end 
+	end
+
+	if cfg.socketmem then
+		argv[#argv + 1] = "--socket-mem=" .. cfg.socketmem
+	end
+
+	if cfg.fileprefix then
+		argv[#argv + 1] = "--file-prefix=" .. cfg.fileprefix
+	end
+
 	local argc = #argv
 	dpdkc.rte_eal_init(argc, ffi.new("const char*[?]", argc, argv))
 	return true

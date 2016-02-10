@@ -16,7 +16,7 @@
 #endif
 
 void print_usage() {
-	printf("Usage: MoonGen [--dpdk-config=<config>] <script> [script args...]\n");
+	printf("Usage: MoonGen <script> [--dpdk-config=<config>] [script args...]\n");
 }
 
 int main(int argc, char **argv) {
