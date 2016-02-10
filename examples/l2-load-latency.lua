@@ -42,20 +42,24 @@ function master(...)
 end
 
 function loadSlave(queues, txDev, rxDev)
-	local mem = memory.createMemPool(function(buf)
-		buf:getEthernetPacket():fill{
-			ethSrc = txDev,
-			ethDst = ETH_DST,
-			ethType = 0x1234
-		}
-	end)
-	local bufs = mem:bufArray()
+	local mem = {}
+	local bufs = {}
+	for i in ipairs(queues) do
+		mem[i] = memory.createMemPool(function(buf)
+			buf:getEthernetPacket():fill{
+				ethSrc = txDev,
+				ethDst = ETH_DST,
+				ethType = 0x1234
+			}
+		end)
+		bufs[i] = mem[i]:bufArray()
+	end
 	local txCtr = stats:newDevTxCounter(txDev, "plain")
 	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
 	while dpdk.running() do
 		for i, queue in ipairs(queues) do
-			bufs:alloc(PKT_SIZE)
-			queue:send(bufs)
+			bufs[i]:alloc(PKT_SIZE)
+			queue:send(bufs[i])
 		end
 		txCtr:update()
 		rxCtr:update()
