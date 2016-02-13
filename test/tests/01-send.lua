@@ -3,8 +3,8 @@ local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
-local log	= require "log"
 
+local log	= require "testlog"
 local testlib	= require "testlib"
 local tconfig	= require "tconfig"
 
@@ -13,8 +13,8 @@ memory.enableCache()
 local PKT_SIZE  = 124
 
 function master()
-	testlib.setRuntime( 10 )
-	testlib.masterSingle()
+	testlib:setRuntime( 2 )
+	testlib:masterSingle()
 end
 
 function slave( dev , card )

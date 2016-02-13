@@ -2,17 +2,17 @@ local luaunit	= require "luaunit"
 local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
-local log	= require "log"
 local timer	= require "timer"
 
+local log	= require "testlog"
 local testlib	= require "testlib"
 local tconfig	= require "tconfig"
 
 local PKT_SIZE	= 124
 
 function master()
-	testlib.setRuntime( 1 )
-	testlib.masterPairMulti()
+	testlib:setRuntime( 1 )
+	testlib:masterPairMulti()
 end
 
 function slave1(txDev, rxDev)

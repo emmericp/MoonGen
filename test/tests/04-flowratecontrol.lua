@@ -5,8 +5,8 @@ local device	= require "device"
 local filter	= require "filter"
 local timer	= require "timer"
 local stats	= require "stats"
-local log	= require "log"
 
+local log	= require "testlog"
 local tconfig	= require "tconfig"
 local testlib	= require "testlib"
 
@@ -15,8 +15,8 @@ local RATE = 350
 local PKT_SIZE = 124
 
 function master()
-	testlib.setRuntime( 5 )
-	testlib.masterPairSingle()
+	testlib:setRuntime( 5 )
+	testlib:masterPairSingle()
 end
 
 function slave( rxDev , txDev , rxInfo , txInfo )
@@ -53,8 +53,8 @@ function slave( rxDev , txDev , rxInfo , txInfo )
 	txCtr:finalize()
 	rxCtr:finalize()
 	
-	local y , x , tmbit = txCtr:getStats()
-	local y , x , rmbit = rxCtr:getStats()
+	local y , tmbit = txCtr:getStats()
+	local y , rmbit = rxCtr:getStats()
 	
 	log:info( "Chosen rate: " .. RATE .. " MBit/s" )
 	log:info( "Device sent with: " .. tmbit.avg .. " MBit/s (Average)" )

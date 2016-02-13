@@ -25,24 +25,24 @@ local tconfig	= require "tconfig"
 local timer	= require "timer"
 local device	= require "device"
 local luaunit	= require "luaunit"
-local log	= require "log"
+local log	= require "testlog"
 
 testlib.wait = 10
 
 Tests = {}
 
-function testlib.getRuntime()
+function testlib:getRuntime()
 	return testlib.wait
 end
 
 -- Set the runtime for all slaves | default 10 seconds
-function testlib.setRuntime( value )
+function testlib:setRuntime( value )
 	testlib.wait = value
 	log:info("Runtime set to " .. testlib:getRuntime() .. " seconds.")
 end
 
 -- Start one slave on every available device
-function testlib.masterSingle()
+function testlib:masterSingle()
 	
 	local cards = tconfig.cards()
 	local devs = {}
@@ -76,7 +76,7 @@ function testlib.masterSingle()
 end
 
 -- Start two slaves for every pairing
-function testlib.masterPairSingle()
+function testlib:masterPairSingle()
 	
 	local cards = tconfig.cards()
 	local pairs = tconfig.pairs()
@@ -122,7 +122,7 @@ function testlib.masterPairSingle()
 end
 
 -- Start two pairs of slaves for every available decive pairing
-function testlib.masterPairMulti()
+function testlib:masterPairMulti()
 	
 	local cards = tconfig.cards()
 	local pairs = tconfig.pairs()

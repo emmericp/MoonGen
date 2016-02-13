@@ -44,7 +44,22 @@ for script in $list
 do
 	printf "${WHI}[INFO] Running $script${NON}\n"
 	echo "[INFO] Running $script" >> $logfile
-	output=$(eval $path $script)
+
+	output=(eval $path $script $)
+	trap "kill $pid 2> /dev/null" EXIT
+
+	while [ -e /proc/$! ]; do
+		if [ -e testlog.txt ]
+		then
+			content=$(cat testlog.txt)
+			printf "${content}"
+			rm -f testlog.txt
+			sleep 1
+		fi
+	done
+
+	trap - EXIT
+
 	echo "$output" >> $logfile
 	echo "$output" > 'temp.txt'
 	result=$(sed -n '/Ran [0-9]* tests in [0-9]*.[0-9]* seconds/,$p' < temp.txt)

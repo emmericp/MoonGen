@@ -6,16 +6,16 @@ local ts	= require "timestamping"
 local hist	= require "histogram"
 local device	= require "device"
 local timer	= require "timer"
-local log	= require "log"
 
+local log	= require "testlog"
 local testlib	= require "testlib"
 local tconfig	= require "tconfig"
 
 local PKT_SIZE = 124
 
 function master()
-	testlib.setRuntime( 10 )
-	testlib.masterPairSingle()
+	testlib:setRuntime( 10 )
+	testlib:masterPairSingle()
 end
 
 function slave( rxDev , txDev )
