@@ -34,6 +34,10 @@ function pkt:getData()
 	return ffi.cast("void*", ffi.cast("uint8_t*", self.buf_addr) + self.data_off)
 end
 
+function pkt:getTimesync()
+	return self.timesync
+end
+
 --- Retrieve the time stamp information.
 --- @return The timestamp or nil if the packet was not time stamped.
 function pkt:getTimestamp()

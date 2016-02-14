@@ -36,6 +36,7 @@ mod.PCI_ID_82599	= 0x808610FB
 mod.PCI_ID_82580	= 0x8086150E
 mod.PCI_ID_I350		= 0x80861521
 mod.PCI_ID_82576	= 0x80861526
+mod.PCI_ID_X710		= 0x80861572
 mod.PCI_ID_XL710	= 0x80861583
 
 mod.PCI_ID_82599_VF	= 0x808610ed
@@ -403,6 +404,7 @@ local deviceNames = {
 	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter", -- Dell-branded NIC with an 82599
 	[mod.PCI_ID_X520_T2]	= "82599EB 10G 2xRJ45 X520-T2 Adapter",
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
+	[mod.PCI_ID_XL710]	= "Ethernet Controller X710 for 4x10GbE SFP+",
 	[mod.PCI_ID_XL710]	= "Ethernet Controller LX710 for 40GbE QSFP+",
 	[mod.PCI_ID_82599_VF]	= "Intel Corporation 82599 Ethernet Controller Virtual Function",
 }
@@ -445,7 +447,7 @@ local function readCtr48(id, addr, last)
 	if h2 ~= h then
 		-- overflow during the read
 		-- we can just read the lower value again (1 overflow every 850ms max)
-		l = dpdkc.read_reg32(self.id, 0x00300680)
+		l = dpdkc.read_reg32(self.id, addrl)
 		h = h2 -- use the new high value
 	end
 	local val = l + h * 2^32 -- 48 bits, double is fine
@@ -468,20 +470,59 @@ local GPTC	= 0x00004080
 local GOTCL	= 0x00004090
 local GOTCH	= 0x00004094
 
-local lastGorc = 0
-local lastUprc = 0
-local lastMprc = 0
-local lastBprc = 0
+
+-- stupid XL710 NICs
+local lastGorc = {}
+local lastUprc = {}
+local lastMprc = {}
+local lastBprc = {}
+local lastGotc = {}
+local lastUptc = {}
+local lastMptc = {}
+local lastBptc = {}
+
+-- required when using multiple ports from a single thread
+for i = 1, dpdkc.get_max_ports() do
+	lastGorc[i] = 0
+	lastUprc[i] = 0
+	lastMprc[i] = 0
+	lastBprc[i] = 0
+	lastGotc[i] = 0
+	lastUptc[i] = 0
+	lastMptc[i] = 0
+	lastBptc[i] = 0
+end
+
+local GLPRT_UPRCL = {}
+local GLPRT_MPRCL = {}
+local GLPRT_BPRCL = {}
+local GLPRT_GORCL = {}
+local GLPRT_UPTCL = {}
+local GLPRT_MPTCL = {}
+local GLPRT_BPTCL = {}
+local GLPRT_GOTCL = {}
+for i = 0, 3 do
+	GLPRT_UPRCL[i] = 0x003005A0 + 0x8 * i
+	GLPRT_MPRCL[i] = 0x003005C0 + 0x8 * i
+	GLPRT_BPRCL[i] = 0x003005E0 + 0x8 * i
+	GLPRT_GORCL[i] = 0x00300000 + 0x8 * i
+	GLPRT_UPTCL[i] = 0x003009C0 + 0x8 * i
+	GLPRT_MPTCL[i] = 0x003009E0 + 0x8 * i
+	GLPRT_BPTCL[i] = 0x00300A00 + 0x8 * i
+	GLPRT_GOTCL[i] = 0x00300680 + 0x8 * i
+end
 
 --- get the number of packets received since the last call to this function
 function dev:getRxStats()
 	local devId = self:getPciId()
-	if devId == mod.PCI_ID_XL710 then
+	if devId == mod.PCI_ID_XL710 or devId == mod.PCI_ID_X710 then
 		local uprc, mprc, bprc, gorc
-		uprc, lastUprc = readCtr32(self.id, 0x003005A0, lastUprc)
-		mprc, lastMprc = readCtr32(self.id, 0x003005C0, lastMprc)
-		bprc, lastBprc = readCtr32(self.id, 0x003005E0, lastBprc)
-		gorc, lastGorc = readCtr48(self.id, 0x00300000, lastGorc)
+		-- TODO: is this always correct?
+		local port = 0
+		uprc, lastUprc[self.id] = readCtr32(self.id, GLPRT_UPRCL[port], lastUprc[self.id])
+		mprc, lastMprc[self.id] = readCtr32(self.id, GLPRT_MPRCL[port], lastMprc[self.id])
+		bprc, lastBprc[self.id] = readCtr32(self.id, GLPRT_BPRCL[port], lastBprc[self.id])
+		gorc, lastGorc[self.id] = readCtr48(self.id, GLPRT_GORCL[port], lastGorc[self.id])
 		return uprc + mprc + bprc, gorc
 	else
 		return dpdkc.read_reg32(self.id, GPRC), dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
@@ -489,23 +530,18 @@ function dev:getRxStats()
 end
 
 
-
-local lastGotc = 0
-local lastUptc = 0
-local lastMptc = 0
-local lastBptc = 0
-
 function dev:getTxStats()
 	local badPkts = tonumber(dpdkc.get_bad_pkts_sent(self.id))
 	local badBytes = tonumber(dpdkc.get_bad_bytes_sent(self.id))
 	-- FIXME: this should really be split up into separate functions/files
 	local devId = self:getPciId()
-	if devId == mod.PCI_ID_XL710 then
+	if devId == mod.PCI_ID_XL710 or devId == mod.PCI_ID_X710 then
 		local uptc, mptc, bptc, gotc
-		uptc, lastUptc = readCtr32(self.id, 0x003009C0, lastUptc)
-		mptc, lastMptc = readCtr32(self.id, 0x003009E0, lastMptc)
-		bptc, lastBptc = readCtr32(self.id, 0x00300A00, lastBptc)
-		gotc, lastGotc = readCtr48(self.id, 0x00300680, lastGotc)
+		local port = 0
+		uptc, lastUptc[self.id] = readCtr32(self.id, GLPRT_UPTCL[port], lastUptc[self.id])
+		mptc, lastMptc[self.id] = readCtr32(self.id, GLPRT_MPTCL[port], lastMptc[self.id])
+		bptc, lastBptc[self.id] = readCtr32(self.id, GLPRT_BPTCL[port], lastBptc[self.id])
+		gotc, lastGotc[self.id] = readCtr48(self.id, GLPRT_GOTCL[port], lastGotc[self.id])
 		return uptc + mptc + bptc - badPkts, gotc - badBytes
 	else
 		-- TODO: check for ixgbe

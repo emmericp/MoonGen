@@ -62,6 +62,10 @@ static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
 
+int get_max_ports() {
+	return RTE_MAX_ETHPORTS;
+}
+
 int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions) {
   //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
@@ -148,7 +152,6 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
     	.rx_adv_conf.rss_conf = rss_conf,
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
-	printf("configure(%d %d %d) --> %d\n", port, rx_queues, tx_queues, rc);
 	if (rc) return rc;
 	// DPDK documentation suggests that the tx queues should be set up before the rx queues
 	struct rte_eth_txconf tx_conf = {
@@ -180,7 +183,6 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	};
 	for (int i = 0; i < rx_queues; i++) {
 		// TODO: get socket id for the NIC
-    //printf("setting up queue nr %d !\n", i);
 		rc = rte_eth_rx_queue_setup(port, i, rx_descs ? rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, mempool);
 		if (rc != 0) {
 			printf("could not configure rx queue %d\n", i);

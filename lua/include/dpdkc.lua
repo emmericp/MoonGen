@@ -240,8 +240,7 @@ ffi.cdef[[
 	uint64_t get_mac_addr(int port, char* buf);
 	void rte_eth_link_get(uint8_t port, struct rte_eth_link* link);
 	void rte_eth_link_get_nowait(uint8_t port, struct rte_eth_link* link);
-	//int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en);
-  int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions);
+	int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions);
 	void get_mac_addr(int port, char* buf);
 	uint32_t get_pci_id(uint8_t port);
 	uint32_t read_reg32(uint8_t port, uint32_t reg);
@@ -256,8 +255,10 @@ ffi.cdef[[
 	void* get_eth_dev(int port);
 	void* get_i40e_dev(int port);
 	int get_i40e_vsi_seid(int port);
+	uint8_t get_i40e_pci_port(uint8_t port);
 	int rte_eth_dev_mac_addr_add(uint8_t port, void* mac, uint32_t pool);
 	int rte_eth_dev_mac_addr_remove(uint8_t port, void* mac);
+	int get_max_ports();
 
 	// rx & tx
 	uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
