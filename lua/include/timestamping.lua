@@ -15,6 +15,7 @@ local eth		= require "proto.ethernet"
 local memory	= require "memory"
 local timer		= require "timer"
 local log		= require "log"
+local filter	= require "filter"
 
 require "proto.ptp"
 
@@ -262,6 +263,7 @@ local function enableRxTimestampsI40e(port, queue, udpPort, id)
 	dpdkc.read_reg32(port, PRTTSYN_RXTIME_L[1])
 	dpdkc.read_reg32(port, PRTTSYN_RXTIME_L[2])
 	dpdkc.read_reg32(port, PRTTSYN_RXTIME_L[3])
+	device.get(port):l2Filter(eth.TYPE_PTP, queue)
 	-- start the timer
 	startTimerI40e(port, id)
 	-- enable rx timestamping

@@ -23,9 +23,52 @@ local deviceDependent = {}
 deviceDependent[device.PCI_ID_X540] = require "filter_ixgbe"
 deviceDependent[device.PCI_ID_X520] = require "filter_ixgbe"
 deviceDependent[device.PCI_ID_82599] = require "filter_ixgbe"
-deviceDependent[device.PCI_ID_XL710] = require "filter_i40e"
-deviceDependent[device.PCI_ID_X710] = require "filter_i40e"
 
+ffi.cdef[[
+enum rte_filter_type {
+	RTE_ETH_FILTER_NONE = 0,
+	RTE_ETH_FILTER_MACVLAN,
+	RTE_ETH_FILTER_ETHERTYPE,
+	RTE_ETH_FILTER_FLEXIBLE,
+	RTE_ETH_FILTER_SYN,
+	RTE_ETH_FILTER_NTUPLE,
+	RTE_ETH_FILTER_TUNNEL,
+	RTE_ETH_FILTER_FDIR,
+	RTE_ETH_FILTER_HASH,
+	RTE_ETH_FILTER_MAX
+};
+
+enum rte_filter_op {
+	RTE_ETH_FILTER_NOP = 0,
+	RTE_ETH_FILTER_ADD,
+	RTE_ETH_FILTER_UPDATE,
+	RTE_ETH_FILTER_DELETE,
+	RTE_ETH_FILTER_FLUSH,
+	RTE_ETH_FILTER_GET,
+	RTE_ETH_FILTER_SET,
+	RTE_ETH_FILTER_INFO,
+	RTE_ETH_FILTER_STATS,
+	RTE_ETH_FILTER_OP_MAX
+};
+
+enum rte_mac_filter_type {
+	RTE_MAC_PERFECT_MATCH = 1,
+	RTE_MACVLAN_PERFECT_MATCH,
+	RTE_MAC_HASH_MATCH,
+	RTE_MACVLAN_HASH_MATCH,
+};
+
+struct rte_eth_ethertype_filter {
+	uint8_t mac_addr[6];
+	uint16_t ether_type;
+	uint16_t flags;
+	uint16_t queue;
+};
+
+int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type, enum rte_filter_op filter_op, void * arg);
+]]
+
+local C = ffi.C
 
 function dev:l2Filter(etype, queue)
 	if type(queue) == "table" then
@@ -34,11 +77,10 @@ function dev:l2Filter(etype, queue)
 		end
 		queue = queue.qid
 	end
-	local fun = deviceDependent[self:getPciId()].l2Filter
-	if fun then
-		return fun(self, etype, queue)
-	else
-		log:fatal("l2Filter not supported, or not yet implemented for this device")
+	local filter = ffi.new("struct rte_eth_ethertype_filter", { ether_type = etype, flags = 0, queue = queue })
+	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_ETHERTYPE, C.RTE_ETH_FILTER_ADD, filter)
+	if ok ~= 0 then
+		log:warning("filter error: " .. ok)
 	end
 end
 
