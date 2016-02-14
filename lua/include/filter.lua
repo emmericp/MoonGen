@@ -100,7 +100,7 @@ function dev:filterTimestamps(queue, offset, ntype, ver)
 end
 
 
--- FIXME: add protp mask!!
+-- FIXME: port to DPDK 2.x
 ffi.cdef [[
 struct mg_5tuple_rule {
     uint8_t proto;

@@ -48,7 +48,9 @@
 #include "bitmask.h"
 #include "debug.h"
 
-#define RTE_TABLE_LPM_MAX_NEXT_HOPS                        256
+#define RTE_TABLE_LPM_MAX_NEXT_HOPS		256
+// FIXME: use proper constant
+#define CACHE_LINE_SIZE					64
 
 struct rte_table_lpm {
 	/* Input parameters */
