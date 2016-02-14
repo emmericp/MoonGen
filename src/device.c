@@ -8,6 +8,10 @@
 #include <rte_mbuf.h>
 #include <rte_eth_ctrl.h>
 
+// required for i40e_type.h
+#define X722_SUPPORT
+#define X722_A0_SUPPORT
+
 // i40e_ethdev depends on i40e_type.h but doesn't include it
 // some macro names clash with ixgbe macros included in some of the DPDK header
 // TODO: find a better solution like one file per driver

@@ -569,8 +569,17 @@ local RTTDQSEL = 0x00004904
 --- A simple work-around for this is using two queues with 50% of the desired rate.
 --- Note that this changes the inter-arrival times as the rate control of both queues is independent.
 function txQueue:setRate(rate)
-	if self.dev:getPciId() ~= mod.PCI_ID_82599 and self.dev:getPciId() ~= mod.PCI_ID_X540 and self.dev:getPciId() ~= mod.PCI_ID_X520 and self.dev:getPciId() ~= mod.PCI_ID_X520_T2 then
-
+	local id = self.dev:getPciId()
+	local dev = self.dev
+	if id == mod.PCI_ID_X710 or id == mod.PCI_ID_XL710 then
+		-- obviously fails if doing that from multiple threads; but you shouldn't do that anways
+		dev.totalRate = dev.totalRate or 0
+		dev.totalRate = dev.totalRate + rate
+		log:warn("Per-queue rate limit NYI on this device, setting per-device rate limit to %d instead", dev.totalRate)
+		self.dev:setRate(dev.totalRate)
+		return
+	end
+	if id ~= mod.PCI_ID_82599 and id ~= mod.PCI_ID_X540 and id ~= mod.PCI_ID_X520 and id ~= mod.PCI_ID_X520_T2 then
 		log:fatal("TX rate control not yet implemented for this NIC")
 	end
 	local speed = self.dev:getLinkStatus().speed
@@ -636,6 +645,22 @@ function txQueue:getTxRate()
 	local rateDec = bit.band(reg, 0x3FF)
 	self.rate = (1 / (rateInt + rateDec / 2^14)) * self.speed
 	return self.rate
+end
+
+ffi.cdef[[
+int i40e_aq_config_vsi_bw_limit(void *hw, uint16_t seid, uint16_t credit, uint8_t max_bw, struct i40e_asq_cmd_details *cmd_details);
+]]
+
+--- Set the maximum rate by all queues in Mbit/s.
+--- Only supported on XL710 NICs.
+--- Note: these NICs use packet size excluding CRC checksum unlike the ixgbe-style NICs.
+--- This means you will get an unexpectedly high rate.
+function dev:setRate(rate)
+	-- we cannot calculate the "proper" rate here as we do not know the packet size
+	rate = math.floor(rate / 50 + 0.5) -- 50mbit granularity
+	local i40eDev = dpdkc.get_i40e_dev(self.id)
+	local vsiSeid = dpdkc.get_i40e_vsi_seid(self.id)
+	assert(ffi.C.i40e_aq_config_vsi_bw_limit(i40eDev, vsiSeid, rate, rate, nil) == 0)
 end
 
 function txQueue:send(bufs)

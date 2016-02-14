@@ -45,10 +45,12 @@ function master(...)
 		if rate < 10000 then -- only set rate if necessary to work with devices that don't support hw rc
 			queue:setRate(rate / numQueues)
 		end
-		local queue = rxDev:getTxQueue(i)
-		queues2[#queues2 + 1] = queue
-		if rate < 10000 then -- only set rate if necessary to work with devices that don't support hw rc
-			queue:setRate(rate / numQueues)
+		if rxPort ~= txPort then
+			local queue = rxDev:getTxQueue(i)
+			queues2[#queues2 + 1] = queue
+			if rate < 10000 then -- only set rate if necessary to work with devices that don't support hw rc
+				queue:setRate(rate / numQueues)
+			end
 		end
 	end
 	dpdk.launchLua("loadSlave", queues1, txDev, rxDev)
