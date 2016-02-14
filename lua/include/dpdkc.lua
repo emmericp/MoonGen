@@ -255,7 +255,7 @@ ffi.cdef[[
 	void* get_eth_dev(int port);
 	void* get_i40e_dev(int port);
 	int get_i40e_vsi_seid(int port);
-	uint8_t get_i40e_pci_port(uint8_t port);
+	uint8_t get_pci_function(uint8_t port);
 	int rte_eth_dev_mac_addr_add(uint8_t port, void* mac, uint32_t pool);
 	int rte_eth_dev_mac_addr_remove(uint8_t port, void* mac);
 	int get_max_ports();

@@ -518,7 +518,8 @@ function dev:getRxStats()
 	if devId == mod.PCI_ID_XL710 or devId == mod.PCI_ID_X710 then
 		local uprc, mprc, bprc, gorc
 		-- TODO: is this always correct?
-		local port = 0
+		-- I guess it fails on VFs :/
+		local port = dpdkc.get_pci_function(self.id)
 		uprc, lastUprc[self.id] = readCtr32(self.id, GLPRT_UPRCL[port], lastUprc[self.id])
 		mprc, lastMprc[self.id] = readCtr32(self.id, GLPRT_MPRCL[port], lastMprc[self.id])
 		bprc, lastBprc[self.id] = readCtr32(self.id, GLPRT_BPRCL[port], lastBprc[self.id])
@@ -537,7 +538,7 @@ function dev:getTxStats()
 	local devId = self:getPciId()
 	if devId == mod.PCI_ID_XL710 or devId == mod.PCI_ID_X710 then
 		local uptc, mptc, bptc, gotc
-		local port = 0
+		local port = dpdkc.get_pci_function(self.id)
 		uptc, lastUptc[self.id] = readCtr32(self.id, GLPRT_UPTCL[port], lastUptc[self.id])
 		mptc, lastMptc[self.id] = readCtr32(self.id, GLPRT_MPTCL[port], lastMptc[self.id])
 		bptc, lastBptc[self.id] = readCtr32(self.id, GLPRT_BPTCL[port], lastBptc[self.id])

@@ -214,6 +214,12 @@ void* get_i40e_dev(int port) {
 	return I40E_DEV_PRIVATE_TO_HW(rte_eth_devices[port].data->dev_private);
 }
 
+int get_pci_function(int port) {
+	struct rte_eth_dev_info dev_info;
+	rte_eth_dev_info_get(port, &dev_info);
+	return dev_info.pci_dev->addr.function;
+}
+
 int get_i40e_vsi_seid(int port) {
 	return I40E_DEV_PRIVATE_TO_PF(rte_eth_devices[port].data->dev_private)->main_vsi->seid;
 }
