@@ -22,6 +22,7 @@ ffi.cdef[[
 	}; // dummy struct, only needed to associate it with a metatable
 
 	typedef void    *MARKER[0];
+	typedef void    *MARKER_CACHE_ALIGNED[0] __attribute__((aligned(64)));
 	typedef uint8_t  MARKER8[0];
 	typedef uint64_t MARKER64[0];
 	
@@ -50,29 +51,23 @@ ffi.cdef[[
 		uint16_t data_off;
 
 		uint16_t refcnt;
-		uint8_t type;
-		uint8_t reserved;
-		uint16_t ol_flags;
-		struct rte_pktmbuf pkt;
-		union rte_ipsec ol_ipsec;
-	};
+		uint8_t nb_segs;          /**< Number of segments. */
+		uint8_t port;             /**< Input port. */
 
-		uint64_t ol_flags;
-
+		uint64_t ol_flags;        /**< Offload features. */
 		/* remaining bytes are set on RX when pulling packet from descriptor */
 		MARKER rx_descriptor_fields1;
 
-		/**
-		 * The packet type, which is used to indicate ordinary packet and also
-		 * tunneled packet format, i.e. each number is represented a type of
-		 * packet.
+		/*
+		* The packet type, which is the combination of outer/inner L2, L3, L4
+		* and tunnel types.
 		 */
-		uint16_t packet_type;
+		uint32_t packet_type; /**< L2/L3/L4 and tunnel information. */
 
-		uint16_t data_len;        /**< Amount of data in segment buffer. */
 		uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
+		uint16_t data_len;        /**< Amount of data in segment buffer. */
 		uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
-		uint16_t reserved;
+
 		union {
 			uint32_t rss;     /**< RSS hash result if RSS enabled */
 			struct {
@@ -86,23 +81,41 @@ ffi.cdef[[
 				};
 				uint32_t hi;
 				/**< First 4 flexible bytes or FD ID, dependent on
-				     PKT_RX_FDIR_* flag in ol_flags. */
+			     PKT_RX_FDIR_* flag in ol_flags. */
 			} fdir;           /**< Filter identifier if FDIR enabled */
-			uint32_t sched;   /**< Hierarchical scheduler */
+			struct {
+				uint32_t lo;
+				uint32_t hi;
+			} sched;          /**< Hierarchical scheduler */
 			uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
 		} hash;                   /**< hash information */
 
-		uint32_t seqn;
+		uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
 
-		MARKER cacheline1 __attribute__((aligned(64)));
+		uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
+
+		/* second cache line - fields only used in slow path or on TX */
+		MARKER_CACHE_ALIGNED cacheline1;
 
 		uint64_t udata64;
 
-		struct rte_mempool *pool;
-		struct rte_mbuf *next;
+		struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
+		struct rte_mbuf *next;    /**< Next segment of scattered packet. */
 
-		uint64_t header_lengths;
+		/* fields to support TX offloads */
+		uint64_t tx_offload;
+
+		/** Size of the application private data. In case of an indirect
+		 * mbuf, it stores the direct mbuf private data size. */
+		uint16_t priv_size;
+
+		/** Timesync flags for use with IEEE1588. */
+		uint16_t timesync;
+
+		/* Chain of off-load operations to perform on mbuf */
+		struct rte_mbuf_offload *offload_ops;
 	};
+
 	// device status/info
 	struct rte_eth_link {
 		uint16_t link_speed;
