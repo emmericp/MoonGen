@@ -1,12 +1,18 @@
+---------------------------------
+--- @file dpdk.lua
+--- @brief DPDK ...
+--- @todo TODO docu
+---------------------------------
+
 --- high-level dpdk wrapper
 local mod = {}
 local ffi		= require "ffi"
 local dpdkc		= require "dpdkc"
 local serpent	= require "Serpent"
+local log 		= require "log"
 
 -- DPDK constants (lib/librte_mbuf/rte_mbuf.h)
 -- TODO: import more constants here
-mod.PKT_RX_IEEE1588_TMST	= bit.lshift(1ULL, 10)
 mod.PKT_RX_VLAN_PKT			= bit.lshift(1ULL, 0)
 mod.PKT_RX_RSS_HASH			= bit.lshift(1ULL, 1)
 mod.PKT_RX_FDIR				= bit.lshift(1ULL, 2)
@@ -28,7 +34,8 @@ mod.PKT_RX_TUNNEL_IPV6_HDR	= bit.lshift(1ULL, 12)
 mod.PKT_RX_FDIR_ID			= bit.lshift(1ULL, 13)
 mod.PKT_RX_FDIR_FLX			= bit.lshift(1ULL, 14)
 
-mod.PKT_TX_NO_CRC_CSUM		= bit.lshift(1ULL, 49)
+mod.PKT_TX_NO_CRC_CSUM		= bit.lshift(1ULL, 48)
+mod.PKT_TX_QINQ_PKT			= bit.lshift(1ULL, 49)
 mod.PKT_TX_TCP_SEG			= bit.lshift(1ULL, 50)
 mod.PKT_TX_IEEE1588_TMST	= bit.lshift(1ULL, 51)
 mod.PKT_TX_L4_NO_CKSUM		= bit.lshift(0ULL, 52)
@@ -55,7 +62,7 @@ end
 local cores
 
 --- Inits DPDK. Called by MoonGen on startup.
-function mod.init()
+function mod.init(cfgfile, ...)
 	-- register drivers
 	dpdkc.register_pmd_drivers()
 	-- TODO: support arbitrary dpdk configurations by allowing configuration in the form ["cmdLine"] = "foo"
@@ -65,6 +72,12 @@ function mod.init()
 		"../lua/dpdk-conf.lua",
 		"/etc/moongen/dpdk-conf.lua"
 	}
+
+	-- Cfg passing through command line has higher priority
+	if cfgfile then
+		table.insert(cfgFileLocations, 1, cfgfile)
+	end
+
 	local cfg
 	for _, f in ipairs(cfgFileLocations) do
 		if fileExists(f) then
@@ -72,11 +85,11 @@ function mod.init()
 			setfenv(cfgScript, setmetatable({ DPDKConfig = function(arg) cfg = arg end }, { __index = _G }))
 			local ok, err = pcall(cfgScript)
 			if not ok then
-				print("could not load DPDK config: " .. err)
+				log:error("Could not load DPDK config: " .. err)
 				return false
 			end
 			if not cfg then
-				print("config file does not contain DPDKConfig statement")
+				log:error("Config file does not contain DPDKConfig statement")
 				return false
 			end
 			cfg.name = f
@@ -84,7 +97,7 @@ function mod.init()
 		end
 	end
 	if not cfg then
-		print("no DPDK config found, using defaults")
+		log:warn("No DPDK config found, using defaults")
 		cfg = {}
 	end
 	local coreMask
@@ -107,8 +120,8 @@ function mod.init()
 			end
 		end
 		if cfg.cores >= 2^32 then
-			print("Warning: more than 32 cores are currently not supported in bitmask format, sorry")
-			print("Use a table as a work-around")
+			log:warn("More than 32 cores are currently not supported in bitmask format, sorry")
+			log:warn("Use a table as a work-around")
 			return
 		end
 	elseif type(cfg.cores) == "table" then
@@ -124,6 +137,26 @@ function mod.init()
 	end
 	argv[#argv + 1] = ("-c0x%X"):format(coreMask)
 	argv[#argv + 1] = "-n" .. (cfg.memoryChannels or 4) -- todo: auto-detect
+
+	if cfg.pciblack then
+		if type(cfg.pciblack) == "table" then
+			for i, v in ipairs(cfg.pciblack) do
+				argv[#argv + 1] = "-b" .. v
+			end
+                else
+			log:warn("Need a list for the PCI black list")
+			return
+		end 
+	end
+
+	if cfg.socketmem then
+		argv[#argv + 1] = "--socket-mem=" .. cfg.socketmem
+	end
+
+	if cfg.fileprefix then
+		argv[#argv + 1] = "--file-prefix=" .. cfg.fileprefix
+	end
+
 	local argc = #argv
 	dpdkc.rte_eal_init(argc, ffi.new("const char*[?]", argc, argv))
 	return true
@@ -140,7 +173,7 @@ ffi.cdef[[
 
 local function checkCore()
 	if MOONGEN_TASK_NAME ~= "master" then
-		error("[ERROR] This function is only available on the master task.", 2)
+		log:fatal("This function is only available on the master task.", 2)
 	end
 end
 
@@ -219,7 +252,7 @@ function mod.launchLua(...)
 			return mod.launchLuaOnCore(core, ...)
 		end
 	end
-	error("not enough cores to start this lua task")
+	log:fatal("Not enough cores to start this lua task")
 end
 
 ffi.cdef [[

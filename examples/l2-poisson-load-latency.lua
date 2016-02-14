@@ -6,6 +6,7 @@ local filter	= require "filter"
 local stats		= require "stats"
 local timer		= require "timer"
 local histogram	= require "histogram"
+local log		= require "log"
 
 
 local PKT_SIZE = 60
@@ -13,7 +14,7 @@ local PKT_SIZE = 60
 function master(...)
 	local txPort, rxPort, rate = tonumberall(...)
 	if not txPort or not rxPort then
-		errorf("usage: txPort rxPort [rate (Mpps)]")
+		return log:info("usage: txPort rxPort [rate (Mpps)]")
 	end
 	rate = rate or 2
 	local txDev = device.config(txPort, 2, 2)
@@ -33,7 +34,7 @@ function loadSlave(dev, rxDev, queue, rate, size)
 	rxDev:l2Filter(0x1234, filter.DROP)
 	local bufs = mem:bufArray()
 	local rxStats = stats:newDevRxCounter(rxDev, "plain")
-	local txStats = stats:newDevTxCounter(dev, "plain")
+	local txStats = stats:newManualTxCounter(dev, "plain")
 	while dpdk.running() do
 		bufs:alloc(size)
 		for _, buf in ipairs(bufs) do
@@ -41,9 +42,9 @@ function loadSlave(dev, rxDev, queue, rate, size)
 			buf:setDelay(poissonDelay(10^10 / 8 / (rate * 10^6) - size - 24))
 			--buf:setRate(rate)
 		end
-		queue:sendWithDelay(bufs)
+		txStats:updateWithSize(queue:sendWithDelay(bufs), size)
 		rxStats:update()
-		txStats:update()
+		--txStats:update()
 	end
 	rxStats:finalize()
 	txStats:finalize()

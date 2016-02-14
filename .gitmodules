@@ -6,3 +6,6 @@
 	path = deps/dpdk
 	url = https://github.com/emmericp/dpdk.git
 	branch = moongen-modifications
+[submodule "deps/doxygen-lua"]
+	path = deps/doxygen-lua
+	url = https://github.com/scholzd/doxygen-lua.git

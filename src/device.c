@@ -8,6 +8,24 @@
 #include <rte_mbuf.h>
 #include <rte_eth_ctrl.h>
 
+// i40e_ethdev depends on i40e_type.h but doesn't include it
+// some macro names clash with ixgbe macros included in some of the DPDK header
+// TODO: find a better solution like one file per driver
+#undef UNREFERENCED_4PARAMETER
+#undef UNREFERENCED_3PARAMETER
+#undef UNREFERENCED_2PARAMETER
+#undef UNREFERENCED_1PARAMETER
+#undef DEBUGOUT
+#undef DEBUGFUNC
+#undef DEBUGOUT1
+#undef DEBUGOUT2
+#undef DEBUGOUT3
+#undef DEBUGOUT6
+#undef DEBUGOUT7
+#include <i40e_type.h>
+#include <i40e_ethdev.h>
+#include "device.h"
+
 // default descriptors per queue
 #define DEFAULT_RX_DESCS 512
 #define DEFAULT_TX_DESCS 256
@@ -32,15 +50,55 @@ void write_reg32(uint8_t port, uint32_t reg, uint32_t val) {
 	*(volatile uint32_t*)(registers[port] + reg) = val;
 }
 
+uint64_t read_reg64(uint8_t port, uint32_t reg) {
+	return *(volatile uint64_t*)(registers[port] + reg);
+}
+
+void write_reg64(uint8_t port, uint32_t reg, uint64_t val) {
+	*(volatile uint64_t*)(registers[port] + reg) = val;
+}
+
 static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
 
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en) {
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions) {
+  //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
 		return -1;
 	}
+
+  uint64_t rss_hash_functions = 0;
+  if(rss_enable && hash_functions != NULL){
+    // configure the selected hash functions:
+    if(hash_functions->ipv4){
+      rss_hash_functions |= ETH_RSS_IPV4;
+      //printf("ipv4\n");
+    }
+    if(hash_functions->udp_ipv4){
+      rss_hash_functions |= ETH_RSS_IPV4_UDP;
+      //printf("ipv4 udp\n");
+    }
+    if(hash_functions->tcp_ipv4){
+      rss_hash_functions |= ETH_RSS_IPV4_TCP;
+      //printf("ipv4 tcp\n");
+    }
+    if(hash_functions->ipv6){
+      rss_hash_functions |= ETH_RSS_IPV6;
+      //printf("ipv6\n");
+    }
+    if(hash_functions->udp_ipv6){
+      rss_hash_functions |= ETH_RSS_IPV6_UDP;
+      //printf("ipv6 udp\n");
+    }
+    if(hash_functions->tcp_ipv6){
+      rss_hash_functions |= ETH_RSS_IPV6_TCP;
+      //printf("ipv6 tcp\n");
+    }
+  }
+
+
 	// TODO: enable other FDIR filter types
 	struct rte_fdir_conf fdir_conf = {
 		.mode = RTE_FDIR_MODE_PERFECT,
@@ -65,20 +123,29 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		},
 		.drop_queue = 63, // TODO: support for other NICs
 	};
+
+  struct rte_eth_rss_conf rss_conf = {
+    .rss_key = NULL,
+    .rss_key_len = 0,
+    .rss_hf = rss_hash_functions,
+  };
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
+			.mq_mode = rss_enable ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
 			.split_hdr_size = 0,
 			.header_split = 0,
 			.hw_ip_checksum = 1,
 			.hw_vlan_filter = 0,
 			.jumbo_frame = 0,
 			.hw_strip_crc = 1,
+			.hw_vlan_strip = 1,
 		},
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,
 		},
 		.fdir_conf = fdir_conf,
 		.link_speed = link_speed,
+    .rx_adv_conf.rss_conf = rss_conf,
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
 	if (rc) return rc;
@@ -112,13 +179,13 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	};
 	for (int i = 0; i < rx_queues; i++) {
 		// TODO: get socket id for the NIC
+    //printf("setting up queue nr %d !\n", i);
 		rc = rte_eth_rx_queue_setup(port, i, rx_descs ? rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, mempool);
-		if (rc) {
+		if (rc != 0) {
 			printf("could not configure rx queue %d\n", i);
 			return rc;
 		}
 	}
-	rte_eth_promiscuous_enable(port);
 	rc = rte_eth_dev_start(port);
 	// save memory address of the register file
 	struct rte_eth_dev_info dev_info;
@@ -130,7 +197,22 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	hlReg0 &= ~(1 << 10); // TXPADEN
 	hlReg0 |= (1 << 2); // JUMBOEN
 	write_reg32(port, 0x4240, hlReg0);
+	uint32_t tctl = read_reg32(port, 0x0400);
+	tctl &= ~(1 << 3); // PSP
+	write_reg32(port, 0x0400, tctl);
 	return rc; 
+}
+
+void* get_eth_dev(int port) {
+	return &rte_eth_devices[port];
+}
+
+void* get_i40e_dev(int port) {
+	return I40E_DEV_PRIVATE_TO_HW(rte_eth_devices[port].data->dev_private);
+}
+
+int get_i40e_vsi_seid(int port) {
+	return I40E_DEV_PRIVATE_TO_PF(rte_eth_devices[port].data->dev_private)->main_vsi->seid;
 }
 
 uint64_t get_mac_addr(int port, char* buf) {
@@ -158,20 +240,20 @@ uint8_t get_socket(uint8_t port) {
 	return (uint8_t) node;
 }
 
-void sync_clocks(uint8_t port1, uint8_t port2) {
+// FIXME: doesn't support syncing between different NIC families (e.g. GbE vs. 10 GBE)
+// this is somewhat tricky because they use a different timer granularity
+void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timh, uint32_t timl, uint32_t adjl, uint32_t adjh) {
 	// resetting SYSTIML twice prevents a race-condition when SYSTIML is just about to overflow into SYSTIMH
-	write_reg32(port1, IXGBE_SYSTIML, 0);
-	write_reg32(port2, IXGBE_SYSTIML, 0);
-	write_reg32(port1, IXGBE_SYSTIMH, 0);
-	write_reg32(port2, IXGBE_SYSTIMH, 0);
+	write_reg32(port1, timl, 0);
+	write_reg32(port2, timl, 0);
+	write_reg32(port1, timh, 0);
+	write_reg32(port2, timh, 0);
 	if (port1 == port2) {
 		// just reset timers if port1 == port2
 		return;
 	}
-	// to avoid potential unnecessary overhead between the two accesses; especially if compiler optimizations are disabled for some reason
-	// this is probably completely unnecessary on a modern OoO cpu
-	volatile uint32_t* port1time = get_reg_addr(port1, IXGBE_SYSTIML);
-	volatile uint32_t* port2time = get_reg_addr(port2, IXGBE_SYSTIML);
+	volatile uint32_t* port1time = get_reg_addr(port1, timl);
+	volatile uint32_t* port2time = get_reg_addr(port2, timl);
 	const int num_runs = 7; // must be odd
 	int32_t offsets[num_runs];
 	*port1time = 0;
@@ -196,8 +278,8 @@ void sync_clocks(uint8_t port1, uint8_t port2) {
 	int32_t offs = offsets[num_runs / 2];
 	if (offs) {
 		// offs of 0 is not supported
-		write_reg32(port2, IXGBE_TIMADJL, offs < 0 ? (uint32_t) -offs : (uint32_t) offs);
-		write_reg32(port2, IXGBE_TIMADJH, offs < 0 ? 1 << 31 : 0);
+		write_reg32(port2, adjl, offs < 0 ? (uint32_t) -offs : (uint32_t) offs);
+		write_reg32(port2, adjh, offs < 0 ? 1 << 31 : 0);
 		// verification that the clocks are synced: the two clocks should only differ by a constant caused by the read operation
 		// i.e. x2 - x1 = y2 - y1 iff clock1 == clock2
 		/*uint32_t x1 = *port1time;
@@ -465,4 +547,19 @@ void rte_delay_ms_export(uint32_t ms) {
 
 void rte_delay_us_export(uint32_t us) {
 	rte_delay_us(us);
+}
+
+// This is a workaround, because lua can not do good 64bit operations.
+// so this function wraps the dpdk one, but is always setting the mask to all 1
+int mg_rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
+		struct rte_eth_rss_reta *  	reta_conf 
+	){
+  //printf("reta port = %u\n", port);
+  //uint8_t i;
+  //for(i = 0; i<128; i++){
+  //  printf(" i = %u, reta = %u\n", i, reta_conf->reta[i]);
+  //}
+  reta_conf->mask_lo = 0xffffffffffffffffULL;
+  reta_conf->mask_hi = 0xffffffffffffffffULL;
+  return rte_eth_dev_rss_reta_update(port, reta_conf);
 }

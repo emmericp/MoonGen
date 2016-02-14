@@ -1,65 +1,47 @@
-local dpdk	= require "dpdk"
+local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
-local ts	= require "timestamping"
-local dpdkc	= require "dpdkc"
+local ts		= require "timestamping"
+local hist		= require "histogram"
+local log		= require "log"
+local timer		= require "timer"
 
-local ffi	= require "ffi"
-
--- TODO: this does not work properly if the system receives packets before this script is started
--- this happens because the nic then receives frames before time stamping is enabled
--- a work-around could be emptying the rx queue once (e.g. by reading a certain amount of packets)
--- after startup
-function master(...)
-	local rxPort = tonumberall(...)
+function master(rxPort, waitTime)
 	if not rxPort then
-		errorf("usage: rxPort")
+		errorf("usage: rxPort [waitTime]")
 	end
-	rxDev = device.config(rxPort, memory.createMemPool())
+	rxDev = device.config{ port = rxPort, rxDescs = 4096, dropEnable = false }
 	rxDev:wait()
 	local queue = rxDev:getRxQueue(0)
 	queue:enableTimestampsAllPackets()
 	local total = 0
-	local bufs = memory.createBufArray(64)
+	local bufs = memory.createBufArray()
 	local times = {}
+	local timer = timer:new(waitTime)
 	while dpdk.running() do
 		local n = queue:recv(bufs)
 		for i = 1, n do
-			local ts = bufs[i]:getTimestamp()
-			times[#times + 1] = ts
+			if timer:expired() then
+				local ts = bufs[i]:getTimestamp()
+				times[#times + 1] = ts
+			end
 		end
 		total = total + n
-		bufs:freeAll()
+		bufs:free(n)
 	end
 	local pkts = rxDev:getRxStats(port)
-	table.sort(times) -- TODO: why are we getting some packets OoO? this should be impossible...?
-	-- TODO: create a class for histograms as this code is currently copied in a lot of examples...
-	local hist = {}
+	local h = hist:create()
 	local last
 	for i, v in ipairs(times) do
 		if last then
 			local diff = v - last
-			hist[diff] = (hist[diff] or 0) + 1
+			h:update(diff)
 		end
 		last = v
-		--print(v)
 	end
-	local sortedHist = {}
-	for k, v in pairs(hist) do 
-		table.insert(sortedHist,  { k = k, v = v })
-	end
-	local sum = 0
-	local samples = 0
-	table.sort(sortedHist, function(e1, e2) return e1.k < e2.k end)
-	print("Histogram:")
-	for _, v in ipairs(sortedHist) do
-		sum = sum + v.k * v.v
-		samples = samples + v.v
-		print(v.k, v.v)
-	end
-	print()
-	print("Average: " .. (sum / samples) .. " ns, " .. samples .. " samples")
-	print("Lost packets: " .. pkts - total
+	h:print()
+	h:save("histogram.csv")
+	log[(pkts - total > 0 and "warn" or "info")](log, "Lost packets: " .. pkts - total
 		.. " (this can happen if the NIC still receives data after this script stops the receive loop)")
 end
 

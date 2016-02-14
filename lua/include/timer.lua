@@ -1,3 +1,9 @@
+---------------------------------
+--- @file timer.lua
+--- @brief Timer ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local dpdk = require "dpdk"
@@ -37,7 +43,7 @@ function timer:busyWait()
 end
 
 --- Perform a non-busy wait on the timer.
--- Might be less accurate than busyWait()
+--- Might be less accurate than busyWait()
 function timer:wait()
 	-- TODO: implement
 	return self:busyWait()

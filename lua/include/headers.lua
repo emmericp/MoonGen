@@ -1,8 +1,14 @@
+------------------------------------------------------------------------
+--- @file headers.lua
+--- @brief C struct definitions for all protocol headers and respective 
+--- additional structs for instance addresses.
+--- Please check the source code for more information.
+------------------------------------------------------------------------
+
 local ffi = require "ffi"
 
 -- structs
 ffi.cdef[[
-	// TODO: vlan support (which can be offloaded to the NIC to simplify scripts)
 	
 	union payload_t {
 		uint8_t	uint8[0];
@@ -15,8 +21,9 @@ ffi.cdef[[
 	//	---- Address structs
 	//  -----------------------------------------------------
 
-	struct __attribute__ ((__packed__)) mac_address {
+	union __attribute__((__packed__)) mac_address {
 		uint8_t		uint8[6];
+		uint64_t	uint64[0]; // for efficient reads
 	};
 
 	union ip4_address {
@@ -29,15 +36,25 @@ ffi.cdef[[
 		uint32_t	uint32[4];
 		uint64_t	uint64[2];
 	};
+
+	union ipsec_iv {
+		uint32_t	uint32[2];
+	};
+
+	union ipsec_icv {
+		uint32_t	uint32[4];
+	};
 	
 
 	// -----------------------------------------------------
 	// ---- Header structs
 	// -----------------------------------------------------
 
+	// TODO: there should also be a variant with a VLAN tag
+	// note that this isn't necessary for most cases as offloading should be preferred
 	struct __attribute__((__packed__)) ethernet_header {
-		struct mac_address	dst;
-		struct mac_address	src;
+		union mac_address	dst;
+		union mac_address	src;
 		uint16_t		type;
 	};
 
@@ -47,9 +64,9 @@ ffi.cdef[[
 		uint8_t		hln;
 		uint8_t		pln;
 		uint16_t	op;
-		struct mac_address	sha;
+		union mac_address	sha;
 		union ip4_address	spa;
-		struct mac_address	tha;
+		union mac_address	tha;
 		union ip4_address	tpa;
 	};
 	
@@ -117,6 +134,29 @@ ffi.cdef[[
 		uint16_t	cs;
 		uint16_t	urg;
 		uint32_t	options[];
+	};
+	
+	struct __attribute__((__packed__)) vxlan_header {
+		uint8_t		flags;
+		uint8_t		reserved[3];
+		uint8_t		vni[3];
+		uint8_t		reserved2;
+	};
+
+	struct __attribute__((__packed__)) esp_header {
+		uint32_t	spi;
+		uint32_t	sqn;
+		union ipsec_iv	iv;
+	};
+
+	struct __attribute__((__packed__)) ah_header {
+		uint8_t		nextHeader;
+		uint8_t		len;
+		uint16_t	reserved;
+		uint32_t	spi;
+		uint32_t	sqn;
+		union ipsec_iv	iv;
+		union ipsec_icv	icv;
 	};
 ]]
 

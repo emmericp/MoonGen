@@ -2,8 +2,8 @@ describe("IP header class", function()
 	local ffi = require "ffi"
 	local pkt = require "packet"
 	it("should set IPv4", function()
-		local raw = ffi.new("struct ipv4_header")
-		local set = ffi.new("struct ipv4_header")
+		local raw = ffi.new("struct ip4_header")
+		local set = ffi.new("struct ip4_header")
 
 		raw.verihl = 0x45
 		set:setVersion()
@@ -60,8 +60,8 @@ describe("IP header class", function()
 	end)
 	
 	it("should set IPv6", function()
-		local raw = ffi.new("struct ipv6_header")
-		local set = ffi.new("struct ipv6_header")
+		local raw = ffi.new("struct ip6_header")
+		local set = ffi.new("struct ip6_header")
 		
 		raw.vtf = 96
 		set:setVersion()

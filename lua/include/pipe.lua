@@ -1,9 +1,16 @@
+---------------------------------
+--- @file pipe.lua
+--- @brief Pipe ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local memory	= require "memory"
 local ffi		= require "ffi"
 local serpent	= require "Serpent"
 local dpdk		= require "dpdk"
+local log		= require "log"
 
 ffi.cdef [[
 	// dummy
@@ -25,11 +32,11 @@ local slowPipe = mod.slowPipe
 slowPipe.__index = slowPipe
 
 --- Create a new slow pipe.
--- A pipe can only be used by exactly two tasks: a single reader and a single writer.
--- Slow pipes are called slow pipe because they are slow (duh).
--- Any objects passed to it will be *serialized* as strings.
--- This means that it supports arbitrary Lua objects following MoonGens usual serialization rules.
--- Use a 'fast pipe' if you need fast inter-task communication. Fast pipes are restricted to LuaJIT FFI objects.
+--- A pipe can only be used by exactly two tasks: a single reader and a single writer.
+--- Slow pipes are called slow pipe because they are slow (duh).
+--- Any objects passed to it will be *serialized* as strings.
+--- This means that it supports arbitrary Lua objects following MoonGens usual serialization rules.
+--- Use a 'fast pipe' if you need fast inter-task communication. Fast pipes are restricted to LuaJIT FFI objects.
 function mod:newSlowPipe()
 	return setmetatable({
 		pipe = C.make_pipe()
@@ -80,7 +87,7 @@ end
 
 
 function mod:newFastPipe()
-	error("NYI")
+	log:fatal("NYI")
 end
 
 return mod

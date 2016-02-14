@@ -1,6 +1,6 @@
 describe("TCP packet class", function()
 	local ffi = require "ffi"
-	local pkt = require "packet"
+	local pkt = require "proto.proto"
 	it("should set TCP", function()
 		local raw = ffi.new("struct tcp_header")
 		local set = ffi.new("struct tcp_header")
@@ -36,7 +36,7 @@ describe("TCP packet class", function()
 		assert.are.same(raw.urg, set.urg)
 	end)
 	it("should set/get with named args (TCPv4)", function()
-		local pkt = ffi.new("struct tcp_packet")	
+		local pkt = ffi.new("struct __ethernet_eth__ip4_ip4__tcp_tcp")	
 		
 		local tcpSrc			= 456
 		local tcpDst			= 789
