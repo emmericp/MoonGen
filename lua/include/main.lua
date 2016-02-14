@@ -88,6 +88,7 @@ local function checkOS()
 end
 
 local function master(_, file, ...)
+	log:info("Initializing DPDK. This will take a few seconds...")
 	MOONGEN_TASK_NAME = "master"
 	local _, cfgfile = getDpdkCfg(...)
 	if not dpdk.init(cfgfile) then
