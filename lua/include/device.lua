@@ -482,7 +482,7 @@ local lastMptc = {}
 local lastBptc = {}
 
 -- required when using multiple ports from a single thread
-for i = 1, dpdkc.get_max_ports() do
+for i = 0, dpdkc.get_max_ports() - 1 do
 	lastGorc[i] = 0
 	lastUprc[i] = 0
 	lastMprc[i] = 0
