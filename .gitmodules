@@ -1,6 +1,6 @@
 [submodule "deps/luajit"]
 	path = deps/luajit
-	url = https://github.com/emmericp/luajit.git
+	url = https://github.com/LuaJIT/LuaJIT
 	ignore = untracked
 [submodule "deps/dpdk"]
 	path = deps/dpdk
