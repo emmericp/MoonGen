@@ -143,11 +143,12 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,
 		},
-		.fdir_conf = fdir_conf,
+	//	.fdir_conf = fdir_conf,
 		.link_speed = link_speed,
-    .rx_adv_conf.rss_conf = rss_conf,
+    	.rx_adv_conf.rss_conf = rss_conf,
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
+	printf("configure(%d %d %d) --> %d\n", port, rx_queues, tx_queues, rc);
 	if (rc) return rc;
 	// DPDK documentation suggests that the tx queues should be set up before the rx queues
 	struct rte_eth_txconf tx_conf = {
