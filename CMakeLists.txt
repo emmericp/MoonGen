@@ -21,10 +21,10 @@ SET(FILES
 )
 
 SET(DPDK_LIBS
-	ethdev       rte_distributor  rte_kni     rte_mbuf      rte_pmd_bond   rte_pmd_ring         rte_power  rte_timer
-	rte_acl      rte_eal          rte_kvargs  rte_mempool   rte_pmd_e1000  rte_pmd_virtio       rte_ring
-	rte_cfgfile  rte_hash         rte_lpm     rte_meter     rte_pmd_i40e   rte_pmd_vmxnet3_uio  rte_sched
-	rte_cmdline  rte_ip_frag      rte_malloc  rte_pipeline  rte_pmd_ixgbe  rte_port             rte_table
+	ethdev       rte_distributor  rte_kni       rte_mbuf      rte_pmd_bond   rte_pmd_ring         rte_power  rte_timer
+	rte_acl      rte_eal          rte_kvargs    rte_mempool   rte_pmd_e1000  rte_pmd_virtio       rte_ring
+	rte_cfgfile  rte_hash         rte_lpm       rte_meter     rte_pmd_i40e   rte_pmd_vmxnet3_uio  rte_sched
+	rte_cmdline  rte_ip_frag      rte_pipeline  rte_pmd_ixgbe rte_port       rte_table
 )
 
 SET(LUAJIT_LIBS
@@ -38,10 +38,10 @@ SET(ALL_LIBS
 )
 
 INCLUDE_DIRECTORIES(
-	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/include
-	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/lib/librte_pmd_ixgbe/ixgbe
-	 ${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
-	 ${CMAKE_CURRENT_SOURCE_DIR}/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/include
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/ixgbe/base
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
+	${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
 
 LINK_DIRECTORIES(
