@@ -31,11 +31,14 @@ ffi.cdef[[
 
 mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_X520		= 0x8086154D
+mod.PCI_ID_X520_T2	= 0x8086151C
 mod.PCI_ID_82599	= 0x808610FB
 mod.PCI_ID_82580	= 0x8086150E
 mod.PCI_ID_I350		= 0x80861521
 mod.PCI_ID_82576	= 0x80861526
 mod.PCI_ID_XL710	= 0x80861583
+
+mod.PCI_ID_82599_VF	= 0x808610ed
 
 function mod.init()
 	dpdkc.rte_pmd_init_all_export();
@@ -91,7 +94,7 @@ local devices = {}
 ---   rxQueues optional (default = 1) Number of RX queues to configure 
 ---   txQueues optional (default = 1) Number of TX queues to configure 
 ---   rxDescs optional (default = 512)
----   txDescs optional (default = 256)
+---   txDescs optional (default = 1024)
 ---   speed optional (default = 0)
 ---   dropEnable optional (default = true)
 ---   rssNQueues optional (default = 0) If this is >0 RSS will be activated for
@@ -110,92 +113,100 @@ local devices = {}
 ---      dev.RSS_FUNCTION_IPV6_UDP
 --- @todo FIXME: add description for speed and dropEnable parameters.
 function mod.config(...)
-  local args = {...}
-  if #args > 1 or type((...)) == "number" then
-    -- this is for legacy compatibility when calling the function  without named arguments
-    log:warn("You are using a deprecated method for invoking device.config. config(...) should be used with named arguments. For details: see documentation")
-    if not args[2] or type(args[2]) == "number" then
-      args.port       = args[1]
-      args.rxQueues   = args[2]
-      args.txQueues   = args[3]
-      args.rxDescs    = args[4]
-      args.txDescs    = args[5]
-      args.speed      = args[6]
-      args.dropEnable = args[7]
-    else
-      args.port       = args[1]
-      args.mempool    = args[2]
-      args.rxQueues   = args[3]
-      args.txQueues   = args[4]
-      args.rxDescs    = args[5]
-      args.txDescs    = args[6]
-      args.speed      = args[7]
-      args.dropEnable = args[8]
-    end
-  elseif #args == 1 then
-    -- here we receive named arguments
-    args = args[1]
-  else
-    log:fatal("Device config needs at least one argument.")
-  end
+	local args = {...}
+	if #args > 1 or type((...)) == "number" then
+	    -- this is for legacy compatibility when calling the function  without named arguments
+		log:warn("You are using a deprecated method for invoking device.config. config(...) should be used with named arguments. For details: see documentation")
+		if not args[2] or type(args[2]) == "number" then
+			args.port       = args[1]
+			args.rxQueues   = args[2]
+			args.txQueues   = args[3]
+			args.rxDescs    = args[4]
+			args.txDescs    = args[5]
+			args.speed      = args[6]
+			args.dropEnable = args[7]
+		else
+			args.port       = args[1]
+			args.mempool    = args[2]
+			args.rxQueues   = args[3]
+			args.txQueues   = args[4]
+			args.rxDescs    = args[5]
+			args.txDescs    = args[6]
+			args.speed      = args[7]
+			args.dropEnable = args[8]
+		end
+	elseif #args == 1 then
+		-- here we receive named arguments
+		args = args[1]
+	else
+		log:fatal("Device config needs at least one argument.")
+	end
 
-  args.rxQueues = args.rxQueues or 1
-  args.txQueues = args.txQueues or 1
-  args.rxDescs  = args.rxDescs or 512
-  args.txDescs  = args.txDescs or 256
-  args.rssNQueues = args.rssNQueues or 0
-  args.rssFunctions = args.rssFunctions or {mod.RSS_FUNCTION_IPV4, mod.RSS_FUNCTION_IPV4_UDP, mod.RSS_FUNCTION_IPV4_TCP, mod.RSS_FUNCTION_IPV6, mod.RSS_FUNCTION_IPV6_UDP, mod.RSS_FUNCTION_IPV6_TCP}
-  -- create a mempool with enough memory to hold tx, as well as rx descriptors
-  -- FIXME: should n = 2^k-1 here too?
-  args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args. txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
-  if devices[args.port] and devices[args.port].initialized then
-    log:warn("Device %d already configured, skipping initilization", args.port)
-    return mod.get(args.port)
-  end
-  args.speed = args.speed or 0
-  args.dropEnable = args.dropEnable == nil and true
-  if args.rxQueues == 0 or args.txQueues == 0 then
-    -- dpdk does not like devices without rx/tx queues :(
-    log:fatal("Cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
-  end
-  -- configure rss stuff
-  local rss_enabled = 0
-  local rss_hash_mask = ffi.new("struct mg_rss_hash_mask")
-  if(args.rssNQueues > 0) then
-    for i, v in ipairs(args.rssFunctions) do
-      if (v == mod.RSS_FUNCTION_IPV4) then
-        rss_hash_mask.ipv4 = 1
-      end
-      if (v == mod.RSS_FUNCTION_IPV4_TCP) then
-        rss_hash_mask.tcp_ipv4 = 1
-      end
-      if (v == mod.RSS_FUNCTION_IPV4_UDP) then
-        rss_hash_mask.udp_ipv4 = 1
-      end
-      if (v == mod.RSS_FUNCTION_IPV6) then
-        rss_hash_mask.ipv6 = 1
-      end
-      if (v == mod.RSS_FUNCTION_IPV6_TCP) then
-        rss_hash_mask.tcp_ipv6 = 1
-      end
-      if (v == mod.RSS_FUNCTION_IPV6_UDP) then
-        rss_hash_mask.udp_ipv6 = 1
-      end
-    end
-    rss_enabled = 1
-  end
-  -- TODO: support options
-  local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask)
-  if rc ~= 0 then
-    log:fatal("Could not configure device %d: error %d", args.port, rc)
-  end
-  local dev = mod.get(args.port)
-  dev.initialized = true
-  if rss_enabled == 1 then
-    dev:setRssNQueues(args.rssNQueues)
-  end
-  dev:setPromisc(true)
-  return dev
+	args.rxQueues = args.rxQueues or 1
+	args.txQueues = args.txQueues or 1
+	args.rxDescs  = args.rxDescs or 512
+	args.txDescs  = args.txDescs or 1024
+	args.rssNQueues = args.rssNQueues or 0
+	args.rssFunctions = args.rssFunctions or {
+		mod.RSS_FUNCTION_IPV4,
+		mod.RSS_FUNCTION_IPV4_UDP,
+		mod.RSS_FUNCTION_IPV4_TCP,
+		mod.RSS_FUNCTION_IPV6,
+		mod.RSS_FUNCTION_IPV6_UDP,
+		mod.RSS_FUNCTION_IPV6_TCP
+	}
+	-- create a mempool with enough memory to hold tx, as well as rx descriptors
+	-- (tx descriptors for forwarding applications when rx descriptors from one of the device are directly put into a tx queue of another device)
+	-- FIXME: n = 2^k-1 would save memory
+	args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args.txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
+	if devices[args.port] and devices[args.port].initialized then
+		log:warn("Device %d already configured, skipping initilization", args.port)
+		return mod.get(args.port)
+	end
+	args.speed = args.speed or 0
+	args.dropEnable = args.dropEnable == nil and true
+	if args.rxQueues == 0 or args.txQueues == 0 then
+		-- dpdk does not like devices without rx/tx queues :(
+		log:fatal("Cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
+	end
+	-- configure rss stuff
+	local rss_enabled = 0
+	local rss_hash_mask = ffi.new("struct mg_rss_hash_mask")
+	if(args.rssNQueues > 0) then
+		for i, v in ipairs(args.rssFunctions) do
+			if (v == mod.RSS_FUNCTION_IPV4) then
+				rss_hash_mask.ipv4 = 1
+			end
+			if (v == mod.RSS_FUNCTION_IPV4_TCP) then
+				rss_hash_mask.tcp_ipv4 = 1
+			end
+			if (v == mod.RSS_FUNCTION_IPV4_UDP) then
+				rss_hash_mask.udp_ipv4 = 1
+			end
+			if (v == mod.RSS_FUNCTION_IPV6) then
+				rss_hash_mask.ipv6 = 1
+			end
+			if (v == mod.RSS_FUNCTION_IPV6_TCP) then
+				rss_hash_mask.tcp_ipv6 = 1
+			end
+			if (v == mod.RSS_FUNCTION_IPV6_UDP) then
+				rss_hash_mask.udp_ipv6 = 1
+			end
+		end
+		rss_enabled = 1
+	end
+	-- TODO: support options
+	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask)
+	if rc ~= 0 then
+	    log:fatal("Could not configure device %d: error %d", args.port, rc)
+	end
+	local dev = mod.get(args.port)
+	dev.initialized = true
+	if rss_enabled == 1 then
+		dev:setRssNQueues(args.rssNQueues)
+	end
+	dev:setPromisc(true)
+	return dev
 end
 
 ffi.cdef[[
@@ -390,8 +401,10 @@ local deviceNames = {
 	[mod.PCI_ID_I350]	= "I350 Gigabit Network Connection",
 	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
 	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter", -- Dell-branded NIC with an 82599
+	[mod.PCI_ID_X520_T2]	= "82599EB 10G 2xRJ45 X520-T2 Adapter",
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
 	[mod.PCI_ID_XL710]	= "Ethernet Controller LX710 for 40GbE QSFP+",
+	[mod.PCI_ID_82599_VF]	= "Intel Corporation 82599 Ethernet Controller Virtual Function",
 }
 
 function dev:getName()
@@ -519,7 +532,8 @@ local RTTDQSEL = 0x00004904
 --- A simple work-around for this is using two queues with 50% of the desired rate.
 --- Note that this changes the inter-arrival times as the rate control of both queues is independent.
 function txQueue:setRate(rate)
-	if self.dev:getPciId() ~= mod.PCI_ID_82599 and self.dev:getPciId() ~= mod.PCI_ID_X540 and self.dev:getPciId() ~= mod.PCI_ID_X520 then
+	if self.dev:getPciId() ~= mod.PCI_ID_82599 and self.dev:getPciId() ~= mod.PCI_ID_X540 and self.dev:getPciId() ~= mod.PCI_ID_X520 and self.dev:getPciId() ~= mod.PCI_ID_X520_T2 then
+
 		log:fatal("TX rate control not yet implemented for this NIC")
 	end
 	local speed = self.dev:getLinkStatus().speed

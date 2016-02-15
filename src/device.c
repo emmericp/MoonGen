@@ -88,11 +88,11 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
       //printf("ipv6\n");
     }
     if(hash_functions->udp_ipv6){
-      rss_hash_functions |= ETH_RSS_IPV6_TCP;
+      rss_hash_functions |= ETH_RSS_IPV6_UDP;
       //printf("ipv6 udp\n");
     }
     if(hash_functions->tcp_ipv6){
-      rss_hash_functions |= ETH_RSS_IPV6_UDP;
+      rss_hash_functions |= ETH_RSS_IPV6_TCP;
       //printf("ipv6 tcp\n");
     }
   }

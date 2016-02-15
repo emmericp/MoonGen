@@ -40,8 +40,25 @@ local function run(file, ...)
 	xpcall(script, getStackTrace, ...)
 end
 
+local function getDpdkCfg(...)
+       local args = { ... }
+       for i, v in ipairs(args) do
+               result, count = string.gsub(v, "%-%-dpdk%-config%=", "")
+               if (count == 1) then
+                       return i, result
+               end
+       end
+       return nil, nil
+end
+
 local function parseCommandLineArgs(...)
 	local args = { ... }
+
+	local cfgindex, _ = getDpdkCfg(...)
+	if cfgindex then
+		table.remove(args, cfgindex)
+	end
+
 	for i, v in ipairs(args) do
 		-- is it just a simple number?
 		if tonumber(v) then
@@ -72,7 +89,8 @@ end
 
 local function master(_, file, ...)
 	MOONGEN_TASK_NAME = "master"
-	if not dpdk.init() then
+	local _, cfgfile = getDpdkCfg(...)
+	if not dpdk.init(cfgfile) then
 		log:error("Could not initialize DPDK")
 		return
 	end
