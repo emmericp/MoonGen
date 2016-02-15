@@ -17,6 +17,7 @@ function master()
 	device.waitForLinks()
 	for i=1, #devs do
 		broadcastSlave(devs[i])
+		dpdk.sleepMillis( 100 )
 		for j=1, #devs do
 			receiveSlave(devs[j],cards[j])
 		end
@@ -48,7 +49,6 @@ function broadcastSlave(dev)
 end
 
 function receiveSlave(dev,card)
-	dpdk.sleepMillis(100)
 	local queue = dev:getRxQueue(0)
 	local bufs = memory.bufArray()
 	runtime = timer:new(0.001)

@@ -19,9 +19,7 @@ end
 
 function slave( dev , card )
 	log:info( "Testing send capability." )
-	log:info( "Expected rate: " .. card[ 3 ] .. " MBit/s" )
 	local queue = dev:getTxQueue( 0 )
-	dpdk.sleepMillis( 100 )
  
 	local mem = memory.createMemPool( function( buf )
 			buf:getEthernetPacket():fill{
@@ -31,21 +29,28 @@ function slave( dev , card )
 			}
 		end)
 	
-	local bufs = mem:bufArray( PKT_SIZE )
+	local bufs = mem:bufArray(64)
 	local i = 0
 	local runtime = timer:new( testlib.getRuntime() )
 
 	while dpdk.running() and runtime:running() do
 		bufs:alloc( PKT_SIZE )
 		queue:send( bufs )
-		i = i + 1
+		i = i + 64
 	end
 	
-	local rate = math.floor( ( i * ( PKT_SIZE + 64 ) ) / ( 1000 ) ) * 1 / testlib.getRuntime()
-	log:info( "Measured rate: " .. rate .. " MBit/s (Average)" )
-	if( card[ 3 ] >= rate ) then
-		log:warn( "Network card is not operating at full capability." )
+	-- Expected rate is ~ 99% of network card capability.
+	local erate = math.floor( card[ 3 ] - math.min( 10 , card[ 3 ] * 99 / 100 ) )
+
+	-- Measured rate equals packets * packet size / runtime.
+	local mrate = math.floor( ( i * ( PKT_SIZE + 24 ) * 8 ) / ( 1000 * 1000 ) ) * 1 / testlib.getRuntime()
+	
+	log:info( "Expected rate: " .. erate .. " MBit/s" )
+	log:info( "Measured rate: " .. mrate .. " MBit/s (Average)" )
+	if( erate >= mrate ) then
+		log:warn( "Network card is not operating at full rate." )
+		log:warn( "Missing " .. erate - mrate .. " MBit/s." )
 	end
 
-	return card[ 3 ] < rate
+	return erate < mrate
 end

@@ -3,6 +3,7 @@ local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
 local timer	= require "timer"
+local stats 	= require "stats"
 
 local log	= require "testlog"
 local testlib	= require "testlib"
@@ -11,55 +12,64 @@ local tconfig	= require "tconfig"
 local PKT_SIZE	= 124
 
 function master()
-	testlib:setRuntime( 1 )
+	testlib:setRuntime( 10 )
 	testlib:masterPairMulti()
 end
 
-function slave1(txDev, rxDev)
+function slave1( txDev, rxDev )
 	local txQueue = txDev:getTxQueue( 0 )
-	dpdk.sleepMillis( 100 )
+	local txCtr = stats:newDevTxCounter( txDev , "plain" )
+
 	local mem = memory.createMemPool( function( buf )
 		buf:getEthernetPacket():fill{
 			pktLength = PKT_SIZE,
 			ethSrc = txQueue,
-			ethDst = "FF:FF:FF:FF:FF:FF:FF:FF"
+			ethDst = "10:11:12:13:14:15"
 		}
 	end)
 
-	local bufs = mem:bufArray( 1 )
-
+	local bufs = mem:bufArray()
 	local runtime = timer:new( testlib.getRuntime() )
-	local i = 0
 
 	while dpdk.running() and runtime:running() do
 		bufs:alloc( PKT_SIZE )
 		txQueue:send( bufs )
-		i = i + 1
+		txCtr:update()
 	end
-	return i
+	txCtr:finalize()
+
+	local y , mbit = txCtr:getStats()
+
+	return mbit.avg
 end
 
-function slave2( rxDev , txDev , sent )
-	local rxQueue = rxDev:getRxQueue( 0 )
-	log:info( "Testing receive capability." )
-
-	dpdk.sleepMillis( 100 )
+function slave2( txDev , rxDev )
+	local queue = rxDev:getRxQueue( 0 )
+	
 	local bufs = memory.bufArray()
-	local packets = 0
-	local runtime = timer:new( testlib.getRuntime() )
-	while dpdk.running() and runtime:running() do
-		maxWait = 1
-		local rx = rxQueue:tryRecv( bufs , maxWait )
-		for i = 1, rx do
-			packets = packets + 1
-		end
-		bufs:free( rx )
+	local ctr = stats:newManualRxCounter(queue.dev, "plain")
+	local runtime = timer:new(10)
+	while runtime:running() and dpdk.running() do
+		local rx = queue:tryRecv(bufs, 10)
+		bufs:freeAll()
+		ctr:updateWithSize(rx, PKT_SIZE)
+	end
+	
+	local y , mbit = ctr:getStats()
+
+	return mbit.avg
+end
+
+function compare( return1 , return2 )
+	return2 = math.floor( return2 )
+	return1 = math.floor( math.min( return1 - 10 , return1 * 99 / 100 ) )
+	
+	log:info( "Expected receive rate: " .. return1 .. " MBit/s" )
+	log:info( "Measured receive rate: " .. return2 .. " MBit/s" )
+
+	if ( return1 > return2 ) then
+		log:warn( "Did not receive all packets!" )
 	end
 
-	log:info( "Packets to receive: " .. sent )
-	log:info( "Packets received: " .. packets )
-	if( packets < sent ) then
-		log:warn( "Network card did not receive all packages!" )
-	end
-	return packets >= sent
+	return return1 <= return2
 end

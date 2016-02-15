@@ -16,7 +16,7 @@
 --		-- (Called functions: slave(rxDev, txDev, rxCard, txCard))
 --	- testlib.masterPairMulti()
 --		-- Start two pairs of slaves for each available card pairing
---		-- (Called functions: slave1(rxDev, txDev), slave2(rxDev, txDev, slave1return))
+--		-- (Called functions: slave1(rxDev, txDev), slave2(txDev, rxDev, slave1return))
 
 local testlib = {}
 
@@ -38,7 +38,7 @@ end
 -- Set the runtime for all slaves | default 10 seconds
 function testlib:setRuntime( value )
 	testlib.wait = value
-	log:info("Runtime set to " .. testlib:getRuntime() .. " seconds.")
+	log:info("Runtime per test set to " .. testlib:getRuntime() .. " seconds.")
 end
 
 -- Start one slave on every available device
@@ -51,6 +51,7 @@ function testlib:masterSingle()
 		devs[ i ] = device.config{ port = cards[ i ][ 1 ] , rxQueues = 2 , txQueues = 2 }
 	end
 	device.waitForLinks()
+	dpdk.sleepMillis( 100 )
 
 	local runtime = timer:new( testlib:getRuntime() )
 	log:info("Current runtime set to " .. testlib:getRuntime() .. " seconds.")
@@ -92,7 +93,7 @@ function testlib:masterPairSingle()
 	
 	end
 	device.waitForLinks()
-	
+	dpdk.sleepMillis( 100 )
 	
 	for i=1 , #devs , 2 do
 		
@@ -129,8 +130,12 @@ function testlib:masterPairMulti()
 	local devs = {}
 	
 	for i = 1 , #pairs  do
-		devs[ i ]	= device.config{ port = cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] , rxQueues = 2 , txQueues = 2 }
-		devs[ i + 1 ]	= device.config{ port = cards[ pairs[ i ][ 2 ] + 1 ][ 1 ] , rxQueue = 2 , txQueue = 2 }
+		if not devs[ pairs[ i ][ 1 ] ] then
+			devs[ pairs[ i ][ 1 ] ]	= device.config{ port = pairs[ i ][ 1 ] , rxQueues = 2 , txQueues = 2 }
+		end
+		if not devs[ pairs[ i ][ 2 ] ] then
+			devs[ pairs[ i ][ 2 ] ] = device.config{ port = pairs[ i ][ 2 ] , rxQueue = 2 , txQueue = 2 }
+		end
 	end
 	device.waitForLinks()
 	
@@ -141,25 +146,33 @@ function testlib:masterPairMulti()
 	--	- The first slave receives both devices and returns a value, that will be passed to the second slave
 	-- - The second slave receives both devices and the return value of the first slave
 	--	- Checks the output of the second slave if it equals true
-	for i=1, #devs,2 do
+	for i = 1 , #pairs do
+
+		local dev1 = pairs[ i ][ 1 ]
+		local dev2 = pairs[ i ][ 2 ]
+
 		Tests[ "Tested device: " .. i ] = function()
-			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
+			log:info( "Testing device: " .. pairs[ i ][ 1 ] .. " (" .. pairs[ i ][ 2 ] .. ")")
 			
-			local result1 = slave1( devs[ i ] , devs[ i + 1 ] )
+			local slave1 = dpdk.launchLua( "slave1" , devs[ dev1 ] , devs[ dev2 ] )
+			local slave2 = dpdk.launchLua( "slave2" , devs[ dev1 ] , devs[ dev2 ] , result1 )
 			
-			local result2 = slave2( devs[ i + 1 ] , devs[ i ] , result1 )
-			
-			luaunit.assertTrue( result2 )
+			local return1 = slave1:wait()
+			local return2 = slave2:wait()
+			local returnC = compare( return1 , return2 )
+			luaunit.assertTrue( returnC )
 		end
 		
 		Tests[ "Tested device: " .. i + 1 ] = function ()
-			log:info( "Testing device: " .. cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] )
+			log:info( "Testing device: " .. pairs[ i ][ 2 ].. " (" .. pairs[ i ][ 1 ] .. ")" )
 			
-			local result1 = slave1( devs[ i + 1 ] , devs[ i ] )
+			local slave1 = dpdk.launchLua( "slave1" , devs[ dev2 ] , devs[ dev1 ] )
+			local slave2 = dpdk.launchLua( "slave2" , devs[ dev2 ] , devs[ dev1 ] )
 			
-			local result2 = slave2( devs[ i ] , devs[ i + 1 ] , result1 )
-			
-			luaunit.assertTrue( result2 )
+			local return1 = slave1:wait()
+			local return2 = slave2:wait()
+			local returnC = compare( return1 , return2 )
+			luaunit.assertTrue( returnC )
 		end
 	end
 	
