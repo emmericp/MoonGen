@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #Color Codes
 WHI='\033[1;37m'
 RED='\033[0;31m'
@@ -209,6 +211,8 @@ echo -e "\nfunction tconfig.pairs()" >> $dir/tconfig.lua
 echo -e "\treturn pairs" >> $dir/tconfig.lua
 echo -e "end\n" >> $dir/tconfig.lua
 echo "return tconfig" >> $dir/tconfig.lua
+
+rm -f $dir/pairs.txt
 
 printf "${GRE}[INFO] Detected $n pairs.${NON}\n"
 printf "${GRE}[INFO] Configuration successful.${NON}\n"
