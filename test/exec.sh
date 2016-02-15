@@ -1,10 +1,13 @@
 #!/bin/bash
 
+mkdir -p logs
+
 #Color Codes
 WHI='\033[1;37m'
 RED='\033[0;31m'
 GRE='\033[0;32m'
 ORA='\033[0;33m'
+CYA='\033[1;36m'
 NON='\033[0m'
 
 #Log File Path
@@ -39,12 +42,14 @@ tests=$((0))
 fails=$((0))
 failt=$((0))
 utest=$((0))
+passed=()
+failed=()
 
 rm -f /tmp/testlog.txt
 
 for script in $list
 do
-	printf "${WHI}[INFO] Running $script${NON}\n"
+	printf "${CYA}[INFO] Running $script${NON}\n"
 	echo "[INFO] Running $script" >> $logfile
 
 	eval "$path $script" > /tmp/temp.txt &
@@ -84,8 +89,10 @@ do
 	then
 		printf "${RED}[INFO] Ran $ltests tests. $lfails failed!${NON}\n"
 		failt=$(expr $failt + 1)
+		failed+=("$script")
 	else
 		printf "${GRE}[INFO] Ran $ltests tests successfully!${NON}\n"
+		passed+=("$script")
 	fi
 
 	unset lfails
@@ -101,3 +108,8 @@ then
 else
 	printf "${GRE}[INFO] No failures detected. Everything running smoothly!${NON}\n"
 fi
+
+printf "${GRE}[INFO] The following tests passed:\n${NON}"
+printf "%s\n" "${passsed[@]}"
+printf "${RED}[INFO] The following tests failed:\n${NON}"
+printf "%s\n" "${failed[@]}"

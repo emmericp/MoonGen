@@ -65,10 +65,11 @@ function compare( return1 , return2 )
 	return1 = math.floor( math.min( return1 - 10 , return1 * 99 / 100 ) )
 	
 	log:info( "Expected receive rate: " .. return1 .. " MBit/s" )
-	log:info( "Measured receive rate: " .. return2 .. " MBit/s" )
 
 	if ( return1 > return2 ) then
-		log:warn( "Did not receive all packets!" )
+		log:warn( "Measured receive rate: " .. return2 .. " MBit/s | Missing: " .. return1 - return2 .. " MBit/s")
+	else
+		log:info( "Measured receive rate: " .. return2 .. "MBit/s")
 	end
 
 	return return1 <= return2

@@ -46,11 +46,13 @@ function slave( dev , card )
 	local mrate = math.floor( ( i * ( PKT_SIZE + 24 ) * 8 ) / ( 1000 * 1000 ) ) * 1 / testlib.getRuntime()
 	
 	log:info( "Expected rate: " .. erate .. " MBit/s" )
-	log:info( "Measured rate: " .. mrate .. " MBit/s (Average)" )
+
 	if( erate >= mrate ) then
-		log:warn( "Network card is not operating at full rate." )
-		log:warn( "Missing " .. erate - mrate .. " MBit/s." )
+		log:warn( "Measured rate: " .. mrate .. " MBit/s | Missing: " .. erate - mrate .. " MBit/s" )
+	else
+		log:info( "Measured rate: " .. mrate .. " MBit/s" )
 	end
+
 
 	return erate < mrate
 end
