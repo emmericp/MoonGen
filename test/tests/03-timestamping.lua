@@ -44,10 +44,10 @@ function slave( rxDev , txDev )
 	
 	
 	log:info( "Expecting maximum deviation: 64 ns" )
-	log:info( "Recorded average deviation: " .. average .. " ns" )
+	log:info( "Recorded average deviation: " .. math.floor( average ) .. " ns" )
 	
-	log:info( "Maximum measured latency: " .. maximum .. " ns")
-	log:info( "Minimum measured latency: " .. minimum .. " ns" )
+	log:info( "Maximum measured latency: " .. math.floor( maximum ) .. " ns")
+	log:info( "Minimum measured latency: " .. math.floor( minimum ) .. " ns" )
 	
 	-- Check deviation
 	if( ( maximum - average > 64 ) ) then

@@ -140,7 +140,7 @@ function testlib:masterPairMulti()
 			luaunit.assertTrue( returnC )
 		end
 		-- Mirror input devices
-		Tests[ "Tested device: " .. i + 1 ] = function ()
+		Tests[ "Tested device: " .. i .. "(2)" ] = function ()
 			log:info( "Testing device: " .. pairs[ i ][ 2 ].. " (" .. pairs[ i ][ 1 ] .. ")" )
 			local slave1 = dpdk.launchLua( "slave1" , devs[ dev2 ] , devs[ dev1 ] )
 			local slave2 = dpdk.launchLua( "slave2" , devs[ dev2 ] , devs[ dev1 ] )

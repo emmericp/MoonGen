@@ -24,7 +24,7 @@ function slave( dev , card )
 	-- Calculate expected rate | erate set to 10 MBit/s below max rate (max. 1% of rate)
 	local eRate = card [ 3 ]
 	eRate = math.floor( eRate - math.min( 10 , eRate * 99 / 100 ) )
-	log:info( "Expected rate: " .. erate .. " MBit/s" )
+	log:info( "Expected rate: " .. eRate .. " MBit/s" )
 	
 	-- Init queue
 	local queue = dev:getTxQueue( 0 )

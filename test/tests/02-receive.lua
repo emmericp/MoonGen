@@ -79,9 +79,8 @@ function slave2( txDev , rxDev )
 	return mbit.avg
 end
 
-function compare( sRate , rRate )
-	-- Compare measured rates
-	
+-- Compare measured rates
+function compare( sRate , rRate )	
 	-- Round receive rate down
 	return2 = math.floor( rRate )
 	
@@ -89,11 +88,11 @@ function compare( sRate , rRate )
 	srate = math.floor( math.min( sRate - 10 , sRate * 99 / 100 ) )
 	
 	-- Compare rates
-	log:info( "Expected receive rate: " .. sRate .. " MBit/s" )
+	log:info( "Expected receive rate: " .. math.floor( sRate ) .. " MBit/s" )
 	if ( sRate > rRate ) then
 		log:warn( "Measured receive rate: " .. rRate .. " MBit/s | Missing: " .. sRate - rRate .. " MBit/s")
 	else
-		log:info( "Measured receive rate: " .. sRate .. "MBit/s")
+		log:info( "Measured receive rate: " .. math.floor( sRate ) .. " MBit/s")
 	end
 
 	-- Return result

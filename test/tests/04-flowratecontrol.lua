@@ -42,11 +42,11 @@ function slave( rxDev , txDev , rxInfo , txInfo )
 	local runtime = timer:new( testlib.getRuntime() )
 
 	-- Init & calculate rate
-	local rate = rxInfo[ 3 ]
 	local pass = true
 	for x = 1 , 3 do
-		queue:setRate( rate * x / 4 )
-		log:info( "Expected rate: " .. ( rate * x / 4 )  .. " MBit/s" )
+		local rate = rxInfo[ 3 ] * x / 4
+		queue:setRate( rate  )
+		log:info( "Expected rate: " .. rate  .. " MBit/s" )
 	
 		-- Do flow rate control
 		while dpdk.running() and runtime:running() do
@@ -64,22 +64,22 @@ function slave( rxDev , txDev , rxInfo , txInfo )
 		
 		-- Check measured rates
 		local rPass = true
-		log:info( "Device sent with: " .. tmbit.avg .. " MBit/s (Average)" )
-		log:info( "Device received: " .. rmbit.avg .. " MBit/s (Average)" )
-		if not ( tmbit.avg * 1.1 >= rate * x / 4 ) then
-			log:warn( "Device sent: " .. tmbit.avg .. " MBit/s | Missing: " .. tmbit.avg - rate .. " MBit/s" )
+		log:info( "Device sent with: " .. math.floor( tmbit.avg ) .. " MBit/s (Average)" )
+		log:info( "Device received: " .. math.floor( rmbit.avg ) .. " MBit/s (Average)" )
+		if not ( tmbit.avg * 1.1 >= rate ) then
+			log:warn( "Device sent: " .. tmbit.avg .. " MBit/s | Missing: " .. rate - tmbit.avg .. " MBit/s" )
 			rPass = false
 		else
 			log:info( "Device sent: " .. tmbit.avg .. " MBit/s")
 		end
-		if not ( rmbit.avg * 1.1 >= rate * x / 4 ) then
-			log:warn( "Device received: " .. rmbit.avg .. " MBit/s | Missing: " .. rmbit.avg - rate .. " MBit/s" )
+		if not ( rmbit.avg * 1.1 >= rate ) then
+			log:warn( "Device received: " .. rmbit.avg .. " MBit/s | Missing: " .. rate - rmbit.avg .. " MBit/s" )
 			rPass = false
 		else
 			log:info( "Device received: " .. rmbit.avg .. " MBit/s")
 		end
 		if not rPass then
-			log:warn( "Rate " .. ( rate * x / 4 ) .. " MBit/s failed!" )
+			log:warn( "Rate " .. ( rate ) .. " MBit/s failed!" )
 		end
 		pass = pass and rPass
 		

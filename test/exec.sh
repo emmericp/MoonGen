@@ -96,11 +96,11 @@ do
 	# Deliver output
 	if [ "$lfails" -gt 0 ]
 	then
-		printf "${RED}[INFO] Ran $ltests tests. $lfails failed!${NON}\n"
+		printf "${RED}[INFO] ${script} failed\n[INFO] Encountered ${lfails} errors in ${ltests} tests\n" 
 		failt=$(expr $failt + 1)
 		failed+=("$script")
 	else
-		printf "${GRE}[INFO] Ran $ltests tests successfully!${NON}\n"
+		printf "${GRE}[INFO] ${script} passed\n[INFO] No error in ${ltests} tests\n"
 		passed+=("$script")
 	fi
 
@@ -120,6 +120,6 @@ else
 	printf "${GRE}[INFO] No failures detected. Everything running smoothly!${NON}\n"
 fi
 printf "${GRE}[INFO] The following tests passed:\n${NON}"
-printf "%s\n" "${passsed[@]}"
+printf "%s\n" "${passed[@]}"
 printf "${RED}[INFO] The following tests failed:\n${NON}"
 printf "%s\n" "${failed[@]}"
