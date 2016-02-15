@@ -1,7 +1,13 @@
+-- Testlog.lua library
+
+-- Overrides needed functions of lua/log to extend their functionality to:
+-- - Additionally write all output to a temporary log file
+
 local testlog = {}
 
 local log = require "log"
 
+-- Extend log:info(input,...)
 function testlog:info(input,...)
 	input = input:format(...)
 	local file = io.open("/tmp/testlog.txt", "a")
@@ -10,6 +16,7 @@ function testlog:info(input,...)
 	file:close()
 end
 
+-- Extend log:warn(input,...)
 function testlog:warn(input,...)
 	input = input:format(...)
 	local file = io.open("/tmp/testlog.txt", "a")
@@ -18,4 +25,5 @@ function testlog:warn(input,...)
 	file:close()
 end
 
+-- Return library
 return testlog

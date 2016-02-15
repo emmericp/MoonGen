@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# This file does an automated configuration for the test framework
+# by starting MoonGen several times to get information about
+# available network cards, their speed and their networking.
+
 #Color Codes
 WHI='\033[1;37m'
 RED='\033[0;31m'

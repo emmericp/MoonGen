@@ -1,3 +1,5 @@
+-- Start MoonGen and initialize all devices.
+
 local dpdk 	= require "dpdk"
 local device 	= require "device"
 
@@ -14,5 +16,7 @@ function master()
 	slave()
 end
 
+
+-- Do nothing.
 function slave()
 end

@@ -1,4 +1,5 @@
-EXPORT_ASSERTS_TO_GLOBALS = true
+-- Function to test: Timestamping
+-- Test against: Network card support.
 
 local luaunit 	= require "luaunit"
 local dpdk	= require "dpdk"
@@ -14,34 +15,48 @@ local tconfig	= require "tconfig"
 local PKT_SIZE = 124
 
 function master()
+	log:info( "Function to test: Timestamping" )
 	testlib:setRuntime( 10 )
 	testlib:masterPairSingle()
 end
 
 function slave( rxDev , txDev )
+	-- Init queues
 	local rxQueue = rxDev:getRxQueue(0)
 	local txQueue = txDev:getTxQueue(0)
 
-	log:info( "Testing Timestamping." )
-
+	-- Init timestamper & histogram
 	local timestamper = ts:newTimestamper( txQueue , rxQueue )
 	local hist = hist:new()
+	
+	-- Init timer
 	local runtime = timer:new( testlib.getRuntime() )
+	
+	-- Do timestamping
 	while runtime:running() and dpdk.running()  do
 		hist:update( timestamper:measureLatency() )
 	end
 	
-	log:info( "Expecting not more than 64ns deviation from average." )
+	-- Get average, minimum & maximum latency
 	local average = hist:avg()
-	log:info( "Recorded average: " .. average )
 	local minimum = hist:min()
 	local maximum = hist:max()
 	
-	log:info( "Maximum time: " .. maximum )
-	log:info( "Minimum time: " .. minimum )
-	if( ( maximum - average > 64 ) or ( average - minimum > 64 ) ) then
-		log:warn( "Deviation too large!" )
-	end
 	
+	log:info( "Expecting maximum deviation: 64 ns" )
+	log:info( "Recorded average deviation: " .. average .. " ns" )
+	
+	log:info( "Maximum measured latency: " .. maximum .. " ns")
+	log:info( "Minimum measured latency: " .. minimum .. " ns" )
+	
+	-- Check deviation
+	if( ( maximum - average > 64 ) ) then
+		log:warn( "Maximum latency of " .. maximum " ns exeeded 64 ns deviation from average " .. average .. " ns" )
+	end
+	if( ( average - minimum > 64 ) ) then
+		log:warn( "Minimum latency of " .. minimum " ns exeeded 64 ns deviation from average " .. average .. " ns" )
+		end
+	
+	-- Return result
 	return ( maximum - average <= 64 ) and ( average - minimum <= 64 )
 end

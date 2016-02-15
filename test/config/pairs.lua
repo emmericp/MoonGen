@@ -1,3 +1,6 @@
+-- Start MoonGen and send some packages from each card to the network.
+-- Check all cards if they received packets from the broadcasting card.
+
 local dpdk	= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"

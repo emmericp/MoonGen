@@ -1,3 +1,6 @@
+-- Function to test: Receive
+-- Test against: Sending network card rate.
+
 local luaunit	= require "luaunit"
 local dpdk	= require "dpdk"
 local memory	= require "memory"
@@ -12,14 +15,16 @@ local tconfig	= require "tconfig"
 local PKT_SIZE	= 124
 
 function master()
+	log:info( "Function to test: Receive" )
 	testlib:setRuntime( 10 )
 	testlib:masterPairMulti()
 end
 
 function slave1( txDev, rxDev )
+	-- Init queue
 	local txQueue = txDev:getTxQueue( 0 )
-	local txCtr = stats:newDevTxCounter( txDev , "plain" )
 
+	-- Init memory & bufs
 	local mem = memory.createMemPool( function( buf )
 		buf:getEthernetPacket():fill{
 			pktLength = PKT_SIZE,
@@ -27,50 +32,70 @@ function slave1( txDev, rxDev )
 			ethDst = "10:11:12:13:14:15"
 		}
 	end)
-
 	local bufs = mem:bufArray()
+	
+	-- Init counter & timer
+	local ctr = stats:newDevTxCounter( txDev , "plain" )
 	local runtime = timer:new( testlib.getRuntime() )
 
+	-- Send packets
 	while dpdk.running() and runtime:running() do
 		bufs:alloc( PKT_SIZE )
 		txQueue:send( bufs )
-		txCtr:update()
+		ctr:update()
 	end
-	txCtr:finalize()
+	
+	-- Finalize counter and get stats
+	ctr:finalize()
+	local x , mbit = ctr:getStats()
 
-	local y , mbit = txCtr:getStats()
-
+	-- Return measured rate
 	return mbit.avg
 end
 
 function slave2( txDev , rxDev )
+	-- Init queue
 	local queue = rxDev:getRxQueue( 0 )
 	
+	-- Init bufs
 	local bufs = memory.bufArray()
+	
+	-- Init counter & timer
 	local ctr = stats:newManualRxCounter(queue.dev, "plain")
 	local runtime = timer:new(10)
+	
+	-- Receive packets
 	while runtime:running() and dpdk.running() do
 		local rx = queue:tryRecv(bufs, 10)
 		bufs:freeAll()
 		ctr:updateWithSize(rx, PKT_SIZE)
 	end
 	
-	local y , mbit = ctr:getStats()
+	-- Finalize counter and get stats
+	ctr:finalize()
+	local x , mbit = ctr:getStats()
 
+	-- Return measured rate
 	return mbit.avg
 end
 
-function compare( return1 , return2 )
-	return2 = math.floor( return2 )
-	return1 = math.floor( math.min( return1 - 10 , return1 * 99 / 100 ) )
+function compare( sRate , rRate )
+	-- Compare measured rates
 	
-	log:info( "Expected receive rate: " .. return1 .. " MBit/s" )
-
-	if ( return1 > return2 ) then
-		log:warn( "Measured receive rate: " .. return2 .. " MBit/s | Missing: " .. return1 - return2 .. " MBit/s")
+	-- Round receive rate down
+	return2 = math.floor( rRate )
+	
+	-- Round max rate down | substract 10 MBit/s (max. 1% of rate).
+	srate = math.floor( math.min( sRate - 10 , sRate * 99 / 100 ) )
+	
+	-- Compare rates
+	log:info( "Expected receive rate: " .. sRate .. " MBit/s" )
+	if ( sRate > rRate ) then
+		log:warn( "Measured receive rate: " .. rRate .. " MBit/s | Missing: " .. sRate - rRate .. " MBit/s")
 	else
-		log:info( "Measured receive rate: " .. return2 .. "MBit/s")
+		log:info( "Measured receive rate: " .. sRate .. "MBit/s")
 	end
 
-	return return1 <= return2
+	-- Return result
+	return sRate <= rRate
 end
