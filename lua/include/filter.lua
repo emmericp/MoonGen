@@ -68,6 +68,9 @@ struct rte_eth_ethertype_filter {
 int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type, enum rte_filter_op filter_op, void * arg);
 ]]
 
+local RTE_ETHTYPE_FLAGS_MAC		= 1
+local RTE_ETHTYPE_FLAGS_DROP	= 2
+
 local C = ffi.C
 
 function dev:l2Filter(etype, queue)
@@ -77,10 +80,14 @@ function dev:l2Filter(etype, queue)
 		end
 		queue = queue.qid
 	end
+	local flags = 0
+	if queue == self.DROP then
+		flags = RTE_ETHTYPE_FLAGS_DROP
+	end
 	local filter = ffi.new("struct rte_eth_ethertype_filter", { ether_type = etype, flags = 0, queue = queue })
 	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_ETHERTYPE, C.RTE_ETH_FILTER_ADD, filter)
 	if ok ~= 0 then
-		log:warning("filter error: " .. ok)
+		log:warn("filter error: " .. ok)
 	end
 end
 
