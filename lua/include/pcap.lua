@@ -1,5 +1,6 @@
 --! @file pcap.lua
 --! @brief Utility functions for PCAP file inport and export
+--! pcap functionality was inspired by Snabb Switch's pcap functionality
 
 local ffi = require("ffi")
 local pkt = require("packet")
