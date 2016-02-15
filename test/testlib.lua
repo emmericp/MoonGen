@@ -86,9 +86,9 @@ function testlib:masterPairSingle()
 	for i = 1 , #pairs  do
 
 		devs[ i ]	= device.config{ port = cards[ pairs[ i ][ 1 ] + 1 ][ 1 ] , rxQueues = 2 , txQueues = 2 }
-		devInf[ i ]	= cards[ pairs[ i ][ 1 ] ]
+		devInf[ i ]	= cards[ pairs[ i ][ 1 ] + 1 ]
 		devs[ i + 1 ]	= device.config{ port = cards[ pairs[ i ][ 2 ] + 1 ][ 1 ] , rxQueue = 2 , txQueue = 2 }
-		devInf[ i + 1 ]	= cards[ pairs[ i ][ 2 ] ]
+		devInf[ i + 1 ]	= cards[ pairs[ i ][ 2 ] + 1 ]
 	
 	end
 	device.waitForLinks()

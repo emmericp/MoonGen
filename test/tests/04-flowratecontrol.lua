@@ -11,7 +11,6 @@ local tconfig	= require "tconfig"
 local testlib	= require "testlib"
 
 local FLOWS = 4
-local RATE = 350
 local PKT_SIZE = 124
 
 function master()
@@ -33,31 +32,38 @@ function slave( rxDev , txDev , rxInfo , txInfo )
 	local bufs = mempool:bufArray()
 
 	local queue = txDev:getTxQueue( 0 )
+	local pass = true
 
-	local maxrate = math.min ( RATE , rxInfo[ 3 ] )
-	RATE = math.floor( math.random( maxrate / 10 , maxrate ) )
-	queue:setRate( RATE )
+	local rate = rxInfo[ 3 ]
+	for x = 1 , 3 do
+		queue:setRate( rate * x / 4 )
 
-	local txCtr = stats:newDevTxCounter( queue , "plain" )
-	local rxCtr = stats:newDevRxCounter( rxDev , "plain" )
+		local txCtr = stats:newDevTxCounter( queue , "plain" )
+		local rxCtr = stats:newDevRxCounter( rxDev , "plain" )
+	
+		local runtime = timer:new( testlib.getRuntime() )
 
-	local runtime = timer:new( testlib.getRuntime() )
+		while dpdk.running() and runtime:running() do
+			bufs:alloc( PKT_SIZE )
+			queue:send( bufs )
+			txCtr:update()
+			rxCtr:update()
+		end
+	
+		txCtr:finalize()
+		rxCtr:finalize()
+	
+		local y , tmbit = txCtr:getStats()
+		local y , rmbit = rxCtr:getStats()
+	
+		log:info( "Chosen rate: " .. ( rate * x / 4 )  .. " MBit/s" )
+		log:info( "Device sent with: " .. tmbit.avg .. " MBit/s (Average)" )
+		log:info( "Device received: " .. rmbit.avg .. " MBit/s (Average)" )
 
-	while dpdk.running() and runtime:running() do
-		bufs:alloc( PKT_SIZE )
-		queue:send( bufs )
-		txCtr:update()
-		rxCtr:update()
+		pass = pass and ( tmbit.avg - rmbit.avg <= rate * x / 190 ) and ( tmbit.avg * 1.1 >= rate * x / 4 ) and ( rmbit.avg * 1.1 >= rate * x / 4 )
+		if not pass then
+			log:warn( "Rate " .. ( rate * x / 4 ) .. " MBit/s failed!" )
+		end
 	end
-
-	txCtr:finalize()
-	rxCtr:finalize()
-	
-	local y , tmbit = txCtr:getStats()
-	local y , rmbit = rxCtr:getStats()
-	
-	log:info( "Chosen rate: " .. RATE .. " MBit/s" )
-	log:info( "Device sent with: " .. tmbit.avg .. " MBit/s (Average)" )
-	log:info( "Device received: " .. rmbit.avg .. " MBit/s (Average)" )
-	return ( tmbit.avg - rmbit.avg <= RATE / 100 ) and ( tmbit.avg >= RATE ) and ( rmbit.avg >= RATE )
+	return pass
 end

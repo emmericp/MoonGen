@@ -35,41 +35,48 @@ fi
 #-Execute Tests and evaluate-#
 #----------------------------#
 
-tests=$(expr 0)
-fails=$(expr 0)
-failt=$(expr 0)
-utest=$(expr 0)
+tests=$((0))
+fails=$((0))
+failt=$((0))
+utest=$((0))
+
+rm -f /tmp/testlog.txt
 
 for script in $list
 do
 	printf "${WHI}[INFO] Running $script${NON}\n"
 	echo "[INFO] Running $script" >> $logfile
 
-	output=(eval $path $script $)
+	eval "$path $script" > /tmp/temp.txt &
+	pid=$!
 	trap "kill $pid 2> /dev/null" EXIT
 
-	while [ -e /proc/$! ]; do
-		if [ -e testlog.txt ]
+	while kill -0 "$pid" 2>/dev/null; do
+		if [ -e /tmp/testlog.txt ]
 		then
-			content=$(cat testlog.txt)
-			printf "${content}"
-			rm -f testlog.txt
-			sleep 1
+			content=$(cat /tmp/testlog.txt)
+			rm -f /tmp/testlog.txt
+
+			if [ -n "$content" ];
+			then
+				printf "${content}\n"
+			fi
+			sleep 0.01
 		fi
 	done
 
 	trap - EXIT
 
-	echo "$output" >> $logfile
-	echo "$output" > 'temp.txt'
-	result=$(sed -n '/Ran [0-9]* tests in [0-9]*.[0-9]* seconds/,$p' < temp.txt)
+	log=$(cat /tmp/temp.txt)
+	echo "$log" >> $logfile
+	result=$(sed -n '/Ran [0-9]* tests in [0-9]*.[0-9]* seconds/,$p' < /tmp/temp.txt)
 
-	echo "$result" > result.txt
+	echo "$result" > /tmp/result.txt
 
 	utest=$(($utest + 1))
-	ltests=$(sed -r 's/.*Ran ([0-9]*).*|.*/\1/g' < result.txt)
+	ltests=$(sed -r 's/.*Ran ([0-9]*).*|.*/\1/g' < /tmp/result.txt)
 	tests=$(($tests + $ltests))
-	lfails=$(sed -r 's/.*failures=([0-9]*).*|.*/\1/g' < result.txt)
+	lfails=$(sed -r 's/.*failures=([0-9]*).*|.*/\1/g' < /tmp/result.txt)
 	lfails=$(($lfails + 0))
 	fails=$(($fails + $lfails))
 
@@ -83,8 +90,8 @@ do
 
 	unset lfails
 	unset ltests
-	rm result.txt
-	rm temp.txt
+	rm /tmp/result.txt
+	rm /tmp/temp.txt
 done
 
 printf "${WHI}[INFO] Ran a total of $tests tests in $utest unit test cases.${NON}\n"
