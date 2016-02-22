@@ -660,7 +660,7 @@ function dev:setRate(rate)
 	rate = math.floor(rate / 50 + 0.5) -- 50mbit granularity
 	local i40eDev = dpdkc.get_i40e_dev(self.id)
 	local vsiSeid = dpdkc.get_i40e_vsi_seid(self.id)
-	assert(ffi.C.i40e_aq_config_vsi_bw_limit(i40eDev, vsiSeid, rate, rate, nil) == 0)
+	assert(ffi.C.i40e_aq_config_vsi_bw_limit(i40eDev, vsiSeid, rate, 0, nil) == 0)
 end
 
 function txQueue:send(bufs)
