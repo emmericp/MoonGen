@@ -190,6 +190,7 @@ function mempool:bufArray(n)
 	n = n or 63
 	return setmetatable({
 		size = n,
+		maxSize = n,
 		array = ffi.new("struct rte_mbuf*[?]", n),
 		mem = self,
 	}, bufArray)
@@ -210,12 +211,24 @@ do
 		n = n or 63
 		return setmetatable({
 			size = n,
+			maxSize = n,
 			array = ffi.new("struct rte_mbuf*[?]", n),
 			alloc = alloc
 		}, bufArray)
 	end
 
 	mod.bufArray = mod.createBufArray
+end
+
+--- Resize the bufArray
+--- @param size New size of the bufArray
+--- @note Enlarging the bufArray (size > self.maxSize) is not yet supportet
+function bufArray:resize(size)
+	if size > self.maxSize then
+		-- TODO: consider reallocing the struct here
+		log:fatal("enlarging a bufArray is currently not supported")
+	end
+	self.size = size
 end
 
 function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
@@ -300,7 +313,18 @@ function bufArray:setVlans(vlan, pcp, cfi)
 end
 
 --- Allocates buffers from the memory pool and fills the array
+--- Allocates as many buffers as this array is large
+--- @param size	Size of every buffer
 function bufArray:alloc(size)
+	dpdkc.alloc_mbufs(self.mem, self.array, self.size, size)
+end
+
+--- Allocates buffers from the memory pool and fills the array.
+--- Allocates only a maximum of num buffers by resizing the size of the bufArray.
+--- @param size	Size of every buffer
+--- @param num	Number of buffers to allocate.
+function bufArray:allocN(size, num)
+	self:resize(num)
 	dpdkc.alloc_mbufs(self.mem, self.array, self.size, size)
 end
 

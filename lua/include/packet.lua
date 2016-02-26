@@ -325,17 +325,20 @@ end
 --- @return Name of the member
 function getHeaderMember(v)
 	if type(v) == "table" then
+		-- special alias for ethernet
+		if v[1] == "eth" then 
+			return "ethernet", v[2]
+		end
 		return v[1], v[2]
 	else
-		-- only the header name
+		-- only the header name is given -> member has same name
 		-- special alias for ethernet
 		if v == "ethernet" or v == "eth" then
 			return "ethernet", "eth"
-		else
-			-- otherwise header name = member name
-			return v, v
 		end
-	end
+		-- otherwise header name = member name
+		return v, v
+		end
 end
 
 --- Get all headers of a packet as list.
@@ -444,7 +447,7 @@ function packetResolveLastHeader(self)
 		return self
 	else
 		local newName
-		
+		nextHeader = getHeaderMember(nextHeader)	
 		-- we know the next header, append it
 		name = name .. "__" .. nextHeader .. "_"
 
@@ -463,7 +466,6 @@ function packetResolveLastHeader(self)
 					break
 				end
 			end
-			
 			if found then
 				newName = found
 			else
@@ -612,7 +614,12 @@ function packetMakeStruct(...)
 		-- build name
 		name = name .. "__" .. header .. "_" .. member
 	end
-	
+
+	-- handle raw packet
+	if name == "" then
+		name = "raw"
+	end
+
 	-- add rest of the struct
 	str = [[
 	struct __attribute__((__packed__)) ]] 
@@ -647,12 +654,7 @@ end
 
 
 --- Raw packet type
-
-local payloadType = ffi.typeof("union payload_t*")
-
-function pkt:getRawPacket()
-	return payloadType(self.pkt.data)
-end
+pkt.getRawPacket = packetCreate()
 
 ---------------------------------------------------------------------------
 ---- Metatypes

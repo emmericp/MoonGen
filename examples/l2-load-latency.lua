@@ -9,10 +9,28 @@ local hist		= require "histogram"
 local PKT_SIZE	= 60
 local ETH_DST	= "11:12:13:14:15:16"
 
+local function getRstFile(...)
+       local args = { ... }
+       for i, v in ipairs(args) do
+               result, count = string.gsub(v, "%-%-result%=", "")
+               if (count == 1) then
+                       return i, result
+               end
+       end
+       return nil, nil
+end
+
 function master(...)
+	local rstindex, rstfile = getRstFile(...)
+	if rstindex then
+		histfile = rstfile
+	else
+		histfile = "histogram.csv"
+	end
+
 	local txPort, rxPort, rate = tonumberall(...)
 	if not txPort or not rxPort then
-		return print("usage: txPort rxPort [rate]")
+		return print("usage: txPort rxPort [rate] [--result=filename]")
 	end
 	rate = rate or 10000
 	-- hardware rate control fails with small packets at these rates
@@ -37,25 +55,29 @@ function master(...)
 	if rxPort ~= txPort then
 		dpdk.launchLua("loadSlave", queues2, rxDev, txDev)
 	end
-	dpdk.launchLua("timerSlave", txDev:getTxQueue(0), rxDev:getRxQueue(1))
+	dpdk.launchLua("timerSlave", txDev:getTxQueue(0), rxDev:getRxQueue(1), histfile)
 	dpdk.waitForSlaves()
 end
 
 function loadSlave(queues, txDev, rxDev)
-	local mem = memory.createMemPool(function(buf)
-		buf:getEthernetPacket():fill{
-			ethSrc = txDev,
-			ethDst = ETH_DST,
-			ethType = 0x1234
-		}
-	end)
-	local bufs = mem:bufArray()
+	local mem = {}
+	local bufs = {}
+	for i in ipairs(queues) do
+		mem[i] = memory.createMemPool(function(buf)
+			buf:getEthernetPacket():fill{
+				ethSrc = txDev,
+				ethDst = ETH_DST,
+				ethType = 0x1234
+			}
+		end)
+		bufs[i] = mem[i]:bufArray()
+	end
 	local txCtr = stats:newDevTxCounter(txDev, "plain")
 	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
 	while dpdk.running() do
 		for i, queue in ipairs(queues) do
-			bufs:alloc(PKT_SIZE)
-			queue:send(bufs)
+			bufs[i]:alloc(PKT_SIZE)
+			queue:send(bufs[i])
 		end
 		txCtr:update()
 		rxCtr:update()
@@ -64,7 +86,7 @@ function loadSlave(queues, txDev, rxDev)
 	rxCtr:finalize()
 end
 
-function timerSlave(txQueue, rxQueue)
+function timerSlave(txQueue, rxQueue, histfile)
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
 	local hist = hist:new()
 	dpdk.sleepMillis(1000) -- ensure that the load task is running
@@ -72,6 +94,6 @@ function timerSlave(txQueue, rxQueue)
 		hist:update(timestamper:measureLatency(function(buf) buf:getEthernetPacket().eth.dst:setString(ETH_DST) end))
 	end
 	hist:print()
-	hist:save("histogram.csv")
+	hist:save(histfile)
 end
 
