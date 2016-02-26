@@ -111,6 +111,9 @@ local devices = {}
 ---      dev.RSS_FUNCTION_IPV6    
 ---      dev.RSS_FUNCTION_IPV6_TCP
 ---      dev.RSS_FUNCTION_IPV6_UDP
+---	  disableOffloads optional (default = false) Disable offloading, this
+---     speeds up the driver. Note that timestamping is an offload as far
+---     as the driver is concerned.
 --- @todo FIXME: add description for speed and dropEnable parameters.
 function mod.config(...)
 	local args = {...}
@@ -196,7 +199,7 @@ function mod.config(...)
 		rss_enabled = 1
 	end
 	-- TODO: support options
-	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask)
+	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false)
 	if rc ~= 0 then
 	    log:fatal("Could not configure device %d: error %d", args.port, rc)
 	end

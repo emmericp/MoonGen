@@ -61,7 +61,8 @@ static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
 
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions) {
+// TODO: we should use a struct here
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads) {
   //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
@@ -142,7 +143,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		},
 		.tx_free_thresh = 0, // 0 = default
 		.tx_rs_thresh = 0, // 0 = default
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | (disable_offloads ? ETH_TXQ_FLAGS_NOOFFLOADS : 0),
 	};
 	for (int i = 0; i < tx_queues; i++) {
 		// TODO: get socket id for the NIC

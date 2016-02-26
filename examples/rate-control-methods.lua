@@ -18,7 +18,7 @@ function master(txPort, rate, rc, pattern, threads)
 	if pattern == "cbr" and threads ~= 1 then
 		--return log:error("cbr only supports one thread")
 	end
-	local txDev = device.config{ port = txPort, txQueues = threads }
+	local txDev = device.config{ port = txPort, txQueues = threads, disableOffloads = rc ~= "moongen" }
 	device.waitForLinks()
 	for i = 1, threads do
 		dpdk.launchLua("loadSlave", txDev:getTxQueue(i - 1), txDev, rate, rc, pattern, i)
