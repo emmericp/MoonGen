@@ -2,6 +2,7 @@
 	path = deps/luajit
 	url = https://github.com/LuaJIT/LuaJIT
 	ignore = untracked
+	branch = v2.1
 [submodule "deps/dpdk"]
 	path = deps/dpdk
 	url = https://github.com/emmericp/dpdk.git
