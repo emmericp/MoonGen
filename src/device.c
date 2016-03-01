@@ -5,7 +5,6 @@
 #include <rte_cycles.h>
 #include <rte_mbuf.h>
 #include <ixgbe_type.h>
-#include <rte_mbuf.h>
 
 // i40e_ethdev depends on i40e_type.h but doesn't include it
 // some macro names clash with ixgbe macros included in some of the DPDK header
