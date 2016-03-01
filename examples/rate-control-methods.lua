@@ -5,29 +5,34 @@ local ts		= require "timestamping"
 local stats		= require "stats"
 local hist		= require "histogram"
 local log		= require "log"
+local limiter	= require "ratelimiter"
 
 local PKT_SIZE	= 60
 local ETH_DST	= "11:12:13:14:15:16"
 
 function master(txPort, rate, rc, pattern, threads)
 	if not txPort or not rate or not rc or (pattern ~= "cbr" and pattern ~= "poisson") then
-		return print("usage: txPort rate hw|moongen cbr|poisson [threads]")
+		return print("usage: txPort rate hw|sw|moongen cbr|poisson [threads]")
 	end
 	rate = rate or 2
 	threads = threads or 1
 	if pattern == "cbr" and threads ~= 1 then
-		--return log:error("cbr only supports one thread")
+		return log:error("cbr only supports one thread")
 	end
 	local txDev = device.config{ port = txPort, txQueues = threads, disableOffloads = rc ~= "moongen" }
 	device.waitForLinks()
 	for i = 1, threads do
-		dpdk.launchLua("loadSlave", txDev:getTxQueue(i - 1), txDev, rate, rc, pattern, i)
+		local rateLimiter
+		if rc == "sw" then
+			rateLimiter = limiter:new(txDev:getTxQueue(i - 1), pattern == "cbr" and pattern, 1 / rate * 1000)
+		end
+		dpdk.launchLua("loadSlave", txDev:getTxQueue(i - 1), txDev, rate, rc, pattern, rateLimiter, i)
 	end
 	dpdk.waitForSlaves()
 end
 
-function loadSlave(queue, txDev, rate, rc, pattern, threadId)
-	local mem = memory.createMemPool(function(buf)
+function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId)
+	local mem = memory.createMemPool(8192 * 2, function(buf)
 		buf:getEthernetPacket():fill{
 			ethSrc = txDev,
 			ethDst = ETH_DST,
@@ -46,6 +51,14 @@ function loadSlave(queue, txDev, rate, rc, pattern, threadId)
 		while dpdk.running() do
 			bufs:alloc(PKT_SIZE)
 			queue:send(bufs)
+			if threadId == 1 then txCtr:update() end
+		end
+	elseif rc == "sw" then
+		local bufs = mem:bufArray(1024)
+		txCtr = stats:newDevTxCounter(txDev, "plain")
+		while dpdk.running() do
+			bufs:alloc(PKT_SIZE)
+			rateLimiter:send(bufs)
 			if threadId == 1 then txCtr:update() end
 		end
 	elseif rc == "moongen" then

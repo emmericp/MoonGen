@@ -22,10 +22,54 @@ ffi.cdef [[
 	void* peek(struct spsc_ptr_queue* queue);
 	uint8_t pop(struct spsc_ptr_queue* queue);
 	size_t count(struct spsc_ptr_queue* queue);
+	
+	// DPDK SPSC ring
+	struct rte_ring { };
+	struct rte_ring* create_ring(uint32_t count, int32_t socket);
+	int ring_enqueue(struct rte_ring* r, struct rte_mbuf** obj, int n);
+	int ring_dequeue(struct rte_ring* r, struct rte_mbuf** obj, int n);
 ]]
 
 local C = ffi.C
 
+mod.packetRing = {}
+local packetRing = mod.packetRing
+packetRing.__index = packetRing
+
+function mod:newPacketRing(size, socket)
+	size = size or 8192
+	socket = socket or -1
+	return setmetatable({
+		ring = C.create_ring(size, socket)
+	}, packetRing)
+end
+
+function mod:newPacketRingFromRing(ring)
+	return setmetatable({
+		ring = ring
+	}, packetRing)
+end
+
+-- FIXME: this is work-around for some bug with the serialization of nested objects
+function mod:sendToPacketRing(ring, bufs)
+	C.ring_enqueue(ring, bufs.array, bufs.size);
+end
+
+function packetRing:send(bufs)
+	C.ring_enqueue(self.ring, bufs.array, bufs.size);
+end
+
+function packetRing:sendN(bufs, n)
+	C.ring_enqueue(self.ring, bufs.array, n);
+end
+
+function packetRing:recv(bufs)
+	error("NYI")
+end
+
+function packetRing:__serialize()
+	return "require'pipe'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('pipe').packetRing"), true
+end
 
 mod.slowPipe = {}
 local slowPipe = mod.slowPipe

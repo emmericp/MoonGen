@@ -24,6 +24,8 @@ SET(FILES
 	src/pipe.cpp
 	src/lock.cpp
 	src/namespaces.cpp
+	src/ring.c
+	src/rate_limiter.cpp
 )
 
 SET(DPDK_LIBS
