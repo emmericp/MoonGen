@@ -7,7 +7,7 @@ local hist		= require "histogram"
 local log		= require "log"
 local limiter	= require "ratelimiter"
 
-local PKT_SIZE	= 60
+local PKT_SIZE	= 124
 local ETH_DST	= "11:12:13:14:15:16"
 
 function master(txPort, rate, rc, pattern, threads)
@@ -32,7 +32,7 @@ function master(txPort, rate, rc, pattern, threads)
 end
 
 function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId)
-	local mem = memory.createMemPool(8192 * 2, function(buf)
+	local mem = memory.createMemPool(4096, function(buf)
 		buf:getEthernetPacket():fill{
 			ethSrc = txDev,
 			ethDst = ETH_DST,
@@ -54,7 +54,8 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId)
 			if threadId == 1 then txCtr:update() end
 		end
 	elseif rc == "sw" then
-		local bufs = mem:bufArray(1024)
+		-- larger batch size is useful when sending it through a rate limiter
+		local bufs = mem:bufArray(128)
 		txCtr = stats:newDevTxCounter(txDev, "plain")
 		while dpdk.running() do
 			bufs:alloc(PKT_SIZE)

@@ -24,15 +24,7 @@ mod.rateLimiter = rateLimiter
 rateLimiter.__index = rateLimiter
 
 function rateLimiter:send(bufs)
-	--pipe:sendToPacketRing(self.ring, bufs)
-	local batch = memory.alloc("struct rate_limiter_batch*", 16 + bufs.size * 8)
---	ffi.copy(batch.bufs, bufs.array, bufs.size * 8)
-	batch.size = bufs.size
-	for i = 1, bufs.size do
-		batch.bufs[i - 1] = bufs.array[i - 1]
-	end
-	while not pipe:sendToFastPipe(self.ring, batch) do
-	end
+	pipe:sendToPacketRing(self.ring, bufs)
 end
 
 function rateLimiter:__serialize()
@@ -49,10 +41,9 @@ function mod:new(queue, mode, delay)
 	if mode and mode ~= "cbr" and mode ~= "custom" then
 		log:fatal("Unsupported mode " .. mode)
 	end
-	--local ring = pipe:newPacketRing()
-	local ring = pipe:newFastPipe(32)
+	local ring = pipe:newPacketRing()
 	local obj = setmetatable({
-		ring = ring.pipe,
+		ring = ring.ring,
 		mode = mode,
 		delay = delay,
 		queue = queue
