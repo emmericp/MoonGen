@@ -213,7 +213,7 @@ ffi.cdef[[
 	int rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
 	void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
 	void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool);
-	void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool);
+	void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool, uint32_t min_pkt_size);
 	uint64_t get_bad_pkts_sent(uint8_t port_id);
 	uint64_t get_bad_bytes_sent(uint8_t port_id);
 

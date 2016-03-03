@@ -70,7 +70,7 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 			for _, buf in ipairs(bufs) do
 				buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - PKT_SIZE - 24))
 			end
-			txCtr:updateWithSize(queue:sendWithDelay(bufs), PKT_SIZE)
+			txCtr:updateWithSize(queue:sendWithDelay(bufs, rate * numThreads), PKT_SIZE)
 		end
 	else
 		log:error("Unknown rate control method")

@@ -626,12 +626,33 @@ end
 
 do
 	local mempool
-	function txQueue:sendWithDelay(bufs, method)
+	--- Send rate-controlled packets by filling gaps with invalid packets.
+	-- @param bufs
+	-- @param targetRate optional, hint to the driver which total rate you are trying to achieve.
+	--   increases precision at low non-cbr rates
+	-- @param method optional, defaults to "crc" (which is also the only one that is implemented)
+	function txQueue:sendWithDelay(bufs, targetRate, method)
+		targetRate = targetRate or 14.88
 		self.used = true
-		mempool = mempool or memory.createMemPool(2047, nil, nil, 4095)
+		mempool = mempool or memory.createMemPool{
+			func = function(buf)
+				local pkt = buf:getTcpPacket()
+				pkt:fill()
+			end
+		}
 		method = method or "crc"
+		local avgPacketSize = 1.25 / (targetRate * 2) * 1000
+		local minPktSize
+		-- allow smaller packets at low rates
+		-- (15.6 mpps is the max the NIC can handle)
+		-- TODO: move to device-specific code for i40e support
+		if targetRate < 7.8 then
+			minPktSize = 34
+		else
+			minPktSize = 76
+		end
 		if method == "crc" then
-			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, bufs.size, mempool)
+			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, bufs.size, mempool, minPktSize)
 		elseif method == "size" then
 			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, bufs.size, mempool)
 		else

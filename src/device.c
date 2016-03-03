@@ -395,7 +395,7 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 	return;
 }
 
-static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay) {
+static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay, uint32_t min_pkt_size) {
 	// _Thread_local support seems to suck in (older?) gcc versions?
 	// this should give us the best compatibility
 	// TODO: move this to a macro with proper #ifdefs
@@ -411,11 +411,9 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 	// add delay
 	target -= current;
 	current = 0;
-	if (delay < 76) {
-		// TODO: figure out min sizes for different NICs, this is tested for X540 and 82599
-		// smaller than the smallest packet we can send
-		*rem_delay = 76; // will be set to 0 at the end of the function
-		delay = 76;
+	if (delay < min_pkt_size) {
+		*rem_delay = min_pkt_size; // will be set to 0 at the end of the function
+		delay = min_pkt_size;
 	}
 	// calculate the optimimum packet size
 	if (delay < 1538) {
@@ -440,7 +438,7 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 
 
 // NOTE: this function only works on ixgbe-based NICs as it relies on a driver modification allow disabling CRC on a per-packet basis
-void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool) {
+void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool, uint32_t min_pkt_size) {
 	const int BUF_SIZE = 128;
 	struct rte_mbuf* pkts[BUF_SIZE];
 	int send_buf_idx = 0;
@@ -454,7 +452,7 @@ void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, str
 		uint32_t delay = pkt->pkt.hash.rss;
 		// step 1: generate delay-packets
 		while (delay > 0) {
-			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay);
+			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay, min_pkt_size);
 			if (pkt) {
 				num_bad_pkts++;
 				// packet size: [MAC, CRC] to be consistent with HW counters
