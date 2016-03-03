@@ -395,11 +395,12 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 	return;
 }
 
-// FIXME: not thread safe!
 static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay) {
- 	// FIXME: these should be thread-local
-	static uint32_t target = 0;
-	static uint32_t current = 0;
+	// _Thread_local support seems to suck in (older?) gcc versions?
+	// this should give us the best compatibility
+	// TODO: move this to a macro with proper #ifdefs
+	static __thread uint32_t target = 0;
+	static __thread uint32_t current = 0;
 	uint32_t delay = *rem_delay;
 	target += delay;
 	if (target < current) {
