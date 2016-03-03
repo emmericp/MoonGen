@@ -39,9 +39,9 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 			ethType = 0x1234
 		}
 	end)
-	local bufs = mem:bufArray()
 	local txCtr
 	if rc == "hw" then
+		local bufs = mem:bufArray()
 		if pattern ~= "cbr" then
 			return log:error("HW only supports CBR")
 		end
@@ -63,6 +63,8 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 			if threadId == 1 then txCtr:update() end
 		end
 	elseif rc == "moongen" then
+		-- larger batch size is useful when sending it through a rate limiter
+		local bufs = mem:bufArray(128)
 		txCtr = stats:newManualTxCounter(txDev, "plain")
 		local dist = pattern == "poisson" and poissonDelay or function(x) return x end
 		while dpdk.running() do
@@ -70,6 +72,7 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 			for _, buf in ipairs(bufs) do
 				buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - PKT_SIZE - 24))
 			end
+			--txCtr:updateWithSize(queue:sendWithDelay(bufs), PKT_SIZE)
 			txCtr:updateWithSize(queue:sendWithDelay(bufs, rate * numThreads), PKT_SIZE)
 		end
 	else
