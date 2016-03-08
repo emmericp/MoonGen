@@ -58,8 +58,7 @@ rm -f /tmp/testlog.txt
 # Execute tests
 for script in $list
 do
-	printf "${CYA}[INFO] Running $script${NON}\n"
-	echo "[INFO] Running $script" >> $logfile
+	printf "${CYA}[INFO] Running $script${NON}\n" | tee $logfile
 	eval "$path $script" > /tmp/temp.txt &
 	pid=$!
 	trap "kill $pid 2> /dev/null" EXIT
@@ -96,11 +95,13 @@ do
 	# Deliver output
 	if [ "$lfails" -gt 0 ]
 	then
-		printf "${RED}[INFO] ${script} failed\n[INFO] Encountered ${lfails} errors in ${ltests} tests\n" 
+		printf "${RED}[INFO] ${script} failed\n[INFO] Encountered ${lfails} errors in ${ltests} tests\n" | tee $logfile
 		failt=$(expr $failt + 1)
-		failed+=("$script")
+		failed+=("$script | $lfails failed assertions.")
 	else
-		printf "${GRE}[INFO] ${script} passed\n[INFO] No error in ${ltests} tests\n"
+		printf "${GRE}[INFO] ${script} passed\n[INFO] No error in ${ltests} tests\n" | tee $logfile
+		echo "[INFO] $script passed" >> $logfile
+		echo "[INFO] No errors in $ltests tests" >> $logfile
 		passed+=("$script")
 	fi
 
@@ -112,14 +113,16 @@ do
 done
 
 # Print summary
-printf "${WHI}[INFO] Ran a total of $tests tests in $utest unit test cases.${NON}\n"
+printf "---------------\n" | tee $logfile
+printf "${WHI}[INFO] Ran a total of $tests assertions in $utest unit test cases.\n" | tee $logfile
 if [ "$fails" -gt 0 ]
 then
-	printf "${RED}[INFO] A total of $fails failures in $failt unit test cases occured.\n${ORA}[WARN] Please check the corresponding log file: $logfile${NON}\n"
+	printf "${RED}[INFO] A total of $fails assertions in $failt unit test cases failed.\n" | tee $logfile
+	printf "${ORA}[WARN] Please check the corresponding log file: $logfile\n"
 else
-	printf "${GRE}[INFO] No failures detected. Everything running smoothly!${NON}\n"
+	printf "${GRE}[INFO] No failures detected. Everything running smoothly!${NON}\n" | tee $logfile
 fi
-printf "${GRE}[INFO] The following tests passed:\n${NON}"
-printf "%s\n" "${passed[@]}"
-printf "${RED}[INFO] The following tests failed:\n${NON}"
-printf "%s\n" "${failed[@]}"
+printf "${GRE}[INFO] The following tests passed:\n${NON}" | tee $logfile
+printf "${GRE}[INFO]  %s\n" "${passed[@]}" | tee $logfile
+printf "${RED}[INFO] The following tests had at least one failed assertion:\n${NON}" | tee $logfile
+printf "${RED}[INFO]  %s\n" "${failed[@]}" | tee $logfile

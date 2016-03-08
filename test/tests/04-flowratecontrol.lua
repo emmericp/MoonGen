@@ -46,7 +46,7 @@ function slave( rxDev , txDev , rxInfo , txInfo )
 	for x = 1 , 3 do
 		local rate = rxInfo[ 3 ] * x / 4
 		queue:setRate( rate  )
-		log:info( "Expected rate: " .. rate  .. " MBit/s" )
+		log:info( "Expected rate: " .. math.floor( rate )  .. " MBit/s" )
 	
 		-- Do flow rate control
 		while dpdk.running() and runtime:running() do
@@ -64,19 +64,17 @@ function slave( rxDev , txDev , rxInfo , txInfo )
 		
 		-- Check measured rates
 		local rPass = true
-		log:info( "Device sent with: " .. math.floor( tmbit.avg ) .. " MBit/s (Average)" )
-		log:info( "Device received: " .. math.floor( rmbit.avg ) .. " MBit/s (Average)" )
 		if not ( tmbit.avg * 1.1 >= rate ) then
 			log:warn( "Device sent: " .. tmbit.avg .. " MBit/s | Missing: " .. rate - tmbit.avg .. " MBit/s" )
 			rPass = false
 		else
-			log:info( "Device sent: " .. tmbit.avg .. " MBit/s")
+			log:info( "Device sent: " .. math.floor( tmbit.avg ) .. " MBit/s")
 		end
 		if not ( rmbit.avg * 1.1 >= rate ) then
 			log:warn( "Device received: " .. rmbit.avg .. " MBit/s | Missing: " .. rate - rmbit.avg .. " MBit/s" )
 			rPass = false
 		else
-			log:info( "Device received: " .. rmbit.avg .. " MBit/s")
+			log:info( "Device received: " .. math.floor( rmbit.avg ) .. " MBit/s")
 		end
 		if not rPass then
 			log:warn( "Rate " .. ( rate ) .. " MBit/s failed!" )
