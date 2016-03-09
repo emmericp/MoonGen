@@ -46,6 +46,11 @@ function histogram:calc()
 
 	table.sort(self.sortedHisto, function(e1, e2) return e1.k < e2.k end)
 	
+	local maxCell = self.sortedHisto[#self.sortedHisto]
+	self.maximum = maxCell.k
+	local minCell = self.sortedHisto[1]
+	self.minimum = minCell.k
+
 	-- TODO: this is obviously not entirely correct for numbers not divisible by 4
 	-- however, it doesn't really matter for the number of samples we usually use
 	local quartSamples = self.numSamples / 4
@@ -73,6 +78,7 @@ function histogram:calc()
 			self.quarts[i] = 0/0
 		end
 	end
+
 	self.dirty = false
 end
 
@@ -86,6 +92,18 @@ function histogram:avg()
 	if self.dirty then self:calc() end
 
 	return self.avg
+end
+
+function histogram:min()
+	if self.dirty then self:calc() end
+	
+	return self.minimum
+end
+
+function histogram:max()
+	if self.dirty then self:calc() end
+	
+	return self.maximum
 end
 
 function histogram:standardDeviation()

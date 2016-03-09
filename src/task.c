@@ -21,6 +21,8 @@ lua/include/lib/?/init.lua;\
 ../../lua/include/?/init.lua;\
 ../../lua/include/lib/?.lua;\
 ../../lua/include/lib/?/init.lua;\
+config/?.lua;\
+../config/?.lua;\
 ]]"
 
 lua_State* launch_lua() {
