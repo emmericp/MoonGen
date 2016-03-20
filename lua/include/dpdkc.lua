@@ -214,6 +214,8 @@ ffi.cdef[[
 	void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
 	void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool);
 	void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool, uint32_t min_pkt_size);
+	void send_packet_with_timestamp(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt, uint16_t offs);
+	uint16_t receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, void* rx_pkts, uint16_t nb_pkts, uint64_t timestamps[]);
 	uint64_t get_bad_pkts_sent(uint8_t port_id);
 	uint64_t get_bad_bytes_sent(uint8_t port_id);
 

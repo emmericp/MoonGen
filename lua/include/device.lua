@@ -606,13 +606,13 @@ end
 
 function txQueue:send(bufs)
 	self.used = true
-	dpdkc.send_all_packets(self.id, self.qid, bufs.array, bufs.size);
+	dpdkc.send_all_packets(self.id, self.qid, bufs.array, bufs.size)
 	return bufs.size
 end
 
 function txQueue:sendN(bufs, n)
 	self.used = true
-	dpdkc.send_all_packets(self.id, self.qid, bufs.array, n);
+	dpdkc.send_all_packets(self.id, self.qid, bufs.array, n)
 	return n
 end
 
@@ -622,6 +622,15 @@ end
 
 function txQueue:stop()
 	assert(dpdkc.rte_eth_dev_tx_queue_stop(self.id, self.qid) == 0)
+end
+
+--- Send a single timestamped packet
+-- @param bufs bufArray, only the first packet in it will be sent
+-- @param offs offset in the packet at which the timestamp will be written. must be a multiple of 8
+function txQueue:sendWithTimestamp(bufs, offs)
+	self.used = true
+	offs = offs and offs / 8 or 6 -- first 8-byte aligned value in UDP payload
+	dpdkc.send_packet_with_timestamp(self.id, self.qid, bufs.array[0], offs)
 end
 
 do
@@ -685,6 +694,13 @@ function rxQueue:recv(bufArray)
 		end
 	end
 	return 0
+end
+
+--- Receive packets from a rx queue and save timestamps in a separate array.
+--- Returns as soon as at least one packet is available.
+-- TODO: use the udata64 field in dpdk2.x
+function rxQueue:recvWithTimestamps(bufArray, timestamps)
+	return dpdkc.receive_with_timestamps_software(self.id, self.qid, bufArray.array, bufArray.size, timestamps)
 end
 
 function rxQueue:getMacAddr()

@@ -6,6 +6,8 @@
 #include <rte_mbuf.h>
 #include <ixgbe_type.h>
 
+#include "rdtsc.h"
+
 // i40e_ethdev depends on i40e_type.h but doesn't include it
 // some macro names clash with ixgbe macros included in some of the DPDK header
 // TODO: find a better solution like one file per driver
@@ -293,6 +295,16 @@ void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts
 		}
 	}
 	return;
+}
+
+// software timestamping
+void send_packet_with_timestamp(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt, uint16_t offs) {
+	while (1) {
+		((uint64_t*)pkt->pkt.data)[offs] = read_rdtsc();
+		if (rte_eth_tx_burst(port_id, queue_id, &pkt, 1) == 1) {
+			return;
+		}
+	}
 }
 
 // software rate control

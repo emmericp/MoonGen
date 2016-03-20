@@ -76,6 +76,16 @@ function pkt:getVlan()
 	return bit.band(tci, 0xFFF), bit.rshift(tci, 13), bit.band(bit.rshift(tci, 12), 1)
 end
 
+local uint64Ptr = ffi.typeof("uint64_t*")
+
+function pkt:getSoftwareTxTimestamp(offs)
+	local offs = offs and offs / 8 or 6 -- default from sendWithTimestamp
+	return uint64Ptr(self.pkt.data)[offs]
+end
+
+function pkt:getSoftwareRxTimestamp(offs)
+	log:fatal("requires DPDK 2.x, use old API for now")
+end
 
 --- Set the time to wait before the packet is sent for software rate-controlled send methods.
 --- @param delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)
