@@ -2,6 +2,11 @@
 #include <rte_common.h>
 #include <rte_ring.h>
 #include <rte_mbuf.h>
+// required for gcc 4.7 for some reason
+#include <stdint.h>
+// ???
+#define UINT8_MAX 255
+#define UINT16_MAX 65535U
 #include <rte_ethdev.h> 
 #include <rte_mempool.h>
 #include <rte_ether.h>
