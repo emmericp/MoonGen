@@ -640,7 +640,8 @@ do
 	-- @param targetRate optional, hint to the driver which total rate you are trying to achieve.
 	--   increases precision at low non-cbr rates
 	-- @param method optional, defaults to "crc" (which is also the only one that is implemented)
-	function txQueue:sendWithDelay(bufs, targetRate, method)
+	-- @param n optional, number of packets to send (defaults to full bufs)
+	function txQueue:sendWithDelay(bufs, targetRate, method, n)
 		targetRate = targetRate or 14.88
 		self.used = true
 		mempool = mempool or memory.createMemPool{
@@ -650,6 +651,7 @@ do
 			end
 		}
 		method = method or "crc"
+		n = n or bufs.size
 		local avgPacketSize = 1.25 / (targetRate * 2) * 1000
 		local minPktSize
 		-- allow smaller packets at low rates
@@ -661,9 +663,9 @@ do
 			minPktSize = 76
 		end
 		if method == "crc" then
-			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, bufs.size, mempool, minPktSize)
+			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, n, mempool, minPktSize)
 		elseif method == "size" then
-			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, bufs.size, mempool)
+			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, n, mempool)
 		else
 			log:fatal("Unknown delay method %s", method)
 		end
