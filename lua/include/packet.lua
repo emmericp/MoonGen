@@ -669,6 +669,7 @@ pkt.getRawPacket = packetCreate()
 --! Setter for raw packets
 --! @param data: raw packet data
 function pkt:setRawPacket(data)
+	self:setSize(#data)
 	ffi.copy(self.pkt.data, data)
 end
 

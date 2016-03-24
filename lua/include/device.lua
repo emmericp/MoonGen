@@ -688,9 +688,10 @@ end
 
 --- Receive packets from a rx queue.
 --- Returns as soon as at least one packet is available.
-function rxQueue:recv(bufArray)
+function rxQueue:recv(bufArray, numpkts)
+	numpkts = numpkts or bufArray.size
 	while dpdk.running() do
-		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, bufArray.size)
+		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts))
 		if rx > 0 then
 			return rx
 		end
@@ -701,8 +702,9 @@ end
 --- Receive packets from a rx queue and save timestamps in a separate array.
 --- Returns as soon as at least one packet is available.
 -- TODO: use the udata64 field in dpdk2.x
-function rxQueue:recvWithTimestamps(bufArray, timestamps)
-	return dpdkc.receive_with_timestamps_software(self.id, self.qid, bufArray.array, bufArray.size, timestamps)
+function rxQueue:recvWithTimestamps(bufArray, timestamps, numpkts)
+	numpkts = numpkts or bufArray.size
+	return dpdkc.receive_with_timestamps_software(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts), timestamps)
 end
 
 function rxQueue:getMacAddr()

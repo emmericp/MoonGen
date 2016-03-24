@@ -4,6 +4,7 @@
 
 local ffi = require("ffi")
 local pkt = require("packet")
+local mg  = require("dpdk")
 
 require("utils")
 require("headers")
@@ -36,7 +37,7 @@ function writePcapFileHeader(file)
 	local pcapFile = ffi.new(pcap_hdr_s)
 	--magic_number: used to detect the file format itself and the byte ordering. The writing application writes 0xa1b2c3d4 with it's native byte ordering format into this field. The reading application will read either 0xa1b2c3d4 (identical) or 0xd4c3b2a1 (swapped). If the reading application reads the swapped 0xd4c3b2a1 value, it knows that all the following fields will have to be swapped too. For nanosecond-resolution files, the writing application writes 0xa1b23c4d, with the two nibbles of the two lower-order bytes swapped, and the reading application will read either 0xa1b23c4d (identical) or 0x4d3cb2a1 (swapped). 
 	pcapFile.magic_number = 0xa1b2c3d4
-	pcapFile.version_major = 2.4
+	pcapFile.version_major = 2
 	pcapFile.version_minor = 4 
 	pcapFile.thiszone = 0 --TODO function for time zones in utils.lua
 	--snaplen: the "snapshot length" for the capture (typically 65535 or even more, but might be limited by the user), see: incl_len vs. orig_len below 
@@ -48,30 +49,50 @@ end
 
 --! Writes a pcap record header.
 --! @param file: the file to write to
---! @param length: frame length -- TODO: aus buffer holen und hinter dem aufruf verstecken
-function writeRecordHeader(file, length)
+--! @param buf: the packet buffer
+--! @param ts: the timestamp of the packet
+function writeRecordHeader(file, buf, ts)
 	--pcap record header
 	local pcapRecord = ffi.new(pcaprec_hdr_s)
-	pcapRecord.ts_sec, pcapRecord.ts_usec = 0, 0 --TODO sinnvolle funktion in util.lua 
-	--TODO: meaningful pkt:getTimestamp() with usage of pkt:hasTimestamp()
-	pcapRecord.incl_len = length
-	pcapRecord.orig_len = length
+	if ts then
+		pcapRecord.ts_sec, pcapRecord.ts_usec = math.floor(ts), ts % 1 * 1000
+		print("TS", ts, pcapRecord.ts_sec, pcapRecord.ts_usec)
+	else
+		pcapRecord.ts_sec, pcapRecord.ts_usec = 0,0
+	end
+	pcapRecord.incl_len = buf:getSize()
+	pcapRecord.orig_len = buf:getSize()
 	file:write(ffi.string(pcapRecord, ffi.sizeof(pcapRecord)))
 end
 
 --! Generate an iterator for pcap records.
 --! @param file: the pcap file
+--! @param rate: the tx link rate in Mbit per second if packets should have proper delays
 --! @return: iterator for the pcap records
-function readPcapRecords(file)  
+function readPcapRecords(file, rate)  
 	local pcapFile = readAs(file, pcap_hdr_s)
-	if pcapFile.magic_number ~= 0xA1B2C3D4 then
+	local pcapNSResolution = false
+	if pcapFile.magic_number == 0xA1B2C34D then
+		pcapNSResolution = true
+	elseif pcapFile.magic_number ~= 0xA1B2C3D4 then
 		error("Bad PCAP magic number in " .. filename)
 	end
+	local lastRecordHdr = nil
 	local function pcapRecordsIterator (t, i)
 		local pcapRecordHdr = readAs(file, pcaprec_hdr_s)
 		if pcapRecordHdr == nil then return nil end
 		local packetData = file:read(math.min(pcapRecordHdr.orig_len, pcapRecordHdr.incl_len))
-		return packetData, pcapRecordHdr
+		local delay = 0
+		if lastRecordHdr and rate then
+			local diff = timevalSpan(
+					{ tv_sec = pcapRecordHdr.ts_sec, tv_usec = pcapRecordHdr.ts_usec },
+					{ tv_sec = lastRecordHdr.ts_sec, tv_usec = lastRecordHdr.ts_usec }
+				)
+			if not pcapNSResolution then diff = diff * 10^3 end --convert us to ns
+			delay = timeToByteDelay(diff, rate, lastRecordHdr.orig_len)
+		end
+		lastRecordHdr = pcapRecordHdr
+		return packetData, pcapRecordHdr, delay
 	end
 	return pcapRecordsIterator, true, true
 end
@@ -98,8 +119,9 @@ pcapWriter = {}
 --! @param filename: filename to open and write to
 function pcapWriter:newPcapWriter(filename)
 	local file = io.open(filename, "w")
+	local tscFreq = mg.getCyclesFrequency()
 	writePcapFileHeader(file)
-	return setmetatable({file = file}, {__index = pcapWriter})
+	return setmetatable({file = file, starttime = nil, tscFreq = tscFreq}, {__index = pcapWriter})
 end
 
 function pcapWriter:close()
@@ -108,8 +130,16 @@ end
 
 --! Writes a packet to the pcap.
 --! @param buf: packet buffer
-function pcapWriter:writePkt(buf)
-	writeRecordHeader(self.file, buf:getSize())
+--! @param ts: timestamp
+function pcapWriter:writePkt(buf, ts)
+	if not self.starttime then
+		self.starttime = ts
+		print("starttime", self.starttime)
+	end
+	print("ts", ts)
+	local tscDelta = tonumber(ts - self.starttime)
+	local realTS = tscDelta / self.tscFreq
+	writeRecordHeader(self.file, buf, realTS)
 	self.file:write(ffi.string(buf:getRawPacket(), buf:getSize()))
 	self.file:flush()
 end
@@ -118,11 +148,13 @@ pcapReader = {}
 
 --! Generates a new pcapReader.
 --! @param filename: filename to open and read from
-function pcapReader:newPcapReader(filename)
+--! @param rate: The rate of the link, if the packets are supposed to be replayed
+function pcapReader:newPcapReader(filename, rate)
+	rate = rate or 10000
 	local file = io.open(filename, "r")
-	 --TODO validy checks with more meaningfull errors in an extra function
+	 --TODO validity checks with more meaningful errors in an extra function
 	if file == nil then error("Cannot open pcap " .. filename) end
-	local records = readPcapRecords(file)
+	local records = readPcapRecords(file, rate)
 	return setmetatable({iterator = records, done = false, file = file}, {__index = pcapReader})
 end
 
@@ -132,12 +164,14 @@ end
 
 --! Reads a record from the pcap
 --! @param buf: a packet buffer
-function pcapReader:readPkt(buf)
-	--packetData, pcapRecordHdr
-	local data, pcapRecord = self.iterator()
-	local len = math.min(pcapRecord.orig_len, pcapRecord.incl_len)
+function pcapReader:readPkt(buf, withDelay)
+	withDelay = withDelay or false
+	local data, pcapRecord, delay = self.iterator()
 	if data then
 		buf:setRawPacket(data)
+		if withDelay then
+			buf:setDelay(delay)
+		end
 	else
 		self.done = true
 	end

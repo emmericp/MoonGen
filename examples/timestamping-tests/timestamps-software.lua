@@ -32,7 +32,7 @@ function loadSlave(queue)
 		}
 	end)
 	local bufs = mem:bufArray()
-	local ctr = stats:newDevTxCounter(queue.dev, "plain")
+	local ctr = stats:newDevTxCounter("Load Traffic", queue.dev, "plain")
 	while mg.running() do
 		bufs:alloc(PKT_SIZE)
 		queue:send(bufs)
@@ -64,26 +64,34 @@ end
 
 function rxTimestamper(queue)
 	local tscFreq = mg.getCyclesFrequency()
-	local bufs = memory.bufArray(64)
 	local timestamps = ffi.new("uint64_t[64]")
 	-- use whatever filter appropriate for your packet type
 	queue.dev:filterTimestamps(queue)
 	local results = {}
+	local rxts = {}
 	local i = 0
 	while i < NUM_PKTS and mg.running() do
+		local bufs = memory.bufArray(64)
 		local numPkts = queue:recvWithTimestamps(bufs, timestamps)
 		for i = 1, numPkts do
 			local rxTs = timestamps[i - 1]
 			local txTs = bufs[i]:getSoftwareTxTimestamp()
 			results[#results + 1] = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
+			rxts[#rxts + 1] = tonumber(rxTs)
 		end
 		bufs:free(numPkts)
-		i = i + 1
+
+		if math.floor(i / (NUM_PKTS / 10)) < math.floor((i+numPkts) / (NUM_PKTS / 10)) then
+			print("[Measure Traffic] Recvd "..(i+numPkts).." packets")
+		end
+
+		i = i + numPkts
 	end
 	local f = io.open("pings.txt", "w+")
 	for i, v in ipairs(results) do
-		f:write(v .. "\n")
+		f:write(v .. "; ".. rxts[i] .. "\n")
 	end
 	f:close()
+	print("Timestamping done, written to pings.txt")
 end
 

@@ -178,7 +178,7 @@ do
 
 --- Return the current monotonic clock time
 --- @return The time in seconds (as a double)
-	function monotonic_time()
+	function getMonotonicTime()
 		-- CLOCK_MONOTONIC = 1
 		ffi.C.clock_gettime(1, ts)
 		return ts.tv_sec + ts.tv_nsec / 10^9
@@ -189,7 +189,7 @@ end
 --- @param x the "later" timeval (Minuend)
 --- @param y the "earlier" time (Subtrahend)
 --- @return The result in microseconds
-function timeval_uspan(x, y)
+function timevalSpan(x, y)
 	return (x.tv_sec - y.tv_sec) * 1000000 + (x.tv_usec - y.tv_usec)
 end
 
