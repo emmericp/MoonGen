@@ -640,7 +640,8 @@ do
 	-- @param targetRate optional, hint to the driver which total rate you are trying to achieve.
 	--   increases precision at low non-cbr rates
 	-- @param method optional, defaults to "crc" (which is also the only one that is implemented)
-	function txQueue:sendWithDelay(bufs, targetRate, method)
+	-- @param n optional, number of packets to send (defaults to full bufs)
+	function txQueue:sendWithDelay(bufs, targetRate, method, n)
 		targetRate = targetRate or 14.88
 		self.used = true
 		mempool = mempool or memory.createMemPool{
@@ -650,6 +651,7 @@ do
 			end
 		}
 		method = method or "crc"
+		n = n or bufs.size
 		local avgPacketSize = 1.25 / (targetRate * 2) * 1000
 		local minPktSize
 		-- allow smaller packets at low rates
@@ -661,9 +663,9 @@ do
 			minPktSize = 76
 		end
 		if method == "crc" then
-			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, bufs.size, mempool, minPktSize)
+			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, n, mempool, minPktSize)
 		elseif method == "size" then
-			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, bufs.size, mempool)
+			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, n, mempool)
 		else
 			log:fatal("Unknown delay method %s", method)
 		end
@@ -686,9 +688,10 @@ end
 
 --- Receive packets from a rx queue.
 --- Returns as soon as at least one packet is available.
-function rxQueue:recv(bufArray)
+function rxQueue:recv(bufArray, numpkts)
+	numpkts = numpkts or bufArray.size
 	while dpdk.running() do
-		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, bufArray.size)
+		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts))
 		if rx > 0 then
 			return rx
 		end
@@ -699,8 +702,9 @@ end
 --- Receive packets from a rx queue and save timestamps in a separate array.
 --- Returns as soon as at least one packet is available.
 -- TODO: use the udata64 field in dpdk2.x
-function rxQueue:recvWithTimestamps(bufArray, timestamps)
-	return dpdkc.receive_with_timestamps_software(self.id, self.qid, bufArray.array, bufArray.size, timestamps)
+function rxQueue:recvWithTimestamps(bufArray, timestamps, numpkts)
+	numpkts = numpkts or bufArray.size
+	return dpdkc.receive_with_timestamps_software(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts), timestamps)
 end
 
 function rxQueue:getMacAddr()
