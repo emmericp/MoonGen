@@ -65,13 +65,13 @@ end
 function rxTimestamper(queue)
 	local tscFreq = mg.getCyclesFrequency()
 	local timestamps = ffi.new("uint64_t[64]")
+	local bufs = memory.bufArray(64)
 	-- use whatever filter appropriate for your packet type
 	queue.dev:filterTimestamps(queue)
 	local results = {}
 	local rxts = {}
 	local i = 0
 	while i < NUM_PKTS and mg.running() do
-		local bufs = memory.bufArray(64)
 		local numPkts = queue:recvWithTimestamps(bufs, timestamps)
 		for i = 1, numPkts do
 			local rxTs = timestamps[i - 1]
@@ -93,5 +93,6 @@ function rxTimestamper(queue)
 	end
 	f:close()
 	print("Timestamping done, written to pings.txt")
+	mg:stop()
 end
 
