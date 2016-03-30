@@ -1,5 +1,5 @@
---! @file pcap-test.lua
---! @brief This is a simple test for MoonGen's pcap inport and export functionality
+--! @file tx-from-pcap.lua
+--! @brief Replay from Pcap with correct delays
 
 local mg		= require "dpdk"
 local memory	= require "memory"

@@ -1,5 +1,5 @@
---! @file pcap-test.lua
---! @brief This is a simple test for MoonGen's pcap inport and export functionality
+--! @file rx-to-pcap.lua
+--! @brief Capture to Pcap with software timestamping
 
 local mg		= require "dpdk"
 local memory		= require "memory"
@@ -36,20 +36,16 @@ end
 
 
 
---! @brief: receive and store packets
+--! @brief: receive and store packets with software timestamps
 function pcapSinkSlave(queue, sink, maxp)
-	--queue:enableTimestamps()
 	print('pcapSinkSlave is running')
-	local numbufs = 100
-	if maxp ~= 0 then numbufs = math.min(100, maxp) end
+	local numbufs = (maxp == 0) and 100 or math.min(100, maxp)
 	local bufs = memory.bufArray(numbufs)
-	local timestamps = ffi.new("uint64_t["..numbufs.."]")
+	local timestamps = ffi.new("uint64_t[?]", numbufs)
 	local pcapSinkWriter = pcapWriter:newPcapWriter(sink)
-	print('pcapSinkWriter created')
 	local pkts = 0
 	while mg.running() and (maxp == 0 or pkts < maxp) do
-		local rxnum = #bufs
-		if maxp ~= 0 then rxnum = math.min(#bufs, maxp - pkts) end
+		local rxnum = (maxp == 0) and #bufs or math.min(#bufs, maxp - pkts)
 		local rx = queue:recvWithTimestamps(bufs, timestamps, rxnum)
 		for i = 1, rx do
 			local buf = bufs[i]
@@ -57,6 +53,7 @@ function pcapSinkSlave(queue, sink, maxp)
 			local pkt = buf:getUdpPacket()
 			print(pkt.udp:getString()," => ", sink)
 		end
+		bufs:free(rx)
 		pkts = pkts + rx
 	end
 	print('pcapSinkSlave terminated after receiving '..pkts.." packets")
