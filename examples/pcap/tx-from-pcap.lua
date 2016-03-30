@@ -7,6 +7,7 @@ local device	= require "device"
 local log		= require "log"
 local ts 		= require "timestamping"
 local pcap		= require "pcap"
+local stats		= require "stats"
 
 function master(txPort, maxp, source)
 	if not txPort then
@@ -28,31 +29,35 @@ sudo ./build/MoonGen examples/pcap-test.lua 1 100 foo.pcap	# transmits 100 packe
 	local txDev = device.config{ port = txPort, txQueues = 1 }
 	mg.sleepMillis(100)
 		
-	mg.launchLua("pcapLoadSlave", txDev:getTxQueue(0), source, maxp)
+	mg.launchLua("pcapLoadSlave", txDev:getTxQueue(0), txDev, source, maxp)
 	mg.waitForSlaves()
 end
 
 
 --! @brief: sends a packet out
-function pcapLoadSlave(queue, source, maxp)
+function pcapLoadSlave(queue, dev, source, maxp)
 	queue:setRate(10000)
 	print('pcapLoadSlave is running')
 	local mem = memory.createMemPool()
 	local bufs = mem:bufArray(128)
 	bufs:alloc(124)
+	
 	local pcapReader = pcapReader:newPcapReader(source, 10000)
+	local ctr = stats:newDevTxCounter(dev,"plain")
+	
 	local pkt = 1
 	while mg.running() and not pcapReader.done and (not maxp or pkt <= maxp) do
 		local realp = 1
 		while not pcapReader.done and (not maxp or pkt <= maxp) and (realp <= 128) do
-			pcapReader:readPkt(bufs[realp], true)
-			realp = realp + 1
-			pkt = pkt + 1
+			local rd = pcapReader:readPkt(bufs, true)
+			realp = realp + rd
+			pkt = pkt + rd
+			ctr:update()
 		end
 		queue:sendWithDelay(bufs, nil, nil, realp-1)
-		print("pcapLoadSlave: Sent",realp-1,"packets")
 	end
 
-	mg.sleepMillis(500)
+	ctr:finalize()
+
 	print("pcapLoadSlave: end")
 end

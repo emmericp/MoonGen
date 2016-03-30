@@ -126,33 +126,45 @@ function pcapWriter:close()
 	io.close(self.file)
 end
 
---! Writes a packet to the pcap.
---! @param buf: packet buffer
---! @param ts optional: a timestamp in seconds (as double)
-function pcapWriter:writePkt(buf, ts)
-	if ts and not not self.starttime then
-		self.starttime = ts
-		print("starttime", self.starttime)
+--! Writes packets to the pcap.
+--! @param buf: packet buffers
+--! @param n optional: number of packets for partially filles buffer
+--! @param ts optional: timestamps in seconds (as double)
+--! @param noflush optional: do not flush file
+function pcapWriter:write(bufs, n, ts, noflush)
+	n = n or #bufs
+	if ts and not self.starttime then
+		self.starttime = ts[1]
 	end
-	writeRecordHeader(self.file, buf, ts and ts - self.starttime or 0)
-	self.file:write(ffi.string(buf:getRawPacket(), buf:getSize()))
-	self.file:flush()
+	for i=1,n do
+		writeRecordHeader(self.file, bufs[i], ts and ts[i] - self.starttime or 0)
+		self.file:write(ffi.string(bufs[i]:getRawPacket(), bufs[i]:getSize()))
+	end
+	if not noflush then
+		self.file:flush()
+	end
 end
 
---! Writes a packet to the pcap.
---! @param buf: packet buffer
---! @param ts: timestamp from CPU TSC register
-function pcapWriter:writePktTSC(buf, ts)
+--! Writes packets with TSC timestamps to the pcap.
+--! @param bufs: packet buffers
+--! @param ts: timestamps from CPU TSC register
+--! @param n optional: number of packets for partially filled buffer
+--! @param noflush optional: do not flush file
+function pcapWriter:writeTSC(bufs, ts, n, noflush)
+	n = n or #bufs
 	if not self.starttime then
 		self.tscFreq = mg.getCyclesFrequency()
-		self.starttime = ts
-		print("starttime", self.starttime)
+		self.starttime = ts[1]
 	end
-	local tscDelta = tonumber(ts - self.starttime)
-	local realTS = tscDelta / self.tscFreq
-	writeRecordHeader(self.file, buf, realTS)
-	self.file:write(ffi.string(buf:getRawPacket(), buf:getSize()))
-	self.file:flush()
+	for i=1,n do
+		local tscDelta = tonumber(ts[i] - self.starttime)
+		local realTS = tscDelta / self.tscFreq
+		writeRecordHeader(self.file, bufs[i], realTS)
+		self.file:write(ffi.string(bufs[i]:getRawPacket(), bufs[i]:getSize()))
+	end
+	if not noflush then
+		self.file:flush()
+	end
 end
 
 pcapReader = {}
@@ -174,16 +186,22 @@ function pcapReader:close()
 end
 
 --! Reads a record from the pcap
---! @param buf: a packet buffer
-function pcapReader:readPkt(buf, withDelay)
+--! @param bufs: a packet bufArray
+--! @param withDelay optional: calculate delay from pcap timestamps
+--! @return the number of packets copied to bufs
+function pcapReader:readPkt(bufs, withDelay)
 	withDelay = withDelay or false
-	local data, pcapRecord, delay = self.iterator()
-	if data then
-		buf:setRawPacket(data)
-		if withDelay then
-			buf:setDelay(delay)
+	for i=1,#bufs do
+		local data, pcapRecord, delay = self.iterator()
+		if data then
+			bufs[i]:setRawPacket(data)
+			if withDelay then
+				bufs[i]:setDelay(delay)
+			end
+		else
+			self.done = true
+			return i-1
 		end
-	else
-		self.done = true
 	end
+	return #bufs
 end

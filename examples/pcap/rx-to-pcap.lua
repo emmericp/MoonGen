@@ -8,6 +8,7 @@ local log		= require "log"
 local ts 		= require "timestamping"
 local pcap		= require "pcap"
 local ffi		= require "ffi"
+local stats		= require "stats"
 
 function master(rxPort, maxp, sink)
 	if not rxPort then
@@ -28,7 +29,7 @@ sudo ./build/MoonGen examples/pcap-test.lua 1 100 foo.pcap	# reads 100 packets f
 	local rxDev = device.config{ port = rxPort, rxQueues = 1 }
 	mg.sleepMillis(100)
 		
-	mg.launchLua("pcapSinkSlave", rxDev:getRxQueue(0), sink, maxp)
+	mg.launchLua("pcapSinkSlave", rxDev:getRxQueue(0), rxDev, sink, maxp)
 	mg.sleepMillis(50)
 
 	mg.waitForSlaves()
@@ -37,26 +38,26 @@ end
 
 
 --! @brief: receive and store packets with software timestamps
-function pcapSinkSlave(queue, sink, maxp)
+function pcapSinkSlave(queue, rxDev, sink, maxp)
 	print('pcapSinkSlave is running')
 	local numbufs = (maxp == 0) and 100 or math.min(100, maxp)
 	local bufs = memory.bufArray(numbufs)
 	local timestamps = ffi.new("uint64_t[?]", numbufs)
+
 	local pcapSinkWriter = pcapWriter:newPcapWriter(sink)
+	local ctr = stats:newDevRxCounter(rxDev, "plain")
 	local pkts = 0
 	while mg.running() and (maxp == 0 or pkts < maxp) do
 		local rxnum = (maxp == 0) and #bufs or math.min(#bufs, maxp - pkts)
 		local rx = queue:recvWithTimestamps(bufs, timestamps, rxnum)
-		for i = 1, rx do
-			local buf = bufs[i]
-			pcapSinkWriter:writePkt(buf, timestamps[i-1])
-			local pkt = buf:getUdpPacket()
-			print(pkt.udp:getString()," => ", sink)
-		end
-		bufs:free(rx)
+		pcapSinkWriter:writeTSC(bufs, timestamps, rx, true)
 		pkts = pkts + rx
+		ctr:update()
+		bufs:free(rx)
 	end
 	print('pcapSinkSlave terminated after receiving '..pkts.." packets")
 	bufs:freeAll()
+
+	ctr:finalize()
 	pcapSinkWriter:close()
 end

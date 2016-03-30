@@ -9,11 +9,11 @@ local ts 		= require "timestamping"
 local pcap		= require "pcap"
 local stats		= require "stats"
 
---local PKT_SIZE = {60, 80, 120, 500, 1024} -- size for randomly generated packets
---local BUF_LEN = { 12, 24, 48, 100, 200 } -- number of packets in bufarray
+local PKT_SIZE = {60, 80, 120, 500, 1024} -- size for randomly generated packets
+local BUF_LEN = { 12, 24, 48, 100, 200 } -- number of packets in bufarray
 
-local PKT_SIZE = { 60 }
-local BUF_LEN = { 12 }
+--local PKT_SIZE = { 60 }
+--local BUF_LEN = { 12 }
 
 function master(source, sink, maxp)
 	if source == '--help' then
@@ -30,7 +30,7 @@ The default value for sink is test-sink.pcap.
 	end
 	source = source or "-"
 	sink = sink or "test-sink.pcap"
-	maxp = maxp and tonumber(maxp) or 10^5
+	maxp = maxp and tonumber(maxp) or 10^7
 
 	-- test demonstration without usage of network interfaces
 	simplePcapStoreAndLoadTestSlave(source, sink, maxp)
@@ -58,23 +58,19 @@ function simplePcapStoreAndLoadTestSlave(source, sink, maxp)
 			bufs:alloc(pktSize)
 			if not mg.running then break end
 
-			local counter = stats:newPktRxCounter("Writer")
-			local numPkt = 0
+			local counter = stats:newManualRxCounter("Writing "..pktSize.." bytes packets in "..bufLen.." buffer batches")
 			local pcapWriter = pcapWriter:newPcapWriter(sink)
 
-			while (counter.total or 0) < maxp do
-				for bufidx = 1,bufLen do
-					pcapWriter:writePkt(bufs[bufidx])
-					counter:countPacket(bufs[bufidx])
-					numPkt = numPkt + 1
-				end
-				counter:update()
+			while counter.total + counter.current < maxp do
+				pcapWriter:write(bufs)
+				local bytes = 0
+				for i=1,#bufs do bytes = bytes + bufs[i].pkt.pkt_len end
+				counter:update(#bufs, bytes)
 			end
 
 			pcapWriter:close()
 			counter:finalize()
 			bufs:free(bufLen)
-			for kk,vv in pairs(counter) do print(kk,vv) end
 		end
 	end
 end
