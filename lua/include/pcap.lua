@@ -50,13 +50,12 @@ end
 --! Writes a pcap record header.
 --! @param file: the file to write to
 --! @param buf: the packet buffer
---! @param ts: the timestamp of the packet
+--! @param ts: the timestamp of the packet in seconds
 function writeRecordHeader(file, buf, ts)
 	--pcap record header
 	local pcapRecord = ffi.new(pcaprec_hdr_s)
 	if ts then
-		pcapRecord.ts_sec, pcapRecord.ts_usec = math.floor(ts), ts % 1 * 1000
-		print("TS", ts, pcapRecord.ts_sec, pcapRecord.ts_usec)
+		pcapRecord.ts_sec, pcapRecord.ts_usec = math.floor(ts), (ts - math.floor(ts)) * 10^6
 	else
 		pcapRecord.ts_sec, pcapRecord.ts_usec = 0,0
 	end
@@ -119,9 +118,8 @@ pcapWriter = {}
 --! @param filename: filename to open and write to
 function pcapWriter:newPcapWriter(filename)
 	local file = io.open(filename, "w")
-	local tscFreq = mg.getCyclesFrequency()
 	writePcapFileHeader(file)
-	return setmetatable({file = file, starttime = nil, tscFreq = tscFreq}, {__index = pcapWriter})
+	return setmetatable({file = file}, {__index = pcapWriter})
 end
 
 function pcapWriter:close()
@@ -130,13 +128,26 @@ end
 
 --! Writes a packet to the pcap.
 --! @param buf: packet buffer
---! @param ts: timestamp
+--! @param ts optional: a timestamp in seconds (as double)
 function pcapWriter:writePkt(buf, ts)
-	if not self.starttime then
+	if ts and not not self.starttime then
 		self.starttime = ts
 		print("starttime", self.starttime)
 	end
-	print("ts", ts)
+	writeRecordHeader(self.file, buf, ts and ts - self.starttime or 0)
+	self.file:write(ffi.string(buf:getRawPacket(), buf:getSize()))
+	self.file:flush()
+end
+
+--! Writes a packet to the pcap.
+--! @param buf: packet buffer
+--! @param ts: timestamp from CPU TSC register
+function pcapWriter:writePktTSC(buf, ts)
+	if not self.starttime then
+		self.tscFreq = mg.getCyclesFrequency()
+		self.starttime = ts
+		print("starttime", self.starttime)
+	end
 	local tscDelta = tonumber(ts - self.starttime)
 	local realTS = tscDelta / self.tscFreq
 	writeRecordHeader(self.file, buf, realTS)
