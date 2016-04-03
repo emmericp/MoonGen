@@ -10,7 +10,7 @@ local ffi		= require "ffi"
 
 local PKT_SIZE = 60
 
-local NUM_PKTS = 10^5
+local NUM_PKTS = 10^6
 
 function master(txPort, rxPort, load)
 	if not txPort or not rxPort or type(load) ~= "number" then
@@ -59,9 +59,11 @@ function txTimestamper(queue)
 		rateLimit:reset()
 		i = i + 1
 	end
+	mg.sleepMillis(500)
+	mg.stop()
 end
 
-
+-- FIXME: the API should be nicer
 function rxTimestamper(queue)
 	local tscFreq = mg.getCyclesFrequency()
 	local timestamps = ffi.new("uint64_t[64]")
@@ -70,8 +72,7 @@ function rxTimestamper(queue)
 	queue.dev:filterTimestamps(queue)
 	local results = {}
 	local rxts = {}
-	local i = 0
-	while i < NUM_PKTS and mg.running() do
+	while mg.running() do
 		local numPkts = queue:recvWithTimestamps(bufs, timestamps)
 		for i = 1, numPkts do
 			local rxTs = timestamps[i - 1]
@@ -80,19 +81,11 @@ function rxTimestamper(queue)
 			rxts[#rxts + 1] = tonumber(rxTs)
 		end
 		bufs:free(numPkts)
-
-		if math.floor(i / (NUM_PKTS / 10)) < math.floor((i+numPkts) / (NUM_PKTS / 10)) then
-			print("[Measure Traffic] Recvd "..(i+numPkts).." packets")
-		end
-
-		i = i + numPkts
 	end
 	local f = io.open("pings.txt", "w+")
 	for i, v in ipairs(results) do
-		f:write(v .. "; ".. rxts[i] .. "\n")
+		f:write(v .. "\n")
 	end
 	f:close()
-	print("Timestamping done, written to pings.txt")
-	mg:stop()
 end
 
