@@ -586,7 +586,7 @@ function dnsHeader:getString()
 		.. "ANCount: " .. self:getANCountString()
 		.. "NSCount: " .. self:getNSCountString()
 		.. "ARCount: " .. self:getARCountString()
-		.. "MessageContent: " .. self:getMessageContentString
+		.. "MessageContent: " .. self:getMessageContentString()
 end
 
 --- Resolve which header comes after this one (in a packet)
