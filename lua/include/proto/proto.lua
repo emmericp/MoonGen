@@ -15,5 +15,6 @@ proto.ptp = require "proto.ptp"
 proto.vxlan = require "proto.vxlan"
 proto.esp = require "proto.esp"
 proto.ah = require "proto.ah"
+proto.dns = require "proto.dns"
 
 return proto

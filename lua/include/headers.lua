@@ -158,6 +158,17 @@ ffi.cdef[[
 		union ipsec_iv	iv;
 		union ipsec_icv	icv;
 	};
+
+	// https://www.ietf.org/rfc/rfc1035.txt
+	struct __attribute__((__packed__)) dns_header {
+		uint16_t	id;
+		uint16_t	hdrflags;
+		uint16_t	qdcount;
+		uint16_t	ancount;
+		uint16_t	nscount;
+		uint16_t	arcount;
+		uint8_t		body[];
+	};
 ]]
 
 return ffi.C
