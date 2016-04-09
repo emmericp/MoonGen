@@ -107,15 +107,26 @@ function poissonDelay(average)
 	return floor(-log(1 - random()) / (1 / average) + 0.5)
 end
 
---- TODO
---- @todo docu
---- @param rate
---- @param size
---- @return
+--- Convert a desired packet rate to the byte delay
+--- @param rate The desired rate in Mbit per second
+--- @param size The size of the (previous) packet
+--- @return The byte delay
 function rateToByteDelay(rate, size)
 	size = size or 60
 	return 10^10 / 8 / (rate * 10^6) - size - 24
 end
+
+--- Convert a desired inter-packet delay time to the byte delay
+--- @param time The desired time in ns
+--- @param rate The link rate in Mbit per second
+--- @param size The size of the (previous) packet
+--- @return
+function timeToByteDelay(time, rate, size)
+	rate = rate or 10000
+	size = size or 60
+	return time * 1.25 * (rate / 10^4) - size - 24
+end
+
 
 --- Byte swap for 16 bit integers
 --- @param n 16 bit integer
@@ -134,20 +145,52 @@ ntoh = hton
 local ffi = require "ffi"
 
 ffi.cdef [[
+	typedef int clockid_t;
 	struct timeval {
 		long tv_sec;
 	        long tv_usec;
 	};
+	struct timespec {
+		long tv_sec;
+		long tv_nsec;
+	};
+
 	int gettimeofday(struct timeval* tv, void* tz);
+	int clock_gettime(clockid_t clk_id, struct timespec *tp);
 ]]
 
 do
 	local tv = ffi.new("struct timeval")
-	
-	function time()
+
+	function gettimeofday()
 		ffi.C.gettimeofday(tv, nil)
-		return tonumber(tv.tv_sec) + tonumber(tv.tv_usec) / 10^6
+		return tv.tv_sec, tv.tv_usec
 	end
+	
+--- Return the current wall clock time
+--- @return The time in seconds (as a double)
+	function time()
+		sec, usec = gettimeofday()
+		return sec + usec / 10^6
+	end
+
+	local ts = ffi.new("struct timespec")
+
+--- Return the current monotonic clock time
+--- @return The time in seconds (as a double)
+	function getMonotonicTime()
+		-- CLOCK_MONOTONIC = 1
+		ffi.C.clock_gettime(1, ts)
+		return ts.tv_sec + ts.tv_nsec / 10^9
+	end
+end
+
+--- Subtract timeval values
+--- @param x the "later" timeval (Minuend)
+--- @param y the "earlier" time (Subtrahend)
+--- @return The result in microseconds
+function timevalSpan(x, y)
+	return (x.tv_sec - y.tv_sec) * 1000000 + (x.tv_usec - y.tv_usec)
 end
 
 

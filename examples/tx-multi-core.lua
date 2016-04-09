@@ -14,7 +14,7 @@ function master(...)
 	end
 	local rxMempool = memory.createMemPool()
 	local txDev
-	txDev = device.config(txPort, rxMempool, 1, cores)
+	txDev = device.config({port=txPort, mempool=rxMempool, rxQueues=1, txQueues=cores})
 	txDev:wait()
 	for i = 0, cores - 1 do
 		txDev:getTxQueue(i):setRate(rate / cores)

@@ -8,9 +8,12 @@
 #include <rte_mbuf.h>
 #include <rte_eth_ctrl.h>
 
+#include "rdtsc.h"
+
 // required for i40e_type.h
 #define X722_SUPPORT
 #define X722_A0_SUPPORT
+
 
 // i40e_ethdev depends on i40e_type.h but doesn't include it
 // some macro names clash with ixgbe macros included in some of the DPDK header
@@ -70,7 +73,8 @@ int get_max_ports() {
 	return RTE_MAX_ETHPORTS;
 }
 
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions) {
+// TODO: we should use a struct here
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads) {
   //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
@@ -167,7 +171,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		},
 		.tx_free_thresh = 0, // 0 = default
 		.tx_rs_thresh = 0, // 0 = default
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | (disable_offloads ? ETH_TXQ_FLAGS_NOOFFLOADS : 0),
 	};
 	for (int i = 0; i < tx_queues; i++) {
 		// TODO: get socket id for the NIC
@@ -326,6 +330,16 @@ void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts
 	return;
 }
 
+// software timestamping
+void send_packet_with_timestamp(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt, uint16_t offs) {
+	while (1) {
+		((uint64_t*)pkt->pkt.data)[offs] = read_rdtsc();
+		if (rte_eth_tx_burst(port_id, queue_id, &pkt, 1) == 1) {
+			return;
+		}
+	}
+}
+
 // software rate control
 
 static uint64_t bad_pkts_sent[RTE_MAX_ETHPORTS];
@@ -424,11 +438,12 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 	return;
 }
 
-// FIXME: not thread safe!
-static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay) {
- 	// FIXME: these should be thread-local
-	static uint32_t target = 0;
-	static uint32_t current = 0;
+static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay, uint32_t min_pkt_size) {
+	// _Thread_local support seems to suck in (older?) gcc versions?
+	// this should give us the best compatibility
+	// TODO: move this to a macro with proper #ifdefs
+	static __thread uint32_t target = 0;
+	static __thread uint32_t current = 0;
 	uint32_t delay = *rem_delay;
 	target += delay;
 	if (target < current) {
@@ -439,11 +454,9 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 	// add delay
 	target -= current;
 	current = 0;
-	if (delay < 76) {
-		// TODO: figure out min sizes for different NICs, this is tested for X540 and 82599
-		// smaller than the smallest packet we can send
-		*rem_delay = 76; // will be set to 0 at the end of the function
-		delay = 76;
+	if (delay < min_pkt_size) {
+		*rem_delay = min_pkt_size; // will be set to 0 at the end of the function
+		delay = min_pkt_size;
 	}
 	// calculate the optimimum packet size
 	if (delay < 1538) {
@@ -468,7 +481,7 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 
 
 // NOTE: this function only works on ixgbe-based NICs as it relies on a driver modification allow disabling CRC on a per-packet basis
-void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool) {
+void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool, uint32_t min_pkt_size) {
 	const int BUF_SIZE = 128;
 	struct rte_mbuf* pkts[BUF_SIZE];
 	int send_buf_idx = 0;
@@ -480,7 +493,7 @@ void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, str
 		uint32_t delay = pkt->hash.usr;
 		// step 1: generate delay-packets
 		while (delay > 0) {
-			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay);
+			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay, min_pkt_size);
 			if (pkt) {
 				num_bad_pkts++;
 				// packet size: [MAC, CRC] to be consistent with HW counters

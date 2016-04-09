@@ -112,6 +112,9 @@ local devices = {}
 ---      dev.RSS_FUNCTION_IPV6    
 ---      dev.RSS_FUNCTION_IPV6_TCP
 ---      dev.RSS_FUNCTION_IPV6_UDP
+---	  disableOffloads optional (default = false) Disable offloading, this
+---     speeds up the driver. Note that timestamping is an offload as far
+---     as the driver is concerned.
 --- @todo FIXME: add description for speed and dropEnable parameters.
 function mod.config(...)
 	local args = {...}
@@ -197,7 +200,7 @@ function mod.config(...)
 		rss_enabled = 1
 	end
 	-- TODO: support options
-	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask)
+	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false)
 	if rc ~= 0 then
 	    log:fatal("Could not configure device %d: error %d", args.port, rc)
 	end
@@ -665,13 +668,13 @@ end
 
 function txQueue:send(bufs)
 	self.used = true
-	dpdkc.send_all_packets(self.id, self.qid, bufs.array, bufs.size);
+	dpdkc.send_all_packets(self.id, self.qid, bufs.array, bufs.size)
 	return bufs.size
 end
 
 function txQueue:sendN(bufs, n)
 	self.used = true
-	dpdkc.send_all_packets(self.id, self.qid, bufs.array, n);
+	dpdkc.send_all_packets(self.id, self.qid, bufs.array, n)
 	return n
 end
 
@@ -683,16 +686,48 @@ function txQueue:stop()
 	assert(dpdkc.rte_eth_dev_tx_queue_stop(self.id, self.qid) == 0)
 end
 
+--- Send a single timestamped packet
+-- @param bufs bufArray, only the first packet in it will be sent
+-- @param offs offset in the packet at which the timestamp will be written. must be a multiple of 8
+function txQueue:sendWithTimestamp(bufs, offs)
+	self.used = true
+	offs = offs and offs / 8 or 6 -- first 8-byte aligned value in UDP payload
+	dpdkc.send_packet_with_timestamp(self.id, self.qid, bufs.array[0], offs)
+end
+
 do
 	local mempool
-	function txQueue:sendWithDelay(bufs, method)
+	--- Send rate-controlled packets by filling gaps with invalid packets.
+	-- @param bufs
+	-- @param targetRate optional, hint to the driver which total rate you are trying to achieve.
+	--   increases precision at low non-cbr rates
+	-- @param method optional, defaults to "crc" (which is also the only one that is implemented)
+	-- @param n optional, number of packets to send (defaults to full bufs)
+	function txQueue:sendWithDelay(bufs, targetRate, method, n)
+		targetRate = targetRate or 14.88
 		self.used = true
-		mempool = mempool or memory.createMemPool(2047, nil, nil, 4095)
+		mempool = mempool or memory.createMemPool{
+			func = function(buf)
+				local pkt = buf:getTcpPacket()
+				pkt:fill()
+			end
+		}
 		method = method or "crc"
+		n = n or bufs.size
+		local avgPacketSize = 1.25 / (targetRate * 2) * 1000
+		local minPktSize
+		-- allow smaller packets at low rates
+		-- (15.6 mpps is the max the NIC can handle)
+		-- TODO: move to device-specific code for i40e support
+		if targetRate < 7.8 then
+			minPktSize = 34
+		else
+			minPktSize = 76
+		end
 		if method == "crc" then
-			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, bufs.size, mempool)
+			dpdkc.send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, n, mempool, minPktSize)
 		elseif method == "size" then
-			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, bufs.size, mempool)
+			dpdkc.send_all_packets_with_delay_invalid_size(self.id, self.qid, bufs.array, n, mempool)
 		else
 			log:fatal("Unknown delay method %s", method)
 		end
@@ -715,14 +750,23 @@ end
 
 --- Receive packets from a rx queue.
 --- Returns as soon as at least one packet is available.
-function rxQueue:recv(bufArray)
+function rxQueue:recv(bufArray, numpkts)
+	numpkts = numpkts or bufArray.size
 	while dpdk.running() do
-		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, bufArray.size)
+		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts))
 		if rx > 0 then
 			return rx
 		end
 	end
 	return 0
+end
+
+--- Receive packets from a rx queue and save timestamps in a separate array.
+--- Returns as soon as at least one packet is available.
+-- TODO: use the udata64 field in dpdk2.x
+function rxQueue:recvWithTimestamps(bufArray, timestamps, numpkts)
+	numpkts = numpkts or bufArray.size
+	return dpdkc.receive_with_timestamps_software(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts), timestamps)
 end
 
 function rxQueue:getMacAddr()
