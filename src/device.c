@@ -333,7 +333,7 @@ void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts
 // software timestamping
 void send_packet_with_timestamp(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt, uint16_t offs) {
 	while (1) {
-		((uint64_t*)pkt->pkt.data)[offs] = read_rdtsc();
+		rte_pktmbuf_mtod_offset(pkt, uint64_t*, 0)[offs] = read_rdtsc();
 		if (rte_eth_tx_burst(port_id, queue_id, &pkt, 1) == 1) {
 			return;
 		}

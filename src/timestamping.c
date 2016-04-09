@@ -21,7 +21,7 @@ uint16_t receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, st
 		uint16_t prev_pkt_size = 0;
 		for (int i = 0; i < rx; i++) {
 			timestamps[i] = tsc + prev_pkt_size * cycles_per_byte;
-			prev_pkt_size = rx_pkts[i]->pkt.pkt_len + 24;
+			prev_pkt_size = rx_pkts[i]->pkt_len + 24;
 		}
 		if (rx > 0) {
 			return rx;

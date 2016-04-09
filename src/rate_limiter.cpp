@@ -56,7 +56,7 @@ namespace rate_limiter {
 			if (rc == 0) {
 				uint32_t sent = 0;
 				while (sent < batch_size) {
-					uint64_t pkt_time = (bufs[sent]->pkt.pkt_len + 24) * 8 / (link_speed / 1000);
+					uint64_t pkt_time = (bufs[sent]->pkt_len + 24) * 8 / (link_speed / 1000);
 					uint64_t avg = (uint64_t) (tsc_hz / (1000000000 / target) - pkt_time);
 					std::exponential_distribution<double> distribution(1.0 / avg);
 					while ((cur = rte_get_tsc_cycles()) < next_send);
