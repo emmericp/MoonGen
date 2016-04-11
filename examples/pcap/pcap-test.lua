@@ -43,36 +43,40 @@ function simplePcapStoreAndLoadTestSlave(source, sink)
 	end)
 	local bufs = mem:bufArray(12)
 	bufs:alloc(124)
+	local rx = 0
 
 	-- read packets from a pcap if the user provided one
 	if source ~= '-' then
 		local pcapReader = pcapReader:newPcapReader(source)
-		for i = 1,12 do
-			if pcapReader.done then break end
-			pcapReader:readPkt(bufs[i])
-			print('Read UDP packet with src port '..bufs[i]:getUdpPacket().udp:getSrcPortString())
+		rx = pcapReader:readPkt(bufs)
+		for i = 1,rx do
+			print(i..' Read UDP packet with src port '..bufs[i]:getUdpPacket().udp:getSrcPortString())
 		end
 		pcapReader:close()
 	-- log randomly generated packets instead
 	else
 		print("Simple test: Generating random packets, writing to "..sink.." and reading back from "..sink)
-		for i = 1,12 do
-			print('Generated UDP packet with src port '..bufs[i]:getUdpPacket().udp:getSrcPortString())
+		for i = 1,#bufs do
+			print(i..' Generated UDP packet with src port '..bufs[i]:getUdpPacket().udp:getSrcPortString())
 		end
 	end
 
 	-- write the packets
+	print("Writing packets to "..sink)
 	local pcapWriter = pcapWriter:newPcapWriter(sink)
-	for i = 1,12 do
-		pcapWriter:writePkt(bufs[i])
-	end
+	pcapWriter:write(bufs)
 	pcapWriter:close()
 
 	-- read back
 	local pcapReader = pcapReader:newPcapReader(sink) -- yes, open sink, not source
+
+	local pktidx = 1
 	while not pcapReader.done do
-		pcapReader:readPkt(bufs[1])
-		print('Read back UDP packet with src port '..bufs[1]:getUdpPacket().udp:getSrcPortString())
+		rx = pcapReader:readPkt(bufs)
+		for i = 1,rx do
+			print(pktidx..' Read back UDP packet with src port '..bufs[i]:getUdpPacket().udp:getSrcPortString())
+			pktidx = pktidx +1
+		end
 	end
 
 end
