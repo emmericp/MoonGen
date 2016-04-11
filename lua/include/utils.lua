@@ -171,7 +171,7 @@ do
 --- @return The time in seconds (as a double)
 	function time()
 		sec, usec = gettimeofday()
-		return sec + usec / 10^6
+		return tonumber(sec + usec / 10^6)
 	end
 
 	local ts = ffi.new("struct timespec")
