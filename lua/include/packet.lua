@@ -133,7 +133,7 @@ function pkt:dump(bytes, stream)
 		stream = bytes
 		bytes = nil
 	end
-	self:get():dump(bytes or self.pkt.pkt_len, stream or io.stdout)
+	self:get():dump(bytes or self.pkt_len, stream or io.stdout)
 end
 
 -------------------------------------------------------------------------------------------------------
@@ -683,7 +683,7 @@ pkt.getRawPacket = packetCreate()
 --! @param data: raw packet data
 function pkt:setRawPacket(data)
 	self:setSize(#data)
-	ffi.copy(self.pkt.data, data)
+	ffi.copy(self:getData(), data)
 end
 
 ---------------------------------------------------------------------------
