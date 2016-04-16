@@ -336,7 +336,7 @@ function dev:filterTimestamps(queue, offset, ntype, ver)
 			-- however, this is no longer possible with the dpdk 2.x filter api :(
 			-- it can no longer match only the protocol type while ignoring port numbers...
 			-- (and reconfiguring the filter for ports all the time is annoying)
-			flow_type = dpdkc.RTE_ETH_FLOW_IPV4,
+			flow_type = dpdkc.RTE_ETH_FLOW_L2_PAYLOAD,--dpdkc.RTE_ETH_FLOW_IPV4,
 			flow = {
 				udp4_flow = {
 					ip = {
@@ -360,7 +360,7 @@ function dev:filterTimestamps(queue, offset, ntype, ver)
 	})
 	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_FDIR, C.RTE_ETH_FILTER_ADD, filter)
 	if ok ~= 0 then
-		log:warn("filter error: " .. ok)
+		log:warn("fdir filter error: " .. ok)
 	end
 end
 

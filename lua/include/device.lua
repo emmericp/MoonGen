@@ -199,8 +199,11 @@ function mod.config(...)
 		end
 		rss_enabled = 1
 	end
+	-- FIXME: this is stupid and should be fixed in DPDK
+	local isi40e = dpdkc.get_pci_id(args.port) == mod.PCI_ID_XL710
+			or dpdkc.get_pci_id(args.port) == mod.PCI_ID_XL710
 	-- TODO: support options
-	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false)
+	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false, isi40e)
 	if rc ~= 0 then
 	    log:fatal("Could not configure device %d: error %d", args.port, rc)
 	end

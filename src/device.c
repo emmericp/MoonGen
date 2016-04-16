@@ -74,7 +74,7 @@ int get_max_ports() {
 }
 
 // TODO: we should use a struct here
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads) {
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads, bool is_i40e_device) {
   //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
@@ -119,18 +119,18 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.mask = {
 			.vlan_tci_mask = 0x0,
 			.ipv4_mask = {
-				.src_ip = 0,//0xFFFFFFFF,
-				.dst_ip = 0,//xFFFFFFFF,
+				.src_ip = 0,
+				.dst_ip = 0,
 			},
 			.ipv6_mask = {
-				.src_ip = {0,0,0,0},//xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
-				.dst_ip = {0,0,0,0},//xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+				.src_ip = {0,0,0,0},
+				.dst_ip = {0,0,0,0},
 			},
-			.src_port_mask = 0,//xFFFF,
-			.dst_port_mask = 0,//xFFFF,
-			.mac_addr_byte_mask = 0,//xFF,
+			.src_port_mask = 0,
+			.dst_port_mask = 0,
+			.mac_addr_byte_mask = 0,
 			.tunnel_type_mask = 0,
-			.tunnel_id_mask = 0,//xFFFFFFFF,
+			.tunnel_id_mask = 0,
 		},
 		.flex_conf = {
 			.nb_payloads = 1,
@@ -138,13 +138,17 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 			.flex_set = {
 				[0] = {
 					.type = RTE_ETH_RAW_PAYLOAD,
-					.src_offset = { [0] = 42, [1] = 43 }, // TODO: support other values
+					// i40e requires to use all 16 values here, otherwise it just fails
+					.src_offset = { 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 },
 				}
 			},
 			.flex_mask = {
 				[0] = {
+					// ixgbe *only* accepts RTE_ETH_FLOW_UNKNOWN, i40e accepts any value other than that
+					// other drivers don't really seem to care...
+					// WTF?
 					// any other value is apparently an error for this undocumented field
-					.flow_type = RTE_ETH_FLOW_UNKNOWN,
+					.flow_type = is_i40e_device ? RTE_ETH_FLOW_L2_PAYLOAD : RTE_ETH_FLOW_UNKNOWN,
 					.mask = { [0] = 0xFF, [1] = 0xFF }
 				}
 			},
