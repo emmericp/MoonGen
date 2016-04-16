@@ -25,6 +25,30 @@ deviceDependent[device.PCI_ID_X520] = require "filter_ixgbe"
 deviceDependent[device.PCI_ID_82599] = require "filter_ixgbe"
 
 ffi.cdef[[
+
+// used by the (undocumented) flow_type fields in filters
+enum rte_flow_type {
+	RTE_ETH_FLOW_UNKNOWN = 0,
+	RTE_ETH_FLOW_RAW,
+	RTE_ETH_FLOW_IPV4,
+	RTE_ETH_FLOW_FRAG_IPV4,
+	RTE_ETH_FLOW_NONFRAG_IPV4_TCP,
+	RTE_ETH_FLOW_NONFRAG_IPV4_UDP,
+	RTE_ETH_FLOW_NONFRAG_IPV4_SCTP,
+	RTE_ETH_FLOW_NONFRAG_IPV4_OTHER,
+	RTE_ETH_FLOW_IPV6,
+	RTE_ETH_FLOW_FRAG_IPV6,
+	RTE_ETH_FLOW_NONFRAG_IPV6_TCP,
+	RTE_ETH_FLOW_NONFRAG_IPV6_UDP,
+	RTE_ETH_FLOW_NONFRAG_IPV6_SCTP,
+	RTE_ETH_FLOW_NONFRAG_IPV6_OTHER,
+	RTE_ETH_FLOW_L2_PAYLOAD,
+	RTE_ETH_FLOW_IPV6_EX,
+	RTE_ETH_FLOW_IPV6_TCP_EX,
+	RTE_ETH_FLOW_IPV6_UDP_EX,
+	RTE_ETH_FLOW_MAX
+};
+
 enum rte_filter_type {
 	RTE_ETH_FILTER_NONE = 0,
 	RTE_ETH_FILTER_MACVLAN,
@@ -64,6 +88,172 @@ struct rte_eth_ethertype_filter {
 	uint16_t flags;
 	uint16_t queue;
 };
+
+struct rte_eth_l2_flow {
+	uint16_t ether_type;          /**< Ether type to match */
+};
+
+struct rte_eth_ipv4_flow {
+	uint32_t src_ip;      /**< IPv4 source address to match. */
+	uint32_t dst_ip;      /**< IPv4 destination address to match. */
+};
+
+struct rte_eth_udpv4_flow {
+	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
+	uint16_t src_port;           /**< UDP source port to match. */
+	uint16_t dst_port;           /**< UDP destination port to match. */
+};
+
+struct rte_eth_tcpv4_flow {
+	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
+	uint16_t src_port;           /**< TCP source port to match. */
+	uint16_t dst_port;           /**< TCP destination port to match. */
+};
+
+struct ether_addr {
+	uint8_t addr_bytes[6];
+};
+
+/**
+* A structure used to define the input for IPV4 SCTP flow
+*/
+struct rte_eth_sctpv4_flow {
+	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
+	uint16_t src_port;           /**< SCTP source port to match. */
+	uint16_t dst_port;           /**< SCTP destination port to match. */
+	uint32_t verify_tag;         /**< Verify tag to match */
+};
+
+/**
+* A structure used to define the input for IPV6 flow
+*/
+struct rte_eth_ipv6_flow {
+	uint32_t src_ip[4];      /**< IPv6 source address to match. */
+	uint32_t dst_ip[4];      /**< IPv6 destination address to match. */
+};
+
+/**
+* A structure used to define the input for IPV6 UDP flow
+*/
+struct rte_eth_udpv6_flow {
+	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
+	uint16_t src_port;           /**< UDP source port to match. */
+	uint16_t dst_port;           /**< UDP destination port to match. */
+};
+
+/**
+* A structure used to define the input for IPV6 TCP flow
+*/
+struct rte_eth_tcpv6_flow {
+	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
+	uint16_t src_port;           /**< TCP source port to match. */
+	uint16_t dst_port;           /**< TCP destination port to match. */
+};
+
+/**
+* A structure used to define the input for IPV6 SCTP flow
+*/
+struct rte_eth_sctpv6_flow {
+	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
+	uint16_t src_port;           /**< SCTP source port to match. */
+	uint16_t dst_port;           /**< SCTP destination port to match. */
+	uint32_t verify_tag;         /**< Verify tag to match */
+};
+
+/**
+* A structure used to define the input for MAC VLAN flow
+*/
+struct rte_eth_mac_vlan_flow {
+	struct ether_addr mac_addr;  /**< Mac address to match. */
+};
+
+/**
+* Tunnel type for flow director.
+*/
+enum rte_eth_fdir_tunnel_type {
+	RTE_FDIR_TUNNEL_TYPE_UNKNOWN = 0,
+	RTE_FDIR_TUNNEL_TYPE_NVGRE,
+	RTE_FDIR_TUNNEL_TYPE_VXLAN,
+};
+
+/**
+* A structure used to define the input for tunnel flow, now it's VxLAN or
+* NVGRE
+*/
+struct rte_eth_tunnel_flow {
+	enum rte_eth_fdir_tunnel_type tunnel_type; /**< Tunnel type to match. */
+	uint32_t tunnel_id;                        /**< Tunnel ID to match. TNI, VNI... */
+	struct ether_addr mac_addr;                /**< Mac address to match. */
+};
+
+union rte_eth_fdir_flow {
+	struct rte_eth_l2_flow     l2_flow;
+	struct rte_eth_udpv4_flow  udp4_flow;
+	struct rte_eth_tcpv4_flow  tcp4_flow;
+	struct rte_eth_sctpv4_flow sctp4_flow;
+	struct rte_eth_ipv4_flow   ip4_flow;
+	struct rte_eth_udpv6_flow  udp6_flow;
+	struct rte_eth_tcpv6_flow  tcp6_flow;
+	struct rte_eth_sctpv6_flow sctp6_flow;
+	struct rte_eth_ipv6_flow   ipv6_flow;
+	struct rte_eth_mac_vlan_flow mac_vlan_flow;
+	struct rte_eth_tunnel_flow   tunnel_flow;
+};
+
+struct rte_eth_fdir_flow_ext {
+	uint16_t vlan_tci;
+	uint8_t flexbytes[16];
+	/**< It is filled by the flexible payload to match. */
+	uint8_t is_vf;   /**< 1 for VF, 0 for port dev */
+	uint16_t dst_id; /**< VF ID, available when is_vf is 1*/
+};
+
+struct rte_eth_fdir_input {
+	uint16_t flow_type;
+	union rte_eth_fdir_flow flow;
+	/**< Flow fields to match, dependent on flow_type */
+	struct rte_eth_fdir_flow_ext flow_ext;
+	/**< Additional fields to match */
+};
+
+/**
+* Behavior will be taken if FDIR match
+*/
+enum rte_eth_fdir_behavior {
+	RTE_ETH_FDIR_ACCEPT = 0,
+	RTE_ETH_FDIR_REJECT,
+	RTE_ETH_FDIR_PASSTHRU,
+};
+
+/**
+* Flow director report status
+* It defines what will be reported if FDIR entry is matched.
+*/
+enum rte_eth_fdir_status {
+	RTE_ETH_FDIR_NO_REPORT_STATUS = 0, /**< Report nothing. */
+	RTE_ETH_FDIR_REPORT_ID,            /**< Only report FD ID. */
+	RTE_ETH_FDIR_REPORT_ID_FLEX_4,     /**< Report FD ID and 4 flex bytes. */
+	RTE_ETH_FDIR_REPORT_FLEX_8,        /**< Report 8 flex bytes. */
+};
+
+
+struct rte_eth_fdir_action {
+	uint16_t rx_queue;        /**< Queue assigned to if FDIR match. */
+	enum rte_eth_fdir_behavior behavior;     /**< Behavior will be taken */
+	enum rte_eth_fdir_status report_status;  /**< Status report option */
+	uint8_t flex_off;
+	/**< If report_status is RTE_ETH_FDIR_REPORT_ID_FLEX_4 or
+	RTE_ETH_FDIR_REPORT_FLEX_8, flex_off specifies where the reported
+	flex bytes start from in flexible payload. */
+};
+
+struct rte_eth_fdir_filter {
+	uint32_t soft_id;
+	/**< ID, an unique value is required when deal with FDIR entry */
+	struct rte_eth_fdir_input input;    /**< Input set */
+	struct rte_eth_fdir_action action;  /**< Action taken when match */
+};
+
 
 int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type, enum rte_filter_op filter_op, void * arg);
 ]]
@@ -139,14 +329,39 @@ function dev:filterTimestamps(queue, offset, ntype, ver)
 	end
 	mtype = mtype or 0
 	ver = ver or 2
-	local value = value or bit.lshift(ver, 8) + mtype
-	local filter = ffi.new("struct rte_fdir_filter")
-	filter.flex_bytes = value
-	filter.l4type = dpdkc.RTE_FDIR_L4TYPE_UDP
-	local mask = ffi.new("struct rte_fdir_masks")
-	mask.flexbytes = 1
-	dpdkc.rte_eth_dev_fdir_set_masks(self.id, mask)
-	dpdkc.rte_eth_dev_fdir_add_perfect_filter(self.id, filter, 1, queue, 0)
+	local filter = ffi.new("struct rte_eth_fdir_filter", {
+		soft_id = 1,
+		input = {
+			-- explicitly only matching UDP flows here would be better
+			-- however, this is no longer possible with the dpdk 2.x filter api :(
+			-- it can no longer match only the protocol type while ignoring port numbers...
+			-- (and reconfiguring the filter for ports all the time is annoying)
+			flow_type = dpdkc.RTE_ETH_FLOW_IPV4,
+			flow = {
+				udp4_flow = {
+					ip = {
+						src_ip = 0,
+						dst_ip = 0,
+					},
+					src_port = 0,
+					dst_port = 0,
+				}
+			},
+			flow_ext = {
+				vlan_tci = 0,
+				flexbytes = { mtype, ver },
+				is_vf = 0,
+				dst_id = 0,
+			},
+		},
+		action = {
+			rx_queue = queue
+		},
+	})
+	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_FDIR, C.RTE_ETH_FILTER_ADD, filter)
+	if ok ~= 0 then
+		log:warn("filter error: " .. ok)
+	end
 end
 
 

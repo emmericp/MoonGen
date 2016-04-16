@@ -116,6 +116,22 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.mode = RTE_FDIR_MODE_PERFECT,
 		.pballoc = RTE_FDIR_PBALLOC_64K,
 		.status = RTE_FDIR_REPORT_STATUS_ALWAYS,
+		.mask = {
+			.vlan_tci_mask = 0x0,
+			.ipv4_mask = {
+				.src_ip = 0,//0xFFFFFFFF,
+				.dst_ip = 0,//xFFFFFFFF,
+			},
+			.ipv6_mask = {
+				.src_ip = {0,0,0,0},//xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+				.dst_ip = {0,0,0,0},//xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+			},
+			.src_port_mask = 0,//xFFFF,
+			.dst_port_mask = 0,//xFFFF,
+			.mac_addr_byte_mask = 0,//xFF,
+			.tunnel_type_mask = 0,
+			.tunnel_id_mask = 0,//xFFFFFFFF,
+		},
 		.flex_conf = {
 			.nb_payloads = 1,
 			.nb_flexmasks = 1,
@@ -136,11 +152,11 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.drop_queue = 63, // TODO: support for other NICs
 	};
 
-  struct rte_eth_rss_conf rss_conf = {
-    .rss_key = NULL,
-    .rss_key_len = 0,
-    .rss_hf = rss_hash_functions,
-  };
+	struct rte_eth_rss_conf rss_conf = {
+		.rss_key = NULL,
+		.rss_key_len = 0,
+		.rss_hf = rss_hash_functions,
+	};
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.mq_mode = rss_enable ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
@@ -155,9 +171,11 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,
 		},
-	//	.fdir_conf = fdir_conf,
+		.fdir_conf = fdir_conf,
 		.link_speed = link_speed,
-    	.rx_adv_conf.rss_conf = rss_conf,
+    	.rx_adv_conf = {
+			.rss_conf = rss_conf,
+		}
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
 	if (rc) return rc;
