@@ -4,3 +4,4 @@
 *.swn
 doc/html/
 *.log
+histogram.csv
