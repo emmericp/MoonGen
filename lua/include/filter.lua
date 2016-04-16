@@ -276,8 +276,8 @@ function dev:l2Filter(etype, queue)
 	end
 	local filter = ffi.new("struct rte_eth_ethertype_filter", { ether_type = etype, flags = 0, queue = queue })
 	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_ETHERTYPE, C.RTE_ETH_FILTER_ADD, filter)
-	if ok ~= 0 then
-		log:warn("filter error: " .. ok)
+	if ok ~= 0 and ok ~= -38 then -- -38 means duplicate filter for some reason
+		log:warn("l2 filter error: " .. ok)
 	end
 end
 
