@@ -27,6 +27,6 @@ make -j 8 install T=x86_64-native-linuxapp-gcc
 ../../bind-interfaces.sh
 cd ../../build
 cmake ..
-make
+make -j 8
 )
 
