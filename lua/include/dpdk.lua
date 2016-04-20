@@ -16,7 +16,7 @@ local log 		= require "log"
 mod.PKT_RX_VLAN_PKT			= bit.lshift(1ULL, 0)
 mod.PKT_RX_RSS_HASH			= bit.lshift(1ULL, 1)
 mod.PKT_RX_FDIR				= bit.lshift(1ULL, 2)
-mod.PKT_RX_L4_CKSUM_BAD		= bit.lshift(1ULL, 3) 
+mod.PKT_RX_L4_CKSUM_BAD		= bit.lshift(1ULL, 3)
 mod.PKT_RX_IP_CKSUM_BAD		= bit.lshift(1ULL, 4)
 mod.PKT_RX_EIP_CKSUM_BAD	= bit.lshift(0ULL, 0)
 mod.PKT_RX_OVERSIZE			= bit.lshift(0ULL, 0)
@@ -146,8 +146,20 @@ function mod.init(cfgfile, ...)
                 else
 			log:warn("Need a list for the PCI black list")
 			return
-		end 
+		end
 	end
+
+	if cfg.pciwhite then
+		if type(cfg.pciwhite) == "table" then
+			for i, v in ipairs(cfg.pciwhite) do
+				argv[#argv + 1] = "-w" .. v
+			end
+				else
+			log:warn("Need a list for the PCI white list")
+			return
+		end
+	end
+
 
 	if cfg.socketmem then
 		argv[#argv + 1] = "--socket-mem=" .. cfg.socketmem
@@ -164,7 +176,7 @@ end
 
 ffi.cdef[[
 	void launch_lua_core(int core, uint64_t task_id, char* userscript, char* args);
-	
+
 	void free(void* ptr);
 	uint64_t generate_task_id();
 	void store_result(uint64_t task_id, char* result);
@@ -239,7 +251,7 @@ end
 
 --- launches the lua file on the first free core
 function mod.launchLua(...)
-	checkCore() 
+	checkCore()
 	for i = 2, #cores do -- skip master
 		local core = cores[i]
 		local status = dpdkc.rte_eal_get_lcore_state(core)
@@ -345,4 +357,3 @@ function mod.disableBadSocketWarning()
 end
 
 return mod
-
