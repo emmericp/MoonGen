@@ -42,16 +42,34 @@ function tcpHeader:setSrcPort(int)
 	self.src = hton16(int)
 end
 
+--- Set the source port. Alias for setSrcPort
+--- @param int Port as 16 bit integer.
+function tcpHeader:setSrc(int)
+	self:setSrcPort(int)
+end
+
 --- Retrieve the source port.
 --- @return Port as 16 bit integer.
 function tcpHeader:getSrcPort()
 	return hton16(self.src)
 end
 
+--- Retrieve the source port. Alias for getSrcPort
+--- @return Port as 16 bit integer.
+function tcpHeader:getSrc()
+	return self:getSrcPort()
+end
+
 --- Retrieve the source port.
 --- @return Port in string format.
 function tcpHeader:getSrcPortString()
 	return self:getSrcPort()
+end
+
+--- Retrieve the source port. Alias getSrcPortString
+--- @return Port in string format.
+function tcpHeader:getSrcString()
+	return self:getSrcPortString()
 end
 
 --- Set the destination port.
@@ -61,16 +79,34 @@ function tcpHeader:setDstPort(int)
 	self.dst = hton16(int)
 end
 
+--- Set the destination port. Alias for setDstPort
+--- @param int Port as 16 bit integer.
+function tcpHeader:setDst(int)
+	self:setDstPort(int)
+end
+
 --- Retrieve the destination port.
 --- @return Port as 16 bit integer.
 function tcpHeader:getDstPort()
 	return hton16(self.dst)
 end
 
+--- Retrieve the destination port. Alias for getDstPort
+--- @return Port as 16 bit integer.
+function tcpHeader:getDst()
+	return self:getDstPort()
+end
+
 --- Retrieve the destination port.
 --- @return Port in string format.
 function tcpHeader:getDstPortString()
 	return self:getDstPort()
+end
+
+--- Retrieve the destination port. Alias for getDstPortString
+--- @return Port in string format.
+function tcpHeader:getDstString()
+	return self:getDstPortString()
 end
 
 --- Set the sequence number.
