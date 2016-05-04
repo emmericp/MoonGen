@@ -115,7 +115,7 @@ function pkt:setSize(size)
 end
 
 function pkt:getSize()
-	return self.pkt.pkt_len
+	return self.pkt_len
 end
 
 --- Returns the packet data cast to the best fitting packet struct. 
