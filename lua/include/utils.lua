@@ -10,6 +10,7 @@ local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.
 local write = io.write
 local format = string.format
 local random, log, floor = math.random, math.log, math.floor
+local ffi = require "ffi"
 
 --- Print a formatted string.
 --- @todo docu
@@ -18,6 +19,16 @@ local random, log, floor = math.random, math.log, math.floor
 --- @param return
 function printf(str, ...)
 	return print(str:format(...))
+end
+
+ffi.cdef[[
+void print_ptr(void* ptr);
+]]
+
+--- Print a C pointer
+-- @param ptr The pointer to print
+function printPtr(ptr)
+	ffi.Cprint_ptr(ptr)
 end
 
 --- Print a formatted error string.
@@ -141,8 +152,6 @@ ntoh16 = hton16
 _G.bswap = bswap -- export bit.bswap to global namespace to be consistent with bswap16
 hton = bswap
 ntoh = hton
-
-local ffi = require "ffi"
 
 ffi.cdef [[
 	typedef int clockid_t;

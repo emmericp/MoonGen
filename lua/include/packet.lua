@@ -115,7 +115,7 @@ function pkt:setSize(size)
 end
 
 function pkt:getSize()
-	return self.pkt.pkt_len
+	return self.pkt_len
 end
 
 --- Returns the packet data cast to the best fitting packet struct. 
@@ -573,16 +573,20 @@ function packetCalculateChecksums(args)
 		local header, member = getHeaderMember(v)
 		
 		-- if the header has a checksum, call the function
-		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
+		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp"
 			str = str .. [[
 				self.]] .. member .. [[:calculateChecksum()
+				]]
+		elseif header == "tcp" then
+			str = str .. [[
+				self.]] .. member .. [[:calculateChecksum(data, len, ipv4)
 				]]
 		end
 	end
 	
 	-- build complete function
 	str = [[
-		return function(self)]] 
+		return function(self, data, len, ipv4)]] 
 			.. str .. [[
 		end]]
 	
