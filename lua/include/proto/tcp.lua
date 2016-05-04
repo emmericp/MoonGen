@@ -11,6 +11,7 @@
 
 local ffi = require "ffi"
 local pkt = require "packet"
+local dpdkc = require "dpdkc"
 
 require "utils"
 require "headers"
@@ -418,10 +419,24 @@ function tcpHeader:setChecksum(int)
 	self.cs = hton16(int)
 end
 
---- Calculate the checksum.
---- @param len Number of bytes to calculate the checksum over.
---- @todo FIXME NYI
-function tcpHeader:calculateChecksum(len)
+--- Calculate and set the checksum.
+--- If possible use checksum offloading instead.
+--- @param data cdata object of the complete packet.
+--- @param len	Length of the complete packet.
+--- @param ipv4	True if its an IP4 packet. Default: true
+--- @see pkt:offloadTcpChecksum
+function tcpHeader:calculateChecksum(data, len, ipv4)
+	-- first calculate checksum for the pseudo header
+	-- and write it into the checksum field
+	-- then, calculate remaining checksum of tcp segment
+	-- deduct Ethernet and IP header length from total size
+	if ipv4 then
+		dpdkc.calc_ipv4_pseudo_header_checksum(data, 25) -- offset in 16bit integers (byte #50 for IP4)
+		self:setChecksum(hton16(checksum(self, len - (14 + 20))))
+	else
+		dpdkc.calc_ipv6_pseudo_header_checksum(data, 30)
+		self:setChecksum(hton16(checksum(self, len - (14 + 40))))
+	end
 end
 
 --- Retrieve the checksum.
