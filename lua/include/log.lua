@@ -181,7 +181,7 @@ function log:debug(str, ...)
 	str = "[DEBUG] " .. str:format(...)
 		
 	if self.DEBUG >= self.level then
-		print(str)
+		print(green("%s", str))
 	end	
 
 	if self.fileEnabled and self.DEBUG >= self.fileLevel then
