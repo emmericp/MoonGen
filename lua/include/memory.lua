@@ -312,7 +312,7 @@ end
 function bufArray:setVlans(vlan, pcp, cfi)
 	local tci = vlan + bit.lshift(pcp or 0, 13) + bit.lshift(cfi or 0, 12)
 	for i = 0, self.size - 1 do
-		self.array[i].pkt.vlan_tci = tci
+		self.array[i].vlan_tci = tci
 		self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_VLAN_PKT)
 	end
 end
