@@ -90,7 +90,7 @@ local uint64Ptr = ffi.typeof("uint64_t*")
 
 function pkt:getSoftwareTxTimestamp(offs)
 	local offs = offs and offs / 8 or 6 -- default from sendWithTimestamp
-	return uint64Ptr(self.data)[offs]
+	return uint64Ptr(self:getData())[offs]
 end
 
 function pkt:getSoftwareRxTimestamp(offs)
