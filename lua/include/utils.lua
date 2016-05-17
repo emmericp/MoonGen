@@ -216,6 +216,14 @@ function checksum(data, len)
 			cs = band(cs, 0xFFFF) + 1
 		end
 	end
+	-- missing the very last uint_8 for odd sized packets
+	if (len % 2) == 1 then
+		-- simply null the byte outside of our packet
+		cs = cs + band(data[len / 2], 0xFF)
+		if cs >= 2^16 then
+			cs = band(cs, 0xFFFF) + 1
+		end
+	end
 	return band(bnot(cs), 0xFFFF)
 end
 
