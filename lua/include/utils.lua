@@ -217,6 +217,9 @@ function checksum(data, len)
 		end
 	end
 	-- missing the very last uint_8 for odd sized packets
+	-- note that this access is always valid in MoonGen
+	--  * buffers are a fixed even size >= pkt len
+	--  * pkt length is just metadata and not the actual length of the buffer
 	if (len % 2) == 1 then
 		-- simply null the byte outside of our packet
 		cs = cs + band(data[len / 2], 0xFF)
