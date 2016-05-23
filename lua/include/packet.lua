@@ -538,7 +538,7 @@ function packetSetLength(args)
 	local accumulatedLength = 0
 	for _, v in ipairs(args) do
 		local header, member = getHeaderMember(v)
-		if header == "ip4" or header == "udp" or header == "ptp" then
+		if header == "ip4" or header == "udp" or header == "ptp" or header == "ipfix" then
 			str = str .. [[
 				self.]] .. member .. [[:setLength(length - ]] .. accumulatedLength .. [[)
 				]]
