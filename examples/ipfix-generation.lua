@@ -32,7 +32,7 @@ local SAMPLING_PKT_SPACE    = 9999                        -- Sampling Packet Spa
 local PROTO_ID              = { 6, 17 }                   -- Protocol Identifier
 local SRC_TRANS             = { 80, 100 }                 -- Source Transport Port
 local DST_TRANS             = { 180, 200 }                -- Destination Transport Port
-local IPV4_ADDR             = { 1207959553, 2432696319 }  -- Range: 72.0.0.1 - 144.255.255.255
+local IPV4_ADDR             = {parseIPAddress("72.0.0.1"), parseIPAddress("144.255.255.255")} -- Range of IPv4 Addresses
 
 local SEQUENCE_NUMBER = 0
 local TOTAL_MESSAGES  = 0
