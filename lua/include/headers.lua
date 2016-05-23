@@ -169,6 +169,71 @@ ffi.cdef[[
 		uint16_t	arcount;
 		uint8_t		body[];
 	};
+
+	// -----------------------------------------------------
+	// ---- https://tools.ietf.org/html/rfc7011
+	// ---- IPFIX structures
+	// -----------------------------------------------------
+
+	struct __attribute__((__packed__)) ipfix_header {
+		uint16_t	version;
+		uint16_t	length;
+		uint32_t	export_time;
+		uint32_t	sequence_number;
+		uint32_t	observation_domain_id;
+	};
+
+	struct __attribute__((__packed__)) ipfix_set_header {
+		uint16_t	set_id;
+		uint16_t	length;
+	};
+
+	struct __attribute__((__packed__)) ipfix_tmpl_record_header {
+		uint16_t	template_id;
+		uint16_t	field_count;
+	};
+
+	struct __attribute__((__packed__)) ipfix_opts_tmpl_record_header {
+		uint16_t	template_id;
+		uint16_t	field_count;
+		uint16_t	scope_field_count;
+	};
+
+	struct __attribute__((__packed__)) ipfix_information_element {
+		uint16_t	ie_id;
+		uint16_t	length;
+	};
+
+	struct __attribute__((__packed__)) ipfix_data_record {
+		uint8_t		field_values[?];
+	};
+
+	struct __attribute__((__packed__)) ipfix_tmpl_record {
+		struct ipfix_tmpl_record_header		template_header;
+		struct ipfix_information_element	information_elements[5];
+	};
+
+	struct __attribute__((__packed__)) ipfix_opts_tmpl_record {
+		struct ipfix_opts_tmpl_record_header	template_header;
+		struct ipfix_information_element	information_elements[5];
+	};
+
+	struct __attribute__((__packet__)) ipfix_data_set {
+		struct ipfix_set_header		set_header;
+		uint8_t				field_values[?];
+	};
+
+	struct __attribute__((__packet__)) ipfix_tmpl_set {
+		struct ipfix_set_header		set_header;
+		struct ipfix_tmpl_record	record;
+		uint8_t				padding;
+	};
+
+	struct __attribute__((__packet__)) ipfix_opts_tmpl_set {
+		struct ipfix_set_header		set_header;
+		struct ipfix_opts_tmpl_record	record;
+		uint8_t				padding;
+	};
 ]]
 
 return ffi.C
