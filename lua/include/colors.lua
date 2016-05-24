@@ -10,6 +10,8 @@
 ---- Color Codes
 ---------------------------------------------
 
+local mod = {}
+
 --- Table with color codes
 local colorCode = {
 	black 	= "0;30",
@@ -31,11 +33,18 @@ local colorCode = {
 	none 	= "0"
 }
 
+mod.colorPallet = { 'blue', 'bgreen', 'dpurple', 'bred', 'brown', 'cyan', 'green', 'yellow', 'red' }
+
 --- Get an escape sequence for one particular color.
 --- @param color Color as string. See colorCode for possible colors. Default is no color (none).
+--- 			 Color as number. Used as index for the color pallet.
 --- @return Escape sequence as string
 function getColorCode(color)
-	color = colorCode[color] or colorCode["none"]
+	if type(color) == "number" then
+		color = colorCode[mod.colorPallet[color % #mod.colorPallet]]
+	else
+		color = colorCode[color] or colorCode["none"]
+	end
 	return "\027[" .. color .. "m"
 end
 
@@ -90,3 +99,5 @@ end
 function white(str, ...)
 	return getColorizedString(str:format(...), "white")
 end
+
+return mod
