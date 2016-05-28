@@ -218,18 +218,18 @@ ffi.cdef[[
 		struct ipfix_information_element	information_elements[5];
 	};
 
-	struct __attribute__((__packet__)) ipfix_data_set {
+	struct __attribute__((__packed__)) ipfix_data_set {
 		struct ipfix_set_header		set_header;
 		uint8_t				field_values[?];
 	};
 
-	struct __attribute__((__packet__)) ipfix_tmpl_set {
+	struct __attribute__((__packed__)) ipfix_tmpl_set {
 		struct ipfix_set_header		set_header;
 		struct ipfix_tmpl_record	record;
 		uint8_t				padding;
 	};
 
-	struct __attribute__((__packet__)) ipfix_opts_tmpl_set {
+	struct __attribute__((__packed__)) ipfix_opts_tmpl_set {
 		struct ipfix_set_header		set_header;
 		struct ipfix_opts_tmpl_record	record;
 		uint8_t				padding;
