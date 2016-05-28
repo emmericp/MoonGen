@@ -61,6 +61,7 @@ end
 --- Set the MAC address.
 --- @param addr Address as number
 function macAddr:set(addr)
+	addr = addr or 0
 	self.uint8[0] = bit.band(addr, 0xFF)
 	self.uint8[1] = bit.band(bit.rshift(addr, 8), 0xFF)
 	self.uint8[2] = bit.band(bit.rshift(addr, 16), 0xFF)

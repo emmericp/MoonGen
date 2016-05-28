@@ -234,6 +234,36 @@ ffi.cdef[[
 		struct ipfix_opts_tmpl_record	record;
 		uint8_t				padding;
 	};
+	
+	// structs and constants partially copied from Open vSwitch lacp.c (Apache 2.0 license)
+	struct __attribute__((__packed__)) lacp_info {
+		uint16_t sys_priority;            /* System priority. */
+		union mac_address sys_id;         /* System ID. */
+		uint16_t key;                     /* Operational key. */
+		uint16_t port_priority;           /* Port priority. */
+		uint16_t port_id;                 /* Port ID. */
+		uint8_t state;                    /* State mask.  See lacp.STATE_ consts. */
+	};
+
+	struct __attribute__((__packed__)) lacp_header {
+		uint8_t subtype;          /* Always 1. */
+		uint8_t version;          /* Always 1. */
+
+		uint8_t actor_type;       /* Always 1. */
+		uint8_t actor_len;        /* Always 20. */
+		struct lacp_info actor;   /* LACP actor information. */
+		uint8_t z1[3];            /* Reserved.  Always 0. */
+
+		uint8_t partner_type;     /* Always 2. */
+		uint8_t partner_len;      /* Always 20. */
+		struct lacp_info partner; /* LACP partner information. */
+		uint8_t z2[3];            /* Reserved.  Always 0. */
+
+		uint8_t collector_type;   /* Always 3. */
+		uint8_t collector_len;    /* Always 16. */
+		uint16_t collector_delay; /* Maximum collector delay. Set to 0. */
+		uint8_t z3[64];           /* Combination of several fields.  Always 0. */
+	};
 ]]
 
 return ffi.C
