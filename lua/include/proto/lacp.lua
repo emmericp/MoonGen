@@ -305,6 +305,13 @@ function lacp:waitForLink(name, minLinks)
 	end
 end
 
+function lacp:getMac(name)
+	if self ~= lacp then
+		return lacp:getMac(self)
+	end
+	return status[name].mac
+end
+
 -- TODO: support multiple channels (e.g. by passing multiple arguments)
 -- this is only a very simplistic implementation of 802.3ad and lacks some features
 -- (for example, it does not check whether the IDs on all links match and the rate is hardcoded)
@@ -314,9 +321,10 @@ end
 -- tested against an Arista 7060CX MLAG LACP running EOS 4.15.3FX
 local function lacpTask(channel)
 	local ports = channel.ports
+	local lacpMac = ports[1].tx.dev:getMacString()
 	local mem = memory.createMemPool(function(buf)
 		buf:getLacpPacket():fill{
-			lacpActorSysId = ports[1].tx.dev:getMacString(),
+			lacpActorSysId = lacpMac,
 			lacpActorSysPriority = 0x7FFF,
 			lacpActorPortPriority = 0x7FFF
 		}
@@ -332,7 +340,7 @@ local function lacpTask(channel)
 		port.actorInfo = ffi.new("struct lacp_info")
 		port.stateFlags = bit.bor(lacp.STATE_ACT, lacp.STATE_AGG, lacp.STATE_DEF, lacp.STATE_EXP)
 	end
-	status[channel.name] = { up = 0, numPorts = #ports }
+	status[channel.name] = { up = 0, numPorts = #ports, mac = lacpMac }
 	local lastUpdate = 0
 	while dpdk.running() do
 		for i, port in ipairs(ports) do
@@ -405,7 +413,7 @@ local function lacpTask(channel)
 				numPortsUp = numPortsUp + 1
 			end
 		end
-		status[channel.name] = { up = numPortsUp, numPorts = #ports }
+		status[channel.name] = { up = numPortsUp, numPorts = #ports, mac = lacpMac }
 		dpdk.sleepMillisIdle(1)
 	end
 end
