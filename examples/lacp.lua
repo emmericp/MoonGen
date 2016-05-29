@@ -13,7 +13,7 @@ local SRC_IP        = "10.10.10.1"
 local DST_IP        = "10.10.10.2"
 local SRC_PORT_BASE = 3000 -- + NIC id 
 local DST_PORT_BASE = 4000 -- + count(NUM_FLOWS)
-local NUM_FLOWS		= 1 -- per port
+local NUM_FLOWS		= 100 -- per port
 
 function master(...)
 	if select("#", ...) < 2 then
@@ -63,6 +63,7 @@ function loadSlave(queue)
 			counter = incAndWrap(counter, NUM_FLOWS)
 		end
 		bufs:offloadUdpChecksums()
+		--bufs:setVlans(1234)
 		queue:send(bufs)
 		txCtr:update()
 	end
