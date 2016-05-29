@@ -115,6 +115,7 @@ local devices = {}
 ---	  disableOffloads optional (default = false) Disable offloading, this
 ---     speeds up the driver. Note that timestamping is an offload as far
 ---     as the driver is concerned.
+---   stripVlan (default = true) Strip the VLAN tag on the NIC.
 --- @todo FIXME: add description for speed and dropEnable parameters.
 function mod.config(...)
 	local args = {...}
@@ -159,6 +160,9 @@ function mod.config(...)
 		mod.RSS_FUNCTION_IPV6_UDP,
 		mod.RSS_FUNCTION_IPV6_TCP
 	}
+	if args.stripVlan == nil then
+		args.stripVlan = true
+	end
 	-- create a mempool with enough memory to hold tx, as well as rx descriptors
 	-- (tx descriptors for forwarding applications when rx descriptors from one of the device are directly put into a tx queue of another device)
 	-- FIXME: n = 2^k-1 would save memory
@@ -203,7 +207,7 @@ function mod.config(...)
 	local isi40e = dpdkc.get_pci_id(args.port) == mod.PCI_ID_XL710
 			or dpdkc.get_pci_id(args.port) == mod.PCI_ID_X710
 	-- TODO: support options
-	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false, isi40e)
+	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false, isi40e, args.stripVlan)
 	if rc ~= 0 then
 	    log:fatal("Could not configure device %d: error %d", args.port, rc)
 	end

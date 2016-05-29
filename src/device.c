@@ -74,7 +74,7 @@ int get_max_ports() {
 }
 
 // TODO: we should use a struct here
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads, bool is_i40e_device) {
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads, bool is_i40e_device, bool strip_vlan) {
   //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
@@ -170,7 +170,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 			.hw_vlan_filter = 0,
 			.jumbo_frame = 0,
 			.hw_strip_crc = 1,
-			.hw_vlan_strip = 1,
+			.hw_vlan_strip = strip_vlan ? 1 : 0,
 		},
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,
