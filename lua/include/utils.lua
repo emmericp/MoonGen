@@ -4,7 +4,7 @@
 --- @todo TODO docu
 --- @todo local unpackers ... crashes lua2dox parser
 ---------------------------------
-require "colors"
+local colors = require "colors"
 
 local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
 local write = io.write
@@ -349,15 +349,31 @@ end
 --- @param data The cdata to be dumped.
 --- @param bytes Number of bytes to dump.
 --- @param stream the stream to write to, defaults to io.stdout
-function dumpHex(data, bytes, stream)
+--- @param seps A table with the protocol offsets. Used to colorize the output
+function dumpHex(data, bytes, stream, seps)
 	local data = ffi.cast("uint8_t*", data)
 	stream = stream or io.stdout
+
+	local cSep = 1
+	local cColor = seps and getColorCode(cSep) or ''
 	for i = 0, bytes - 1 do
-		if i % 16 == 0 then -- new line
-			stream:write(format("  0x%04x:   ", i))
+		-- determine color
+		-- its prepended to the current byte for each new line or if the color changes
+		-- otherwise '' gets prepended
+		if seps and cSep <= #seps and seps[cSep] == i then
+			cSep = cSep + 1
+			cColor = getColorCode(cSep)
 		end
 
-		stream:write(format("%02x", data[i]))
+		-- new line
+		if i % 16 == 0 then
+			cColor = seps and getColorCode("white") or ''
+			stream:write(cColor .. string.format("  0x%04x:   ", i))
+			cColor = seps and getColorCode(cSep) or ''
+		end
+
+		stream:write(cColor .. string.format("%02x", data[i]))
+		cColor = ''
 		
 		if i % 2  == 1 then -- group 2 bytes
 			stream:write(" ")
@@ -366,7 +382,7 @@ function dumpHex(data, bytes, stream)
 			stream:write("\n")
 		end
 	end
-	stream:write("\n\n")
+	stream:write((seps and getColorCode() or '') .. "\n\n")
 end
 
 --- Merge tables.
