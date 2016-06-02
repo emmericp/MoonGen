@@ -193,7 +193,7 @@ function lacpHeader:fill(args, pre)
 	actor:setPortPriority(args[pre .. "ActorPortPriority"])
 	actor:setPortId(args[pre .. "ActorPortId"])
 	actor:setState(args[pre .. "ActorState"])
-	actor.sys_id:setString(args[pre .. "ActorSysId"])
+	actor.sys_id:setString(args[pre .. "ActorSysId"] or "00:00:00:00:00:00")
 	local partner = self.partner
 	partner:setSysPriority(args[pre .. "PartnerSysPriority"])
 	partner:setKey(args[pre .. "PartnerKey"])
