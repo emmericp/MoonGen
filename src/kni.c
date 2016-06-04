@@ -29,7 +29,7 @@ struct rte_kni * mg_create_kni(uint8_t port_id, uint8_t core_id, void* mempool_p
 	struct rte_kni_conf conf;
   /* Clear conf at first */
   memset(&conf, 0, sizeof(conf));
-  snprintf(conf.name, RTE_KNI_NAMESIZE, name);
+  snprintf(conf.name, RTE_KNI_NAMESIZE, "%s", name);
   conf.core_id = core_id;
   conf.force_bind = 1;
   conf.group_id = (uint16_t)port_id;
