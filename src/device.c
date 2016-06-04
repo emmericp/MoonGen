@@ -280,6 +280,12 @@ uint8_t get_socket(uint8_t port) {
 	return (uint8_t) node;
 }
 
+uint16_t get_reta_size(int port) {
+	struct rte_eth_dev_info dev_info;
+	rte_eth_dev_info_get(port, &dev_info);
+	return dev_info.reta_size;
+}
+
 // FIXME: doesn't support syncing between different NIC families (e.g. GbE vs. 10 GBE)
 // this is somewhat tricky because they use a different timer granularity
 void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh) {
@@ -599,8 +605,3 @@ void rte_delay_us_export(uint32_t us) {
 	rte_delay_us(us);
 }
 
-// FIXME: use proper size, support more than 64 entries
-int mg_rte_eth_dev_rss_reta_update(uint8_t port, struct rte_eth_rss_reta_entry64* reta_conf) {
-  reta_conf->mask = 0xffffffffffffffffULL;
-  return rte_eth_dev_rss_reta_update(port, reta_conf, 64);
-}

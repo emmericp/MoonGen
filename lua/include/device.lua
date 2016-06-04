@@ -100,9 +100,9 @@ local devices = {}
 ---   dropEnable optional (default = true)
 ---   rssNQueues optional (default = 0) If this is >0 RSS will be activated for
 ---    this device. Incomming packates will be distributed to the
----    rxQueues number 0 to (rssNQueues - 1). For a fair distribution use one of
----    the following values (1, 2, 4, 8, 16). Values greater than 16 are not
----    allowed.
+---    rxQueues number rssBaseQueue to (rssBaseQueue + rssNQueues - 1).
+---    Use a power of two to achieve a better distribution.
+---   rssBaseQueue optional (default = 0) The first queue to use for RSS
 ---   rssFunctions optional (default = all supported functions) A Table,
 ---    containing hashing methods, which can be used for RSS.
 ---    Possible methods are:
@@ -214,60 +214,49 @@ function mod.config(...)
 	local dev = mod.get(args.port)
 	dev.initialized = true
 	if rss_enabled == 1 then
-		dev:setRssNQueues(args.rssNQueues)
+		dev:setRssNQueues(args.rssNQueues, args.rssBaseQueue)
 	end
 	dev:setPromisc(true)
 	return dev
 end
 
 ffi.cdef[[
-/**
- * A structure used to configure Redirection Table of  the Receive Side
- * Scaling (RSS) feature of an Ethernet port.
- */
-struct rte_eth_rss_reta {
-	/** First 64 mask bits indicate which entry(s) need to updated/queried. */
-	uint64_t mask_lo;
-	/** Second 64 mask bits indicate which entry(s) need to updated/queried. */
-	uint64_t mask_hi;
-	uint8_t reta[128];  /**< 128 RETA entries*/
+struct rte_eth_rss_reta_entry64 {
+	uint64_t mask;
+	uint16_t reta[64];
 };
 
-int mg_rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
-		struct rte_eth_rss_reta *  	reta_conf 
-	);
-int rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
-		struct rte_eth_rss_reta *  	reta_conf 
-	);
+int rte_eth_dev_rss_reta_update(uint8_t port, struct rte_eth_rss_reta_entry64* reta_conf, uint16_t reta_size);
+uint16_t get_reta_size(int port);
 ]]
 
-function dev:setRssNQueues(n)
-  if(n>16)then
-    log:fatal("Maximum possible numbers of RSS queues is 16")
-    return
-  end
-  if(({[1]=1, [2]=1, [4]=1, [8]=1, [16]=1})[n] == nil) then
-    log:warn("RSS distribution to queues will not be fair. Fair distribution is only achieved with a number of Queues equal to 1, 2, 4, 8 or 16. However you are currently using %d queues", n)
-  end
-  local reta = ffi.new("struct rte_eth_rss_reta")
-
-  local npq = 128/n
-  local queue = 0
-  for i=0,127 do
-    reta.reta[i] = queue
-    if (queue < n - 1) then
-      queue = queue+1
-    else
-      queue = 0
-    end
-  end
-
-  -- the mg_ version of rte_eth_dev_rss_reta_update() will also write the mask
-  -- to the reta_config struct, as lua can not do 64bit unsigned int operations.
-  local ret = ffi.C.mg_rte_eth_dev_rss_reta_update(self.id, reta)
-  if (ret ~= 0) then
-    log:fatal("Error setting up RETA table: " .. errors.getstr(-ret))
-  end
+--- Setup RSS RETA table.
+function dev:setRssNQueues(n, baseQueue)
+	baseQueue = baseQueue or 0
+	assert(n > 0)
+	if bit.band(n, n - 1) ~= 0 then
+		log:warn("RSS distribution to queues will not be fair as the number of queues (%d) is not a power of two.", n)
+	end
+	local retaSize = ffi.C.get_reta_size(self.id)
+	if retaSize % 64 ~= 0 then
+		log:fatal("NYI: number of RETA entries is not a multiple of 64", retaSize)
+	end
+	local entries = ffi.new("struct rte_eth_rss_reta_entry64[?]", retaSize / 64)
+	local queue = baseQueue
+	for i = 0, retaSize / 64 - 1 do
+		entries[i].mask = 0xFFFFFFFFFFFFFFFFULL
+		for j = 0, 63 do
+			entries[i].reta[j] = queue
+			queue = queue + 1
+			if queue == baseQueue + n then
+				queue = baseQueue
+			end
+		end
+	end
+	local ret = ffi.C.rte_eth_dev_rss_reta_update(self.id, entries, retaSize)
+	if (ret ~= 0) then
+		log:fatal("Error setting up RETA table: " .. errors.getstr(-ret))
+	end
 end
 
 
