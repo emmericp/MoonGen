@@ -5,7 +5,7 @@
 (
 cd $(dirname "${BASH_SOURCE[0]}")
 git submodule sync
-git submodule update --init --remote
+git submodule update --init
 cd deps/luajit
 if [[ ! -e Makefile ]]
 then
