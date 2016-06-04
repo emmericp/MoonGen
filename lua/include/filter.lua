@@ -89,87 +89,102 @@ struct rte_eth_ethertype_filter {
 	uint16_t queue;
 };
 
+
+/**
+ * A structure used to define the input for L2 flow
+ */
 struct rte_eth_l2_flow {
-	uint16_t ether_type;          /**< Ether type to match */
+	uint16_t ether_type;          /**< Ether type in big endian */
 };
 
+/**
+ * A structure used to define the input for IPV4 flow
+ */
 struct rte_eth_ipv4_flow {
-	uint32_t src_ip;      /**< IPv4 source address to match. */
-	uint32_t dst_ip;      /**< IPv4 destination address to match. */
+	uint32_t src_ip;      /**< IPv4 source address in big endian. */
+	uint32_t dst_ip;      /**< IPv4 destination address in big endian. */
+	uint8_t  tos;         /**< Type of service to match. */
+	uint8_t  ttl;         /**< Time to live to match. */
+	uint8_t  proto;       /**< Protocol, next header in big endian. */
 };
 
+/**
+ * A structure used to define the input for IPV4 UDP flow
+ */
 struct rte_eth_udpv4_flow {
 	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
-	uint16_t src_port;           /**< UDP source port to match. */
-	uint16_t dst_port;           /**< UDP destination port to match. */
+	uint16_t src_port;           /**< UDP source port in big endian. */
+	uint16_t dst_port;           /**< UDP destination port in big endian. */
 };
 
+/**
+ * A structure used to define the input for IPV4 TCP flow
+ */
 struct rte_eth_tcpv4_flow {
 	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
-	uint16_t src_port;           /**< TCP source port to match. */
-	uint16_t dst_port;           /**< TCP destination port to match. */
-};
-
-struct ether_addr {
-	uint8_t addr_bytes[6];
+	uint16_t src_port;           /**< TCP source port in big endian. */
+	uint16_t dst_port;           /**< TCP destination port in big endian. */
 };
 
 /**
-* A structure used to define the input for IPV4 SCTP flow
-*/
+ * A structure used to define the input for IPV4 SCTP flow
+ */
 struct rte_eth_sctpv4_flow {
 	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
-	uint16_t src_port;           /**< SCTP source port to match. */
-	uint16_t dst_port;           /**< SCTP destination port to match. */
-	uint32_t verify_tag;         /**< Verify tag to match */
+	uint16_t src_port;           /**< SCTP source port in big endian. */
+	uint16_t dst_port;           /**< SCTP destination port in big endian. */
+	uint32_t verify_tag;         /**< Verify tag in big endian */
 };
 
 /**
-* A structure used to define the input for IPV6 flow
-*/
+ * A structure used to define the input for IPV6 flow
+ */
 struct rte_eth_ipv6_flow {
-	uint32_t src_ip[4];      /**< IPv6 source address to match. */
-	uint32_t dst_ip[4];      /**< IPv6 destination address to match. */
+	uint32_t src_ip[4];      /**< IPv6 source address in big endian. */
+	uint32_t dst_ip[4];      /**< IPv6 destination address in big endian. */
+	uint8_t  tc;             /**< Traffic class to match. */
+	uint8_t  proto;          /**< Protocol, next header to match. */
+	uint8_t  hop_limits;     /**< Hop limits to match. */
 };
 
 /**
-* A structure used to define the input for IPV6 UDP flow
-*/
+ * A structure used to define the input for IPV6 UDP flow
+ */
 struct rte_eth_udpv6_flow {
 	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
-	uint16_t src_port;           /**< UDP source port to match. */
-	uint16_t dst_port;           /**< UDP destination port to match. */
+	uint16_t src_port;           /**< UDP source port in big endian. */
+	uint16_t dst_port;           /**< UDP destination port in big endian. */
 };
 
 /**
-* A structure used to define the input for IPV6 TCP flow
-*/
+ * A structure used to define the input for IPV6 TCP flow
+ */
 struct rte_eth_tcpv6_flow {
 	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
-	uint16_t src_port;           /**< TCP source port to match. */
-	uint16_t dst_port;           /**< TCP destination port to match. */
+	uint16_t src_port;           /**< TCP source port to in big endian. */
+	uint16_t dst_port;           /**< TCP destination port in big endian. */
 };
 
 /**
-* A structure used to define the input for IPV6 SCTP flow
-*/
+ * A structure used to define the input for IPV6 SCTP flow
+ */
 struct rte_eth_sctpv6_flow {
 	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
-	uint16_t src_port;           /**< SCTP source port to match. */
-	uint16_t dst_port;           /**< SCTP destination port to match. */
-	uint32_t verify_tag;         /**< Verify tag to match */
+	uint16_t src_port;           /**< SCTP source port in big endian. */
+	uint16_t dst_port;           /**< SCTP destination port in big endian. */
+	uint32_t verify_tag;         /**< Verify tag in big endian. */
 };
 
 /**
-* A structure used to define the input for MAC VLAN flow
-*/
+ * A structure used to define the input for MAC VLAN flow
+ */
 struct rte_eth_mac_vlan_flow {
-	struct ether_addr mac_addr;  /**< Mac address to match. */
+	uint8_t mac_addr[6];  /**< Mac address to match. */
 };
 
 /**
-* Tunnel type for flow director.
-*/
+ * Tunnel type for flow director.
+ */
 enum rte_eth_fdir_tunnel_type {
 	RTE_FDIR_TUNNEL_TYPE_UNKNOWN = 0,
 	RTE_FDIR_TUNNEL_TYPE_NVGRE,
@@ -177,15 +192,20 @@ enum rte_eth_fdir_tunnel_type {
 };
 
 /**
-* A structure used to define the input for tunnel flow, now its VxLAN or
-* NVGRE
-*/
+ * A structure used to define the input for tunnel flow, now it's VxLAN or
+ * NVGRE
+ */
 struct rte_eth_tunnel_flow {
 	enum rte_eth_fdir_tunnel_type tunnel_type; /**< Tunnel type to match. */
-	uint32_t tunnel_id;                        /**< Tunnel ID to match. TNI, VNI... */
-	struct ether_addr mac_addr;                /**< Mac address to match. */
+	/** Tunnel ID to match. TNI, VNI... in big endian. */
+	uint32_t tunnel_id;
+	uint8_t mac_addr[6];  /**< Mac address to match. */
 };
 
+/**
+ * An union contains the inputs for all types of flow
+ * Items in flows need to be in big endian
+ */
 union rte_eth_fdir_flow {
 	struct rte_eth_l2_flow     l2_flow;
 	struct rte_eth_udpv4_flow  udp4_flow;
@@ -200,6 +220,9 @@ union rte_eth_fdir_flow {
 	struct rte_eth_tunnel_flow   tunnel_flow;
 };
 
+/**
+ * A structure used to contain extend input of flow
+ */
 struct rte_eth_fdir_flow_ext {
 	uint16_t vlan_tci;
 	uint8_t flexbytes[16];
@@ -207,6 +230,7 @@ struct rte_eth_fdir_flow_ext {
 	uint8_t is_vf;   /**< 1 for VF, 0 for port dev */
 	uint16_t dst_id; /**< VF ID, available when is_vf is 1*/
 };
+
 
 struct rte_eth_fdir_input {
 	uint16_t flow_type;
