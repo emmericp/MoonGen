@@ -176,7 +176,8 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 			.mq_mode = ETH_MQ_TX_NONE,
 		},
 		.fdir_conf = fdir_conf,
-		.link_speed = link_speed,
+		// FIXME: update link speed API for dpdk 16.04
+		.link_speeds = ETH_LINK_SPEED_AUTONEG,
     	.rx_adv_conf = {
 			.rss_conf = rss_conf,
 		}
