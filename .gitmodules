@@ -6,7 +6,8 @@
 [submodule "deps/dpdk"]
 	path = deps/dpdk
 	url = https://github.com/emmericp/dpdk.git
-	branch = moongen-modifications
+	ignore = untracked
+	branch = v16.04
 [submodule "deps/doxygen-lua"]
 	path = deps/doxygen-lua
 	url = https://github.com/scholzd/doxygen-lua.git
