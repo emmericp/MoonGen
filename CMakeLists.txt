@@ -16,7 +16,6 @@ SET(FILES
 	src/timestamping.c
 	src/debug.c
 	src/bitmask.c
-	src/lpm_l.c
 	src/distribute.c
 	src/barrier.cpp
 	src/task-results.cpp
