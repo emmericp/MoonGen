@@ -203,11 +203,16 @@ function mod.config(...)
 		end
 		rss_enabled = 1
 	end
+	local pciId = dpdkc.get_pci_id(args.port)
 	-- FIXME: this is stupid and should be fixed in DPDK
-	local isi40e = dpdkc.get_pci_id(args.port) == mod.PCI_ID_XL710
-			or dpdkc.get_pci_id(args.port) == mod.PCI_ID_X710
+	local isi40e = pciId == mod.PCI_ID_XL710
+	            or pciId == mod.PCI_ID_X710
 	-- TODO: support options
-	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false, isi40e, args.stripVlan)
+	local disablePadding = pciId == mod.PCI_ID_X540
+	                    or pciId == mod.PCI_ID_X520
+	                    or pciId == mod.PCI_ID_X520_T2
+	                    or pciId == mod.PCI_ID_82599
+	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false, isi40e, args.stripVlan, disablePadding)
 	if rc ~= 0 then
 	    log:fatal("Could not configure device %d: error %d", args.port, rc)
 	end
