@@ -87,7 +87,7 @@ local function getPoolFromCache(socket, n, bufSize)
 		local bufs = {}
 		for i = 1, n do
 			local buf = pool:alloc(bufSize)
-			ffi.fill(buf.data, buf.len, 0)
+			ffi.fill(buf.buf_addr, buf.buf_len, 0)
 			bufs[#bufs + 1] = buf
 		end
 		for _, v in ipairs(bufs) do
