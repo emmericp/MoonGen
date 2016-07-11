@@ -141,6 +141,25 @@ where:
       * NOTE      : This must be a comma separated list without spaces, eg:
                     aa:00:cd:ef:ff:44,0.0.0.1,2
 
+  -) --rx-ports-mirror-rx|-M VALUE 
+
+        : Specifies if the rx ports must mirror the tx ports.
+        : VALUE : If the ports for RX mirror the ports used for TX.
+        - (default 0 = false, option 1 = true)
+        * NOTE  : If true, and -c 4 -p 0x3 --rx-ports-mirror-tx are
+                  the parameters, ports 0, 1 will be used for both
+                  RX and TX (they mirror each other), if they aren't
+                  set to mirror (default) then the RX ports are allocated 
+                  after the TX ports (there is no overlap)
+
+  -) --rx-timeout|-RT TIMEOUT_MS
+        
+        : Specifies the maximum amount of time each iteration can try to 
+          receive for before moving to the next iteration. This prevents 
+          ports which have nothing to receive from stalling the application,
+        : TIMEOUT_MS : The time in milliseconds to try and receive for on each 
+                       iteration.
+
   -) --src-vary | -S MAC_VARY,IP_VARY,PORT_VARY
 
       : Specifies the variation for the source parameters.
@@ -173,6 +192,9 @@ where:
 
       : Specifies the number of cores to use.
       - (default 1 core)
+      * NOTE  : The max number of cores supported is currently 16. This is 
+                because MoonGen only allows 15 slaves to be launched, otherwise
+                it terminates.
 
   -) --tx-queues | -d TX_QUEUES
 
@@ -180,6 +202,16 @@ where:
       - (defualt 1)
       * NOTE : All ports in the portmask are allocated as for TX until the
                total number of tx queues has been reached.
+
+  -) --timeout | -e TIME
+
+        : Specifies the amount of time (in seconds) to run for before stopping.
+        - (default = 0, is to run indefinitely)
+
+  -) --iterations | -f ITERS
+
+        : Specifies the number of TX/RX iterations to run for.
+        - (default = 0, is to run indefinitely)
 
   -) --mac-stride | -g MAC_STRIDE 
 
@@ -220,9 +252,25 @@ where:
   -) --portmask | -p PORTMASK
 
       : Specifies the hexadecimal mask of which ports to use.
-      - (default 0x3)
+      - (default 1)
 
-  -) --queus-per-core | -q QUEUES
+  -) --rx-portmask | -rxp RX_PORTMASK
+
+      : Specifies the mask of the ports to use for RX.
+      - (default 0, --portmask is the default use case)
+      * NOTE: If this is specified, then -txp must also be used to provide 
+              the portmask for TX. If no ports should be used for TX then 
+              use -txp 0.
+
+  -) --tx-portmask | -txp TX_PORTMASK
+
+      : Specifies the mask of the ports to use for TX.
+      - (default 0, --portmask is the default use case)
+      * NOTE : If this is specified, then -rxp must also be used to provide
+               the portmask for RX. If no ports should be used for RX then use
+               -rxp 0
+
+  -) --queues-per-core | -q QUEUES
 
       : Specifies the number of queues (ports) which can be used per core.
       - (default 1 -- the default is for each core to have an rx and tx queue.)
@@ -307,6 +355,57 @@ where:
 # EXAMPLES                                                                    #
 # --------------------------------------------------------------------------- #
 
+# PORTMASK SPECIFICATION AND CORES                                            #
+# --------------------------------------------------------------------------- #
+
+There are two ways that the ports to used can be specified. Either a single
+portmask can be used for both RX and TX, or separate portmasks for RX and TX
+can be used.
+
+# INDIVIDUAL PORTMASKS:
+
+If individual portmasks are used, then both RX and TX portmasks must be
+specified, otherwise packetgen will return an error. CPU cores are first
+allocated to the TX ports, and then to the RX cores. If not enough cores are
+specified for all the ports (sum of RX and TX enabled cores), then packetgen
+will not used the ports which do not have a core to run on.
+
+The following command:
+
+  /path/to/MoonGen packetgen.lua -c 4 -txp 0x3 -rxp 0xc 
+
+will use cores 0, 1 and ports 0, 1 for TX and cores 2, 3 and ports 2, 3 for RX,
+which is the following visual representation:
+
+  -------------    -------------    -------------     -------------
+  | Core 0    |    | Core 1    |    | Core 2    |     | Core 3    |
+  -------------    -------------    -------------     -------------
+  | Port 0 TX |    | Port 1 TX |    | Port 2 RX |     | Port 3 RX |
+  -------------    -------------    -------------     -------------
+
+# SINGLE PORTMASK:
+
+A single portmask can also be used. The default behaviour in this case is to
+first allocate cores and ports for TX until the number of queues specified by
+--tx-queues (default 1) is reached, and then to allocate the remainder of the
+cores and ports to RX.
+
+The following command:
+
+  /path/to/MoonGen packegen.lua -c 4 -p 0xf
+
+will use core 0 and port 0 to TX, and cores 1, 2, 3 and ports 1, 2, 3 for RX,
+which is the following visual representation:
+
+  -------------    -------------    -------------     -------------
+  | Core 0    |    | Core 1    |    | Core 2    |     | Core 3    |
+  -------------    -------------    -------------     -------------
+  | Port 0 TX |    | Port 1 RX |    | Port 2 RX |     | Port 3 RX |
+  -------------    -------------    -------------     -------------
+
+When using this format for specifying the portmaks, the --tx-queues parameter 
+can be used to specify the number of ports which are allocated for TX.
+
 # BASIC TX BENCHMARKING                                                       #
 # --------------------------------------------------------------------------- #
 
@@ -330,7 +429,6 @@ This will use a single core (-c 1) and use a single (the first available) port
                  ---
                   |
                   -------> Generated packets
-
 
 When running using this configuration the following output shown be shown 
 in the terminal:
@@ -503,3 +601,86 @@ specified, per second. The following command:
 
   /path/to/MoonGen packetgen.lua --pps 1000000
 
+# STATS DISPLAY CONTROL AND RUNTIME                                           #
+# --------------------------------------------------------------------------- #
+
+The amount of time packetgen runs for can be controlled by specifying a total
+number of iterations to run for, or a total amount of time to run for, with the
+--iterations and --timeout arguments, respectively.
+
+The stats display can be controlled with the --stats-period argument. To turn
+of the constant stats display, and to rather have the stats printed at the end
+of the run (when either of --iterations or --timeout arguments are provided)
+use --stats-period 0.
+
+The following example will run packetgen for 100000 iterations, and then 
+display the stats for that period displayed once at the end:
+
+  /path/to/MoonGen packetgen.lua -c 1 -p 1 --stats-period 0 --iterations 100000
+
+The following example will run packetgen for 10 seconds, and then display the
+stats for that period once at the end:
+
+  /path/to/MoonGen packetgen.lua -c 1 -p 1 --stats-period 0 --timeout 10
+
+If both the --iterations and --timeout arguments are given, then whichever
+action happens first will be the cause of the application terminating.
+
+# PORT SOURCE AND SINK                                                        #
+# --------------------------------------------------------------------------- #
+
+To configure a port to both source and sink, the --rx-ports-mirror-tx option is
+provided. If the flag is set, then the RX port allocation begins at the start
+of the portmask when allocating ports for RX, rather than continuing from the
+last allocated TX port, if the option is set to false, which is the default.
+
+For example, to use 2 ports, where both must source and sink, specify the
+following parameters to packetgen:
+
+  /path/to/MoonGen packetgen.lua -c 4 -p 0x3 --tx-queues 2 \
+    --rx-ports-mirror-tx 1
+
+Which will have the following configuration:
+
+  -------------    -------------    -------------     -------------
+  | Core 0    |    | Core 1    |    | Core 2    |     | Core 3    |
+  -------------    -------------    -------------     -------------
+  | Port 0 TX |    | Port 1 TX |    | Port 0 RX |     | Port 1 RX |
+  -------------    -------------    -------------     -------------
+
+NOTE: The use of --tx-queues to control the number of queus which must TX.
+
+If the command did not have the --rx-ports-mirror-tx parameter, as in:
+
+  /path/to/MoonGen packetgen.lua -c 4 -p 0x3 --tx-queues 2 
+
+The configuration would look like:
+
+  -------------    ------------- 
+  | Core 0    |    | Core 1    |   
+  -------------    -------------   
+  | Port 0 TX |    | Port 1 TX |    
+  -------------    ------------- 
+
+Because only 2 ports are specified, and only 2 are allocated and both are used
+for RX. 
+
+The following command, to specify 4 ports:
+
+   /path/to/MoonGen packetgen.lua -c 4 -p 0x7 --tx-queues 2  
+
+Would result in the following configuration:
+
+  -------------    -------------    -------------     -------------
+  | Core 0    |    | Core 1    |    | Core 2    |     | Core 3    |
+  -------------    -------------    -------------     -------------
+  | Port 0 TX |    | Port 1 TX |    | Port 3 RX |     | Port 4 RX |
+  -------------    -------------    -------------     -------------
+
+Because there are now 4 ports available, and ports are allocated so long as
+the number of specied cores has not been reached, and there is a valid port in
+the portmask.
+
+NOTE: Please see the first first example in this section for how to use the
+      -rxp and -txp arguments, which make this functionality simpler to
+      achieve.

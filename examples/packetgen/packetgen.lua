@@ -39,8 +39,8 @@ local ffi      = require "ffi"
 local log      = require "log"
 local bit      = require "bit"
 
-local lshift    , rshift    , band    , bswap     , ror = 
-      bit.lshift, bit.rshift, bit.band, bit.bswap , bit.ror
+local lshift    , rshift    , band    , bswap     , bor    , ror    = 
+      bit.lshift, bit.rshift, bit.band, bit.bswap , bit.bor, bit.ror
 
 -- State of the packet generator.
 local state = "canrun"
@@ -109,7 +109,12 @@ local params = {
     txPortsPerCore     = 1                                ,
     totalTxPorts       = 1                                ,
     rxPortsPerCore     = 1                                ,
-    portmask           = "0x1"                            ,
+    portmask           = 1                                ,
+    txPortmaskUsed     = false                            ,
+    txPortmask         = 0                                ,
+    rxPortmaskUsed     = false                            ,
+    rxPortmask         = 0                                ,
+    explicitMasksUsed  = false 				                    ,
     flowsPerStream     = 2047                             ,
     numberOfStreams    = 1                                ,
     burstPerStream     = 1                                ,
@@ -120,6 +125,9 @@ local params = {
     packetSize         = 64                               ,
     mustImix           = false                            ,
     timerPeriod        = 1                                ,
+    timeout            = 0                                ,
+    iterations         = 0                                ,
+    receiveTimeout     = 100                              ,
     ethSrcBaseNum      = 0x000d30596955                   ,
     ethSrcBase         = "00:0d:30:59:69:55"              ,
     ethSrcVaryNum      = 0                                ,
@@ -150,6 +158,7 @@ local params = {
     nbRxd              = 1024                             ,
     nbTxd              = 1024                             ,
     nbPorts            = 0                                ,
+    rxPortsMirrorTx    = false                            , 
     paramDisplay       = 3000
 }
 
@@ -175,8 +184,12 @@ local bparams = {
 MAX_RX_QUEUES_PER_CORE  = 16
 MAX_RX_BURST_SIZE       = 128
 MAX_TX_BURST_SIZE       = 128
+MAX_CORES               = 31        -- MoonGen limit, excludes
+MAX_MEMPOOL_SIZE        = 2047      -- Max mbufs in a single mempool
+MAX_PACKET_SIZE         = 1522
+
+-- The length values are all in bytes
 ETHER_TYPE_IPv4         = 0x0800
-MAX_SEG_LENGTH          = 20000
 ETHER_ADDR_LEN          = 6            
 ETHER_HEADER_LENGTH     = 14          
 IP_HEADER_LENGTH        = 20            
@@ -184,10 +197,6 @@ UDP_HEADER_LENGTH       = 8
 TOTAL_HEADER_LENGTH     = ETHER_HEADER_LENGTH 
                         + IP_HEADER_LENGTH
                         + UDP_HEADER_LENGTH
-
--- This is the max number of mbufs than 
--- can be allocated from a single mempool.
-MAX_MEMPOOL_SIZE = 2047
 
 -- Global start time across all threads.
 local globalStart = moongen.getTime()
@@ -199,13 +208,31 @@ function master(...)
         os.exit() 
     end
 
-    local portmask = 0ULL + tonumber(params.portmask, 16)
+    -- Make sure that the portmaks is 64 bits wide.
+    local portmask = 0ULL + params.portmask
     params.nbPorts = device.numDevices()
 
-    -- Init the stats for each port.
+    -- Check if the rx and tx portmask are explicit
+    local rxPortmask = 0ULL
+    local txPortmask = 0ULL
+
+    if params.explicitMasksUsed == true then
+        rxPortmask = 0ULL + params.rxPortmask
+        txPortmask = 0ULL + params.txPortmask
+
+        -- Make the portmask a compination of the masks
+        portmask            = bor(rxPortmask, txPortmask)
+        params.totalTxPorts = 1
+    end
+
+    -- Initialize the stats for each port.
     for portid = 0, params.nbPorts - 1 do
         if band(portmask, lshift(1, portid)) >= 1 then 
             portstats[portid + 1] = deepCopy(stats)
+
+            if params.txPortmaskUsed == true then 
+                params.totalTxPorts = params.totalTxPorts + 1
+	          end	
         end
     end
 
@@ -228,6 +255,11 @@ function master(...)
         cstats[i] = deepCopy(portstats)
     end
 
+    -- If explicit masks are being used, set the portmask to the TX mask
+    if params.explicitMasksUsed == true then
+        portmask = txPortmask
+    end
+
     -- Allocate tx cores for each port first.
     -- NOTE: The coreid is the actual value of the coreid (physical), 
     --       so we need to add 1 when indexing into lcoreQconf table.
@@ -245,8 +277,7 @@ function master(...)
 	              end
 	          end
 
-	          -- Update the list of ports used for tx
-	          -- since these can't be used for rx.
+	          -- Update the list of ports used for tx.
 	          local inTxList = false
 	          for i = 1, #txPorts do
 	              if txPorts[i] == portid then 
@@ -273,18 +304,26 @@ function master(...)
         print("Note: No ports are allocated for TX!")
     end
 
-    -- Allocate RX cores for each port
+    -- If explicit masks are being used, set the portmask to the rx mask
+    if params.explicitMasksUsed then 
+        portmask = rxPortmask
+    end
+
+    -- Allocate RX cores for reamining ports in the portmask.
     coreid = coreid + 1
     if coreid >= params.cores then 
         print("Note: Not enough cores for rx port alloc! " ..
               "Packetgen will only transmit!")
     else 
         for portid = 0, params.nbPorts - 1 do
-            -- Check if the port is being used to transmit
+            -- Check if the port is being used to transmit, if there is no 
+            -- port mirroring, otherwise the ports can mirror the tx ones.
             local canContinue = true
-            for i = 1, #txPorts do
-                if txPorts[i] == portid then 
-                    canContinue = false
+            if params.rxPortsMirrorTx == false then 
+                for i = 1, #txPorts do
+                    if txPorts[i] == portid then 
+                        canContinue = false
+                    end
                 end
             end
 
@@ -313,13 +352,20 @@ function master(...)
         end
     end
 
+    -- If explicit masks are being used, make a single mask
+    if params.explicitMasksUsed == true then
+        portmask = bor(txPortmask, rxPortmask)
+    end
+
     -- Configure and initialize each device.
     for portid = 0, params.nbPorts do
         if band(portmask, lshift(1, portid)) >= 1 then 
             devices[portid + 1] = device.config{
                 port     = portid ,
                 rxQueues = 1      ,   -- Only 1 supported for now
-                txQueues = 1          -- Only 1 supported for now
+                txQueues = 1      ,   -- Only 1 supported for now
+                rxDescs  = params.nbRxd  ,
+                txDescs  = params.nbTxd  
             }
             devices[portid + 1]:setPromisc(true)
 
@@ -466,13 +512,23 @@ function coreBenchTx(coreid, qconfs, devices, pgparams, pstats)
     -- Go through each of the mbufs and modify them.
     for i, stream in ipairs(streams) do
         for j, bufArr in ipairs(stream.bufArrays) do
+            -- Subtract 4 for the FCS
+            local maxPacketSize = pgparams.packetSize - 4
             if pgparams.mustImix then 
-                pgparams.packetSize = imixSize()
+                maxPacketSize = MAX_PACKET_SIZE - 4 
             end 
 
-            bufArr:alloc(pgparams.packetSize)
+            -- Allocate buffers with the max possible size. Note that 
+            -- if using IMIX, the size of each sent packet will vary.
+            bufArr:alloc(maxPacketSize)
 
 	          for _, buf in ipairs(bufArr) do
+                if pgparams.mustImix then
+                  local mixSize = imixSize() - 4
+                  buf.pkt_len   = mixSize
+                  buf.data_len  = mixSize
+                end 
+
                 btxparams.flowid   = math.fmod(
 		                btxparams.counter, pgparams.flowsPerStream) 
                 btxparams.streamid = math.floor(
@@ -489,9 +545,11 @@ function coreBenchTx(coreid, qconfs, devices, pgparams, pstats)
 	      end
     end
 
-    local startTime   = moongen.getTime()
-    local globalIter  = 0
-    local canPrint    = 1
+    local startTime      = moongen.getTime()
+    local printStartTime = startTime
+    local globalIter     = 0
+    local iteration      = 0
+    local canPrint       = 1
     while state == "canrun" do
         -- Generate and send bursts
         for _, stream in ipairs(streams) do
@@ -500,6 +558,16 @@ function coreBenchTx(coreid, qconfs, devices, pgparams, pstats)
 
             txBurstGenIter(coreid, qconfs  , portid   , txqueue,
                            pstats, pgparams, btxparams, stream )
+        end
+
+        -- Update the iteration and timeout parameters
+        iteration   = iteration + 1
+        elapsedTime = moongen.getTime() - startTime
+
+        if pgparams.iterations ~= 0 and iteration > pgparams.iterations then
+            state = "stop"
+        elseif pgparams.timeout ~= 0 and elapsedTime > pgparams.timeout then 
+            state = "stop"
         end
 
         -- Check if its time to print stats.
@@ -514,19 +582,23 @@ function coreBenchTx(coreid, qconfs, devices, pgparams, pstats)
             canPrint = 0
             os.execute("clear")
 
-            pstats[portid].elapsedTime = moongen.getTime() - startTime
+            pstats[portid].elapsedTime = moongen.getTime() - printStartTime
 
             pstats[portid]:print(moongen:getCore(), portid - 1)
 
             pstats[portid].prevTxPackets = pstats[portid].txPackets
             pstats[portid].prevTxBytes   = pstats[portid].txBytes
 
-            startTime = moongen.getTime()
+            printStartTime = moongen.getTime()
         elseif globalIter == coreid * pgparams.timerPeriod and
                canPrint   == 0 then
             canPrint = 1
         end
     end
+
+    -- Print out the stats since we have ended
+    pstats[portid].elapsedTime = moongen.getTime() - printStartTime
+    pstats[portid]:print(moongen:getCore(), portid - 1)
 end
 
 -- @brief Launches a core for benchmark rx mode. 
@@ -539,14 +611,16 @@ function coreBenchRx(coreid, qconfs, devices, pgparams, pstats)
     print(string.format("Launching Core: %u, Mode: RX", 
           coreid - 1))
     
-    local latency      = 0
-    local latencyDelta = 0
-    local globalIter   = 0
-    local canPrint     = 1
-    local rxburst      = memory.bufArray(MAX_RX_BURST_SIZE)
-    local startTime    = moongen.getTime()
-    local elapsedTime  = 0
-    local rxPackets    = 0
+    local latency        = 0
+    local latencyDelta   = 0
+    local iteration      = 0
+    local globalIter     = 0
+    local canPrint       = 1
+    local rxburst        = memory.bufArray(MAX_RX_BURST_SIZE)
+    local startTime      = moongen.getTime()
+    local printStartTime = startTime
+    local elapsedTime    = 0
+    local rxPackets      = 0
 
     while state == "canrun" do
         for i = 1, qconfs[coreid].nRxPorts do
@@ -554,7 +628,8 @@ function coreBenchRx(coreid, qconfs, devices, pgparams, pstats)
             rxqueue = devices[portid]:getRxQueue(0)
 
             -- Receive the bursts for the port
-            rxPackets                = rxqueue:recv(rxburst)
+            rxPackets                = rxqueue:tryRecv(rxburst, 
+                                           pgparams.receiveTimeout)
             pstats[portid].rxPackets = pstats[portid].rxPackets + rxPackets
             pstats[portid].rxDropped = pstats[portid].rxDropped + rxPackets
 
@@ -577,6 +652,16 @@ function coreBenchRx(coreid, qconfs, devices, pgparams, pstats)
             simpleDrop(rxburst) 
         end
 
+        -- Update the state
+        iteration   = iteration + 1
+        elapsedTime = moongen.getTime() - startTime
+
+        if pgparams.iterations ~= 0 and iteration > pgparams.iterations then
+            state = "stop"
+        elseif pgparams.timeout ~= 0 and elapsedTime > pgparams.timeout then
+            state = "stop"
+        end
+
         -- Check if its time to print stats.
         globalIter = math.fmod(
                         math.floor(moongen.getTime() - globalStart), 
@@ -589,23 +674,27 @@ function coreBenchRx(coreid, qconfs, devices, pgparams, pstats)
             canPrint = 0
             os.execute("clear")
                 
-            elapsedTime = moongen.getTime() - startTime 
             for i = 1, qconfs[coreid].nRxPorts do
                 portid = qconfs[coreid].rxPortList[i] + 1
                 if pstats[portid] ~= nil then 
-                    pstats[portid].elapsedTime = elapsedTime
+                    pstats[portid].elapsedTime = moongen.getTime() 
+                                               - printStartTime
                     pstats[portid]:print(moongen.getCore(), portid - 1)
 
                     pstats[portid].prevRxPackets = pstats[portid].rxPackets
                     pstats[portid].prevRxBytes   = pstats[portid].rxBytes
                 end
             end
-            startTime = moongen.getTime()
+            printStartTime = moongen.getTime()
         elseif globalIter == coreid * pgparams.timerPeriod and
                canPrint   == 0 then
             canPrint = 1
         end
     end
+
+    -- Print out the stats since we have ended
+    pstats[portid].elapsedTime = moongen.getTime() - printStartTime
+    pstats[portid]:print(moongen:getCore(), portid - 1)
 end
 
 -- @brief Updates the timestamp for a packet. The first 8 bytes are used as 
@@ -651,11 +740,8 @@ function buildTxFrame(portid, buf, btxparams, pgparams)
                    + pgparams.ethSrcBaseNum + portid   
     local ethDst   = pgparams.ethDstBaseNum + pgparams.ethDstVaryNum * varyEth
 
-    -- FCS is 4 bytes
-    local frameSize = pgparams.packetSize - 4
-    local ethLength = ETHER_HEADER_LENGTH          
-    local ipLength  = frameSize - ethLength 
-    local udpLength = ipLength  - IP_HEADER_LENGTH
+    local ethSrcFlipped = rshift(bswap(ethSrc + 0ULL), 16)
+    local ethDstFlipped = rshift(bswap(ethDst + 0ULL), 16)
 
     -- Create IP and port addresses
     local ipSrcAddr = pgparams.ipSrcVaryNum * varyIp
@@ -667,10 +753,13 @@ function buildTxFrame(portid, buf, btxparams, pgparams)
     local portDstAddr = 
         band(pgparams.portDstBase + pgparams.portDstVary * varyPort, 0xffff)
 
-    local pkt = buf:getUdpPacket()
+    -- FCS is 4 bytes
+    local frameSize = buf.pkt_len
+    local ethLength = ETHER_HEADER_LENGTH          
+    local ipLength  = frameSize - ethLength 
+    local udpLength = ipLength  - IP_HEADER_LENGTH
 
-    local ethSrcFlipped = rshift(bswap(ethSrc + 0ULL), 16)
-    local ethDstFlipped = rshift(bswap(ethDst + 0ULL), 16)
+    local pkt = buf:getUdpPacket()
 
     -- ETH mode
     pkt.eth:setType(ETHER_TYPE_IPv4)
@@ -679,11 +768,12 @@ function buildTxFrame(portid, buf, btxparams, pgparams)
 
     -- IP mod
     pkt.ip4:setLength(ipLength)
-    pkt.ip4:setHeaderLength(IP_HEADER_LENGTH)
+    pkt.ip4:setHeaderLength(5)  -- Number of 32 bit words : use min value.
     pkt.ip4:setProtocol(17)
     pkt.ip4:setTTL(64)
     pkt.ip4:setSrc(ipSrcAddr)
     pkt.ip4:setDst(ipDstAddr)
+    pkt.ip4:setVersion(4)
 
     -- UDP mod
     pkt.udp:setLength(udpLength)
@@ -705,23 +795,13 @@ function buildTxFrame(portid, buf, btxparams, pgparams)
     local payLength   = udpLength - UDP_HEADER_LENGTH
     local i           = 16             -- tstamp, flowid, streamid = 16 bytes
     local offset      = i              -- Start offset into payload bytes
-    local l           = 0
-    local l0          = pgparams.defaultPayloadSize
-    local currSegData = TOTAL_HEADER_LENGTH + i
 
-    while ((currSegData < MAX_SEG_LENGTH) and (payLength > 0)) do
-        l = math.min(l0, math.floor(MAX_SEG_LENGTH - currSegData))
-        l = math.min(l, payLength)
-
-        -- Copy l bytes from the default payload to the actual payload
-        local endIndex = i + l
-        while i < endIndex do
-            pkt.payload.uint8[i] = 
-              string.byte(pgparams.defaultPayload, i - offset + 1) or 0
-            i = i + 1
-        end 
-        payLength   = payLength - l
-        currSegData = currSegData + l
+    -- Copy the default payload into the packet.
+    while i < payLength do
+        -- NOTE: i - offset is to remove the 16 byte initial offset.
+        pkt.payload.uint8[i] = 
+            string.byte(pgparams.defaultPayload, i - offset + 1) or 0
+        i = i + 1
     end
 end
 
@@ -744,6 +824,10 @@ function params:print()
       "\n| RX queues per core : %30u |"                                 ..
       "\n| Total TX queues    : %30u |"                                 ..
       "\n| Portmask           : %30s |"                                 ..
+      "\n| TX portmask used   : %30s |"                                 ..
+      "\n| TX portmask        : %30s |"                                 ..
+      "\n| RX portmask used   : %30s |"                                 ..
+      "\n| RX portmask        : %30s |"                                 ..
       "\n| Flows per stream   : %30u |"                                 ..
       "\n| Number of streams  : %30u |"                                 ..
       "\n| Bursts per stream  : %30u |"                                 ..
@@ -754,6 +838,9 @@ function params:print()
       "\n| Packet size        : %30u |"                                 ..
       "\n| Using Imix size    : %30s |"                                 ..
       "\n| Timer period       : %30u |"                                 ..
+      "\n| Timeout (s)        : %30u |"                                 ..
+      "\n| Iterations         : %30u |"                                 ..
+      "\n| Receive Timout (ms): %30u |"                                 ..
       "\n| ETH src base       : %30s |"                                 ..
       "\n| ETH src vary       : %30s |"                                 ..
       "\n| ETH dst base       : %30s |"                                 ..
@@ -772,6 +859,7 @@ function params:print()
       "\n| No RX descriptors  : %30u |"                                 ..
       "\n| No TX descriptors  : %30u |"                                 ..
       "\n| No ports           : %30u |"                                 ..
+      "\n| RX ports mirror TX : %30s |"                                 ..
       "\n| Param display time : %30u |"                                 ..
       "\n+-----------------------------------------------------+\n"     ,
       self.cores                                                        ,
@@ -779,6 +867,10 @@ function params:print()
       self.rxPortsPerCore                                               ,
       self.totalTxPorts                                                 ,
       self.portmask                                                     ,
+      self.txPortmaskUsed                                               ,
+      self.txPortmask                                                   ,
+      self.rxPortmaskUsed                                               ,
+      self.rxPortmask                                                   ,
       self.flowsPerStream                                               ,
       self.numberOfStreams                                              ,
       self.burstPerStream                                               ,
@@ -789,6 +881,9 @@ function params:print()
       self.packetSize                                                   ,
       tostring(self.mustImix)                                           ,
       self.timerPeriod                                                  ,
+      self.timeout                                                      ,
+      self.iterations                                                   ,
+      self.receiveTimeout                                               ,
       self.ethSrcBase                                                   ,
       self.ethSrcVary                                                   ,
       self.ethDstBase                                                   ,
@@ -807,6 +902,7 @@ function params:print()
       self.nbRxd                                                        ,
       self.nbTxd                                                        ,
       self.nbPorts                                                      ,
+      self.rxPortsMirrorTx                                              ,
       self.paramDisplay / 1000
   )
 
@@ -845,6 +941,19 @@ function printUsage()
         "     PORT_VARY : Vary port ip (format a (number))\n"             ..
         "     NOTE: comma separated list without spaces, example:\n"      ..
         "           00:00:00:00:a0:21,0.0.0.1,2\n\n"                      ..
+        "   --rx-ports-mirror-rx|-M VALUE where\n"                        ..
+        "     VALUE : If the ports for RX mirror the ports used for TX\n" ..
+        "     (default 0, options: 0 = false, 1 = true)\n"                ..
+        "     NOTE: If true, and -c 4 -p 0x3 --rx-ports-mirror-tx are\n"  ..
+        "           the parameters, ports 0, 1 will be used for both\n"   ..
+        "           RX and TX (they mirror each other), if they aren't\n" ..
+        "           set to mirror then the RX ports are allocated after\n"..
+        "           all the TX ports\n\n"                                 ..
+        "   --rx-timeout|-RT TIMEOUT_MS where\n"                          ..
+        "     TIMEOUT_MS : The time in ms to try and receive for. After\n"..
+        "                  this time expires, the iteration ends and\n"   ..
+        "                  the next iteration will try to receive\n"      ..
+        "     (default 100)\n\n"                                          ..
         "   --src-vary|-S MAC_VARY,IP_VARY,PORT_VARY where\n"             ..
         "     MAC_VARY  : Vary source mac (format a:b:c:d:e:f)\n"         ..
         "     IP_VARY   : Vary source ip  (format a.b.c.d)\n"             ..
@@ -862,9 +971,18 @@ function printUsage()
         "     TIME : Seconds to display params before running\n"          ..
         "            (default 3 seconds)\n\n"                             ..
         "   --cores|-c CORES where\n"                                     ..
-        "     CORES : Number of cores to use (default 1)\n\n"             ..
+        "     CORES : Number of cores to use (default 1)\n"               ..
+        "     NOTE: The max cores supported is 16, because MoonGen only\n"..
+        "           allows 15 slaves to be launched, otherwise it\n"      ..
+        "           terminates.\n\n"                                      ..
         "   --tx-queues|-d TX_QUEUS where\n"                              ..
         "     TX_QUEUS : Total number of tx queues (default 1)\n\n"       ..
+        "   --timeout|-e TIME where\n"                                    ..
+        "     TIME : The time (in seconds) to run for.\n"                 ..
+        "            (default is to run indefinitely)\n\n"                ..
+        "   --iterations|-f ITERS where\n"                                ..
+        "     ITERS : The number of TX/RX iterations to run.\n"           ..
+        "             (defualt is to run indefinitely)\n\n"               ..
         "   --mac-stride|-g MAC_STRIDE where\n"                           ..
         "     MAC_STRIDE : MAC stride between streams (a:b:c:d:e:f)\n\n"  ..
         "   --help|-h Print usage\n\n"                                    ..
@@ -882,7 +1000,17 @@ function printUsage()
         "     PORT_STRIDE : PORT stride between streams\n\n"              ..
         "   (All strides default to flows-per-stream)\n\n"                ..
         "   --portmask|-p PORTMASK where\n"                               ..
-        "     PORTMASK : Hexadecimal port mask (default 0003)\n\n"        ..
+        "     PORTMASK : Hexadecimal port mask (default 0001)\n\n"        ..
+        "   --rx-portmask|-rxp RX_PORTMASK where\n"                       ..
+        "     RX_PORTMASK : Hexadecimal portmask for rx ports\n"          ..
+        "     (default 0)\n"                                              ..
+        "     NOTE: If this is used, -txp must also be specified, even\n" ..
+        "           if its argument is 0 (to disable tx ports).\n\n"      ..
+        "   --tx-portmask|-txp TX_PORTMASK where\n"                       ..
+        "     TX_PORTMASK : Hexadecimal portmask for tx ports\n"          ..
+        "     (default 0)\n"                                              ..
+        "     NOTE: If this is used, -rxp must also be specified, even\n" ..
+        "           if its argument is 0 (to disable rx ports).\n\n"      .. 
         "   --queues-per-core|-q QUEUES where\n"                          ..
         "     QUEUES : Number of queues (ports) per core (default 1)\n"   ..
         "   (The default is for each core to have a tx and rx queue,\n"   ..
@@ -930,6 +1058,25 @@ function parseArgs(params, ...)
 
                 addressConversionMask.ethSDstVary = true
                 addressConversionMask.ipDstVary   = true
+            elseif v == "--rx-ports-mirror-tx" or v == "-M" then 
+                local rxMirrorTx = tonumber(args[i + 1])
+                if rxMirrorTx == 0 then
+                    params.rxPortsMirrorTx = false
+                elseif rxMirrorTx == 1 then
+                    params.rxPortsMirrorTx = true
+                else 
+                    print("Invalid argument for --rx-ports-mirror-tx")
+                    printUsage()
+                    return false
+                end
+            elseif v == "--rx-timeout" or v == "-RT" then 
+                local rxTimeout = tonumber(args[i + 1])
+                if rxTimeout <= 0 then 
+                    print("Invalid RX timeout")
+                    printUsage()
+                    return false
+                end
+                params.receiveTimeout = rxTimeout
             elseif v == "--vary-src" or v == "-S" then 
                 ethVar, ipVar, portVar =
                   args[i + 1]:match("([^,]+),([^,]+),([^,]+)")
@@ -956,7 +1103,7 @@ function parseArgs(params, ...)
                 end
             elseif v == "--cores" or v == "-c" then
                 local cores = tonumber(args[i + 1])
-                if cores < 1 then 
+                if cores < 1  or cores >= MAX_CORES then 
                     print("Invalid number of cores")
                     printUsage()
                     return false
@@ -970,6 +1117,24 @@ function parseArgs(params, ...)
                     return false
                 else 
                     params.totalTxPorts = totalTxPorts 
+                end
+            elseif v == "--timeout" or v == "-e" then 
+                local timeout = tonumber(args[i + 1])
+                if timeout < 0 then 
+                    print("Invalid timeout period, can't be negative")
+                    printUsage()
+                    return false
+                else 
+                    params.timeout = timeout
+                end
+            elseif v == "--iterations" or v == "-f" then
+                local iterations = tonumber(args[i + 1])
+                if iterations < 0 then 
+                    print("Invalid number of iterations, cannot be negative")
+                    printUsage()
+                    return false
+                else 
+                    params.iterations = iterations 
                 end
             elseif v == "--mac-stride" or v == "-g" then
                 params.ethStride                = args[i + 1]
@@ -1002,8 +1167,26 @@ function parseArgs(params, ...)
                 params.portDstBase = tonumber(args[i + 1])
             elseif v == "--port-stride" or v == "-o" then 
                 params.portStride = tonumber(args[i + 1])
-            elseif v == "--portmask" or v == "-p" then 
-                params.portmask = args[i + 1]
+            elseif v == "--portmask" or v == "-p" then
+                if type(args[i + 1]) == "string" then 
+                    params.portmask = tonumber(args[i + 1], 16)
+                elseif type(args[i +1]) == "number" then
+                    params.portmask = args[i + 1]
+                end
+            elseif v == "--rx-portmask" or v == "-rxp" then 
+                params.rxPortmaskUsed = true
+                if type(args[i + 1]) == "string" then 
+                    params.rxPortmask = tonumber(args[i + 1], 16)
+                elseif type(args[i +1]) == "number" then
+                    params.rxPortmask = args[i + 1]
+                end      
+            elseif v == "--tx-portmask" or v == "-txp" then 
+                params.txPortmaskUsed = true
+                if type(args[i + 1]) == "string" then 
+                    params.txPortmask = tonumber(args[i + 1], 16)
+                elseif type(args[i +1]) == "number" then
+                    params.txPortmask = args[i + 1]
+                end            
             elseif v == "--queues-per-core" or v == "-q" then 
                 local qpc = tonumber(args[i + 1])
                   if qpc > MAX_RX_QUEUS_PER_CORE then
@@ -1075,7 +1258,7 @@ function parseArgs(params, ...)
                     printUsage()
                     return false
                 else
-                    params.packetSize = pktSize + 4
+                    params.packetSize = pktSize
                 end
             else
                 if command then 
@@ -1086,6 +1269,18 @@ function parseArgs(params, ...)
             if command then command = false else command = true end
         end
     end   
+
+    if params.rxPortmaskUsed == true and 
+       params.txPortmaskUsed == true then
+          params.explicitMasksUsed = true 
+          params.rxPortsMirrorTx   = true
+    elseif  (params.rxPortmaskUsed == true and params.txPortmaskUsed == false) 
+      or    (params.rxPortmaskUsed == false and params.txPortmaskUsed == true)
+      then
+  	      print("Error, can'tt use rx or tx portmasks separately " ..
+                "from each other.")
+	        return false
+    end
 
     -- Convert all the numeric addresses to numeric ones
     convertAddressesToNumeric(params)
@@ -1228,17 +1423,14 @@ function convertMacNumberToString(mac)
     return macString
 end
 
--- @brief Generates a random number between 1 - 120 for the IMIX.
+-- @brief Generates a random number in range [1, 120] for the IMIX.
 function imixSize() 
-    math.randomseed(os.time())
-    -- Might need to pop some random numbers here if these aren't random
-
     local rnum = math.random(120);
-    if rnum < 10 then         -- 1 in 12
+    if rnum <= 10 then         -- 1 in 12 : [1 - 10]   : 10 / 120
         return 1518
-    elseif rnum < 50 then     -- 4 in 12
+    elseif rnum <= 50 then     -- 4 in 12 : [11 - 50]  : 40 / 120
         return 574
-    else                      -- 7 in 12
+    else                       -- 7 in 12 : [51 - 120] : 70 / 120
         return 68     
     end
 end
