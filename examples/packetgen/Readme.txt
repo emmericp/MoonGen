@@ -159,6 +159,15 @@ examples which go with them, do:
    usage since the burst is a repetition of a stream, and all flows for the 
    stream are pre-allocated as mentioned above.
 
+4) Packetgen script does allow for both timestamping and rate control, but they 
+   are done in software. Both are suboptimal when done in software as they are 
+   exposed to the garbage collector and LUA JIT pauses. The rate control is 
+   implemented by sending outgoing packets to the queue (via DPDK) and then 
+   waiting until enough time has passed before submitting the next batch of 
+   packets to the queue. Unfortunately, there is no control over when the 
+   packets in the queue are sent out, introducing a small amount of error in 
+   some cases. 
+
 # --------------------------------------------------------------------------- #
 # EXAMPLES                                                                    #
 # --------------------------------------------------------------------------- #
