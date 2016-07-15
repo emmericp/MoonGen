@@ -42,127 +42,123 @@ local bit      = require "bit"
 local lshift    , rshift    , band    , bswap     , bor    , ror    = 
       bit.lshift, bit.rshift, bit.band, bit.bswap , bit.bor, bit.ror
 
--- State of the packet generator.
-local state = "canrun"
-
--- Configuration table for each core. Each coreQconf table has the following 
--- elements:
+-------------------------------------------------------------------------------
+-- Table for RX stats:
 --
---    nTxPorts    : Number of tx ports for the core.
---    txPortList  : List of tx ports for the core.
---    rxPorts     : Number of rxports for the core.
---    rxPortList  : Lits of rx ports for the core.
-local coreQconf = {}
-
--- Table of ethernet devices, each of these 
--- devices wrapps the tx and rx queues.
-local devices = {}
-
--- Table for the stats tables for each port.
--- Each stats table is the stats table below.
-local portstats = {}
-
--- Table for stats per core. This 
--- is a table of portstats tables.
-local cstats = {}
-
--- Table for the statistics for each port.
---
---   - rxBytes        : Number of received bytes.
---   - prevRxBytes    : Number of received bytes at the prev iteration.
---   - rxPackets      : Number of received packets.
---   - prevRxPackets  : Number of received packets at the prev iteration.
---   - txBytes        : Number of transmitted bytes.
---   - prevTxBytes    : Number of transmitted bytes at the prev iteration.
---   - txPackets      : Number of transmitted packets.
---   - prevTxPackets  : Number of transmitted packets at the prev iteration.
---   - rxDropped      : Number of dropped receive packets.
---   - txDropped      : Number of dropped transmit packets.
---   - txBursts       : Number of transmit bursts.
---   - txShort        : Number of generated but not transmitted packets.
---   - rxLatPackets   : Number of received packets with latency timestamps.
---   - rxMeanLatency  : Average latency of the packets.
---   - rxM2Latency    : Squared average of the latency of the packets.-
---   - elapsedTime    : Time elapsed for the last iteration.
-local stats = {
-    rxBytes       = 0 ,
-    prevRxBytes   = 0 ,
-    rxPackets     = 0 ,
-    prevRxPackets = 0 , 
-    txBytes       = 0 ,
-    prevTxBytes   = 0 ,
-    txPackets     = 0 ,
-    prevTxPackets = 0 , 
-    rxDropped     = 0 ,
-    txDropped     = 0 ,
-    txBursts      = 0 ,
-    txShort       = 0 , 
-    rxLatPackets  = 0 ,
-    rxMeanLatency = 0 ,
-    rxM2Latency   = 0 , 
-    elapsedTime   = 0
+--  bytes         : Total number of bytes received.
+--  prevBytes     : Number of bytes received at the previous iteration.
+--  packets       : Total number of packets received.
+--  prevPackets   : Number of packets received at the previous iteration.
+--  dropped       : Number of received packets which have been dropped.
+--  tstampPackets : Number of received packets with a timestamp.
+--  meanLatency   : Mean latency of received packets with timestamps.
+--  elapsedTime   : Time elapsed since the start of the run.
+--  deltaTime     : Time since the last iteration.
+-------------------------------------------------------------------------------
+local statsRx = {
+  bytes         = 0,
+  prevBytes     = 0,
+  packets       = 0,
+  prevPackets   = 0,
+  dropped       = 0,
+  tstampPackets = 0,
+  meanLatency   = 0,
+  elapsedTime   = 0,
+  deltaTime     = 0
 }
 
--- Table for packetgen params.
-local params = {
-    cores              = 1                                ,
-    txPortsPerCore     = 1                                ,
-    totalTxPorts       = 1                                ,
-    rxPortsPerCore     = 1                                ,
-    portmask           = 1                                ,
-    txPortmaskUsed     = false                            ,
-    txPortmask         = 0                                ,
-    rxPortmaskUsed     = false                            ,
-    rxPortmask         = 0                                ,
-    explicitMasksUsed  = false 				                    ,
-    flowsPerStream     = 2047                             ,
-    numberOfStreams    = 1                                ,
-    burstPerStream     = 1                                ,
-    txBurstSize        = 32                               ,
-    rxBurstSize        = 32                               ,
-    txDelta            = 0                                ,
-    totalFlows         = 0                                ,
-    packetSize         = 64                               ,
-    mustImix           = false                            ,
-    timerPeriod        = 1                                ,
-    timeout            = 0                                ,
-    iterations         = 0                                ,
-    receiveTimeout     = 100                              ,
-    ethSrcBaseNum      = 0x000d30596955                   ,
-    ethSrcBase         = "00:0d:30:59:69:55"              ,
-    ethSrcVaryNum      = 0                                ,
-    ethSrcVary         = "00:00:00:00:00:00"              ,
-    ethDstBaseNum      = 0x5452deadbeef                   ,
-    ethDstBase         = "54:52:de:ad:be:ef"              ,
-    ethDstVaryNum      = 1                                ,
-    ethDstVary         = "00:00:00:00:00:01"              ,
-    ethStrideNum       = 0                                ,
-    ethStride          = "00:00:00:00:00:00"              , 
-    ipSrcBaseNum       = 0                                ,
-    ipSrcBase          = "192.168.50.10"                  ,
-    ipSrcVaryNum       = 0                                ,
-    ipSrcVary          = "0.0.0.0"                        ,
-    ipDstBaseNum       = 0                                ,
-    ipDstBase          = "192.168.60.10"                  ,
-    ipDstVaryNum       = 1                                ,
-    ipDstVary          = "0.0.0.1"                        ,
-    ipStrideNum        = 0                                , 
-    ipStride           = "0.0.0.0"                        ,
-    portSrcBase        = 4096                             ,
-    portSrcVary        = 1                                ,
-    portDstBase        = 2048                             ,
-    portDstVary        = 0                                ,
-    portStride         = 0                                ,
-    defaultPayload     = "\x42\x01\x02\x03 DPDK Payload"  ,
-    defaultPayloadSize = 17                               ,
-    nbRxd              = 1024                             ,
-    nbTxd              = 1024                             ,
-    nbPorts            = 0                                ,
-    rxPortsMirrorTx    = false                            , 
-    paramDisplay       = 3000
+-------------------------------------------------------------------------------
+-- Table for TX stats:
+--
+--  bytes         : Total number of bytes sent.
+--  prevBytes     : Number of bytes sent at the previous iteration.
+--  packets       : Total number of packets sent.
+--  prevPackets   : Number of packets sent at the previous iteration.
+--  bursts        : Number of bursts sent.
+--  short         : Number of generated by not sent packets.
+--  elapsedTime   : Time elapsed since the start of the run.
+--  deltaTime     : Time since the last iteration.
+--------------------------------------------------------------------------------
+local statsTx = {
+  bytes         = 0,
+  prevBytes     = 0,
+  packets       = 0,
+  prevPackets   = 0,
+  bursts        = 0,
+  short         = 0,
+  elapsedTime   = 0,
+  deltaTime     = 0
 }
 
--- Defines parameters for a burst.
+-------------------------------------------------------------------------------
+-- Table for command line configuration parameters, the following are options:
+--
+--  rxSlavePorts    : Ports to use for the RX slaves.
+--  txSlavePorts    : Ports to use for the TX slaves.
+--  rxDescs         : Number of RX descriptors.
+--  txDescs         : Number of TX descriptors.
+--  numberOfStreams : Number of streams to create.
+--  flowsPerStream  : The number of flows in each of the streams.
+--  burstsPerStream : The number of bursts to send for each stream.
+--  totalFlows      : The totla number of flows to generate.
+--  paramDisplay    : The number of milliseconds to display the parameters for.
+--  statsDisplay    : The amount of time between each device stats display.
+--  txDelta         : Amount of time to pass before sending a burst.
+--  packetSize      : The size of each packet, in bytes.
+--  mustImix        : If IMIXing must be used to determine packet sizes.
+--  iterations      : Number of iterations to run for.
+--  timeout         : Number of seconds to run for.
+--  fileprefix      : The prefix of the file to write to.
+--  writemode       : Write mode: 0-off, 1-print, 1-globalfile, 2-percorefile
+--  rest            : Parameters used to generate the traffic pattern.
+-------------------------------------------------------------------------------
+local clParams = {
+    rxSlavePorts    = {}                      ,
+    txSlavePorts    = {}                      ,
+    rxDescs         = 1024                    ,
+    txDescs         = 1024                    ,
+    numberOfStreams = 1                       ,
+    flowsPerStream  = 2047                    ,
+    burstsPerStream = 1                       ,
+    totalFlows      = 0                       ,
+    paramDisplay    = 3000                    ,
+    statsDisplay    = 1000                    ,
+    txDelta         = 0                       ,
+    packetSize      = 64                      ,
+    mustImix        = false                   ,
+    iterations      = 0                       ,
+    timeout         = 0                       ,
+    fileprefix      = ""                      ,
+    writemode       = 1                       ,
+    ethSrcBaseNum   = 0x000d30596955          ,
+    ethSrcBase      = "00:0d:30:59:69:55"     ,
+    ethSrcVaryNum   = 0                       ,
+    ethSrcVary      = "00:00:00:00:00:00"     ,
+    ethDstBaseNum   = 0x5452deadbeef          ,
+    ethDstBase      = "54:52:de:ad:be:ef"     ,
+    ethDstVaryNum   = 1                       ,
+    ethDstVary      = "00:00:00:00:00:01"     ,
+    ethStrideNum    = 0                       ,
+    ethStride       = "00:00:00:00:00:00"     , 
+    ipSrcBaseNum    = 0                       ,
+    ipSrcBase       = "192.168.50.10"         ,
+    ipSrcVaryNum    = 0                       ,
+    ipSrcVary       = "0.0.0.0"               ,
+    ipDstBaseNum    = 0                       ,
+    ipDstBase       = "192.168.60.10"         ,
+    ipDstVaryNum    = 1                       ,
+    ipDstVary       = "0.0.0.1"               ,
+    ipStrideNum     = 0                       , 
+    ipStride        = "0.0.0.0"               ,
+    portSrcBase     = 4096                    ,
+    portSrcVary     = 1                       ,
+    portDstBase     = 2048                    ,
+    portDstVary     = 0                       ,
+    portStride      = 0                       ,
+}
+
+-------------------------------------------------------------------------------
+-- Defines parameters for a burst:
 --
 --  counter  : Counter for creating burst pattern.
 --  flowid   : The flow ID of the burst.
@@ -170,7 +166,8 @@ local params = {
 --  prevtsc  : The previous clock count.
 --  currtsc  : The current clock count.
 --  difftsc  : The difference between the clock counts.
-local bparams = {
+-------------------------------------------------------------------------------
+local burstParams = {
     counter  = 0 ,
     flowid   = 0 ,
     streamid = 0 ,
@@ -179,536 +176,230 @@ local bparams = {
     difftsc  = 0
 }
 
--- General constants used by packetgen ---------------------------------------
+-------------------------------------------------------------------------------
+-- Table for constants:
+--
+--  maxSlavePort      : Maximum port number a slave may use.
+--  maxSlaves         : Maximum number of total slaves (limited by cores).
+--  maxFlowsPerStream : Maximum number of flows per stream.
+--  maxPacketSize     : Maximum size of a packet.
+--  rxBurstSize       : The size of each of the RX burst.
+--  txBurstSize       : The size of each of the TX bursts.
+--  receiveTimeout    : Time to try receive for (ms)
+--  ethHeaderLength   : Number of bytes in ethernet header.
+--  ipHeaderLength    : Number of bytes in ip header.
+--  udpHeaderLength   : Number of bytes in udp header
+--  ethTypeIpv4       : Type code for ethernet ipv4.
+--  printTimePassPcnt : % of print time which must pass since last print.
+--  defaultPayload    : Default payload to use for packets.
+-------------------------------------------------------------------------------
+constants = {
+    maxSlavePort      = 32    ,
+    maxSlaves         = 32    ,
+    maxFlowsPerStream = 2047  ,
+    maxPacketSize     = 64    ,
+    maxPacketSize     = 1522  ,
+    rxBurstSize       = 128   ,
+    txBurstSize       = 32    ,
+    receiveTimeout    = 100   ,
+    ethHeaderLength   = 14    ,
+    ipHeaderLength    = 20    , 
+    udpHeaderLength   = 8     ,
+    ethTypeIpv4       = 0x0800,
+    printTimePassPcnt = 0.8   ,
+    defaultPayload    = "\x01\x02 MoonGen Payload"
+}
 
-MAX_RX_QUEUES_PER_CORE  = 16
-MAX_RX_BURST_SIZE       = 128
-MAX_TX_BURST_SIZE       = 128
-MAX_CORES               = 31        -- MoonGen limit, excludes
-MAX_MEMPOOL_SIZE        = 2047      -- Max mbufs in a single mempool
-MAX_PACKET_SIZE         = 1522
+-- Start time of the appliction. This is used to sync 
+-- the printing and logging accross the slaves.
+local globalStartTime = moongen.getTime()
 
--- The length values are all in bytes
-ETHER_TYPE_IPv4         = 0x0800
-ETHER_ADDR_LEN          = 6            
-ETHER_HEADER_LENGTH     = 14          
-IP_HEADER_LENGTH        = 20            
-UDP_HEADER_LENGTH       = 8            
-TOTAL_HEADER_LENGTH     = ETHER_HEADER_LENGTH 
-                        + IP_HEADER_LENGTH
-                        + UDP_HEADER_LENGTH
-
--- Global start time across all threads.
-local globalStart = moongen.getTime()
-
--- @brief Defines the main function for packetgen.
+-------------------------------------------------------------------------------
+-- Master function to do the slave setup and invoke the slave instances.
+-------------------------------------------------------------------------------
 function master(...)
-    local continue = parseArgs(params, ...)
+    local continue = parseArgs(clParams, ...)
     if continue == false then 
         os.exit() 
     end
 
-    -- Make sure that the portmaks is 64 bits wide.
-    local portmask = 0ULL + params.portmask
-    params.nbPorts = device.numDevices()
-
-    -- Check if the rx and tx portmask are explicit
-    local rxPortmask = 0ULL
-    local txPortmask = 0ULL
-
-    if params.explicitMasksUsed == true then
-        rxPortmask = 0ULL + params.rxPortmask
-        txPortmask = 0ULL + params.txPortmask
-
-        -- Make the portmask a compination of the masks
-        portmask            = bor(rxPortmask, txPortmask)
-        params.totalTxPorts = 1
+    local totalSlaves = #clParams.rxSlavePorts + #clParams.txSlavePorts
+    if totalSlaves == 0 then 
+        print("No slaves requested. Packetgen will now exit.")
+        os.exit()
+    end
+    if totalSlaves > constants.maxSlaves then 
+        print(string.format("Too many slaves requested:\n %u requested, " ..
+            "%u maximum.\n Packetgen will now exit.", 
+            totalSlaves, constants.maxSlaves)
+        )
     end
 
-    -- Initialize the stats for each port.
-    for portid = 0, params.nbPorts - 1 do
-        if band(portmask, lshift(1, portid)) >= 1 then 
-            portstats[portid + 1] = deepCopy(stats)
+    -- Tables for RX and TX devices:
+    local rxDevices = {}
+    local txDevices = {}
 
-            if params.txPortmaskUsed == true then 
-                params.totalTxPorts = params.totalTxPorts + 1
-	          end	
-        end
-    end
-
-    -- Initialize the core Q confs -- note that although the core ids 
-    -- go from 0 -> params.cores - 1, because of the 1 indexed array we 
-    -- use 1 -> params.cores, to avoid having to index with tostring(coreid)
-    for coreid = 1, params.cores do
-        coreQconf[coreid] = {
-            nTxPorts   = 0  ,
-            txPortList = {} ,
-            nRxPorts   = 0  ,
-            rxPortList = {} 
+    -- Configure the TX slaves:
+    for i = 1, #clParams.txSlavePorts do
+        local deviceIdx = #txDevices + 1
+        txDevices[deviceIdx] = device.config{
+            port     = clParams.txSlavePorts[i],
+            rxQueues = 1                       , -- Only 1 supported for now.
+            txQueues = 1                       , -- Only 1 supported for now.
+            txDescs  = clParams.txDescs
         }
+        txDevices[deviceIdx]:setPromisc(true)
     end
 
-    -- Each core has an array of stats for each port. At the end, the stats
-    -- from a port across all the cores doing something on that port are 
-    -- aggregated
-    for i = 1, #coreQconf do
-        cstats[i] = deepCopy(portstats)
+    -- Configure the RX slaves:
+    for i = 1, #clParams.rxSlavePorts do
+        local deviceIdx = #rxDevices + 1
+        rxDevices[deviceIdx] = device.config{
+            port     = clParams.rxSlavePorts[i],
+            rxQueues = 1                       , -- Only 1 supported for now.
+            txQueues = 1                       , -- Only 1 supported for now.
+            rxDescs  = clParams.rxDescs
+        }
+        rxDevices[deviceIdx]:setPromisc(true)
     end
 
-    -- If explicit masks are being used, set the portmask to the TX mask
-    if params.explicitMasksUsed == true then
-        portmask = txPortmask
+    -- If writing globally, write the header for the global file:
+    if clParams.writemode == 2 then 
+        writeStatsHeader(clParams.fileprefix .. ".txt")
     end
 
-    -- Allocate tx cores for each port first.
-    -- NOTE: The coreid is the actual value of the coreid (physical), 
-    --       so we need to add 1 when indexing into lcoreQconf table.
-    local txPorts = {}
-    local coreid  = 0
-    for portid = 0, params.nbPorts - 1 do 
-        if band(portmask, lshift(1, portid)) >= 1 and 
-           #txPorts < params.totalTxPorts then 
-	          while coreQconf[coreid + 1].nTxPorts 
-	                >= params.txPortsPerCore do
-	              coreid = coreid + 1
-	              if coreid >= params.cores then
-                    print("Error: Not enough cores for tx port alloc!")
-		                return
-	              end
-	          end
+    -- Display the parameters:
+    clParams:print()
+    moongen.sleepMillis(clParams.paramDisplay)
 
-	          -- Update the list of ports used for tx.
-	          local inTxList = false
-	          for i = 1, #txPorts do
-	              if txPorts[i] == portid then 
-		                inTxList = true
-	              end
-	          end
-	          if inTxList == false then
-	              txPorts[#txPorts + 1] = portid
-	          end
-
-	          -- Have a valid coreid.
-	          local coreidx = coreid + 1
-	          local portidx = coreQconf[coreidx].nTxPorts + 1
-
-	          coreQconf[coreidx].txPortList[portidx] = portid
-	          coreQconf[coreidx].nTxPorts            = portidx
-
-	          print(string.format("Core %u: TX port %u", coreid, portid))
-        end
+    -- Launch the TX slaves:
+    for i = 1, #txDevices do
+      moongen.launchLua(
+          "txSlave", txDevices[i], clParams.txSlavePorts[i], clParams
+      )
     end
-
-    -- Display message if no ports are allocated for transmission.
-    if #txPorts == 0 then
-        print("Note: No ports are allocated for TX!")
-    end
-
-    -- If explicit masks are being used, set the portmask to the rx mask
-    if params.explicitMasksUsed then 
-        portmask = rxPortmask
-    end
-
-    -- Allocate RX cores for reamining ports in the portmask.
-    coreid = coreid + 1
-    if coreid >= params.cores then 
-        print("Note: Not enough cores for rx port alloc! " ..
-              "Packetgen will only transmit!")
-    else 
-        for portid = 0, params.nbPorts - 1 do
-            -- Check if the port is being used to transmit, if there is no 
-            -- port mirroring, otherwise the ports can mirror the tx ones.
-            local canContinue = true
-            if params.rxPortsMirrorTx == false then 
-                for i = 1, #txPorts do
-                    if txPorts[i] == portid then 
-                        canContinue = false
-                    end
-                end
-            end
-
-            if band(portmask, lshift(1, portid)) >= 1 and canContinue then 
-                while coreid < params.cores and 
-                      coreQconf[coreid + 1].nRxPorts >= params.rxPortsPerCore do
-                    coreid = coreid + 1
-                    if coreid >= params.cores then
-                        print("Note: Not enough cores for rx port alloc! " ..
-                              "Packetgen will receive on only the cores " ..
-                              "which have already been configured!")
-                        break
-                    end
-                end
-                if coreid < params.cores then 
-                    -- Have a valid coreid
-                    local coreidx = coreid + 1
-                    local portidx = coreQconf[coreidx].nRxPorts + 1
-
-                    coreQconf[coreidx].rxPortList[portidx] = portid
-                    coreQconf[coreidx].nRxPorts 	         = portidx
-
-                    print(string.format("Core %u: RX port %u", coreid, portid))
-                end
-           end 
-        end
-    end
-
-    -- If explicit masks are being used, make a single mask
-    if params.explicitMasksUsed == true then
-        portmask = bor(txPortmask, rxPortmask)
-    end
-
-    -- Configure and initialize each device.
-    for portid = 0, params.nbPorts do
-        if band(portmask, lshift(1, portid)) >= 1 then 
-            devices[portid + 1] = device.config{
-                port     = portid ,
-                rxQueues = 1      ,   -- Only 1 supported for now
-                txQueues = 1      ,   -- Only 1 supported for now
-                rxDescs  = params.nbRxd  ,
-                txDescs  = params.nbTxd  
-            }
-            devices[portid + 1]:setPromisc(true)
-
-            print(string.format("Port %u: Mac %s",
-                portid, devices[portid + 1]:getMacString()))
-        end
-    end
-
-    -- Print the parameters of the run, to make
-    -- sure that the generation is correct.
-    params:print()
     
-    -- Sleep to keep the params displayed.
-    moongen.sleepMillis(params.paramDisplay)
-
-    globalStart = moongen.getTime()
-    -- Launch the tx and rx cores.
-    for i = 1, #coreQconf do 
-        -- If the coreQconf has a tx port, then make it tx,
-        -- otherewise the core can be used for rx.
-        if coreQconf[i].nTxPorts >= 1 then 
-            moongen.launchLua(
-                "coreBenchTx", i, coreQconf, devices, params, cstats[i]
-            )
-        elseif coreQconf[i].nRxPorts >= 1 then
-           moongen.launchLua(
-               "coreBenchRx", i, coreQconf, devices, params, cstats[i]
-           )
-        end
+    -- Launch the RX slaves:
+    for i = 1, #rxDevices do
+      moongen.launchLua(
+          "rxSlave", rxDevices[i], clParams.rxSlavePorts[i], clParams
+      )
     end
+
     moongen.waitForSlaves()
+end 
+
+---- RX Functionality ---------------------------------------------------------
+
+-------------------------------------------------------------------------------
+-- Slave function to perform RX.
+-- device   : The MoonGen device to sent the packets from.
+-- portId   : The port the device is configured to use.
+-- clParams : The command line parameters.
+-------------------------------------------------------------------------------
+function rxSlave(device, portId, clParams)
+  print(string.format("Launching RX slave: Core = %u, Port: %u", 
+      moongen:getCore(), portId)
+  )
+
+  -- Variables for receiving:
+  local rxPackets = 0                  
+  local rxQueue   = device:getRxQueue(0) 
+  local rxBurst   = memory.bufArray(constants.rxBurstSize)
+  local latency   = 0
+  local latDelta  = 0
+
+  -- Variables for logging, printing, stopping:
+  local state         = "canrun"   
+  local stats         = deepCopy(statsRx) 
+  local startTime     = moongen.getTime()    
+  local lastPrintTime = 0
+  local iteration     = 0
+
+  -- Create the filename of the file to write to.
+  if clParams.writemode == 2 then
+      outFile = clParams.fileprefix .. ".txt"
+  elseif clParams.writemode == 3 then
+      -- Prer core mode - create file and write header:
+      outFile = clParams.fileprefix                 .. 
+                "-c" .. tostring(moongen:getCore()) .. 
+                "-p" .. tostring(portId) .. ".txt";
+      writeStatsHeader(outFile)
+  end
+
+  while state == "canrun" do
+      rxPackets     = rxQueue:tryRecv(rxBurst, constants.receiveTimeout)
+      stats.packets = stats.packets + rxPackets
+      stats.dropped = stats.dropped + rxPackets
+
+      for i = 1, rxPackets do
+          stats.bytes = stats.bytes + rxBurst[i].pkt_len
+          latency     = calculateLatency(rxBurst[i])
+
+          if latency ~= 0 then 
+              stats.tstampPackets = stats.tstampPackets + 1
+              latDelta            = latency - stats.meanLatency
+              stats.meanLatency   = stats.meanLatency + 
+                                    (latDelta / stats.tstampPackets)
+          end
+      end
+      simpleDrop(rxBurst)
+
+      -- Update termination params:
+      iteration         = iteration + 1
+      stats.deltaTime   = (moongen.getTime() - startTime) - stats.elapsedTime
+      stats.elapsedTime = moongen.getTime() - startTime
+      
+      -- If printing or logging must be done:
+      if clParams.writemode > 0 then 
+          -- To make sure that enough time has passed since logging 
+          -- and printing was done for the core.
+          sufficientTimeSincePrint = 
+            (stats.elapsedTime - lastPrintTime) >= 
+            (constants.printTimePassPcnt * clParams.statsDisplay / 1000)
+
+          -- Printing and logging:
+          if canPrint(clParams) and sufficientTimeSincePrint then 
+              lastPrintTime = moongen.getTime() - startTime
+              if clParams.writemode == 1 then
+                  os.execute("clear")      
+                  stats:print(portId)
+              else 
+                  stats:write(outFile, portId)
+              end
+          end  
+      end
+
+      -- Update stats:
+      stats.prevPackets = stats.packets
+      stats.prevBytes   = stats.bytes
+
+       -- Check for exit conditions:
+      if clParams.iterations ~= 0 and iteration >= clParams.iterations then
+          state = "stop"
+      elseif clParams.timeout ~= 0                 and 
+             stats.elapsedTime >= clParams.timeout then 
+          state = "stop"
+      end 
+  end
+  
+  if clParams.writemode == 0 then 
+      stats:print(portId)
+  end
 end
 
--- @brief Performs an iteration of the burst generation. If enough 
---        time has passed the packets are sent, otherwise the 
---        function just exits.
--- @param coreid    The id of the core using generation the burst.
--- @param qconfs    The configuration tables for the cores.
--- @param portid    The id of the port to generate the burst on.
--- @param txqueue   The queue to send the burst on.
--- @param pstats    The stats for the port.
--- @param pgparams  The packetgen params for the packet generation.
--- @param btxparams The params for the burst type.
--- @param stream    The stream to send for the burst.
-function txBurstGenIter(coreid, qconfs  , portid   , txqueue, 
-                        pstats, pgparams, btxparams, stream ) 
-    -- If enough time has passed to achieve the requested rate.
-    if btxparams.difftsc > pgparams.txDelta then 
-        pstats[portid].txBursts = pstats[portid].txBursts + 1
-
-        local nbtx = 0
-        for i = 1, pgparams.burstPerStream do
-            for _, flow in ipairs(stream.bufArrays) do
-                for _, buf in ipairs(flow) do
-                    updateTimestamp(buf)
-                end
-                nbtx = nbtx + txqueue:send(flow)
-            end
-        end
-
-        pstats[portid].txPackets = pstats[portid].txPackets + nbtx
-
-	      for _, flow in ipairs(stream.bufArrays) do 
-            for _, buf in ipairs(flow) do 
-                pstats[portid].txBytes = pstats[portid].txBytes + 
-                    (pgparams.burstPerStream * buf.pkt_len)
-            end
-        end
-
-        if nbtx < pgparams.txBurstSize then 
-            pstats[portid].txShort = pstats[portid].txShort + 1
-        end
-
-        btxparams.prevtsc = btxparams.currtsc
-    end
+-------------------------------------------------------------------------------
+-- Drops the received packets
+-- rxPackets  : The received packets to drop.
+-------------------------------------------------------------------------------
+function simpleDrop(rxPackets) 
+    rxPackets:freeAll()
 end
 
--- @brief Launces a core for benchmark tx  mode.
--- @param coreid   The id of the core in the coreQconf array.
--- @param qconfs   The array of core Q configurations.
--- @param devices  The ethernet devices to use (ports).
--- @param pgparams The parameters for the packet generation.
--- @param pstats   The stats for all ports
-function coreBenchTx(coreid, qconfs, devices, pgparams, pstats)
-    print(string.format("Launching Core: %u, Mode: TX", 
-          coreid - 1))
-
-    -- The tx port is always the first in the list
-    -- as is the queue for the device.
-    local btxparams = deepCopy(bparams)
-    local portid    = qconfs[coreid].txPortList[1] + 1
-    local txqueue   = devices[portid]:getTxQueue(0)
- 
-    -- All flows to send
-    local streams 	     = {}
-    local bufArrsPerFlow = 0
-
-    -- Note: Using more than 2047 flows per stream causes 
-    --       causes a performance hit because more than 
-    --       one mbuf is required for the stream, due to 
-    --       the 2047 packet limit per mbuf.
-    if pgparams.flowsPerStream > MAX_MEMPOOL_SIZE then
-        bufArrsPerFlow = math.floor(pgparams.flowsPerStream
-		                   / MAX_MEMPOOL_SIZE) + 1
-    else
-	      bufArrsPerFlow = 1
-    end
-
-    -- Allocate mbuf's for each of the unique flows.
-    for i = 1, pgparams.numberOfStreams do
-        streams[i] = {
-            mempools  = {},
-            bufArrays = {}
-        }
-        for j = 1, bufArrsPerFlow do
-            -- This can allocate 2047 mbufs.
-            streams[i].mempools[j] = memory:createMemPool(
-                function(buf)
-                    buf:getUdpPacket():fill{
-                        pktLength   = pgparams.packetSize - 4,
-                        ethLength   = ethLength             
-                    }
-                end
-            )
-           
-            -- Determine how many bufs to get from the mpool.
-            local numBufs = 0
-	          if bufArrsPerFlow == 1 or j < bufArrsPerFlow then 
-                if pgparams.flowsPerStream < MAX_MEMPOOL_SIZE then
-		                numBufs = pgparams.flowsPerStream
-                else 
-                    numBufs = MAX_MEMPOOL_SIZE
-                end
-            elseif j == bufArrsPerFlow then 
-		            numBufs = math.fmod(pgparams.flowsPerStream,
-				                            MAX_MEMPOOL_SIZE)
-            end 
-
-            -- Allocate bufs from the pool
-	          streams[i].bufArrays[j] = streams[i].mempools[j]:bufArray(numBufs)
-        end
-    end
-
-    -- Go through each of the mbufs and modify them.
-    for i, stream in ipairs(streams) do
-        for j, bufArr in ipairs(stream.bufArrays) do
-            -- Subtract 4 for the FCS
-            local maxPacketSize = pgparams.packetSize - 4
-            if pgparams.mustImix then 
-                maxPacketSize = MAX_PACKET_SIZE - 4 
-            end 
-
-            -- Allocate buffers with the max possible size. Note that 
-            -- if using IMIX, the size of each sent packet will vary.
-            bufArr:alloc(maxPacketSize)
-
-	          for _, buf in ipairs(bufArr) do
-                if pgparams.mustImix then
-                  local mixSize = imixSize() - 4
-                  buf.pkt_len   = mixSize
-                  buf.data_len  = mixSize
-                end 
-
-                btxparams.flowid   = math.fmod(
-		                btxparams.counter, pgparams.flowsPerStream) 
-                btxparams.streamid = math.floor(
-                    btxparams.counter /  pgparams.flowsPerStream)
-
-                buildTxFrame(portid, buf, btxparams, pgparams)
-
-                btxparams.counter = math.fmod(
-		                btxparams.counter + 1, pgparams.totalFlows)
-	          end
-
-            -- Offload the checksums 
-            bufArr:offloadUdpChecksums()
-	      end
-    end
-
-    local startTime      = moongen.getTime()
-    local printStartTime = startTime
-    local globalIter     = 0
-    local iteration      = 0
-    local canPrint       = 1
-    while state == "canrun" do
-        -- Generate and send bursts
-        for _, stream in ipairs(streams) do
-            btxparams.currtsc = tonumber(moongen:getCycles())
-            btxparams.difftsc = btxparams.currtsc - btxparams.prevtsc
-
-            txBurstGenIter(coreid, qconfs  , portid   , txqueue,
-                           pstats, pgparams, btxparams, stream )
-        end
-
-        -- Update the iteration and timeout parameters
-        iteration   = iteration + 1
-        elapsedTime = moongen.getTime() - startTime
-
-        if pgparams.iterations ~= 0 and iteration > pgparams.iterations then
-            state = "stop"
-        elseif pgparams.timeout ~= 0 and elapsedTime > pgparams.timeout then 
-            state = "stop"
-        end
-
-        -- Check if its time to print stats.
-        globalIter = math.fmod(
-                         math.floor(moongen.getTime() - globalStart), 
-                         pgparams.cores       * 
-                         pgparams.timerPeriod + 
-                         pgparams.timerPeriod
-                     )
-        if globalIter == ((coreid - 1) * pgparams.timerPeriod) and
-           canPrint   == 1 then
-            canPrint = 0
-            os.execute("clear")
-
-            pstats[portid].elapsedTime = moongen.getTime() - printStartTime
-
-            pstats[portid]:print(moongen:getCore(), portid - 1)
-
-            pstats[portid].prevTxPackets = pstats[portid].txPackets
-            pstats[portid].prevTxBytes   = pstats[portid].txBytes
-
-            printStartTime = moongen.getTime()
-        elseif globalIter == coreid * pgparams.timerPeriod and
-               canPrint   == 0 then
-            canPrint = 1
-        end
-    end
-
-    -- Print out the stats since we have ended
-    pstats[portid].elapsedTime = moongen.getTime() - printStartTime
-    pstats[portid]:print(moongen:getCore(), portid - 1)
-end
-
--- @brief Launches a core for benchmark rx mode. 
--- @param coreid   The id of the core in the coreQconf array.
--- @param qconfs   The array of core Q configurations.
--- @param devices  The ethernet devices to use (ports).
--- @param pgparams The parameters for the packet generation.
--- @param pstats   The stats for all ports.
-function coreBenchRx(coreid, qconfs, devices, pgparams, pstats)
-    print(string.format("Launching Core: %u, Mode: RX", 
-          coreid - 1))
-    
-    local latency        = 0
-    local latencyDelta   = 0
-    local iteration      = 0
-    local globalIter     = 0
-    local canPrint       = 1
-    local rxburst        = memory.bufArray(MAX_RX_BURST_SIZE)
-    local startTime      = moongen.getTime()
-    local printStartTime = startTime
-    local elapsedTime    = 0
-    local rxPackets      = 0
-
-    while state == "canrun" do
-        for i = 1, qconfs[coreid].nRxPorts do
-            portid  = qconfs[coreid].rxPortList[i] + 1
-            rxqueue = devices[portid]:getRxQueue(0)
-
-            -- Receive the bursts for the port
-            rxPackets                = rxqueue:tryRecv(rxburst, 
-                                           pgparams.receiveTimeout)
-            pstats[portid].rxPackets = pstats[portid].rxPackets + rxPackets
-            pstats[portid].rxDropped = pstats[portid].rxDropped + rxPackets
-
-            for i = 1, rxPackets do
-                pstats[portid].rxBytes = pstats[portid].rxBytes 
-                                       + rxburst[i].pkt_len
-
-                latency = calculateLatency(rxburst[i])
-                if latency ~= 0 then 
-                    pstats[portid].rxLatPackets 
-                                 = pstats[portid].rxLatPackets + 1
-                    latencyDelta = latency - pstats[portid].rxMeanLatency
-
-                    pstats[portid].rxMeanLatency = pstats[portid].rxMeanLatency 
-                        + (latencyDelta / pstats[portid].rxLatPackets)
-                    pstats[portid].rxM2Latency   = pstats[portid].rxM2Latency +
-                        latencyDelta * (latency - pstats[portid].rxMeanLatency)
-                end 
-            end
-            simpleDrop(rxburst) 
-        end
-
-        -- Update the state
-        iteration   = iteration + 1
-        elapsedTime = moongen.getTime() - startTime
-
-        if pgparams.iterations ~= 0 and iteration > pgparams.iterations then
-            state = "stop"
-        elseif pgparams.timeout ~= 0 and elapsedTime > pgparams.timeout then
-            state = "stop"
-        end
-
-        -- Check if its time to print stats.
-        globalIter = math.fmod(
-                        math.floor(moongen.getTime() - globalStart), 
-                        pgparams.cores       * 
-                        pgparams.timerPeriod + 
-                        pgparams.timerPeriod
-                     )
-        if globalIter == ((coreid - 1) * pgparams.timerPeriod) and
-           canPrint   == 1 then
-            canPrint = 0
-            os.execute("clear")
-                
-            for i = 1, qconfs[coreid].nRxPorts do
-                portid = qconfs[coreid].rxPortList[i] + 1
-                if pstats[portid] ~= nil then 
-                    pstats[portid].elapsedTime = moongen.getTime() 
-                                               - printStartTime
-                    pstats[portid]:print(moongen.getCore(), portid - 1)
-
-                    pstats[portid].prevRxPackets = pstats[portid].rxPackets
-                    pstats[portid].prevRxBytes   = pstats[portid].rxBytes
-                end
-            end
-            printStartTime = moongen.getTime()
-        elseif globalIter == coreid * pgparams.timerPeriod and
-               canPrint   == 0 then
-            canPrint = 1
-        end
-    end
-
-    -- Print out the stats since we have ended
-    pstats[portid].elapsedTime = moongen.getTime() - printStartTime
-    pstats[portid]:print(moongen:getCore(), portid - 1)
-end
-
--- @brief Updates the timestamp for a packet. The first 8 bytes are used as 
---        the timestamp.
--- @param buf The buffer to update the timestampof.
-function updateTimestamp(buf)
-    local pkt             = buf:getUdpPacket()
-    local cycles          = moongen:getCycles()
-    pkt.payload.uint64[0] = cycles
-end
-
--- @brief Gets the timestamp from a packet and then calculates the latency
--- @param buf The buffer to get the timestamp from and then calculate the
---        latency.
+-------------------------------------------------------------------------------
+-- Gets the timestamp from a packet and then calculates the latency
+-- buf  : The buffer to get the timestamp from and then calculate the latency.
+-------------------------------------------------------------------------------
 function calculateLatency(buf)
     local pkt       = buf:getUdpPacket()
     local cycles    = tonumber(moongen:getCycles())
@@ -722,51 +413,256 @@ function calculateLatency(buf)
     return latency
 end
 
--- @brief Builds a frame for transmission.
--- @param portid    The portid to use for the calculations.
--- @param buf       The buf wrapper for the packet (rte_mbuf wrapper).
--- @praam btxparams The parameters for the burst.
--- @param pgparams  The general parameters for packetgen.
-function buildTxFrame(portid, buf, btxparams, pgparams)
+-------------------------------------------------------------------------------
+-- Prints RX stats
+-- portId : The id of the port to print the stats for
+-------------------------------------------------------------------------------
+function statsRx:print(portId)
+  local statsString = string.format(
+    "\n+------ RX Statistics for core %3u, port %3u -------------------+"   ..
+    "\n| Packets received           : %32u |"                               ..
+    "\n| Packet receive rate        : %32.2f |"                             ..
+    "\n| Avg packet receive rate    : %32.2f |"                             ..
+    "\n| Bytes received             : %32u |"                               ..
+    "\n| Byte receive rate          : %32.2f |"                             ..
+    "\n| Avg byte receive rate      : %32.2f |"                             ..
+    "\n| Packets dropped on receive : %32u |"                               ..
+    "\n| RX mean latency            : %32.10f |"                            ..
+    "\n+---------------------------------------------------------------+"   ,
+    moongen:getCore()                                   ,
+    portId                                              ,
+    self.packets                                        ,
+    (self.packets - self.prevPackets) / self.deltaTime  ,
+    self.packets / self.elapsedTime                     ,
+    self.bytes                                          ,
+    (self.bytes - self.prevBytes) / self.deltaTime      ,
+    self.bytes / self.elapsedTime                       ,
+    self.dropped                                        , 
+    self.meanLatency
+  )
+  print(statsString)
+end
 
-    -- Determine variation parameters
-    local varyEth  = pgparams.ethStrideNum * btxparams.streamid 
-                   + btxparams.flowid
-    local varyIp   = pgparams.ipStrideNum * btxparams.streamid 
-                   + btxparams.flowid
-    local varyPort = pgparams.portStride * btxparams.streamid 
-                   + btxparams.flowid
-    local ethSrc   = pgparams.ethSrcVaryNum * varyEth 
-                   + pgparams.ethSrcBaseNum + portid   
-    local ethDst   = pgparams.ethDstBaseNum + pgparams.ethDstVaryNum * varyEth
+-------------------------------------------------------------------------------
+-- Writes RX a stats entry to a file. The row entry contains the following
+-- fields:
+
+--  Time, tx packets, tx packet rate, avg tx packet rate, rx packets, 
+--  rx packet rate, avg rx packet rate, core, port 
+--
+-- filename : Name of the file to write to.
+-- portId   : The port the stats are being written for.
+-------------------------------------------------------------------------------
+function statsRx:write(filename, portId)
+    file = io.open(filename, "a")
+
+    local time = moongen.getTime() - globalStartTime
+
+    local statsString = string.format(
+        "%6.3f,%13u,%18.2f,%18.2f,%13u,%18.2f,%18.2f,%5u,%5u\n", 
+        time                                                ,
+        0                                                   ,
+        0                                                   ,
+        0                                                   ,
+        self.packets                                        ,
+        (self.packets - self.prevPackets) / self.deltaTime  ,
+        self.packets / self.elapsedTime                     ,
+        moongen:getCore()                                   ,
+        portId                                              
+    ) 
+
+    file:write(statsString)
+    file:close()
+end
+
+---- TX Functionality ---------------------------------------------------------
+
+-------------------------------------------------------------------------------
+-- Slave function to perform TX.
+-- device   : The MoonGen device to sent the packets from.
+-- portId   : The port the device is configures to use.
+-- clParams : The command line parameters
+-------------------------------------------------------------------------------
+function txSlave(device, portId, clParams) 
+  print(string.format("Launching TX slave: Core = %u, Port: %u", 
+      moongen:getCore(), portId)
+  )
+
+  local state     = "canrun"
+  local stats     = deepCopy(statsTx)     
+  local txQueue   = device:getTxQueue(0) 
+  local bstParams = deepCopy(burstParams)
+  local outFile   = ""
+
+  -- Create the filename of the file to write to.
+  if clParams.writemode == 2 then
+      outFile = clParams.fileprefix .. ".txt"
+  elseif clParams.writemode == 3 then
+      -- Pre core mode: write header
+      outFile = clParams.fileprefix                 .. 
+                "-c" .. tostring(moongen:getCore()) .. 
+                "-p" .. tostring(portId) .. ".txt";
+      writeStatsHeader(outFile)
+  end
+
+  -- Allocate memory for all the streams. Each of the streams can have 
+  -- a maximum of 2047 flows due to mbuf allocation limits.
+  local streams = {}
+  for i = 1, clParams.numberOfStreams do
+    streams[i] = {
+        mempool  = {},
+        bufArray = nil
+    }
+
+    -- Create a mempool for the stream:
+    streams[i].mempool = memory:createMemPool(
+        function(buf)
+            buf:getUdpPacket():fill{
+                pktLength = clParams.packetSize - 4,
+                ethLength = constants.ethHeaderLength
+            }
+        end
+    )
+    -- Allocate buffers from the mempool:
+    streams[i].bufArray = streams[i].mempool:bufArray(clParams.flowsPerStream)
+  end
+
+  -- Modify all the packets so that their data follows the traffic pattern:
+  for i, stream in ipairs(streams) do
+      -- Subtraction of 4 is for the FCS
+      local maxPacketSize = clParams.packetSize - 4
+      if clParams.mustImix then 
+          maxPacketSize = constants.maxPacketSize - 4
+      end
+
+      -- Allocate buffers using the max possible packet size. If using Imix
+      -- then each of the sent packets will vary in size, despite the constant
+      -- size allocation done here.
+      stream.bufArray:alloc(maxPacketSize)
+
+      -- Modify the packets:
+      for _, buf in ipairs(stream.bufArray) do
+          if clParams.mustImix then
+              local pktSize = imixSize() - 4
+              buf.pkt_len   = pktSize
+              buf.data_len  = pktSize
+          end 
+
+          bstParams.flowid = math.fmod(
+		          bstParams.counter, clParams.flowsPerStream) 
+          bstParams.streamid = math.floor(
+              bstParams.counter /  clParams.flowsPerStream)
+
+          buildTxFrame(device.id, buf, bstParams, clParams)
+
+          bstParams.counter = math.fmod(
+		          bstParams.counter + 1, clParams.totalFlows) 
+      end 
+      
+      -- Offload the checksum to the NIC:
+      stream.bufArray:offloadUdpChecksums()
+  end
+
+  -- Do sending:
+  local iteration     = 0
+  local lastPrintTime = 0
+  local startTime     = moongen.getTime()
+  while state == "canrun" do
+      for _, stream in ipairs(streams) do
+          bstParams.currtsc = tonumber(moongen:getCycles())
+          bstParams.difftsc = bstParams.currtsc - bstParams.prevtsc
+
+          sendBursts(txQueue, stats, bstParams, clParams, stream)
+      end
+
+      -- Update the iteration and timeout params:
+      iteration         = iteration + 1
+      stats.deltaTime   = (moongen.getTime() - startTime) - stats.elapsedTime
+      stats.elapsedTime = moongen.getTime() - startTime
+
+      -- Printing and writing:
+      if clParams.writemode > 0 then
+          -- To make sure that enough time has passed since logging 
+          -- and printing was done for the core. 
+          sufficientTimeSincePrint = 
+            ((stats.elapsedTime - lastPrintTime) >= 
+             (constants.printTimePassPcnt * clParams.statsDisplay / 1000))
+
+          -- Printing and logging:
+          if canPrint(clParams) and sufficientTimeSincePrint then 
+              lastPrintTime = moongen.getTime() - startTime
+              if clParams.writemode == 1 then
+                  os.execute("clear")      
+                  stats:print(portId)
+              else 
+                  stats:write(outFile, portId)
+              end
+          end   
+      end
+
+      -- Update stats:
+      stats.prevPackets = stats.packets
+      stats.prevBytes   = stats.bytes
+
+      -- Check for exit conditions:
+      if clParams.iterations ~= 0 and iteration >= clParams.iterations then
+          state = "stop"
+      elseif clParams.timeout ~= 0                 and 
+             stats.elapsedTime >= clParams.timeout then 
+          state = "stop"
+      end 
+  end
+
+  if clParams.writemode == 0 then 
+      stats:print(portId)
+  end
+end
+
+-------------------------------------------------------------------------------
+-- Builds a frame for TX.
+-- portId     : The port of the device to build the frame for.
+-- buf        : The buffer for the packet holding the frame.
+-- bstParams  : The parameters of the burst.
+-- clParams   : The command line parameters.
+-------------------------------------------------------------------------------
+function buildTxFrame(portId, buf, bstParams, clParams)
+    local varyEth  = clParams.ethStrideNum * bstParams.streamid 
+                   + bstParams.flowid
+    local varyIp   = clParams.ipStrideNum * bstParams.streamid 
+                   + bstParams.flowid
+    local varyPort = clParams.portStride * bstParams.streamid 
+                   + bstParams.flowid
+    local ethSrc   = clParams.ethSrcVaryNum * varyEth 
+                   + clParams.ethSrcBaseNum + portId
+    local ethDst   = clParams.ethDstBaseNum + clParams.ethDstVaryNum * varyEth
 
     local ethSrcFlipped = rshift(bswap(ethSrc + 0ULL), 16)
     local ethDstFlipped = rshift(bswap(ethDst + 0ULL), 16)
 
-    -- Create IP and port addresses
-    local ipSrcAddr = pgparams.ipSrcVaryNum * varyIp
-                    + pgparams.ipSrcBaseNum + portid
-    local ipDstAddr = pgparams.ipDstBaseNum + pgparams.ipDstVaryNum * varyIp
+    -- Create IP addresses:
+    local ipSrcAddr = clParams.ipSrcVaryNum * varyIp
+                    + clParams.ipSrcBaseNum + portId
+    local ipDstAddr = clParams.ipDstBaseNum + clParams.ipDstVaryNum * varyIp
 
+    -- Create port addresses:
     local portSrcAddr = 
-        band(pgparams.portSrcBase + pgparams.portSrcVary * varyPort, 0xffff)
+        band(clParams.portSrcBase + clParams.portSrcVary * varyPort, 0xffff)
     local portDstAddr = 
-        band(pgparams.portDstBase + pgparams.portDstVary * varyPort, 0xffff)
+        band(clParams.portDstBase + clParams.portDstVary * varyPort, 0xffff)
 
-    -- FCS is 4 bytes
     local frameSize = buf.pkt_len
-    local ethLength = ETHER_HEADER_LENGTH          
+    local ethLength = constants.ethHeaderLength
     local ipLength  = frameSize - ethLength 
-    local udpLength = ipLength  - IP_HEADER_LENGTH
+    local udpLength = ipLength  - constants.ipHeaderLength
 
     local pkt = buf:getUdpPacket()
 
-    -- ETH mode
-    pkt.eth:setType(ETHER_TYPE_IPv4)
+    -- ETH mod:
+    pkt.eth:setType(constants.ethTypeIpv4)
     pkt.eth:setSrc(ethSrcFlipped)
     pkt.eth:setDst(ethDstFlipped)
 
-    -- IP mod
+    -- IP mod:
     pkt.ip4:setLength(ipLength)
     pkt.ip4:setHeaderLength(5)  -- Number of 32 bit words : use min value.
     pkt.ip4:setProtocol(17)
@@ -775,7 +671,7 @@ function buildTxFrame(portid, buf, btxparams, pgparams)
     pkt.ip4:setDst(ipDstAddr)
     pkt.ip4:setVersion(4)
 
-    -- UDP mod
+    -- UDP mod:
     pkt.udp:setLength(udpLength)
     pkt.udp:setSrcPort(portSrcAddr)
     pkt.udp:setDstPort(portDstAddr)
@@ -788,59 +684,196 @@ function buildTxFrame(portid, buf, btxparams, pgparams)
     -- ----------------------------------------------
     --
     -- The timestamp is alredy set, so set flow and stream id.
-    pkt.payload.uint32[2] = btxparams.flowid
-    pkt.payload.uint32[3] = btxparams.streamid
+    pkt.payload.uint32[2] = bstParams.flowid
+    pkt.payload.uint32[3] = bstParams.streamid
 
     -- Fill the rest of the payload
-    local payLength   = udpLength - UDP_HEADER_LENGTH
+    local payLength   = udpLength - constants.udpHeaderLength
     local i           = 16             -- tstamp, flowid, streamid = 16 bytes
     local offset      = i              -- Start offset into payload bytes
 
     -- Copy the default payload into the packet.
     while i < payLength do
-        -- NOTE: i - offset is to remove the 16 byte initial offset.
+        -- NOTE: (i - offset) is to remove the 16 byte initial offset.
         pkt.payload.uint8[i] = 
-            string.byte(pgparams.defaultPayload, i - offset + 1) or 0
+            string.byte(constants.defaultPayload, i - offset + 1) or 0
         i = i + 1
     end
 end
 
--- RX functionality -----------------------------------------------------------
+-------------------------------------------------------------------------------
+-- Generates and sends a burst if enough time has passed to achieve the desired
+-- packet rate, otherwise nothing happens.
+-- txQueue    : The queue to send the burst on.
+-- stats      : The stats to update.
+-- bstParams  : The parameters for the burst to send.
+-- clParams   : The command line parameters.
+-- stream     : The stream to send.
+-------------------------------------------------------------------------------
+function sendBursts(txQueue, stats , bstParams, clParams, stream) 
+    -- If enough time has passed to achieve the requested rate.
+    if bstParams.difftsc > clParams.txDelta then 
+        local nbtx = 0
+        for i = 1, clParams.burstsPerStream do
+            stats.bursts = stats.bursts + 1
+            for _, buf in ipairs(stream.bufArray) do
+                updateTimestamp(buf)
+            end
+            nbtx = nbtx + txQueue:send(stream.bufArray)
+        end
 
--- @brief Drops the (received) rxpackets.
--- @param rxpackets The received packets to drop.
-function simpleDrop(rxpackets) 
-    rxpackets:freeAll()
+        stats.packets = stats.packets + nbtx
+
+        for _, buf in ipairs(stream.bufArray) do 
+            stats.bytes = stats.bytes + 
+                          (clParams.burstsPerStream * buf.pkt_len)
+        end
+
+        if nbtx < constants.txBurstSize then 
+            stats.short = stats.short + 1
+        end
+
+        bstParams.prevtsc = bstParams.currtsc
+    end
 end
 
--- Trafgen params -------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- Updates the timestamp for a packet. The first 8 bytes of the packet payload 
+-- are used for the timestamp.
+-- buf  : The buffer to update the timestamp of.
+-------------------------------------------------------------------------------
+function updateTimestamp(buf)
+    local pkt             = buf:getUdpPacket()
+    local cycles          = moongen:getCycles()
+    pkt.payload.uint64[0] = cycles
+end
 
--- @brief Prints out the paramers.
-function params:print()
+-------------------------------------------------------------------------------
+-- Prints TX stats
+-- portId : The id of the port to print the stats for
+-------------------------------------------------------------------------------
+function statsTx:print(portId)
+  local statsString = string.format(
+    "\n+------ TX Statistics for core %3u, port %3u -------------------+"   ..
+    "\n| Packets sent               : %32u |"                               ..
+    "\n| Packet send rate           : %32.2f |"                             ..
+    "\n| Avg packet send rate       : %32.2f |"                             ..
+    "\n| Bytes sent                 : %32u |"                               ..
+    "\n| Byte send rate             : %32.2f |"                             ..
+    "\n| Avg byte send rate         : %32.2f |"                             ..
+    "\n| Packets short              : %32u |"                               ..
+    "\n| Bursts                     : %32u |"                               ..
+    "\n+---------------------------------------------------------------+"   ,
+    moongen:getCore()                                   ,
+    portId                                              ,
+    self.packets                                        ,
+    (self.packets - self.prevPackets) / self.deltaTime  ,
+    self.packets / self.elapsedTime                     ,
+    self.bytes                                          ,
+    (self.bytes - self.prevBytes) / self.deltaTime      ,
+    self.bytes / self.elapsedTime                       ,
+    self.short                                          ,
+    self.bursts
+  )
+  print(statsString)
+end
+
+-------------------------------------------------------------------------------
+-- Writes TX a stats entry to a file. The row entry contains the following
+-- fields:
+
+--  Time, tx packets, tx packet rate, avg tx packet rate, rx packets, 
+--  rx packet rate, avg rx packet rate, core, port 
+--
+-- filename : Name of the file to write to.
+-- portId   : The port the stats are being written for.
+-------------------------------------------------------------------------------
+function statsTx:write(filename, portId)
+    file = io.open(filename, "a")
+
+    local time = moongen.getTime() - globalStartTime
+
+    local statsString = string.format(
+        "%6.3f,%13u,%18.2f,%18.2f,%13u,%18.2f,%18.2f,%5u,%5u\n", 
+        time,
+        self.packets                                        ,
+        (self.packets - self.prevPackets) / self.deltaTime  ,
+        self.packets / self.elapsedTime                     ,
+        0                                                   ,
+        0                                                   ,
+        0                                                   ,
+        moongen:getCore()                                   ,
+        portId                                              
+    ) 
+
+    file:write(statsString)
+    file:close()
+end
+
+---- Utility Functions --------------------------------------------------------
+
+-------------------------------------------------------------------------------
+-- Write the header for a stats file.
+-- filename : The name of the file to write the headerto.
+-------------------------------------------------------------------------------
+function writeStatsHeader(filename)
+    file = io.open(filename, "a")
+
+    local headerString = string.format(
+        "%6s %13s %18s %18s %13s %18s %18s %5s %5s\n",
+        "Time", 
+        "TX Packets",
+        "TX Packet Rate"    ,
+        "Avg TX Packet Rate",
+        "RX Packets"        ,
+        "RX Packet Rate"    ,
+        "Avg RX Packet Rate",
+        "Core"              ,
+        "Port"    
+    )
+
+    file:write(headerString)
+    file:close()
+end
+
+-------------------------------------------------------------------------------
+-- Determines if a core is allowed to print it's stats.
+-- clParams : The command line parameters
+-------------------------------------------------------------------------------
+function canPrint(clParams) 
+    local elapsedTime = moongen.getTime() - globalStartTime
+    local timePerCore = clParams.statsDisplay / 
+                        (#clParams.rxSlavePorts + #clParams.txSlavePorts)
+
+    local timeMod = math.floor(
+        math.fmod(elapsedTime * 1000, clParams.statsDisplay)
+    )
+
+    return timeMod == math.floor((timePerCore * (moongen:getCore() - 1)))
+end
+
+-------------------------------------------------------------------------------
+-- Prints the command line arguments.
+-------------------------------------------------------------------------------
+function clParams:print()
     local paramString = string.format(
       "\n+-------- Parameters ---------------------------------+"       ..
-      "\n| Cores              : %30u |"                                 ..
-      "\n| TX queues per core : %30u |"                                 ..
-      "\n| RX queues per core : %30u |"                                 ..
-      "\n| Total TX queues    : %30u |"                                 ..
-      "\n| Portmask           : %30s |"                                 ..
-      "\n| TX portmask used   : %30s |"                                 ..
-      "\n| TX portmask        : %30s |"                                 ..
-      "\n| RX portmask used   : %30s |"                                 ..
-      "\n| RX portmask        : %30s |"                                 ..
-      "\n| Flows per stream   : %30u |"                                 ..
+      "\n| RX Slaves          : %30u |"                                 ..
+      "\n| TX Slaves          : %30u |"                                 ..
+      "\n| RX Descs           : %30u |"                                 ..
+      "\n| TX Descs           : %30u |"                                 ..
+      "\n| Param display (s)  : %30.3f |"                               ..
+      "\n| Stat display (s)   : %30.3f |"                               ..
       "\n| Number of streams  : %30u |"                                 ..
       "\n| Bursts per stream  : %30u |"                                 ..
-      "\n| TX burst size      : %30u |"                                 ..
-      "\n| RX burst size      : %30u |"                                 ..
-      "\n| TX delta           : %30u |"                                 ..
+      "\n| Flows per stream   : %30u |"                                 ..
       "\n| Total flows        : %30u |"                                 ..
+      "\n| Iterations         : %30u |"                                 ..
+      "\n| Timeout            : %30u |"                                 ..
       "\n| Packet size        : %30u |"                                 ..
       "\n| Using Imix size    : %30s |"                                 ..
-      "\n| Timer period       : %30u |"                                 ..
-      "\n| Timeout (s)        : %30u |"                                 ..
-      "\n| Iterations         : %30u |"                                 ..
-      "\n| Receive Timout (ms): %30u |"                                 ..
+      "\n| File prefix        : %30s |"                                 ..
+      "\n| Write mode         : %30u |"                                 ..
       "\n| ETH src base       : %30s |"                                 ..
       "\n| ETH src vary       : %30s |"                                 ..
       "\n| ETH dst base       : %30s |"                                 ..
@@ -856,63 +889,49 @@ function params:print()
       "\n| PORT dst base      : %30u |"                                 ..
       "\n| PORT dst vary      : %30u |"                                 ..
       "\n| PORT stride        : %30u |"                                 ..
-      "\n| No RX descriptors  : %30u |"                                 ..
-      "\n| No TX descriptors  : %30u |"                                 ..
-      "\n| No ports           : %30u |"                                 ..
-      "\n| RX ports mirror TX : %30s |"                                 ..
-      "\n| Param display time : %30u |"                                 ..
       "\n+-----------------------------------------------------+\n"     ,
-      self.cores                                                        ,
-      self.txPortsPerCore                                               ,
-      self.rxPortsPerCore                                               ,
-      self.totalTxPorts                                                 ,
-      self.portmask                                                     ,
-      self.txPortmaskUsed                                               ,
-      self.txPortmask                                                   ,
-      self.rxPortmaskUsed                                               ,
-      self.rxPortmask                                                   ,
-      self.flowsPerStream                                               ,
-      self.numberOfStreams                                              ,
-      self.burstPerStream                                               ,
-      self.txBurstSize                                                  ,
-      self.rxBurstSize                                                  ,
-      self.txDelta                                                      ,
-      self.totalFlows                                                   ,
-      self.packetSize                                                   ,
-      tostring(self.mustImix)                                           ,
-      self.timerPeriod                                                  ,
-      self.timeout                                                      ,
-      self.iterations                                                   ,
-      self.receiveTimeout                                               ,
-      self.ethSrcBase                                                   ,
-      self.ethSrcVary                                                   ,
-      self.ethDstBase                                                   ,
-      self.ethDstVary                                                   ,
-      self.ethStride                                                    ,
-      self.ipSrcBase                                                    ,
-      self.ipSrcVary                                                    ,
-      self.ipDstBase                                                    ,
-      self.ipDstVary                                                    ,
-      self.ipStride                                                     ,
-      self.portSrcBase                                                  ,
-      self.portSrcVary                                                  ,
-      self.portDstBase                                                  ,
-      self.portDstVary                                                  ,
-      self.portStride                                                   ,
-      self.nbRxd                                                        ,
-      self.nbTxd                                                        ,
-      self.nbPorts                                                      ,
-      self.rxPortsMirrorTx                                              ,
-      self.paramDisplay / 1000
-  )
+      #self.rxSlavePorts      ,
+      #self.txSlavePorts      ,
+      self.rxDescs            ,
+      self.txDescs            ,
+      self.paramDisplay / 1000,
+      self.statsDisplay / 1000,
+      self.numberOfStreams    ,
+      self.burstsPerStream    ,
+      self.flowsPerStream     ,
+      self.totalFlows         ,
+      self.iterations         ,
+      self.timeout            ,
+      self.packetSize         , 
+      tostring(self.mustImix) ,
+      self.fileprefix         ,
+      self.writemode          ,
+      self.ethSrcBase         ,
+      self.ethSrcVary         ,
+      self.ethDstBase         ,
+      self.ethDstVary         ,
+      self.ethStride          ,
+      self.ipSrcBase          ,
+      self.ipSrcVary          ,
+      self.ipDstBase          ,
+      self.ipDstVary          ,
+      self.ipStride           ,
+      self.portSrcBase        ,
+      self.portSrcVary        ,
+      self.portDstBase        ,
+      self.portDstVary        ,
+      self.portStride  
+    )
 
-  print(paramString)
+    print(paramString)
 end
 
--- Command line argument parsing ----------------------------------------------
+---- Argument Parsing ---------------------------------------------------------
 
--- Defines a table to specify which address have been converted
--- to the numeric representation for use with MoonGen.
+-------------------------------------------------------------------------------
+-- Defines a table to specify which address have been converted to numeric
+-- representations.
+-------------------------------------------------------------------------------
 local addressConversionMask = {
     ethSrcBase = false, 
     ethSrcVary = false,
@@ -926,329 +945,94 @@ local addressConversionMask = {
     ipStride   = false
 }
 
--- @brief Prints the usage options for the traffic generation app.
-function printUsage()
-    local exampleUsage = string.format(
-        "Usage is:\n Moongen packegen.lua <Optional Args> where:\n"       ..
-        " Optional Args:\n\n"                                             ..
-        "   --txd|-A DESCRIPTORS where\n"                                 ..
-        "     DESCRIPTORS : Number of TX descriptors (default 1024)\n\n"  ..
-        "   --rxd|-B DESCRIPTORS where\n"                                 ..
-        "     DESCRIPTORS : Number of RX descriptors (default 1024)\n\n"  ..
-        "   --dst-vary|-D MAC_VARY,IP_VARY,PORT_VARY where\n"             ..
-        "     MAC_VARY  : Vary source mac (format a:b:c:d:e:f)\n"         ..
-        "     IP_VARY   : Vary source ip  (format a.b.c.d)\n"             ..
-        "     PORT_VARY : Vary port ip (format a (number))\n"             ..
-        "     NOTE: comma separated list without spaces, example:\n"      ..
-        "           00:00:00:00:a0:21,0.0.0.1,2\n\n"                      ..
-        "   --rx-ports-mirror-rx|-M VALUE where\n"                        ..
-        "     VALUE : If the ports for RX mirror the ports used for TX\n" ..
-        "     (default 0, options: 0 = false, 1 = true)\n"                ..
-        "     NOTE: If true, and -c 4 -p 0x3 --rx-ports-mirror-tx are\n"  ..
-        "           the parameters, ports 0, 1 will be used for both\n"   ..
-        "           RX and TX (they mirror each other), if they aren't\n" ..
-        "           set to mirror then the RX ports are allocated after\n"..
-        "           all the TX ports\n\n"                                 ..
-        "   --rx-timeout|-RT TIMEOUT_MS where\n"                          ..
-        "     TIMEOUT_MS : The time in ms to try and receive for. After\n"..
-        "                  this time expires, the iteration ends and\n"   ..
-        "                  the next iteration will try to receive\n"      ..
-        "     (default 100)\n\n"                                          ..
-        "   --src-vary|-S MAC_VARY,IP_VARY,PORT_VARY where\n"             ..
-        "     MAC_VARY  : Vary source mac (format a:b:c:d:e:f)\n"         ..
-        "     IP_VARY   : Vary source ip  (format a.b.c.d)\n"             ..
-        "     PORT_VARY : Vary port ip (format a (number))\n"             ..
-        "     NOTE: comma separated list without spaces, example:\n"      ..
-        "           00:00:00:00:a0:21,0.0.0.1,2\n\n"                      ..
-        "   --stats-period|-T PERIOD where\n"                             ..
-        "     PERIOD Stats refresh period on each core, in seconds\n"     ..
-        "     (default = 1, 0 = disable)\n"                               ..
-        "     NOTE: The stats for each core are printed iteratively\n"    ..
-        "           every PERIOD seconds, followed by a delay of\n"       ..
-        "           PERIOD seconds before starting the iterative\n"       ..
-        "           print process again.\n\n"                             ..
-        "   --param-display|-a TIME where\n"                              ..
-        "     TIME : Seconds to display params before running\n"          ..
-        "            (default 3 seconds)\n\n"                             ..
-        "   --cores|-c CORES where\n"                                     ..
-        "     CORES : Number of cores to use (default 1)\n"               ..
-        "     NOTE: The max cores supported is 16, because MoonGen only\n"..
-        "           allows 15 slaves to be launched, otherwise it\n"      ..
-        "           terminates.\n\n"                                      ..
-        "   --tx-queues|-d TX_QUEUS where\n"                              ..
-        "     TX_QUEUS : Total number of tx queues (default 1)\n\n"       ..
-        "   --timeout|-e TIME where\n"                                    ..
-        "     TIME : The time (in seconds) to run for.\n"                 ..
-        "            (default is to run indefinitely)\n\n"                ..
-        "   --iterations|-f ITERS where\n"                                ..
-        "     ITERS : The number of TX/RX iterations to run.\n"           ..
-        "             (defualt is to run indefinitely)\n\n"               ..
-        "   --mac-stride|-g MAC_STRIDE where\n"                           ..
-        "     MAC_STRIDE : MAC stride between streams (a:b:c:d:e:f)\n\n"  ..
-        "   --help|-h Print usage\n\n"                                    ..
-        "   --streams|-i NUM_STREAMS where\n"                             ..
-        "     NUM_STREAMS : Number of streams (default 1)\n\n"            ..
-        "   --bursts-per-stream|-j NUM_BURSTS where\n"                    ..
-        "     NUM_BURSTS : Number of bursts per stream (default 1)\n\n"   ..
-        "   --ip-stride|-k IP_STRIDE where\n"                             ..
-        "     IP_STRIDE : IP stride between streams (A.B.C.D)\n\n"        ..
-        "   --src-port|-m SRC_PORT where\n"                               ..
-        "     SRC_PORT : Base source UDP port\n\n"                        ..
-        "   --dst-port|-n DST_PORT where\n"                               ..
-        "     DST_PORT : Base destination UDP port\n\n"                   ..
-        "   --port-stride|-o PORT_STRIDE where\n"                         ..
-        "     PORT_STRIDE : PORT stride between streams\n\n"              ..
-        "   (All strides default to flows-per-stream)\n\n"                ..
-        "   --portmask|-p PORTMASK where\n"                               ..
-        "     PORTMASK : Hexadecimal port mask (default 0001)\n\n"        ..
-        "   --rx-portmask|-rxp RX_PORTMASK where\n"                       ..
-        "     RX_PORTMASK : Hexadecimal portmask for rx ports\n"          ..
-        "     (default 0)\n"                                              ..
-        "     NOTE: If this is used, -txp must also be specified, even\n" ..
-        "           if its argument is 0 (to disable tx ports).\n\n"      ..
-        "   --tx-portmask|-txp TX_PORTMASK where\n"                       ..
-        "     TX_PORTMASK : Hexadecimal portmask for tx ports\n"          ..
-        "     (default 0)\n"                                              ..
-        "     NOTE: If this is used, -rxp must also be specified, even\n" ..
-        "           if its argument is 0 (to disable rx ports).\n\n"      .. 
-        "   --queues-per-core|-q QUEUES where\n"                          ..
-        "     QUEUES : Number of queues (ports) per core (default 1)\n"   ..
-        "   (The default is for each core to have a tx and rx queue,\n"   ..
-        "    currently only 1 tx queue per core is supported)\n\n"        ..
-        "   --pps|-r RATE where\n"                                        ..
-        "     RATE Packets per second rate to attempt.\n\n"               ..
-        "   --rx-burst|-R RX_BURST_SIZE where\n"                          ..
-        "     RX_BURST_SIZE : RX burst size (default 32)\n\n"             .. 
-        "   --tx-burst|-t TX_BURST_SIZE where\n"                          ..
-        "     TX_BURST_SIZE : TX burst size (default 32)\n\n"             ..
-        "   --src-mac|-w SRC_MAC where\n"                                 ..
-        "     SRC_MAC : Base SRC mac address (a:b:c:d:e:f)\n\n"           ..
-        "   --dst-mac|-x DST_MAC where\n"                                 ..
-        "     DST_MAC : Base DST mac adress (a:b:c:d:e:f)\n\n"            ..
-        "   --flows-per-stream|-y NUM_FLOWS where\n"                      ..
-        "     NUM_FLOWS : Number of flows per stream (default 2047)\n"    ..
-        "     NOTE: Using more than 2047 fps decreases performance.\n"    ..
-        "           To generate more flows, it's preferable to \n"        ..
-        "           increase the number of streams\n\n"                   ..
-        "   --pkt-size|-z PKT_SIZE where\n"                               ..
-        "     PKT_SIZE : Packet size (0 for IMIX, default 64)\n\n"        
-    )
-    print(exampleUsage)
-end
-
+-------------------------------------------------------------------------------
 -- Parses the command line arguments.
--- @param params The default parameters to configure
--- @param ...    A table of the command line arguments
+-- params : The a table of parameters to modify based on the command line 
+--          parameters 
+-- ...    : A table of command line parameters to parse.
+-------------------------------------------------------------------------------
 function parseArgs(params, ...)
     local command  = true  
     local args     = {...} 
 
     for i,v in ipairs(args) do 
         if type(v) == "string" then 
-            if v == "--txd" or v == "-A" then 
-                params.nbTxd = tonumber(args[i + 1])
-            elseif v == "--rxd" or v == "-B" then 
-                params.nbRxd = tonumber(args[i + 1])
-            elseif v== "--vary-dst" or v == "-D" then 
-                ethVar, ipVar, portVar =
-                  args[i + 1]:match("([^,]+),([^,]+),([^,]+)")
-                params.ethDstVary  = ethVar
-                params.ipDstVary   = ipVar
-                params.portDstVary = tonumber(portVar)
-
-                addressConversionMask.ethSDstVary = true
-                addressConversionMask.ipDstVary   = true
-            elseif v == "--rx-ports-mirror-tx" or v == "-M" then 
-                local rxMirrorTx = tonumber(args[i + 1])
-                if rxMirrorTx == 0 then
-                    params.rxPortsMirrorTx = false
-                elseif rxMirrorTx == 1 then
-                    params.rxPortsMirrorTx = true
-                else 
-                    print("Invalid argument for --rx-ports-mirror-tx")
+            if v == "--tx-slave" or v == "-tx" then 
+                local slavePort = tonumber(args[i + 1])
+                if slavePort < 0 or slavePort > constants.maxSlavePort then 
+                    print("Invalid TX slave port: ", slavePort)
                     printUsage()
                     return false
                 end
-            elseif v == "--rx-timeout" or v == "-RT" then 
-                local rxTimeout = tonumber(args[i + 1])
-                if rxTimeout <= 0 then 
-                    print("Invalid RX timeout")
+                params.txSlavePorts[#params.txSlavePorts + 1] =  slavePort 
+            elseif v == "--rx-slave" or v == "-rx" then
+                local slavePort = tonumber(args[i + 1])
+                if slavePort < 0 or slavePort > constants.maxSlavePort then 
+                    print("Invalid RX slave port: ", slavePort)
                     printUsage()
                     return false
                 end
-                params.receiveTimeout = rxTimeout
-            elseif v == "--vary-src" or v == "-S" then 
-                ethVar, ipVar, portVar =
-                  args[i + 1]:match("([^,]+),([^,]+),([^,]+)")
-                params.ethSrcVary  = ethVar
-                params.ipSrcVary   = ipVar
-                params.portSrcVary = tonumber(portVar)
-
-                addressConversionMask.ethSrcVary = true
-                addressConversionMask.ipSrcVary  = true
-            elseif v == "--stats-period" or v == "-T" then 
-                local period = tonumber(args[i + 1])
-                if period < 0 or period > 86400 then 
-                    print("Invalid stats refresh period")
-                    return false
-                end 
-                params.timerPeriod = period
-            elseif v == "--param-display" or v == "-a" then 
-                local paramDisplay = tonumber(args[i + 1])
-                if paramDisplay < 0 then 
-                    print("Invalid param display time, using " ..
-                          "default")
-                else  
-                    params.paramDisplay = paramDisplay * 1000
-                end
-            elseif v == "--cores" or v == "-c" then
-                local cores = tonumber(args[i + 1])
-                if cores < 1  or cores >= MAX_CORES then 
-                    print("Invalid number of cores")
+                params.rxSlavePorts[#params.rxSlavePorts + 1] =  slavePort 
+            elseif v == "--tx-descs" or v == "-txd" then 
+                local txDescs = tonumber(args[i + 1])
+                if txDescs < 0 then 
+                    print("Invalid TX descriptors: ", txDescs)
                     printUsage()
                     return false
                 end
-                params.cores = cores
-            elseif v == "--tx-queues" or v == "-d" then 
-                local totalTxPorts = args[i + 1]
-                if totalTxPorts < 0 then 
-                    print("Invalid number of tx queues")
+                params.txDescs = txDescs
+            elseif v == "--rx-descs" or v == "-rxd" then 
+                local rxDescs = tonumber(args[i + 1])
+                if rxDescs < 0 then 
+                    print("Invalid RX descriptors: ", rxDescs)
                     printUsage()
                     return false
-                else 
-                    params.totalTxPorts = totalTxPorts 
                 end
-            elseif v == "--timeout" or v == "-e" then 
-                local timeout = tonumber(args[i + 1])
-                if timeout < 0 then 
-                    print("Invalid timeout period, can't be negative")
-                    printUsage()
-                    return false
-                else 
-                    params.timeout = timeout
-                end
-            elseif v == "--iterations" or v == "-f" then
-                local iterations = tonumber(args[i + 1])
-                if iterations < 0 then 
-                    print("Invalid number of iterations, cannot be negative")
-                    printUsage()
-                    return false
-                else 
-                    params.iterations = iterations 
-                end
-            elseif v == "--mac-stride" or v == "-g" then
-                params.ethStride                = args[i + 1]
-                addressConversionMask.ethStride = true
-            elseif v == "--help" or v == "-h" then 
-                printUsage()
-                return false
-            elseif v == "--streams" or v == "-i" then 
+                params.rxDescs = rxDescs
+            elseif v == "--streams" or v == "-s" then 
                 local streams = tonumber(args[i + 1])
                 if (streams < 0) then 
-                    print("Invalid number of streams")
+                    print("Invalid number of streams:", streams)
                     printUsage()
                     return false
                 end
                 params.numberOfStreams = streams
-            elseif v == "--bursts-per-stream" or v == "-j" then
-                local bursts = tonumber(args[i + 1])
-                if (bursts < 0) then 
-                    print("Invalid number of bursts per stream")
+            elseif v == "--bursts-per-stream" or v == "-bps" then
+                local bps = tonumber(args[i + 1])
+                if (bps < 0) then 
+                    print("Invalid number of bursts per stream:", bps)
                     printUsage()
                     return false
                 end 
-                params.burstPerStream = bursts
-            elseif v == "--ip-stride" or v == "-k" then 
-                params.ipStride                = args[i + 1]
-                addressConversionMask.ipStride = true
-            elseif v == "--src-port" or v == "-m" then 
-                params.portSrcBase = tonumber(args[i + 1])
-            elseif v == "--dst-port" or v == "-n" then 
-                params.portDstBase = tonumber(args[i + 1])
-            elseif v == "--port-stride" or v == "-o" then 
-                params.portStride = tonumber(args[i + 1])
-            elseif v == "--portmask" or v == "-p" then
-                if type(args[i + 1]) == "string" then 
-                    params.portmask = tonumber(args[i + 1], 16)
-                elseif type(args[i +1]) == "number" then
-                    params.portmask = args[i + 1]
-                end
-            elseif v == "--rx-portmask" or v == "-rxp" then 
-                params.rxPortmaskUsed = true
-                if type(args[i + 1]) == "string" then 
-                    params.rxPortmask = tonumber(args[i + 1], 16)
-                elseif type(args[i +1]) == "number" then
-                    params.rxPortmask = args[i + 1]
-                end      
-            elseif v == "--tx-portmask" or v == "-txp" then 
-                params.txPortmaskUsed = true
-                if type(args[i + 1]) == "string" then 
-                    params.txPortmask = tonumber(args[i + 1], 16)
-                elseif type(args[i +1]) == "number" then
-                    params.txPortmask = args[i + 1]
-                end            
-            elseif v == "--queues-per-core" or v == "-q" then 
-                local qpc = tonumber(args[i + 1])
-                  if qpc > MAX_RX_QUEUS_PER_CORE then
-                    print("Invalid queues per core, the max is:",
-                        MAX_RX_QUEUES_PER_CORE)
-                    return false
-                  end
-                params.rxPortsPerCore = qpc
-            elseif v == "--pps" or v == "-r" then 
-                print(string.format("Using burst size of: %u, for txPps " 
-                  .. "calculation. If this is not the txBurstSize you want, "
-                  .. "use --tx-burst-size before --pps", params.txBurstSize))
-
-                local txPps = tonumber(args[i + 1]) 
-                local txDelta = math.floor(
-                                    moongen:getCyclesFrequency() / txPps
-                               ) * params.flowsPerStream * params.burstPerStream
-                if txDelta < 0 then 
-                    print("Invalid TX delta")
-                    printUsage()
-                    return false
-                end
-                params.txDelta = txDelta
-            elseif v == "--rx-burst" or v == "-R" then 
-                local rxBurst = tonumber(args[i + 1])
-                if rxBurst < MIN_RX_BURST_SIZE or 
-                   rxBurst > MAX_RX_BURST_SIZE then 
-                      print("Invalid RX burst size")
-                      printUsage()
-                      return false
-                end
-                params.rxBurstSize = rxBurst
-            elseif v == "--tx-burst" or v == "-t" then 
-                local txBurst = tonumber(args[i + 1])
-                if txBurst < MIN_TX_BURST_SIZE  or
-                   txBurst > MAX_TX_BURST_SIZE then 
-                      print("Invalid TX burst size")
-                      printUsage()
-                      return false
-                end
-                params.txBurstSize = txBurst
-            elseif v == "--src-ip" or v == "-u" then 
-                params.ipSrcBase                = args[i + 1]
-                addressConversionMask.ipSrcBase = true
-            elseif v == "--dst-ip" or v == "-v" then
-                params.ipDstBase                = args[i + 1]
-                addressConversionMask.ipDstBase = true
-            elseif v == "--src-mac" or v == "-w" then 
-                params.ethSrcBase                = args[i + 1]
-                addressConversionMask.ethSrcBase = true
-            elseif v == "--dst-mac" or v == "-x" then 
-                params.ethDstBase                = args[i + 1]
-                addressConversionMask.ethDstBase = true
-            elseif v == "--flows-per-stream" or v == "-y" then 
+                params.burstsPerStream = bursts
+            elseif v == "--flows-per-stream" or v == "-fps" then 
                 local fps = tonumber(args[i + 1])
-                if fps < 0 then 
-                    print("Invalid number of flows per stream")
+                if fps < 0 or fps > constants.maxFlowsPerStream then 
+                    print("Invalid number of flows per stream:", fps)
                     printUsage()
                     return false
                 end 
                 params.flowsPerStream = fps
-            elseif v == "--pkt-size" or v == "-z" then 
+            elseif v == "--param-display" or v == "-pd" then 
+                local paramDisplay = tonumber(args[i + 1])
+                if paramDisplay < 0 then 
+                    print(string.format("Invalid param display time: %u, " ..
+                          "using default: %u", 
+                           paramDisplay, (params.paramDisplay / 1000)))
+                else  
+                    params.paramDisplay = paramDisplay * 1000
+                end
+            elseif v == "--stats-display" or v == "-sd" then 
+                local period = tonumber(args[i + 1])
+                if period < 0 or period > 86400 then 
+                    print(string.format("Invalid port stats display time: " ..
+                          "%u, using default: %u", period, 
+                          (params.statsDisplay / 1000))
+                    )
+                    return false
+                end 
+                params.statsDisplay = period * 1000
+            elseif v == "--pkt-size" or v == "-ps" then 
                 local pktSize = tonumber(args[i + 1])
                 if pktSize == 0 then 
                     params.mustImix   = true
@@ -1260,49 +1044,116 @@ function parseArgs(params, ...)
                 else
                     params.packetSize = pktSize
                 end
-            else
-                if command then 
-                    print("Unkown command: ", v, "ignoring!")
+            elseif v == "--timeout" or v == "-to" then 
+                local timeout = tonumber(args[i + 1])
+                if timeout < 0 then 
+                    print("Invalid timeout period, can't be negative.")
+                    printUsage()
+                    return false
+                else 
+                    params.timeout = timeout
                 end
+                params.writemode = 0
+            elseif v == "--iterations" or v == "-it" then
+                local iterations = tonumber(args[i + 1])
+                if iterations < 0 then 
+                    print("Invalid number of iterations, cannot be negative.")
+                    printUsage()
+                    return false
+                else 
+                    params.iterations = iterations 
+                end
+                params.writemode = 0
+            elseif v == "--pkts-per-sec" or v == "-pps" then 
+                print("NOTE: flows per stream and burst per stream " ..
+                      "should be specified first")
+
+                local txPps = tonumber(args[i + 1]) 
+                if txPps < 0 then 
+                    print("Invalid packets per second, can't be negaive.")
+                    printUsage()
+                    return false
+                end
+
+                params.txDelta = 
+                    math.floor(moongen:getCyclesFrequency() / txPps) *
+                      params.flowsPerStream * params.burstsPerStream
+            elseif v == "--file-prefix" or v == "-fp" then
+                params.fileprefix = args[i + 1]
+                if params.writemode < 2 then
+                    params.writemode = 2 -- write to global file
+                end
+            elseif v == "--write-mode" or v == "-wm" then
+                local writemode = tonumber(args[i +1])
+                if writemode < 0 or writemode > 3 then
+                    print("Invalid write mode, must be 0 - 3.")
+                    printUsage()
+                    return false
+                end
+                params.writemode = writemode
+            elseif v== "--vary-dst" or v == "-vd" then 
+                ethVar, ipVar, portVar =
+                  args[i + 1]:match("([^,]+),([^,]+),([^,]+)")
+                params.ethDstVary  = ethVar
+                params.ipDstVary   = ipVar
+                params.portDstVary = tonumber(portVar)
+
+                addressConversionMask.ethSDstVary = true
+                addressConversionMask.ipDstVary   = true
+            elseif v == "--vary-src" or v == "-vs" then 
+                ethVar, ipVar, portVar =
+                  args[i + 1]:match("([^,]+),([^,]+),([^,]+)")
+                params.ethSrcVary  = ethVar
+                params.ipSrcVary   = ipVar
+                params.portSrcVary = tonumber(portVar)
+
+                addressConversionMask.ethSrcVary = true
+                addressConversionMask.ipSrcVary  = true
+            elseif v == "--mac-stride" or v == "-ms" then
+                params.ethStride                = args[i + 1]
+                addressConversionMask.ethStride = true
+            elseif v == "--ip-stride" or v == "-ips" then 
+                params.ipStride                = args[i + 1]
+                addressConversionMask.ipStride = true
+            elseif v == "--port-stride" or v == "-pts" then 
+                params.portStride = tonumber(args[i + 1])
+            elseif v == "--src-port" or v == "-spt" then 
+                params.portSrcBase = tonumber(args[i + 1])
+            elseif v == "--dst-port" or v == "-dpt" then 
+                params.portDstBase = tonumber(args[i + 1])
+            elseif v == "--src-ip" or v == "-si" then 
+                params.ipSrcBase                = args[i + 1]
+                addressConversionMask.ipSrcBase = true
+            elseif v == "--dst-ip" or v == "-di" then
+                params.ipDstBase                = args[i + 1]
+                addressConversionMask.ipDstBase = true
+            elseif v == "--src-mac" or v == "-sm" then 
+                params.ethSrcBase                = args[i + 1]
+                addressConversionMask.ethSrcBase = true
+            elseif v == "--dst-mac" or v == "-dm" then 
+                params.ethDstBase                = args[i + 1]
+                addressConversionMask.ethDstBase = true
+            elseif v == "--help" or v == "-h" then 
+                printUsage()
+                return false
             end
-
-            if command then command = false else command = true end
         end
-    end   
-
-    if params.rxPortmaskUsed == true and 
-       params.txPortmaskUsed == true then
-          params.explicitMasksUsed = true 
-          params.rxPortsMirrorTx   = true
-    elseif  (params.rxPortmaskUsed == true and params.txPortmaskUsed == false) 
-      or    (params.rxPortmaskUsed == false and params.txPortmaskUsed == true)
-      then
-  	      print("Error, can'tt use rx or tx portmasks separately " ..
-                "from each other.")
-	        return false
     end
+    params.totalFlows = params.numberOfStreams * params.flowsPerStream
 
-    -- Convert all the numeric addresses to numeric ones
+    -- Convert string addresses to numeric:
     convertAddressesToNumeric(params)
 
-    -- Check that the strides are valid
-    if params.ethStrideNum == 0 then 
-        params.ethStrideNum = band(params.flowsPerStream, 0xffffffffffff)  
-    end
-    if params.ipStrideNum == 0 then 
-        params.ipStrideNum = band(params.flowsPerStream, 0xffffffff)  
-    end
-    if params.portStride == 0 then 
-        params.portStride = band(params.flowsPerStream, 0xffff) 
-    end 
-
-    params.totalFlows = params.numberOfStreams * params.flowsPerStream
+    -- Check that the strides are valid:
+    checkStrideValidity(params)
 
     return true
 end
 
--- @brief Converts string versions of addresses to numeroic ones
--- @param params The parameters to update the numeric addresses of.
+-------------------------------------------------------------------------------
+-- Converts string versions of the addresses to numeric ones
+-- params   : The params to update the string address to numbric
+-------------------------------------------------------------------------------
 function convertAddressesToNumeric(params) 
     -- MAC related-------------------------------------------------------------
 
@@ -1349,106 +1200,115 @@ function convertAddressesToNumeric(params)
     end
 end
 
--- Stats ----------------------------------------------------------------------
-
--- @brief Prints the statistics for a port on a core.
--- @param coreid The id of the core for which the stats are being printed.
--- @param portid The id of the port for which the stats are being printed.
-function stats:print(coreid, portid)
-  local statsString = string.format(
-    "\n+------ Statistics for core %3u, port %3u ----------------------+"   ..
-    "\n| Packets sent               : %32u |"                               ..
-    "\n| Packet send rate           : %32.2f |"                             ..
-    "\n| Packets received           : %32u |"                               ..
-    "\n| Packet receive rate        : %32.2f |"                             ..
-    "\n| Bytes sent                 : %32u |"                               ..
-    "\n| Byte send rate             : %32.2f |"                             ..
-    "\n| Bytes received             : %32u |"                               ..
-    "\n| Byte receive rate          : %32.2f |"                             ..
-    "\n| Packets dropped on send    : %32u |"                               ..
-    "\n| Packets dropped on receive : %32u |"                               ..
-    "\n| TX packets short           : %32u |"                               ..
-    "\n| RX mean latency            : %32.10f |"                            ..
-    "\n| RX mean2 latency           : %32.10f |"                            ..
-    "\n+---------------------------------------------------------------+"   ,
-    coreid                                                                  ,
-    portid                                                                  ,
-    self.txPackets                                                          ,
-    (self.txPackets - self.prevTxPackets) / self.elapsedTime                ,
-    self.rxPackets                                                          ,
-    (self.rxPackets - self.prevRxPackets) / self.elapsedTime                ,
-    self.txBytes                                                            ,
-    (self.txBytes - self.prevTxBytes) / self.elapsedTime                    ,
-    self.rxBytes                                                            ,
-    (self.rxBytes - self.prevRxBytes) / self.elapsedTime		    ,
-    self.txDropped                                                          ,
-    self.rxDropped                                                          ,
-    self.txShort                                                            ,
-    self.rxMeanLatency                                                      ,
-    self.rxM2Latency
-  )
-  
-  print(statsString)
+-------------------------------------------------------------------------------
+-- Checks that the strides for the parameters are valid
+-- params   : The parameters whose strides validity must be checked
+-------------------------------------------------------------------------------
+function checkStrideValidity(params)
+    if params.ethStrideNum == 0 then 
+        params.ethStrideNum = band(params.flowsPerStream, 0xffffffffffff)  
+    end
+    if params.ipStrideNum == 0 then 
+        params.ipStrideNum = band(params.flowsPerStream, 0xffffffff)  
+    end
+    if params.portStride == 0 then 
+        params.portStride = band(params.flowsPerStream, 0xffff) 
+    end  
 end
 
--- Utilities ------------------------------------------------------------------
-
--- @brief Converts a number to a hex string representation.
--- @param num The number to convert to hex.
-function num2hex(num)
-    local hexstr = '0123456789abcdef'
-    local s      = ''
-    while num > 0 do
-        local mod = math.fmod(num, 16)
-        s         = string.sub(hexstr, mod + 1, mod + 1) .. s
-        num       = math.floor(num / 16)
-    end
-    if s == '' then s = '0' end
-    return s
-end
-
--- Converts a mac address in number format (a long) to a string based mac
--- address of the form: a:b:c:d:e:f
--- @param mac The mac address to convert
-function convertMacNumberToString(mac) 
-    local macArray = {}
-    for i = 6, 1, -1 do
-        macArray[i] = bit.band(mac, 0xff)
-        mac         = bit.rshift(mac, 8)
-    end
-    local macString = string.format("%u:%u:%u:%u:%u:%u",
-      macArray[1], macArray[2], macArray[3],
-      macArray[4], macArray[5], macArray[6]
+-------------------------------------------------------------------------------
+-- Prints the example usage for the packet generation.
+-------------------------------------------------------------------------------
+function printUsage()
+    local usage = string.format(
+        "Usage is:\n Moongen packegen.lua <--dpdk-config=/path/to/config>" ..
+        " <Required Args> <Optional Args> where:\n"                        ..
+        " Required Args:\n\n"                                              ..
+        "   --tx-slave|-tx PORT where\n"                                   ..
+        "     PORT : Id of a port to use to TX\n"                          ..
+        "     NOTE : This can be specified multiple times\n\n"             ..
+        "   --rx-slave|-rx PORT where\n"                                   ..
+        "     PORT : Id of a port to use to RX\n"                          ..
+        "     NOTE : This can be specified multiple times\n\n"             ..
+        " Optional Args:\n\n"                                              ..
+        "   --tx-descs|-txd DESCRIPTORS where\n"                           ..
+        "     DESCRIPTORS : Number of TX descriptors (default 1024)\n\n"   ..
+        "   --rx-descs|-rxd DESCRIPTORS where\n"                           ..
+        "     DESCRIPTORS : Number of RX descriptors (default 1024)\n\n"   ..
+        "   --streams|-s NUM_STREAMS where\n"                              ..
+        "     NUM_STREAMS : Number of streams (default 1)\n\n"             ..
+        "   --bursts-per-stream|-bps NUM_BURSTS where\n"                   ..
+        "     NUM_BURSTS : Number of bursts per stream (default 1)\n\n"    ..
+        "   --flows-per-stream|-fps NUM_FLOWS where\n"                     ..
+        "     NUM_FLOWS : Number of flows per stream (default 2047)\n"     ..
+        "     NOTE      : 2047 is the max.\n\n"                            ..
+        "   --param-display|-pd TIME where\n"                              ..
+        "     TIME : Seconds to display params before running\n"           ..
+        "            (default 3 seconds)\n\n"                              ..
+        "   --stats-display|-sd TIME where\n"                              ..
+        "     TIME Stats refresh period on each core, in seconds\n"        ..
+        "     (default = 1, 0 = disable)\n"                                ..
+        "     NOTE: The stats for each core are printed iteratively\n"     ..
+        "           A core's stats will be printed every TIME seconds\n"   ..
+        "           TIME = 3 with 3 cores will result in:\n"               ..
+        "             core 1 : 0s, 3s, 6s ...\n"                           ..
+        "             core 2 : 1s, 4s, 7s ...\n"                           ..
+        "             core 3 : 2s, 5s, 8s ...\n\n"                         ..
+        "   --pkt-size|-ps PKT_SIZE where\n"                               ..
+        "     PKT_SIZE : Packet size (0 for IMIX, default 64)\n\n"         ..
+        "   --timeout|-to TIME where\n"                                    ..
+        "     TIME : The time (in seconds) to run for.\n"                  ..
+        "            (default is to run indefinitely)\n\n"                 ..
+        "   --iterations|-it ITERS where\n"                                ..
+        "     ITERS : The number of TX/RX iterations to run.\n"            ..
+        "             (defualt is to run indefinitely)\n\n"                ..
+        "   --pps|-r RATE where\n"                                         ..
+        "     RATE : Packets per second rate to attempt.\n\n"              ..
+        "   --file-prefix|-fp PREFIX where\n"                              ..
+        "     PREFIX : Prefix of the file to write results to\n"           ..
+        "     NOTE   : .txt is added to the PREFIX so\n"                   ..
+        "              -fp eg will write to eg.txt\n"                      ..
+        "              By default as single file is written, (-wm 2)\n"    ..
+        "              see --write-mode for more options\n\n"              ..
+        "   --write-mode|-wm MODE where\n"                                 ..
+        "     MODE : Writing mode for stats, options:\n"                   ..
+        "       0  : Don't write or show stats\n"                          ..
+        "       1  : Print stats to console (default)\n"                   ..
+        "       2  : Write all core stats to a global file\n"              ..
+        "       3  : Write separate stats for each core\n\n"               ..
+        "   --vary-dst|-vd MAC_VARY,IP_VARY,PORT_VARY where\n"             ..
+        "     MAC_VARY  : Vary source mac (format a:b:c:d:e:f)\n"          ..
+        "     IP_VARY   : Vary source ip  (format a.b.c.d)\n"              ..
+        "     PORT_VARY : Vary port ip (format a (number))\n"              ..
+        "     NOTE: comma separated list without spaces, example:\n"       ..
+        "           00:00:00:00:a0:21,0.0.0.1,2\n\n"                       ..
+        "   --vary-src|-vs MAC_VARY,IP_VARY,PORT_VARY where\n"             ..
+        "     MAC_VARY  : Vary source mac (format a:b:c:d:e:f)\n"          ..
+        "     IP_VARY   : Vary source ip  (format a.b.c.d)\n"              ..
+        "     PORT_VARY : Vary port ip (format a (number))\n"              ..
+        "     NOTE: comma separated list without spaces, example:\n"       ..
+        "           00:00:00:00:a0:21,0.0.0.1,2\n\n"                       ..
+        "   --mac-stride|-ms MAC_STRIDE where\n"                           ..
+        "     MAC_STRIDE : MAC stride between streams (a:b:c:d:e:f)\n\n"   ..
+        "   --ip-stride|-ips IP_STRIDE where\n"                            ..
+        "     IP_STRIDE : IP stride between streams (A.B.C.D)\n\n"         ..
+        "   --port-stride|-pts PORT_STRIDE where\n"                        ..
+        "     PORT_STRIDE : PORT stride between streams\n\n"               ..
+        "   --src-mac|-sm SRC_MAC where\n"                                 ..
+        "     SRC_MAC : Base SRC mac address (a:b:c:d:e:f)\n\n"            ..
+        "   --dst-mac|-dm DST_MAC where\n"                                 ..
+        "     DST_MAC : Base DST mac address (a:b:c:d:e:f)\n\n"            ..
+        "   --src-ip|-sip SRC_IP where\n"                                  ..
+        "     SRC_IP : Base SRC ip address (A.B.C.D)\n\n"                  ..
+        "   --dst-mac|-dip DST_IP where\n"                                 ..
+        "     DST_IP : Base DST ip address (A.B.C.D)\n\n"                  ..
+        "   --src-port|-spt SRC_PORT where\n"                              ..
+        "     SRC_PORT : Base source UDP port\n\n"                         ..
+        "   --dst-port|-dpt DST_PORT where\n"                              ..
+        "     DST_PORT : Base destination UDP port\n\n"                    ..
+        "   --help|-h Print usage\n\n"                                     ..
+        "   NOTE: The later arguments have more preference than earlier\n" ..
+        "         ones.\n\n"
     )
-    return macString
-end
-
--- @brief Generates a random number in range [1, 120] for the IMIX.
-function imixSize() 
-    local rnum = math.random(120);
-    if rnum <= 10 then         -- 1 in 12 : [1 - 10]   : 10 / 120
-        return 1518
-    elseif rnum <= 50 then     -- 4 in 12 : [11 - 50]  : 40 / 120
-        return 574
-    else                       -- 7 in 12 : [51 - 120] : 70 / 120
-        return 68     
-    end
-end
-
--- Deep copies a table, and returns the copy.
--- @param orig The original table to copy.
-function deepCopy(orig)
-    local origType = type(orig)
-    local copy    
-
-    if origType == 'table' then
-        copy = {}
-        for k,v in next, orig, nil do
-            copy[deepCopy(k)] = deepCopy(v)
-        end
-        setmetatable(copy, deepCopy(getmetatable(orig)))
-    else -- simple type
-        copy = orig
-    end
-    return copy
+    print(usage)
 end

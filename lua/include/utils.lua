@@ -466,4 +466,32 @@ function getOS()
 	return trim(os), major, minor, patch
 end
 
+-- Deep copy's a table, and returns the copy.
+-- @param orig The original table to copy.
+function deepCopy(orig)
+    local origType = type(orig)
+    local copy    
 
+    if origType == 'table' then
+        copy = {}
+        for k,v in next, orig, nil do
+            copy[deepCopy(k)] = deepCopy(v)
+        end
+        setmetatable(copy, deepCopy(getmetatable(orig)))
+    else -- simple type
+        copy = orig
+    end
+    return copy
+end
+
+-- Generates a random number in range [1, 120] for the IMIX.
+function imixSize() 
+    local rnum = math.random(120);
+    if rnum <= 10 then         -- 1 in 12 : [1 - 10]   : 10 / 120
+        return 1518
+    elseif rnum <= 50 then     -- 4 in 12 : [11 - 50]  : 40 / 120
+        return 574
+    else                       -- 7 in 12 : [51 - 120] : 70 / 120
+        return 68     
+    end
+end
