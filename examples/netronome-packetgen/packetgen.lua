@@ -327,7 +327,7 @@ function rxSlave(device, portId, clParams)
       writeStatsHeader(outFile)
   end
 
-  while state == "canrun" do
+  while state == "canrun" and moongen.running() do
       rxPackets     = rxQueue:tryRecv(rxBurst, constants.receiveTimeout)
       stats.packets = stats.packets + rxPackets
       stats.dropped = stats.dropped + rxPackets
@@ -567,7 +567,7 @@ function txSlave(device, portId, clParams)
   local iteration     = 0
   local lastPrintTime = 0
   local startTime     = moongen.getTime()
-  while state == "canrun" do
+  while state == "canrun" and moongen.running() do
       for _, stream in ipairs(streams) do
           bstParams.currtsc = tonumber(moongen:getCycles())
           bstParams.difftsc = bstParams.currtsc - bstParams.prevtsc
