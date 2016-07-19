@@ -235,32 +235,35 @@ function master(...)
         )
     end
 
-    -- Tables for RX and TX devices:
-    local rxDevices = {}
-    local txDevices = {}
+    -- Create a list of ports, default to the tx ports:
+    local portList = deepCopy(clParams.txSlavePorts)
 
-    -- Configure the TX slaves:
-    for i = 1, #clParams.txSlavePorts do
-        local deviceIdx = #txDevices + 1
-        txDevices[deviceIdx] = device.config{
-            port     = clParams.txSlavePorts[i],
-            rxQueues = 1                       , -- Only 1 supported for now.
-            txQueues = 1                       , -- Only 1 supported for now.
-            txDescs  = clParams.txDescs
-        }
-        txDevices[deviceIdx]:setPromisc(true)
+    -- Check which of the rx ports were already added as tx ports,
+    -- and add any of the rx ports which are not already in the list:
+    for i, rxPortId in ipairs(clParams.rxSlavePorts) do
+        local canAdd = false
+        for _, portId in ipairs(portList) do
+            if rxPortId == portId then
+                canAdd = false
+            end
+        end
+        if canAdd then
+            portList[#portList + 1] = portId
+        end
     end
 
-    -- Configure the RX slaves:
-    for i = 1, #clParams.rxSlavePorts do
-        local deviceIdx = #rxDevices + 1
-        rxDevices[deviceIdx] = device.config{
-            port     = clParams.rxSlavePorts[i],
-            rxQueues = 1                       , -- Only 1 supported for now.
-            txQueues = 1                       , -- Only 1 supported for now.
-            rxDescs  = clParams.rxDescs
+    -- Table of MoonGen devices:
+    local devices = {}
+    -- Configure the devices:
+    for _, port in ipairs(portList) do
+        local deviceIdx = #devices + 1
+        devices[deviceIdx] = device.config{
+            port     = port            , 
+            rxQueues = 1               , -- Only 1 supported for now.
+            txQueus  = 1               , -- Only 1 supported for now.
+            rxDescs  = clParams.rxDescs,
+            txDescs  = clParams.txDescs 
         }
-        rxDevices[deviceIdx]:setPromisc(true)
     end
 
     -- If writing globally, write the header for the global file:
@@ -272,18 +275,24 @@ function master(...)
     clParams:print()
     moongen.sleepMillis(clParams.paramDisplay)
 
-    -- Launch the TX slaves:
-    for i = 1, #txDevices do
-      moongen.launchLua(
-          "txSlave", txDevices[i], clParams.txSlavePorts[i], clParams
-      )
-    end
-    
-    -- Launch the RX slaves:
-    for i = 1, #rxDevices do
-      moongen.launchLua(
-          "rxSlave", rxDevices[i], clParams.rxSlavePorts[i], clParams
-      )
+    -- Launch the slaves:
+    for i, portId in ipairs(portList) do
+        -- Check if the port must be used as a TX slave:
+        for _, txPortId in ipairs(clParams.txSlavePorts) do
+            if txPortId == portId then
+                moongen.launchLua(
+                    "txSlave", devices[i], portId, clParams)
+                break
+            end
+        end
+        -- Check if the port must be used as a RX slave:
+        for _, rxPortId in ipairs(clParams.rxSlavePorts) do
+            if rxPortId == portId then
+                moongen.launchLua(
+                    "rxSlave", devices[i], portId, clParams)
+                break
+            end
+        end
     end
 
     moongen.waitForSlaves()
@@ -964,7 +973,17 @@ function parseArgs(params, ...)
                     printUsage()
                     return false
                 end
-                params.txSlavePorts[#params.txSlavePorts + 1] =  slavePort 
+                local canAdd = true
+                for _, v in ipairs(params.txSlavePorts) do
+                    if v == slavePort then
+                        canAdd = false
+                        print("Ignoring second specification of TX slave " ..
+                              "port: ", slavePort)
+                    end
+                end
+                if canAdd then
+                    params.txSlavePorts[#params.txSlavePorts + 1] =  slavePort 
+                end
             elseif v == "--rx-slave" or v == "-rx" then
                 local slavePort = tonumber(args[i + 1])
                 if slavePort < 0 or slavePort > constants.maxSlavePort then 
@@ -972,7 +991,17 @@ function parseArgs(params, ...)
                     printUsage()
                     return false
                 end
-                params.rxSlavePorts[#params.rxSlavePorts + 1] =  slavePort 
+                local canAdd = true
+                for _, v in ipairs(params.rxSlavePorts) do
+                    if v == slavePort then
+                        canAdd = false
+                        print("Ignoring second specification of RX slave " ..
+                              "port: ", slavePort)
+                    end
+                end
+                if canAdd then
+                    params.rxSlavePorts[#params.rxSlavePorts + 1] =  slavePort 
+                end
             elseif v == "--tx-descs" or v == "-txd" then 
                 local txDescs = tonumber(args[i + 1])
                 if txDescs < 0 then 
