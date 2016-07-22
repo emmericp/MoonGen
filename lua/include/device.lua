@@ -38,6 +38,7 @@ mod.PCI_ID_I350		= 0x80861521
 mod.PCI_ID_82576	= 0x80861526
 mod.PCI_ID_X710		= 0x80861572
 mod.PCI_ID_XL710	= 0x80861583
+mod.PCI_ID_XL710Q1	= 0x80861584
 
 mod.PCI_ID_82599_VF	= 0x808610ed
 
@@ -207,6 +208,7 @@ function mod.config(...)
 	-- FIXME: this is stupid and should be fixed in DPDK
 	local isi40e = pciId == mod.PCI_ID_XL710
 	            or pciId == mod.PCI_ID_X710
+	            or pciId == mod.PCI_ID_XL710Q1
 	-- TODO: support options
 	local disablePadding = pciId == mod.PCI_ID_X540
 	                    or pciId == mod.PCI_ID_X520
@@ -410,6 +412,7 @@ local deviceNames = {
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
 	[mod.PCI_ID_X710]	= "Intel Corporation Ethernet 10G 2P X710 Adapter",
 	[mod.PCI_ID_XL710]	= "Ethernet Controller LX710 for 40GbE QSFP+",
+	[mod.PCI_ID_XL710Q1]	= "Ethernet Converged Network Adapter XL710-Q1",
 	[mod.PCI_ID_82599_VF]	= "Intel Corporation 82599 Ethernet Controller Virtual Function",
 }
 
@@ -519,7 +522,7 @@ end
 --- get the number of packets received since the last call to this function
 function dev:getRxStats()
 	local devId = self:getPciId()
-	if devId == mod.PCI_ID_XL710 or devId == mod.PCI_ID_X710 then
+	if devId == mod.PCI_ID_XL710 or devId == mod.PCI_ID_X710 or devId == mod.PCI_ID_XL710Q1 then
 		local uprc, mprc, bprc, gorc
 		-- TODO: is this always correct?
 		-- I guess it fails on VFs :/
@@ -540,7 +543,7 @@ function dev:getTxStats()
 	local badBytes = tonumber(dpdkc.get_bad_bytes_sent(self.id))
 	-- FIXME: this should really be split up into separate functions/files
 	local devId = self:getPciId()
-	if devId == mod.PCI_ID_XL710 or devId == mod.PCI_ID_X710 then
+	if devId == mod.PCI_ID_XL710 or devId == mod.PCI_ID_X710 or devId == mod.PCI_ID_XL710Q1 then
 		local uptc, mptc, bptc, gotc
 		local port = dpdkc.get_pci_function(self.id)
 		uptc, lastUptc[self.id] = readCtr32(self.id, GLPRT_UPTCL[port], lastUptc[self.id])
@@ -575,7 +578,7 @@ local RTTDQSEL = 0x00004904
 function txQueue:setRate(rate)
 	local id = self.dev:getPciId()
 	local dev = self.dev
-	if id == mod.PCI_ID_X710 or id == mod.PCI_ID_XL710 then
+	if id == mod.PCI_ID_X710 or id == mod.PCI_ID_XL710 or id == mod.PCI_ID_XL710Q1 then
 		-- obviously fails if doing that from multiple threads; but you shouldn't do that anways
 		dev.totalRate = dev.totalRate or 0
 		dev.totalRate = dev.totalRate + rate

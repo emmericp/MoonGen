@@ -153,7 +153,7 @@ end
 --- try to read a tx timestamp if one is available, returns -1 if no timestamp is available
 function mod.tryReadTxTimestamp(port)
 	local id = device.get(port):getPciId()
-	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 then
+	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 or id == device.PCI_ID_XL710Q1 then
 		local val = dpdkc.read_reg32(port, PRTTSYN_STAT_0)
 		if bit.band(val, PRTTSYN_STAT_0_TXTIME) == 0 then
 			return nil
@@ -180,7 +180,7 @@ end
 
 function mod.tryReadRxTimestamp(port, timesync)
 	local id = device.get(port):getPciId()
-	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 then
+	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 or id == device.PCI_ID_XL710Q1 then
 		local rtxindex = bit.lshift(1, timesync)
 		if bit.band(dpdkc.read_reg32(port, PRTTSYN_STAT_1), rtxindex) == 0 then
  			return nil
@@ -207,7 +207,7 @@ end
 
 local function cleanTimestamp(dev, rxQueue)
 	local id = device.get(dev.id):getPciId()
-	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 then
+	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 or id == device.PCI_ID_XL710Q1 then
 		local stats = dpdkc.read_reg32(dev.id, PRTTSYN_STAT_1)
 		if bit.band(stats, PRTTSYN_STAT_1_RXT_ALL) ~= 0 then
 			for i = 0, 3 do
@@ -225,7 +225,7 @@ end
 
 local function startTimerI40e(port, id)
 	-- start system timer
-	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 then
+	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 or id == device.PCI_ID_XL710Q1 then
 		dpdkc.write_reg32(port, PRTTSYN_INC_L, bit.band(I40E_PTP_10GB_INCVAL, 0xFFFFFFFF))
 		dpdkc.write_reg32(port, PRTTSYN_INC_H, bit.rshift(I40E_PTP_10GB_INCVAL, 32))
 	else -- should not happen
@@ -355,6 +355,7 @@ end
 -- TODO: implement support for more hardware
 local enableFuncs = {
 	[device.PCI_ID_XL710]	= { enableRxTimestampsI40e, enableTxTimestampsI40e },
+	[device.PCI_ID_XL710Q1]	= { enableRxTimestampsI40e, enableTxTimestampsI40e },
 	[device.PCI_ID_X710]	= { enableRxTimestampsI40e, enableTxTimestampsI40e },
 	[device.PCI_ID_X540]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
 	[device.PCI_ID_X520]	= { enableRxTimestampsIxgbe, enableTxTimestampsIxgbe },
@@ -426,7 +427,7 @@ end
 --- @return the PTP sequence number of the timestamped packet, -1 if the NIC doesn't support capturing it, nil if no timestamp is available
 function dev:hasTimestamp()
 	local id = device.get(self.id):getPciId()
-	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 then
+	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 or id == device.PCI_ID_XL710Q1 then
 		local stats = dpdkc.read_reg32(self.id, PRTTSYN_STAT_1)
 		return bit.band(stats, PRTTSYN_STAT_1_RXT_ALL) ~= 0 and -1 or nil
 	elseif id  == device.PCI_ID_82580 then
@@ -444,11 +445,12 @@ end
 
 function dev:supportsTimesync()
 	local id = self:getPciId()
-	return id == device.PCI_ID_X710 or id == device.PCI_ID_XL710
+	return id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 or id == device.PCI_ID_XL710Q1
 end
 
 local timestampScales = {
 	[device.PCI_ID_XL710]	= 1,
+	[device.PCI_ID_XL710Q1]	= 1,
 	[device.PCI_ID_X710]	= 1,
 	[device.PCI_ID_X540]	= 6.4,
 	[device.PCI_ID_X520]	= 6.4,
@@ -462,6 +464,7 @@ end
 
 local timeRegisters = {
 	[device.PCI_ID_XL710]	= { 1, PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ, PRTTSYN_ADJ_DUMMY },
+	[device.PCI_ID_XL710Q1]	= { 1, PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ, PRTTSYN_ADJ_DUMMY },
 	[device.PCI_ID_X710]	= { 1, PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ, PRTTSYN_ADJ_DUMMY },
 	[device.PCI_ID_X540]	= { 2, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
 	[device.PCI_ID_X520]    = { 2, SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH },
