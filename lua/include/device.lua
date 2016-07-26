@@ -41,6 +41,7 @@ mod.PCI_ID_XL710	= 0x80861583
 mod.PCI_ID_XL710Q1	= 0x80861584
 
 mod.PCI_ID_82599_VF	= 0x808610ed
+mod.PCI_ID_VIRTIO	= 0x1af41000
 
 function mod.init()
 	dpdkc.rte_pmd_init_all_export();
@@ -414,6 +415,7 @@ local deviceNames = {
 	[mod.PCI_ID_XL710]	= "Ethernet Controller LX710 for 40GbE QSFP+",
 	[mod.PCI_ID_XL710Q1]	= "Ethernet Converged Network Adapter XL710-Q1",
 	[mod.PCI_ID_82599_VF]	= "Intel Corporation 82599 Ethernet Controller Virtual Function",
+	[mod.PCI_ID_VIRTIO]	= "Virtio network device"
 }
 
 function dev:getName()
