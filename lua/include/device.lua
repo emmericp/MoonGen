@@ -532,8 +532,10 @@ function dev:getRxStats()
 		bprc, lastBprc[self.id] = readCtr32(self.id, GLPRT_BPRCL[port], lastBprc[self.id])
 		gorc, lastGorc[self.id] = readCtr48(self.id, GLPRT_GORCL[port], lastGorc[self.id])
 		return uprc + mprc + bprc, gorc
-	else
+	elseif devId == mod.PCI_ID_82599 or devId == mod.PCI_ID_X540 or devId == mod.PCI_ID_X520 or devId == mod.PCI_ID_X520_T2 then
 		return dpdkc.read_reg32(self.id, GPRC), dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
+	else
+		return 0, 0
 	end
 end
 
@@ -551,9 +553,10 @@ function dev:getTxStats()
 		bptc, lastBptc[self.id] = readCtr32(self.id, GLPRT_BPTCL[port], lastBptc[self.id])
 		gotc, lastGotc[self.id] = readCtr48(self.id, GLPRT_GOTCL[port], lastGotc[self.id])
 		return uptc + mptc + bptc - badPkts, gotc - badBytes
-	else
-		-- TODO: check for ixgbe
+	elseif devId == mod.PCI_ID_82599 or devId == mod.PCI_ID_X540 or devId == mod.PCI_ID_X520 or devId == mod.PCI_ID_X520_T2 then
 		return dpdkc.read_reg32(self.id, GPTC) - badPkts, dpdkc.read_reg32(self.id, GOTCL) + dpdkc.read_reg32(self.id, GOTCH) * 2^32 - badBytes
+	else
+		return 0, 0
 	end
 end
 
@@ -633,6 +636,10 @@ function txQueue:setTxRateRaw(rate, disable)
 end
 
 function txQueue:getTxRate()
+	local id = self.dev:getPciId()
+	if id ~= mod.PCI_ID_82599 and id ~= mod.PCI_ID_X540 and id ~= mod.PCI_ID_X520 and id ~= mod.PCI_ID_X520_T2 then
+		return 0
+	end
 	local link = self.dev:getLinkStatus()
 	self.speed = link.speed > 0 and link.speed or 10000
 	dpdkc.write_reg32(self.id, RTTDQSEL, self.qid)
