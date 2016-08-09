@@ -74,7 +74,7 @@ int get_max_ports() {
 }
 
 // TODO: we should use a struct here
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads, bool is_i40e_device, bool strip_vlan, bool disable_padding) {
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool** mempools, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads, bool is_i40e_device, bool strip_vlan, bool disable_padding) {
   //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
@@ -214,7 +214,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	};
 	for (int i = 0; i < rx_queues; i++) {
 		// TODO: get socket id for the NIC
-		rc = rte_eth_rx_queue_setup(port, i, rx_descs ? rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, mempool);
+		rc = rte_eth_rx_queue_setup(port, i, rx_descs ? rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, mempools[i]);
 		if (rc != 0) {
 			printf("could not configure rx queue %d\n", i);
 			return rc;

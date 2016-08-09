@@ -93,7 +93,7 @@ local devices = {}
 --- Configure a device
 --- @param args A table containing the following named arguments
 ---   port Port to configure
----   mempool optional (default = create a new mempool) Mempool to associate to the device
+---  mempools optional (default = create new mempools) RX mempools to associate with the queues
 ---   rxQueues optional (default = 1) Number of RX queues to configure 
 ---   txQueues optional (default = 1) Number of TX queues to configure 
 ---   rxDescs optional (default = 512)
@@ -148,7 +148,6 @@ function mod.config(...)
 	else
 		log:fatal("Device config needs at least one argument.")
 	end
-
 	args.rxQueues = args.rxQueues or 1
 	args.txQueues = args.txQueues or 1
 	args.rxDescs  = args.rxDescs or 512
@@ -165,13 +164,17 @@ function mod.config(...)
 	if args.stripVlan == nil then
 		args.stripVlan = true
 	end
-	-- create a mempool with enough memory to hold tx, as well as rx descriptors
-	-- (tx descriptors for forwarding applications when rx descriptors from one of the device are directly put into a tx queue of another device)
-	-- FIXME: n = 2^k-1 would save memory
-	args.mempool = args.mempool or memory.createMemPool{n = args.rxQueues * args.rxDescs + args.txQueues * args.txDescs, socket = dpdkc.get_socket(args.port)}
 	if devices[args.port] and devices[args.port].initialized then
 		log:warn("Device %d already configured, skipping initilization", args.port)
 		return mod.get(args.port)
+	end
+	if not args.mempools then
+		args.mempools = {}
+		for i = 1, args.rxQueues do
+			table.insert(args.mempools, args.mempool or memory.createMemPool{n = 2047, socket = dpdkc.get_socket(args.port)})
+		end
+	elseif #args.mempools ~= args.rxQueues then
+		log:fatal("number of mempools must equal number of rx queues")
 	end
 	args.speed = args.speed or 0
 	args.dropEnable = args.dropEnable == nil and true
@@ -215,7 +218,11 @@ function mod.config(...)
 	                    or pciId == mod.PCI_ID_X520
 	                    or pciId == mod.PCI_ID_X520_T2
 	                    or pciId == mod.PCI_ID_82599
-	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, args.mempool, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false, isi40e, args.stripVlan, disablePadding)
+	local mempools = ffi.new("struct mempool*[?]", args.rxQueues)
+	for i, v in ipairs(args.mempools) do
+		mempools[i - 1] = v
+	end
+	local rc = dpdkc.configure_device(args.port, args.rxQueues, args.txQueues, args.rxDescs, args.txDescs, args.speed, mempools, args.dropEnable, rss_enabled, rss_hash_mask, args.disableOffloads or false, isi40e, args.stripVlan, disablePadding)
 	if rc ~= 0 then
 	    log:fatal("Could not configure device %d: error %d", args.port, rc)
 	end
