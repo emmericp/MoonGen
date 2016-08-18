@@ -32,6 +32,7 @@ ffi.cdef[[
 mod.PCI_ID_X540		= 0x80861528
 mod.PCI_ID_X520		= 0x8086154D
 mod.PCI_ID_X520_T2	= 0x8086151C
+mod.PCI_ID_X520_Q1	= 0x80861558
 mod.PCI_ID_82599	= 0x808610FB
 mod.PCI_ID_82580	= 0x8086150E
 mod.PCI_ID_I350		= 0x80861521
@@ -217,6 +218,7 @@ function mod.config(...)
 	local disablePadding = pciId == mod.PCI_ID_X540
 	                    or pciId == mod.PCI_ID_X520
 	                    or pciId == mod.PCI_ID_X520_T2
+	                    or pciId == mod.PCI_ID_X520_Q1
 	                    or pciId == mod.PCI_ID_82599
 	local mempools = ffi.new("struct mempool*[?]", args.rxQueues)
 	for i, v in ipairs(args.mempools) do
@@ -417,6 +419,7 @@ local deviceNames = {
 	[mod.PCI_ID_82599]	= "82599EB 10-Gigabit SFI/SFP+ Network Connection",
 	[mod.PCI_ID_X520]	= "Ethernet 10G 2P X520 Adapter", -- Dell-branded NIC with an 82599
 	[mod.PCI_ID_X520_T2]	= "82599EB 10G 2xRJ45 X520-T2 Adapter",
+	[mod.PCI_ID_X520_Q1]	= "82599EB 10G 1xQSFP X520-Q1 Adapter",
 	[mod.PCI_ID_X540]	= "Ethernet Controller 10-Gigabit X540-AT2",
 	[mod.PCI_ID_X710]	= "Intel Corporation Ethernet 10G 2P X710 Adapter",
 	[mod.PCI_ID_XL710]	= "Ethernet Controller LX710 for 40GbE QSFP+",
@@ -541,7 +544,7 @@ function dev:getRxStats()
 		bprc, lastBprc[self.id] = readCtr32(self.id, GLPRT_BPRCL[port], lastBprc[self.id])
 		gorc, lastGorc[self.id] = readCtr48(self.id, GLPRT_GORCL[port], lastGorc[self.id])
 		return uprc + mprc + bprc, gorc
-	elseif devId == mod.PCI_ID_82599 or devId == mod.PCI_ID_X540 or devId == mod.PCI_ID_X520 or devId == mod.PCI_ID_X520_T2 then
+	elseif devId == mod.PCI_ID_82599 or devId == mod.PCI_ID_X540 or devId == mod.PCI_ID_X520 or devId == mod.PCI_ID_X520_T2 or devId == mod.PCI_ID_X520_Q1 then
 		return dpdkc.read_reg32(self.id, GPRC), dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
 	else
 		return 0, 0
@@ -562,7 +565,7 @@ function dev:getTxStats()
 		bptc, lastBptc[self.id] = readCtr32(self.id, GLPRT_BPTCL[port], lastBptc[self.id])
 		gotc, lastGotc[self.id] = readCtr48(self.id, GLPRT_GOTCL[port], lastGotc[self.id])
 		return uptc + mptc + bptc - badPkts, gotc - badBytes
-	elseif devId == mod.PCI_ID_82599 or devId == mod.PCI_ID_X540 or devId == mod.PCI_ID_X520 or devId == mod.PCI_ID_X520_T2 then
+	elseif devId == mod.PCI_ID_82599 or devId == mod.PCI_ID_X540 or devId == mod.PCI_ID_X520 or devId == mod.PCI_ID_X520_T2 or devId == mod.PCI_ID_X520_Q1 then
 		return dpdkc.read_reg32(self.id, GPTC) - badPkts, dpdkc.read_reg32(self.id, GOTCL) + dpdkc.read_reg32(self.id, GOTCH) * 2^32 - badBytes
 	else
 		return 0, 0
@@ -598,7 +601,7 @@ function txQueue:setRate(rate)
 		self.dev:setRate(dev.totalRate)
 		return
 	end
-	if id ~= mod.PCI_ID_82599 and id ~= mod.PCI_ID_X540 and id ~= mod.PCI_ID_X520 and id ~= mod.PCI_ID_X520_T2 then
+	if id ~= mod.PCI_ID_82599 and id ~= mod.PCI_ID_X540 and id ~= mod.PCI_ID_X520 and id ~= mod.PCI_ID_X520_T2 and id ~= mod.PCI_ID_X520_Q1 then
 		log:fatal("TX rate control not yet implemented for this NIC")
 	end
 	local speed = self.dev:getLinkStatus().speed
@@ -646,7 +649,7 @@ end
 
 function txQueue:getTxRate()
 	local id = self.dev:getPciId()
-	if id ~= mod.PCI_ID_82599 and id ~= mod.PCI_ID_X540 and id ~= mod.PCI_ID_X520 and id ~= mod.PCI_ID_X520_T2 then
+	if id ~= mod.PCI_ID_82599 and id ~= mod.PCI_ID_X540 and id ~= mod.PCI_ID_X520 and id ~= mod.PCI_ID_X520_T2 and id ~= mod.PCI_ID_X520_Q1 then
 		return 0
 	end
 	local link = self.dev:getLinkStatus()
