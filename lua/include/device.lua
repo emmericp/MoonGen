@@ -689,6 +689,17 @@ function txQueue:send(bufs)
 	return bufs.size
 end
 
+--- Try to transmit buffers on a queue.
+--- Returns the number of packets actually sent out.
+--- @param startIndex 0-based offset in the buffer, default = 0 (use last return value here)
+--- @param numPkts max number of packets, defaults to bufs.size - startIndex
+function txQueue:trySend(bufs, startIndex, numPkts)
+       startIndex = startIndex or 0
+       numPkts = numPkts or bufs.size - startIndex
+       return dpdkc.rte_eth_tx_burst_export(self.id, self.qid, bufs.array + startIndex, numPkts)
+end
+
+
 function txQueue:sendN(bufs, n)
 	self.used = true
 	dpdkc.send_all_packets(self.id, self.qid, bufs.array, n)
