@@ -1,3 +1,9 @@
+---------------------------------
+--- @file dpdkc.lua
+--- @brief DPDKc ...
+--- @todo TODO docu
+---------------------------------
+
 --- low-level dpdk wrapper
 local ffi = require "ffi"
 
@@ -8,44 +14,108 @@ ffi.cdef[[
 		WAIT, RUNNING, FINISHED
 	};
 
+	
+
 	// packets/mbufs
-	struct rte_pktmbuf {
-		struct rte_mbuf* next;
-		void* data;
-		uint16_t data_len;
-		uint8_t nb_segs;
-		uint8_t in_port;
-		uint32_t pkt_len;
-		//union {
-		uint16_t header_lengths;
-		uint16_t vlan_tci;
-		//uint32_t value;
-		//} offsets;
-		union {
-			uint32_t rss;
-			struct {
-				uint16_t hash;
-				uint16_t id;
-			} fdir;
-			uint32_t sched;
-		} hash;
+	
+	struct mempool {
+	}; // dummy struct, only needed to associate it with a metatable
+
+	typedef void    *MARKER[0];
+	typedef void    *MARKER_CACHE_ALIGNED[0] __attribute__((aligned(64)));
+	typedef uint8_t  MARKER8[0];
+	typedef uint64_t MARKER64[0];
+	
+	struct rte_mbuf;
+	union rte_ipsec {
+		uint32_t data;
+		//struct {
+		//	uint16_t sa_idx:10;
+		//	uint16_t esp_len:9;
+		//	uint8_t type:1;
+		//	uint8_t mode:1;
+		//	uint16_t unused:11; /**< These 11 bits are unused. */
+		//} sec;
 	};
 
 	struct rte_mbuf {
-		void* pool;
-		void* data;
-		uint64_t phy_addr;
-		uint16_t len;
+		MARKER cacheline0;
+
+		void *buf_addr;           /**< Virtual address of segment buffer. */
+		void *buf_physaddr; /**< Physical address of segment buffer. */
+
+		uint16_t buf_len;         /**< Length of segment buffer. */
+
+		/* next 6 bytes are initialised on RX descriptor rearm */
+		MARKER8 rearm_data;
+		uint16_t data_off;
+
 		uint16_t refcnt;
-		uint8_t type;
-		uint8_t reserved;
-		uint16_t ol_flags;
-		struct rte_pktmbuf pkt;
+		uint8_t nb_segs;          /**< Number of segments. */
+		uint8_t port;             /**< Input port. */
+
+		uint64_t ol_flags;        /**< Offload features. */
+		/* remaining bytes are set on RX when pulling packet from descriptor */
+		MARKER rx_descriptor_fields1;
+
+		/*
+		* The packet type, which is the combination of outer/inner L2, L3, L4
+		* and tunnel types.
+		 */
+		uint32_t packet_type; /**< L2/L3/L4 and tunnel information. */
+
+		uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
+		uint16_t data_len;        /**< Amount of data in segment buffer. */
+		uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
+
+		union {
+			uint32_t rss;     /**< RSS hash result if RSS enabled */
+			struct {
+				union {
+					struct {
+						uint16_t hash;
+						uint16_t id;
+					};
+					uint32_t lo;
+					/**< Second 4 flexible bytes */
+				};
+				uint32_t hi;
+				/**< First 4 flexible bytes or FD ID, dependent on
+			     PKT_RX_FDIR_* flag in ol_flags. */
+			} fdir;           /**< Filter identifier if FDIR enabled */
+			struct {
+				uint32_t lo;
+				uint32_t hi;
+			} sched;          /**< Hierarchical scheduler */
+			uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
+		} hash;                   /**< hash information */
+
+		uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
+
+		uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
+
+		/* second cache line - fields only used in slow path or on TX */
+		MARKER_CACHE_ALIGNED cacheline1;
+
+		uint64_t udata64;
+
+		struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
+		struct rte_mbuf *next;    /**< Next segment of scattered packet. */
+
+		/* fields to support TX offloads */
+		uint64_t tx_offload;
+
+		/** Size of the application private data. In case of an indirect
+		 * mbuf, it stores the direct mbuf private data size. */
+		uint16_t priv_size;
+
+		/** Timesync flags for use with IEEE1588. */
+		uint16_t timesync;
+
+		/* Chain of off-load operations to perform on mbuf */
+		struct rte_mbuf_offload *offload_ops;
 	};
 
-	struct mempool {
-	}; // dummy struct, only needed to associate it with a metatable
-	
 	// device status/info
 	struct rte_eth_link {
 		uint16_t link_speed;
@@ -68,6 +138,12 @@ ffi.cdef[[
 		} ip_dst;
 		int l4type;
 		int iptype;
+	};
+	enum rte_l4type {
+		RTE_FDIR_L4TYPE_NONE = 0,       /**< None. */
+		RTE_FDIR_L4TYPE_UDP,            /**< UDP. */
+		RTE_FDIR_L4TYPE_TCP,            /**< TCP. */
+		RTE_FDIR_L4TYPE_SCTP,           /**< SCTP. */
 	};
 
 
@@ -164,17 +240,25 @@ ffi.cdef[[
 	uint64_t get_mac_addr(int port, char* buf);
 	void rte_eth_link_get(uint8_t port, struct rte_eth_link* link);
 	void rte_eth_link_get_nowait(uint8_t port, struct rte_eth_link* link);
-	//int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en);
-  int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions);
+	int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct mempool** mempools, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads, bool is_i40e_device, bool strip_vlan, bool disable_padding);
 	void get_mac_addr(int port, char* buf);
 	uint32_t get_pci_id(uint8_t port);
 	uint32_t read_reg32(uint8_t port, uint32_t reg);
+	uint64_t read_reg64(uint8_t port, uint32_t reg);
 	void write_reg32(uint8_t port, uint32_t reg, uint32_t val);
+	void write_reg64(uint8_t port, uint32_t reg, uint64_t val);
 	void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh);
-	int32_t get_clock_difference(uint8_t port1, uint8_t port2);
+	int32_t get_clock_difference(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh);
 	uint8_t get_socket(uint8_t port);
 	void rte_eth_promiscuous_enable(uint8_t port);
 	void rte_eth_promiscuous_disable(uint8_t port);
+	void* get_eth_dev(int port);
+	void* get_i40e_dev(int port);
+	int get_i40e_vsi_seid(int port);
+	uint8_t get_pci_function(uint8_t port);
+	int rte_eth_dev_mac_addr_add(uint8_t port, void* mac, uint32_t pool);
+	int rte_eth_dev_mac_addr_remove(uint8_t port, void* mac);
+	int get_max_ports();
 
 	// rx & tx
 	uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
@@ -183,7 +267,9 @@ ffi.cdef[[
 	int rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
 	void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
 	void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool);
-	void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool);
+	void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool, uint32_t min_pkt_size);
+	void send_packet_with_timestamp(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt, uint16_t offs);
+	uint16_t receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, void* rx_pkts, uint16_t nb_pkts, uint64_t timestamps[]);
 	uint64_t get_bad_pkts_sent(uint8_t port_id);
 	uint64_t get_bad_bytes_sent(uint8_t port_id);
 

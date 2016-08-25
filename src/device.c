@@ -6,6 +6,31 @@
 #include <rte_mbuf.h>
 #include <ixgbe_type.h>
 #include <rte_mbuf.h>
+#include <rte_eth_ctrl.h>
+
+#include "rdtsc.h"
+
+// required for i40e_type.h
+#define X722_SUPPORT
+#define X722_A0_SUPPORT
+
+
+// i40e_ethdev depends on i40e_type.h but doesn't include it
+// some macro names clash with ixgbe macros included in some of the DPDK header
+// TODO: find a better solution like one file per driver
+#undef UNREFERENCED_4PARAMETER
+#undef UNREFERENCED_3PARAMETER
+#undef UNREFERENCED_2PARAMETER
+#undef UNREFERENCED_1PARAMETER
+#undef DEBUGOUT
+#undef DEBUGFUNC
+#undef DEBUGOUT1
+#undef DEBUGOUT2
+#undef DEBUGOUT3
+#undef DEBUGOUT6
+#undef DEBUGOUT7
+#include <i40e_type.h>
+#include <i40e_ethdev.h>
 #include "device.h"
 
 // default descriptors per queue
@@ -32,11 +57,24 @@ void write_reg32(uint8_t port, uint32_t reg, uint32_t val) {
 	*(volatile uint32_t*)(registers[port] + reg) = val;
 }
 
+uint64_t read_reg64(uint8_t port, uint32_t reg) {
+	return *(volatile uint64_t*)(registers[port] + reg);
+}
+
+void write_reg64(uint8_t port, uint32_t reg, uint64_t val) {
+	*(volatile uint64_t*)(registers[port] + reg) = val;
+}
+
 static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
 
-int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool* mempool, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions) {
+int get_max_ports() {
+	return RTE_MAX_ETHPORTS;
+}
+
+// TODO: we should use a struct here
+int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int tx_descs, uint16_t link_speed, struct rte_mempool** mempools, bool drop_en, uint8_t rss_enable, struct mg_rss_hash_mask * hash_functions, bool disable_offloads, bool is_i40e_device, bool strip_vlan, bool disable_padding) {
   //printf("configure device: rxqueues = %d, txdevs = %d, port = %d\n", rx_queues, tx_queues, port);
 	if (port >= RTE_MAX_ETHPORTS) {
 		printf("error: Maximum number of supported ports is %d\n   This can be changed with the DPDK compile-time configuration variable RTE_MAX_ETHPORTS\n", RTE_MAX_ETHPORTS);
@@ -47,27 +85,27 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
   if(rss_enable && hash_functions != NULL){
     // configure the selected hash functions:
     if(hash_functions->ipv4){
-      rss_hash_functions |= ETH_RSS_IPV4;
+      rss_hash_functions |= ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4;
       //printf("ipv4\n");
     }
     if(hash_functions->udp_ipv4){
-      rss_hash_functions |= ETH_RSS_IPV4_UDP;
+      rss_hash_functions |= ETH_RSS_NONFRAG_IPV4_UDP;
       //printf("ipv4 udp\n");
     }
     if(hash_functions->tcp_ipv4){
-      rss_hash_functions |= ETH_RSS_IPV4_TCP;
+      rss_hash_functions |= ETH_RSS_NONFRAG_IPV4_TCP;
       //printf("ipv4 tcp\n");
     }
     if(hash_functions->ipv6){
-      rss_hash_functions |= ETH_RSS_IPV6;
+      rss_hash_functions |= ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6;
       //printf("ipv6\n");
     }
     if(hash_functions->udp_ipv6){
-      rss_hash_functions |= ETH_RSS_IPV6_TCP;
+      rss_hash_functions |= ETH_RSS_NONFRAG_IPV6_UDP;
       //printf("ipv6 udp\n");
     }
     if(hash_functions->tcp_ipv6){
-      rss_hash_functions |= ETH_RSS_IPV6_UDP;
+      rss_hash_functions |= ETH_RSS_NONFRAG_IPV6_TCP;
       //printf("ipv6 tcp\n");
     }
   }
@@ -78,31 +116,71 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		.mode = RTE_FDIR_MODE_PERFECT,
 		.pballoc = RTE_FDIR_PBALLOC_64K,
 		.status = RTE_FDIR_REPORT_STATUS_ALWAYS,
-		.flexbytes_offset = 21, // TODO support other values
+		.mask = {
+			.vlan_tci_mask = 0x0,
+			.ipv4_mask = {
+				.src_ip = 0,
+				.dst_ip = 0,
+			},
+			.ipv6_mask = {
+				.src_ip = {0,0,0,0},
+				.dst_ip = {0,0,0,0},
+			},
+			.src_port_mask = 0,
+			.dst_port_mask = 0,
+			.mac_addr_byte_mask = 0,
+			.tunnel_type_mask = 0,
+			.tunnel_id_mask = 0,
+		},
+		.flex_conf = {
+			.nb_payloads = 1,
+			.nb_flexmasks = 1,
+			.flex_set = {
+				[0] = {
+					.type = RTE_ETH_RAW_PAYLOAD,
+					// i40e requires to use all 16 values here, otherwise it just fails
+					.src_offset = { 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 },
+				}
+			},
+			.flex_mask = {
+				[0] = {
+					// ixgbe *only* accepts RTE_ETH_FLOW_UNKNOWN, i40e accepts any value other than that
+					// other drivers don't really seem to care...
+					// WTF?
+					// any other value is apparently an error for this undocumented field
+					.flow_type = is_i40e_device ? RTE_ETH_FLOW_L2_PAYLOAD : RTE_ETH_FLOW_UNKNOWN,
+					.mask = { [0] = 0xFF, [1] = 0xFF }
+				}
+			},
+		},
 		.drop_queue = 63, // TODO: support for other NICs
 	};
 
-  struct rte_eth_rss_conf rss_conf = {
-    .rss_key = NULL,
-    .rss_key_len = 0,
-    .rss_hf = rss_hash_functions,
-  };
+	struct rte_eth_rss_conf rss_conf = {
+		.rss_key = NULL,
+		.rss_key_len = 0,
+		.rss_hf = rss_hash_functions,
+	};
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
-      .mq_mode = rss_enable ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
+			.mq_mode = rss_enable ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
 			.split_hdr_size = 0,
 			.header_split = 0,
 			.hw_ip_checksum = 1,
 			.hw_vlan_filter = 0,
 			.jumbo_frame = 0,
 			.hw_strip_crc = 1,
+			.hw_vlan_strip = strip_vlan ? 1 : 0,
 		},
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,
 		},
 		.fdir_conf = fdir_conf,
-		.link_speed = link_speed,
-    .rx_adv_conf.rss_conf = rss_conf,
+		// FIXME: update link speed API for dpdk 16.04
+		.link_speeds = ETH_LINK_SPEED_AUTONEG,
+    	.rx_adv_conf = {
+			.rss_conf = rss_conf,
+		}
 	};
 	int rc = rte_eth_dev_configure(port, rx_queues, tx_queues, &port_conf);
 	if (rc) return rc;
@@ -116,7 +194,7 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 		},
 		.tx_free_thresh = 0, // 0 = default
 		.tx_rs_thresh = 0, // 0 = default
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | (disable_offloads ? ETH_TXQ_FLAGS_NOOFFLOADS : 0),
 	};
 	for (int i = 0; i < tx_queues; i++) {
 		// TODO: get socket id for the NIC
@@ -136,14 +214,12 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	};
 	for (int i = 0; i < rx_queues; i++) {
 		// TODO: get socket id for the NIC
-    //printf("setting up queue nr %d !\n", i);
-		rc = rte_eth_rx_queue_setup(port, i, rx_descs ? rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, mempool);
+		rc = rte_eth_rx_queue_setup(port, i, rx_descs ? rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, mempools[i]);
 		if (rc != 0) {
 			printf("could not configure rx queue %d\n", i);
 			return rc;
 		}
 	}
-	rte_eth_promiscuous_enable(port);
 	rc = rte_eth_dev_start(port);
 	// save memory address of the register file
 	struct rte_eth_dev_info dev_info;
@@ -151,14 +227,34 @@ int configure_device(int port, int rx_queues, int tx_queues, int rx_descs, int t
 	registers[port] = (uint8_t*) dev_info.pci_dev->mem_resource[0].addr;
 	// allow sending large and small frames
 	rte_eth_dev_set_mtu(port, DEFAULT_MTU);
-	uint32_t hlReg0 = read_reg32(port, 0x4240);
-	hlReg0 &= ~(1 << 10); // TXPADEN
-	hlReg0 |= (1 << 2); // JUMBOEN
-	write_reg32(port, 0x4240, hlReg0);
-	uint32_t tctl = read_reg32(port, 0x0400);
-	tctl &= ~(1 << 3); // PSP
-	write_reg32(port, 0x0400, tctl);
+	if (disable_padding) {
+		uint32_t hlReg0 = read_reg32(port, 0x4240);
+		hlReg0 &= ~(1 << 10); // TXPADEN
+		hlReg0 |= (1 << 2); // JUMBOEN
+		write_reg32(port, 0x4240, hlReg0);
+		uint32_t tctl = read_reg32(port, 0x0400);
+		tctl &= ~(1 << 3); // PSP
+		write_reg32(port, 0x0400, tctl);
+	}
 	return rc; 
+}
+
+void* get_eth_dev(int port) {
+	return &rte_eth_devices[port];
+}
+
+void* get_i40e_dev(int port) {
+	return I40E_DEV_PRIVATE_TO_HW(rte_eth_devices[port].data->dev_private);
+}
+
+int get_pci_function(int port) {
+	struct rte_eth_dev_info dev_info;
+	rte_eth_dev_info_get(port, &dev_info);
+	return dev_info.pci_dev->addr.function;
+}
+
+int get_i40e_vsi_seid(int port) {
+	return I40E_DEV_PRIVATE_TO_PF(rte_eth_devices[port].data->dev_private)->main_vsi->seid;
 }
 
 uint64_t get_mac_addr(int port, char* buf) {
@@ -186,9 +282,15 @@ uint8_t get_socket(uint8_t port) {
 	return (uint8_t) node;
 }
 
+uint16_t get_reta_size(int port) {
+	struct rte_eth_dev_info dev_info;
+	rte_eth_dev_info_get(port, &dev_info);
+	return dev_info.reta_size;
+}
+
 // FIXME: doesn't support syncing between different NIC families (e.g. GbE vs. 10 GBE)
 // this is somewhat tricky because they use a different timer granularity
-void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timh, uint32_t timl, uint32_t adjl, uint32_t adjh) {
+void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh) {
 	// resetting SYSTIML twice prevents a race-condition when SYSTIML is just about to overflow into SYSTIMH
 	write_reg32(port1, timl, 0);
 	write_reg32(port2, timl, 0);
@@ -237,13 +339,14 @@ void sync_clocks(uint8_t port1, uint8_t port2, uint32_t timh, uint32_t timl, uin
 }
 
 // for calibration
-uint32_t get_clock_difference(uint8_t port1, uint8_t port2) {
+int32_t get_clock_difference(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh) {
 	// TODO: this should take the delay between reading the two registers into account
 	// however, this is not necessary for the current use case (measuring clock drift)
-	volatile uint32_t p1time = read_reg32(port1, IXGBE_SYSTIML);
-	volatile uint32_t p2time = read_reg32(port2, IXGBE_SYSTIML);
-	volatile uint32_t p1timeh = read_reg32(port1, IXGBE_SYSTIMH);
-	volatile uint32_t p2timeh = read_reg32(port2, IXGBE_SYSTIMH);
+	volatile uint32_t p1time = read_reg32(port1, timl);
+	volatile uint32_t p2time = read_reg32(port2, timl);
+	volatile uint32_t p1timeh = read_reg32(port1, timh);
+	volatile uint32_t p2timeh = read_reg32(port2, timh);
+
 	return (((int64_t) p1timeh << 32) | p1time) - (((int64_t) p2timeh << 32) | p2time);
 }
 
@@ -256,6 +359,16 @@ void send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts
 		}
 	}
 	return;
+}
+
+// software timestamping
+void send_packet_with_timestamp(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt, uint16_t offs) {
+	while (1) {
+		rte_pktmbuf_mtod_offset(pkt, uint64_t*, 0)[offs] = read_rdtsc();
+		if (rte_eth_tx_burst(port_id, queue_id, &pkt, 1) == 1) {
+			return;
+		}
+	}
 }
 
 // software rate control
@@ -314,8 +427,8 @@ static struct rte_mbuf* get_delay_pkt_invalid_size(struct rte_mempool* pool, uin
 	// TODO: consider allocating these packets at the beginning for performance reasons
 	struct rte_mbuf* pkt = rte_pktmbuf_alloc(pool);
 	// account for CRC offloading
-	pkt->pkt.data_len = delay - 24;
-	pkt->pkt.pkt_len = delay - 24;
+	pkt->data_len = delay - 24;
+	pkt->pkt_len = delay - 24;
 	//printf("%d\n", delay - 24);
 	return pkt;
 }
@@ -328,17 +441,15 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 	uint32_t num_bad_bytes = 0;
 	for (uint16_t i = 0; i < num_pkts; i++) {
 		struct rte_mbuf* pkt = load_pkts[i];
-		// desired inter-frame spacing is encoded in the hash field (not used on TX packets)
-		// it would also be possible to use the buffer's headroom but this is ugly from Lua
-		// TODO: this can be changed to the new userdata or udata64 fields in DPDK 1.8
-		uint32_t delay = pkt->pkt.hash.rss;
+		// desired inter-frame spacing is encoded in the hash 'usr' field
+		uint32_t delay = pkt->hash.usr;
 		// step 1: generate delay-packets
 		while (delay > 0) {
 			struct rte_mbuf* pkt = get_delay_pkt_invalid_size(pool, &delay);
 			if (pkt) {
 				num_bad_pkts++;
 				// packet size: [MAC, CRC] to be consistent with HW counters
-				num_bad_bytes += pkt->pkt.pkt_len + 4;
+				num_bad_bytes += pkt->pkt_len + 4;
 				pkts[send_buf_idx++] = pkt;
 			}
 			if (send_buf_idx >= BUF_SIZE) {
@@ -358,11 +469,12 @@ void send_all_packets_with_delay_invalid_size(uint8_t port_id, uint16_t queue_id
 	return;
 }
 
-// FIXME: not thread safe!
-static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay) {
- 	// FIXME: these should be thread-local
-	static uint32_t target = 0;
-	static uint32_t current = 0;
+static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay, uint32_t min_pkt_size) {
+	// _Thread_local support seems to suck in (older?) gcc versions?
+	// this should give us the best compatibility
+	// TODO: move this to a macro with proper #ifdefs
+	static __thread uint32_t target = 0;
+	static __thread uint32_t current = 0;
 	uint32_t delay = *rem_delay;
 	target += delay;
 	if (target < current) {
@@ -373,11 +485,9 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 	// add delay
 	target -= current;
 	current = 0;
-	if (delay < 76) {
-		// TODO: figure out min sizes for different NICs, this is tested for X540 and 82599
-		// smaller than the smallest packet we can send
-		*rem_delay = 76; // will be set to 0 at the end of the function
-		delay = 76;
+	if (delay < min_pkt_size) {
+		*rem_delay = min_pkt_size; // will be set to 0 at the end of the function
+		delay = min_pkt_size;
 	}
 	// calculate the optimimum packet size
 	if (delay < 1538) {
@@ -393,8 +503,8 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 	*rem_delay -= delay;
 	struct rte_mbuf* pkt = rte_pktmbuf_alloc(pool);
 	// account for preamble, sfd, and ifg (CRC is disabled)
-	pkt->pkt.data_len = delay - 20;
-	pkt->pkt.pkt_len = delay - 20;
+	pkt->data_len = delay - 20;
+	pkt->pkt_len = delay - 20;
 	pkt->ol_flags |= PKT_TX_NO_CRC_CSUM;
 	current += delay;
 	return pkt;
@@ -402,7 +512,7 @@ static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t
 
 
 // NOTE: this function only works on ixgbe-based NICs as it relies on a driver modification allow disabling CRC on a per-packet basis
-void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool) {
+void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool, uint32_t min_pkt_size) {
 	const int BUF_SIZE = 128;
 	struct rte_mbuf* pkts[BUF_SIZE];
 	int send_buf_idx = 0;
@@ -410,17 +520,15 @@ void send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, str
 	uint32_t num_bad_bytes = 0;
 	for (uint16_t i = 0; i < num_pkts; i++) {
 		struct rte_mbuf* pkt = load_pkts[i];
-		// desired inter-frame spacing is encoded in the hash field (not used on TX packets)
-		// it would also be possible to use the buffer's headroom but this is ugly from Lua
-		// TODO: this can be changed to the new userdata or udata64 fields in DPDK 1.8
-		uint32_t delay = pkt->pkt.hash.rss;
+		// desired inter-frame spacing is encoded in the hash 'usr' field
+		uint32_t delay = pkt->hash.usr;
 		// step 1: generate delay-packets
 		while (delay > 0) {
-			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay);
+			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay, min_pkt_size);
 			if (pkt) {
 				num_bad_pkts++;
 				// packet size: [MAC, CRC] to be consistent with HW counters
-				num_bad_bytes += pkt->pkt.pkt_len;
+				num_bad_bytes += pkt->pkt_len;
 				pkts[send_buf_idx++] = pkt;
 			}
 			if (send_buf_idx >= BUF_SIZE) {
@@ -499,17 +607,3 @@ void rte_delay_us_export(uint32_t us) {
 	rte_delay_us(us);
 }
 
-// This is a workaround, because lua can not do good 64bit operations.
-// so this function wraps the dpdk one, but is always setting the mask to all 1
-int mg_rte_eth_dev_rss_reta_update 	( 	uint8_t  	port,
-		struct rte_eth_rss_reta *  	reta_conf 
-	){
-  //printf("reta port = %u\n", port);
-  //uint8_t i;
-  //for(i = 0; i<128; i++){
-  //  printf(" i = %u, reta = %u\n", i, reta_conf->reta[i]);
-  //}
-  reta_conf->mask_lo = 0xffffffffffffffffULL;
-  reta_conf->mask_hi = 0xffffffffffffffffULL;
-  return rte_eth_dev_rss_reta_update(port, reta_conf);
-}

@@ -1,3 +1,9 @@
+---------------------------------
+--- @file memory.lua
+--- @brief Memory ...
+--- @todo TODO docu
+---------------------------------
+
 -- vim:ts=4:sw=4:noexpandtab
 local mod = {}
 
@@ -6,6 +12,7 @@ local dpdkc = require "dpdkc"
 local dpdk	= require "dpdk"
 local ns	= require "namespaces"
 local serpent = require "Serpent"
+local log 	= require "log"
 
 ffi.cdef [[
 	void* malloc(size_t size);
@@ -17,8 +24,8 @@ local C = ffi.C
 local cast = ffi.cast
 
 --- Off-heap allocation, not garbage-collected.
--- @param ctype a ffi type, must be a pointer or array type
--- @param size the amount of memory to allocate
+--- @param ctype a ffi type, must be a pointer or array type
+--- @param size the amount of memory to allocate
 function mod.alloc(ctype, size)
 	return cast(ctype, C.malloc(size))
 end
@@ -29,8 +36,8 @@ function mod.free(buf)
 end
 
 --- Off-heap allocation on huge pages, not garbage-collected.
--- See memory.alloc.
--- TODO: add a free function for this
+--- See memory.alloc.
+--- TODO: add a free function for this
 function mod.allocHuge(ctype, size)
 	return cast(ctype, C.alloc_huge(size))
 end
@@ -41,12 +48,12 @@ local mempoolCache = ns:get()
 local cacheEnabled = false
 
 --- Enable mempool recycling.
--- Calling this function enables the mempool cache. This prevents memory leaks
--- as DPDK cannot delete mempools.
--- Mempools with the same parameters created on the same core will be recycled.
--- This is not yet enabled by default because I'm not 100% confident that it works
--- properly in all cases.
--- For example, mempools passed to other tasks will probably break stuff.
+--- Calling this function enables the mempool cache. This prevents memory leaks
+--- as DPDK cannot delete mempools.
+--- Mempools with the same parameters created on the same core will be recycled.
+--- This is not yet enabled by default because I'm not 100% confident that it works
+--- properly in all cases.
+--- For example, mempools passed to other tasks will probably break stuff.
 function mod.enableCache()
 	cacheEnabled = true
 end
@@ -80,7 +87,7 @@ local function getPoolFromCache(socket, n, bufSize)
 		local bufs = {}
 		for i = 1, n do
 			local buf = pool:alloc(bufSize)
-			ffi.fill(buf.data, buf.len, 0)
+			ffi.fill(buf.buf_addr, buf.buf_len, 0)
 			bufs[#bufs + 1] = buf
 		end
 		for _, v in ipairs(bufs) do
@@ -91,14 +98,14 @@ local function getPoolFromCache(socket, n, bufSize)
 end
 
 --- Create a new memory pool.
--- Memory pools are recycled once the owning task terminates.
--- Call :retain() for mempools that are passed to other tasks.
--- A table with named arguments should be used.
--- @param args A table containing the following named arguments
---	n optional (default = 2047), size of the mempool
---	func optional, init func, called for each argument
--- 	socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
--- 	bufSize optional the size of each buffer, can only be used if all other args are passed as well
+--- Memory pools are recycled once the owning task terminates.
+--- Call :retain() for mempools that are passed to other tasks.
+--- A table with named arguments should be used.
+--- @param args A table containing the following named arguments
+---	@param n optional (default = 2047), size of the mempool
+---	@param func optional, init func, called for each argument
+--- @param	socket optional (default = socket of the calling thread), NUMA association. This cannot be the only argument in the call.
+--- @param	bufSize optional the size of each buffer, can only be used if all other args are passed as well
 function mod.createMemPool(...)
 	local args = {...}
 	if type(args[1]) == "table" then
@@ -144,7 +151,7 @@ function mod.createMemPool(...)
 end
 
 --- Free all memory pools owned by this task.
--- All queues using these pools must be stopped before calling this.
+--- All queues using these pools must be stopped before calling this.
 function mod.freeMemPools()
 	if not cacheEnabled then
 		return
@@ -159,7 +166,7 @@ local mempool = {}
 mempool.__index = mempool
 
 --- Retain a memory pool.
--- This will prevent the pool from being returned to a pool of pools once the task ends.
+--- This will prevent the pool from being returned to a pool of pools once the task ends.
 function mempool:retain()
 	for i, v in ipairs(mempools) do
 		if v.pool == self then
@@ -171,8 +178,8 @@ end
 
 function mempool:alloc(l)
 	local r = dpdkc.alloc_mbuf(self)
-	r.pkt.pkt_len = l
-	r.pkt.data_len = l
+	r.pkt_len = l
+	r.data_len = l
 	return r
 end
 
@@ -183,6 +190,7 @@ function mempool:bufArray(n)
 	n = n or 63
 	return setmetatable({
 		size = n,
+		maxSize = n,
 		array = ffi.new("struct rte_mbuf*[?]", n),
 		mem = self,
 	}, bufArray)
@@ -190,7 +198,7 @@ end
 
 do
 	local function alloc()
-		error("buf array not associated with a memory pool", 2)
+		log:fatal("buf array not associated with a memory pool", 2)
 	end
 	
 	--- Create a new array of memory buffers (initialized to nil).
@@ -203,6 +211,7 @@ do
 		n = n or 63
 		return setmetatable({
 			size = n,
+			maxSize = n,
 			array = ffi.new("struct rte_mbuf*[?]", n),
 			alloc = alloc
 		}, bufArray)
@@ -211,23 +220,41 @@ do
 	mod.bufArray = mod.createBufArray
 end
 
+--- Resize the bufArray
+--- @param size New size of the bufArray
+--- @note Enlarging the bufArray (size > self.maxSize) is not yet supportet
+function bufArray:resize(size)
+	if size > self.maxSize then
+		-- TODO: consider reallocing the struct here
+		log:fatal("enlarging a bufArray is currently not supported")
+	end
+	self.size = size
+end
+
 function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
 	ipv4 = ipv4 == nil or ipv4
-	l2_len = l2_len or 14
+	l2Len = l2Len or 14
 	if ipv4 then
-		l3_len = l3_len or 20
+		l3Len = l3Len or 20
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_UDP_CKSUM)
-			self.array[i].pkt.header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_UDP_CKSUM)
+			self.array[i].tx_offload = l2Len + l3Len * 128
 		end
 		dpdkc.calc_ipv4_pseudo_header_checksums(self.array, self.size, 20)
 	else 
-		l3_len = l3_len or 40
+		l3Len = l3Len or 40
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_UDP_CKSUM)
-			self.array[i].pkt.header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV6, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_UDP_CKSUM)
+			self.array[i].tx_offload = l2Len + l3Len * 128
 		end
 		dpdkc.calc_ipv6_pseudo_header_checksums(self.array, self.size, 30)
+	end
+end
+
+function bufArray:offloadIPSec(idx, mode, sec_type)
+	for i = 0, self.size - 1 do
+		local buf = self.array[i]
+		buf:offloadIPSec(idx, mode, sec_type)
 	end
 end
 
@@ -243,40 +270,66 @@ function bufArray:offloadIPChecksums(ipv4, l2Len, l3Len, n)
 	-- FIXME: touched this.
 	--	added parameter n
 	ipv4 = ipv4 == nil or ipv4
+	l2Len = l2Len or 14
 	n = n or self.size
 	if ipv4 then
-		l2_len = l2_len or 14
-		l3_len = l3_len or 20
+		l3Len = l3Len or 20
 		for i = 0, n - 1 do
-			local buf = self.array[i]
-			buf.ol_flags = bit.bor(buf.ol_flags, dpdk.PKT_TX_IPV4_CSUM)
-			buf.pkt.header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM)
+			self.array[i].tx_offload = l2Len + l3Len * 128
+		end
+	else
+		l3Len = l3Len or 40
+		for i = 0, n - 1 do
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV6, dpdk.PKT_TX_IP_CKSUM)
+			self.array[i].tx_offload = l2Len + l3Len * 128
 		end
 	end
 end
 
 function bufArray:offloadTcpChecksums(ipv4, l2Len, l3Len)
 	ipv4 = ipv4 == nil or ipv4
-	l2_len = l2_len or 14
+	l2Len = l2Len or 14
 	if ipv4 then
-		l3_len = l3_len or 20
+		l3Len = l3Len or 20
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4_CSUM, dpdk.PKT_TX_TCP_CKSUM)
-			self.array[i].pkt.header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_TCP_CKSUM)
+			self.array[i].tx_offload = l2Len + l3Len * 128
 		end
 		dpdkc.calc_ipv4_pseudo_header_checksums(self.array, self.size, 25)
 	else 
-		l3_len = l3_len or 40
+		l3Len = l3Len or 40
 		for i = 0, self.size - 1 do
-			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_TCP_CKSUM)
-			self.array[i].pkt.header_lengths = l2_len * 512 + l3_len
+			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV6, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_TCP_CKSUM)
+			self.array[i].tx_offload = l2Len + l3Len * 128
 		end
 		dpdkc.calc_ipv6_pseudo_header_checksums(self.array, self.size, 35)
 	end
 end
 
+--- Offloads VLAN tags on all packets.
+-- Equivalent to calling pkt:setVlan(vlan, pcp, cfi) on all packets.
+function bufArray:setVlans(vlan, pcp, cfi)
+	local tci = vlan + bit.lshift(pcp or 0, 13) + bit.lshift(cfi or 0, 12)
+	for i = 0, self.size - 1 do
+		self.array[i].vlan_tci = tci
+		self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_VLAN_PKT)
+	end
+end
+
 --- Allocates buffers from the memory pool and fills the array
+--- Allocates as many buffers as this array is large
+--- @param size	Size of every buffer
 function bufArray:alloc(size)
+	dpdkc.alloc_mbufs(self.mem, self.array, self.size, size)
+end
+
+--- Allocates buffers from the memory pool and fills the array.
+--- Allocates only a maximum of num buffers by resizing the size of the bufArray.
+--- @param size	Size of every buffer
+--- @param num	Number of buffers to allocate.
+function bufArray:allocN(size, num)
+	self:resize(num)
 	dpdkc.alloc_mbufs(self.mem, self.array, self.size, size)
 end
 

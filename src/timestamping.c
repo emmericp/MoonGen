@@ -5,40 +5,28 @@
 #include <rte_ethdev.h> 
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_cycles.h>
 
 #include "rdtsc.h"
 #include "lifecycle.h"
 
-static const size_t BURST_SIZE = 512;
-
-void read_timestamps_software(uint8_t port_id, uint16_t queue_id, uint32_t* data, uint64_t size) {
-
-	struct rte_mbuf* rx_pkts[BURST_SIZE];
-	uint64_t data_counter = 0, old_tsc = 0, tsc = 0;
-	uint16_t nb_rx = 0;
-
-	// flush old packets from rx_queue
-	rte_eth_rx_burst(port_id, queue_id, rx_pkts, BURST_SIZE);
-
-	while (data_counter < size && is_running()) {
-		nb_rx = rte_eth_rx_burst(port_id, queue_id, rx_pkts, BURST_SIZE);
-		if (nb_rx > 0) {
-			tsc = read_rdtsc();
-			for (uint64_t i = 0; i < nb_rx; i++) {
-				data[++data_counter] = (uint32_t) (tsc - old_tsc);
-				rte_pktmbuf_free(rx_pkts[i]);
-				//printf("tsc: %"PRIu64, tsc);
-				//printf("\notsc: %"PRIu64, old_tsc);
-				//printf("\ndiff: %d\n", data[data_counter-1]);
-				old_tsc = tsc;
-			}
+// FIXME: link speed is hardcoded to 10gbit (but not really relevant for this use case where you should have only one packet anyways)
+// this is only optimized for latency measurements/timestamping, not packet capture
+// packet capturing would benefit from running the whole rx thread in C to avoid gc/jit pauses
+uint16_t receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* rx_pkts[], uint16_t nb_pkts, uint64_t timestamps[]) {
+	uint32_t cycles_per_byte = rte_get_tsc_hz() / 10000000.0 / 0.8;
+	while (is_running()) {
+		uint64_t tsc = read_rdtsc();
+		uint16_t rx = rte_eth_rx_burst(port_id, queue_id, rx_pkts, nb_pkts);
+		uint16_t prev_pkt_size = 0;
+		for (int i = 0; i < rx; i++) {
+			timestamps[i] = tsc + prev_pkt_size * cycles_per_byte;
+			prev_pkt_size = rx_pkts[i]->pkt_len + 24;
 		}
-
+		if (rx > 0) {
+			return rx;
+		}
 	}
-
-	//FIXME preliminary output
-	for (uint64_t i = 0; i < 4096; i++) {
-		printf("%d\n", data[i]);
-	}
+	return 0;
 }
 

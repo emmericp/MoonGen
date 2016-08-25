@@ -1,3 +1,5 @@
+#include <rte_config.h>
+
 #include "bitmask.h"
 #include "rte_malloc.h"
 #include "debug.h"

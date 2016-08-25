@@ -22,6 +22,10 @@ uint64_t rte_rdtsc() {
 	return tsc.tsc_64;
 }
 
+void print_ptr(void* ptr) {
+	printf("ptr = %p\n", ptr);
+}
+
 
 static inline uint16_t get_ipv4_psd_sum (struct ipv4_hdr* ip_hdr) {
 	uint16_t len = ip_hdr->total_length;
@@ -57,7 +61,7 @@ void calc_ipv4_pseudo_header_checksum(void* data, int offset) {
 
 void calc_ipv4_pseudo_header_checksums(struct rte_mbuf** data, int n, int offset) {
 	for (int i = 0; i < n; i++) {
-		calc_ipv4_pseudo_header_checksum(data[i]->pkt.data, offset);
+		calc_ipv4_pseudo_header_checksum(rte_pktmbuf_mtod(data[i], void*), offset);
 	}
 }
 
@@ -113,7 +117,7 @@ void calc_ipv6_pseudo_header_checksum(void* data, int offset) {
 
 void calc_ipv6_pseudo_header_checksums(struct rte_mbuf** data, int n, int offset) {
 	for (int i = 0; i < n; i++) {
-		calc_ipv6_pseudo_header_checksum(data[i]->pkt.data, offset);
+		calc_ipv6_pseudo_header_checksum(rte_pktmbuf_mtod(data[i], void*), offset);
 	}
 }
 

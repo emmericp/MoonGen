@@ -91,6 +91,9 @@ local function s(t, opts, ignoreMt)
       return (custom and custom(tag,head,body,tail) or tag..head..body..tail)..comment(t, level)
     elseif ttype == "cdata" then
       local cType, addr = tostring(t):match("cdata<(.-)>: (.+)")
+      if cType:match("struct %d+ ?%*?$") then
+        error("cannot serialize anonymous structs")
+      end
       local isPtr = cType:find("*%s*$")  
       return tag .. ("(function() local ffi = require 'ffi' return ffi.cast('%s', ffi.cast('void*', %d)) end)()"):format(
         cType .. (not isPtr and "*" or ""),

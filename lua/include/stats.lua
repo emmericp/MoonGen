@@ -1,7 +1,14 @@
+---------------------------------
+--- @file stats.lua
+--- @brief Stats ...
+--- @todo TODO docu
+---------------------------------
+
 local mod = {}
 
 local dpdk		= require "dpdk"
 local device	= require "device"
+local log 		= require "log"
 
 function mod.average(data)
 	local sum = 0
@@ -21,7 +28,7 @@ function mod.percentile(data, p)
 		sortedData[k] = v
 	end
 	table.sort(sortedData)
-	return data[math.ceil(#data * p / 100)]
+	return sortedData[math.ceil(#data * p / 100)]
 end
 
 function mod.stdDev(data)
@@ -132,17 +139,17 @@ formatters["ini"] = {
 
 formatters["CSV"] = formatters["plain"] -- TODO
 
--- base constructor for rx and tx counters
+--- base constructor for rx and tx counters
 local function newCounter(ctrType, name, dev, format, file)
 	format = format or "CSV"
 	file = file or io.stdout
 	local closeFile = false
 	if type(file) == "string" then
-		file = io.open("w+")
+		file = io.open(file, "w+")
 		closeFile = true
 	end
 	if not formatters[format] then
-		error("unsupported output format " .. format)
+		log:fatal("Unsupported output format " .. format)
 	end
 	return {
 		name = name,
@@ -202,7 +209,7 @@ local function getStats(self)
 	mod.addStats(self.mpps, true)
 	mod.addStats(self.mbit, true)
 	mod.addStats(self.wireMbit, true)
-	return self.mpps, self.mbit, self.wireMbit
+	return self.mpps, self.mbit, self.wireMbit, self.total, self.totalBytes
 end
 
 local function finalizeCounter(self, sleep)
@@ -232,10 +239,10 @@ pktRxCounter.__index = pktRxCounter
 manualRxCounter.__index = manualRxCounter
 
 --- Create a new rx counter using device statistics registers.
--- @param name the name of the counter, included in the output. defaults to the device name
--- @param dev the device to track
--- @param format the output format, "CSV" (default) and "plain" are currently supported
--- @param file the output file, defaults to standard out
+--- @param name the name of the counter, included in the output. defaults to the device name
+--- @param dev the device to track
+--- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param file the output file, defaults to standard out
 function mod:newDevRxCounter(name, dev, format, file)
 	if type(name) == "table" then
 		return self:newDevRxCounter(nil, name, dev, format)
@@ -243,33 +250,35 @@ function mod:newDevRxCounter(name, dev, format, file)
 	-- use device if queue objects are passed
 	dev = dev and dev.dev or dev
 	if type(dev) ~= "table" then
-		error("bad device")
+		log:fatal("Bad device")
 	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
 	obj.sleep = 100
-	return setmetatable(obj, devRxCounter)
+	setmetatable(obj, devRxCounter)
+	obj:getThroughput() -- reset stats on the NIC
+	return obj
 end
 
 --- Create a new rx counter that can be updated by passing packet buffers to it.
--- @param name the name of the counter, included in the output
--- @param format the output format, "CSV" (default) and "plain" are currently supported
--- @param file the output file, defaults to standard out
+--- @param name the name of the counter, included in the output
+--- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param file the output file, defaults to standard out
 function mod:newPktRxCounter(name, format, file)
 	local obj = newCounter("pkt", name, nil, format, file)
 	return setmetatable(obj, pktRxCounter)
 end
 
 --- Create a new rx counter that has to be updated manually.
--- @param name the name of the counter, included in the output
--- @param format the output format, "CSV" (default) and "plain" are currently supported
--- @param file the output file, defaults to standard out
+--- @param name the name of the counter, included in the output
+--- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param file the output file, defaults to standard out
 function mod:newManualRxCounter(name, format, file)
 	local obj = newCounter("manual", name, nil, format, file)
 	return setmetatable(obj, manualRxCounter)
 end
 
--- Base class
+--- Base class
 function rxCounter:finalize(sleep)
 	finalizeCounter(self, self.sleep or 0)
 end
@@ -294,15 +303,15 @@ function rxCounter:getStats()
 	return getStats(self)
 end
 
--- Device-based counter
+--- Device-based counter
 function devRxCounter:getThroughput() 
     return self.dev:getRxStats() 
 end 
 
--- Packet-based counter
+--- Packet-based counter
 function pktRxCounter:countPacket(buf)
 	self.current = self.current + 1
-	self.currentBytes = self.currentBytes + buf.pkt.pkt_len + 4 -- include CRC
+	self.currentBytes = self.currentBytes + buf.pkt_len + 4 -- include CRC
 end
 
 function pktRxCounter:getThroughput()
@@ -312,7 +321,7 @@ function pktRxCounter:getThroughput()
 end
 
 
--- Manual rx counter
+--- Manual rx counter
 function manualRxCounter:update(pkts, bytes)
 	self.current = self.current + pkts
 	self.currentBytes = self.currentBytes + bytes
@@ -352,10 +361,10 @@ pktTxCounter.__index = pktTxCounter
 manualTxCounter.__index = manualTxCounter
 
 --- Create a new tx counter using device statistics registers.
--- @param name the name of the counter, included in the output. defaults to the device name
--- @param dev the device to track
--- @param format the output format, "CSV" (default) and "plain" are currently supported
--- @param file the output file, defaults to standard out
+--- @param name the name of the counter, included in the output. defaults to the device name
+--- @param dev the device to track
+--- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param file the output file, defaults to standard out
 function mod:newDevTxCounter(name, dev, format, file)
 	if type(name) == "table" then
 		return self:newDevTxCounter(nil, name, dev, format)
@@ -363,33 +372,35 @@ function mod:newDevTxCounter(name, dev, format, file)
 	-- use device if queue objects are passed
 	dev = dev and dev.dev or dev
 	if type(dev) ~= "table" then
-		error("bad device")
+		log:fatal("Bad device")
 	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
 	local obj = newCounter("dev", name, dev, format, file)
 	obj.sleep = 50
-	return setmetatable(obj, devTxCounter)
+	setmetatable(obj, devTxCounter)
+	obj:getThroughput() -- reset stats on the NIC
+	return obj
 end
 
 --- Create a new tx counter that can be updated by passing packet buffers to it.
--- @param name the name of the counter, included in the output
--- @param format the output format, "CSV" (default) and "plain" are currently supported
--- @param file the output file, defaults to standard out
+--- @param name the name of the counter, included in the output
+--- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param file the output file, defaults to standard out
 function mod:newPktTxCounter(name, format, file)
 	local obj = newCounter("pkt", name, nil, format, file)
 	return setmetatable(obj, pktTxCounter)
 end
 
 --- Create a new tx counter that has to be updated manually.
--- @param name the name of the counter, included in the output
--- @param format the output format, "CSV" (default) and "plain" are currently supported
--- @param file the output file, defaults to standard out
+--- @param name the name of the counter, included in the output
+--- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param file the output file, defaults to standard out
 function mod:newManualTxCounter(name, format, file)
 	local obj = newCounter("manual", name, nil, format, file)
 	return setmetatable(obj, manualTxCounter)
 end
 
--- Base class
+--- Base class
 function txCounter:finalize(sleep)
 	finalizeCounter(self, self.sleep or 0)
 end
@@ -398,7 +409,7 @@ function txCounter:print(event, ...)
 	printStats(self, "txStats", event, ...)
 end
 
--- Device-based counter
+--- Device-based counter
 function txCounter:update()
 	local time = dpdk.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
@@ -409,7 +420,7 @@ function txCounter:update()
 end
 
 --- Get accumulated statistics.
--- Calculat the average throughput.
+--- Calculat the average throughput.
 function txCounter:getStats()
 	-- force an update
 	local pkts, bytes = self:getThroughput()
@@ -421,10 +432,10 @@ function devTxCounter:getThroughput()
 	return self.dev:getTxStats()
 end
 
--- Packet-based counter
+--- Packet-based counter
 function pktTxCounter:countPacket(buf)
 	self.current = self.current + 1
-	self.currentBytes = self.currentBytes + buf.pkt.pkt_len + 4 -- include CRC
+	self.currentBytes = self.currentBytes + buf.pkt_len + 4 -- include CRC
 end
 
 function pktTxCounter:getThroughput()
@@ -433,7 +444,7 @@ function pktTxCounter:getThroughput()
 	return pkts, bytes
 end
 
--- Manual rx counter
+--- Manual rx counter
 function manualTxCounter:update(pkts, bytes)
 	self.current = self.current + pkts
 	self.currentBytes = self.currentBytes + bytes

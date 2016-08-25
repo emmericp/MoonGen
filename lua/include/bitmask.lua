@@ -1,3 +1,10 @@
+---------------------------------
+--- @file bitmask.lua
+--- @brief Bitmask ...
+--- @todo TODO docu
+---------------------------------
+
+local log = require "log"
 local ffi = require "ffi"
 ffi.cdef [[
 struct mg_bitmask{
@@ -26,20 +33,22 @@ local mg_bitMask = {}
 --mg_bitMask.__index = mg_bitMask
 
 --- Create a Bitmask
--- The mask is internally built from blocks of 64bit integers. Hence a Bitmask
--- of a size <<64 yields significant overhead
--- @param size Size of the bitmask in number of bits
--- @return Wrapper table around the bitmask
+--- The mask is internally built from blocks of 64bit integers. Hence a Bitmask
+--- of a size <<64 yields significant overhead
+--- @param size Size of the bitmask in number of bits
+--- @return Wrapper table around the bitmask
 function mod.createBitMask(size)
   return setmetatable({
     bitmask = ffi.gc(ffi.C.mg_bitmask_create(size), function (self)
-      print("I HAVE BEEN DESTRUCTED")
+      log:debug("I HAVE BEEN DESTRUCTED")
       ffi.C.mg_bitmask_free(self)
     end )
   }, mg_bitMask)
 end
 
--- TODO: think of a better solution - meh
+---
+--- @param bitmasks
+--- @todo TODO: think of a better solution - meh
 function mod.linkToArray(bitmasks)
   array = ffi.new("struct mg_bitmask*[?]", #bitmasks)
   local i = 0
@@ -51,7 +60,8 @@ function mod.linkToArray(bitmasks)
 end
 
 --- sets the first n bits in a bitmask to 1
--- other bits remain unchanged
+--- other bits remain unchanged
+--- @param n
 function mg_bitMask:setN(n)
   ffi.C.mg_bitmask_set_n_one(self.bitmask, n)
   return self
@@ -70,8 +80,8 @@ function mg_bitMask:setAll()
 end
 
 --- Index metamethod for mg_bitMask
--- @param x Bit index. Index starts at 1 according to the LUA standard (1 indexes the first bit in the bitmask)
--- @return For numeric indices: true, when corresponding bit is 1, false otherwise.
+--- @param x Bit index. Index starts at 1 according to the LUA standard (1 indexes the first bit in the bitmask)
+--- @return For numeric indices: true, when corresponding bit is 1, false otherwise.
 function mg_bitMask:__index(x)
   -- access
   --print(" bit access")
@@ -85,8 +95,8 @@ function mg_bitMask:__index(x)
 end
 
 --- Newindex metamethod for mg_bitMask
--- @param x Bit index. Index starts at 1 according to the LUA standard (1 indexes the first bit in the bitmask)
--- @param y Assigned value to the index (bit is cleared for y==0 and set otherwise)
+--- @param x Bit index. Index starts at 1 according to the LUA standard (1 indexes the first bit in the bitmask)
+--- @param y Assigned value to the index (bit is cleared for y==0 and set otherwise)
 function mg_bitMask:__newindex(x, y)
   --print ("new index")
   if(y == 0) then
@@ -114,36 +124,36 @@ do
 end
 
 --- Bitwise and
--- @param mask1
--- @param mask2
--- @param result
---  result = mask1 band mask2
+--- @param mask1
+--- @param mask2
+--- @param result
+---  result = mask1 band mask2
 function mod.band(mask1, mask2, result)
   ffi.C.mg_bitmask_and(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
 
 --- Bitwise or
--- @param mask1
--- @param mask2
--- @param result
---  result = mask1 bor mask2
+--- @param mask1
+--- @param mask2
+--- @param result
+---  result = mask1 bor mask2
 function mod.bor(mask1, mask2, result)
   ffi.C.mg_bitmask_or(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
 
 --- Bitwise xor
--- @param mask1
--- @param mask2
--- @param result
---  result = bask1 bxor mask2
+--- @param mask1
+--- @param mask2
+--- @param result
+---  result = bask1 bxor mask2
 function mod.bxor(mask1, mask2, result)
   ffi.C.mg_bitmask_xor(mask1.bitmask, mask2.bitmask, result.bitmask)
 end
 
--- Bitwise not
--- @param mask
--- @param result
---  result = not mask
+--- Bitwise not
+--- @param mask
+--- @param result
+---  result = not mask
 function mod.bnot(mask, result)
   ffi.C.mg_bitmask_not(mask.bitmask, result.bitmask)
 end

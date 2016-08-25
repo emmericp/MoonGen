@@ -1,4 +1,13 @@
 [submodule "deps/luajit"]
 	path = deps/luajit
-	url = https://github.com/emmericp/luajit.git
+	url = https://github.com/LuaJIT/LuaJIT
 	ignore = untracked
+	branch = v2.1
+[submodule "deps/dpdk"]
+	path = deps/dpdk
+	url = https://github.com/emmericp/dpdk.git
+	ignore = untracked
+	branch = v16.04
+[submodule "deps/doxygen-lua"]
+	path = deps/doxygen-lua
+	url = https://github.com/scholzd/doxygen-lua.git

@@ -1,3 +1,9 @@
+---------------------------------
+--- @file lpm.lua
+--- @brief Longest Prefix Matching ...
+--- @todo TODO docu
+---------------------------------
+
 local ffi = require "ffi"
 
 --require "utils"
@@ -5,6 +11,7 @@ local band, lshift, rshift = bit.band, bit.lshift, bit.rshift
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 local serpent = require "Serpent"
+local log = require "log"
 require "memory"
 --local burst = require "burst"
 
@@ -68,8 +75,8 @@ mod.mg_lpm4Table = mg_lpm4Table
 mg_lpm4Table.__index = mg_lpm4Table
 
 --- Create a new LPM lookup table.
--- @param socket optional (default = socket of the calling thread), CPU socket, where memory for the table should be allocated.
--- @return the table handler
+--- @param socket optional (default = socket of the calling thread), CPU socket, where memory for the table should be allocated.
+--- @return the table handler
 function mod.createLpm4Table(socket, table, entry_ctype)
   socket = socket or select(2, dpdk.getCore())
     -- configure parameters for the LPM table
@@ -81,7 +88,7 @@ function mod.createLpm4Table(socket, table, entry_ctype)
   return setmetatable({
     table = table or ffi.gc(ffi.C.mg_table_lpm_create(params, socket, ffi.sizeof(entry_ctype)), function(self)
       -- FIXME: why is destructor never called?
-      print "lpm garbage"
+      log:debug("lpm garbage")
       ffi.C.mg_table_lpm_free(self)
     end),
     entry_ctype = entry_ctype
@@ -89,30 +96,30 @@ function mod.createLpm4Table(socket, table, entry_ctype)
 end
 
 -- --- Free the LPM Table
--- -- @return 0 on success, error code otherwise
+-- --- @return 0 on success, error code otherwise
 -- function mg_lpm4Table:destruct()
 --   return ffi.C.mg_table_lpm_free(self.table)
 -- end
 
 --- Add an entry to a Table
--- @param addr IPv4 network address of the destination network.
--- @param depth number of significant bits of the destination network address
--- @param entry routing table entry (will be copied)
--- @return true if entry was added without error
+--- @param addr IPv4 network address of the destination network.
+--- @param depth number of significant bits of the destination network address
+--- @param entry routing table entry (will be copied)
+--- @return true if entry was added without error
 function mg_lpm4Table:addEntry(addr, depth, entry)
   return 0 == ffi.C.mg_table_entry_add_simple(self.table, addr, depth, entry)
 end
 
 --- Perform IPv4 route lookup for a burst of packets
--- This should not be used for single packet lookup, as ist brings
--- a significant penalty for bursts <<64
--- @param packets Array of mbufs (bufArray), for which the lookup will be performed
--- @param mask optional (default = all packets), bitmask, for which packets the lookup should be performed
--- @param hitMask Bitmask, where the routed packets are flagged
--- with one. This may be the same Bitmask as passed in the mask
--- parameter, in this case not routed packets will be cleared in
--- the bitmask.
--- @param entries Preallocated routing entry Pointers
+--- This should not be used for single packet lookup, as ist brings
+--- a significant penalty for bursts <<64
+--- @param packets Array of mbufs (bufArray), for which the lookup will be performed
+--- @param mask optional (default = all packets), bitmask, for which packets the lookup should be performed
+--- @param hitMask Bitmask, where the routed packets are flagged
+--- with one. This may be the same Bitmask as passed in the mask
+--- parameter, in this case not routed packets will be cleared in
+--- the bitmask.
+--- @param entries Preallocated routing entry Pointers
 function mg_lpm4Table:lookupBurst(packets, mask, hitMask, entries)
   -- FIXME: I feel uneasy about this cast, should this cast not be
   --  done implicitly?
@@ -124,7 +131,7 @@ function mg_lpm4Table:__serialize()
 end
 
 --- Allocates an LPM table entry
--- @return The newly allocated entry
+--- @return The newly allocated entry
 function mg_lpm4Table:allocateEntry()
   return ffi.new(self.entry_ctype)
 end
@@ -132,10 +139,10 @@ end
 local mg_lpm4EntryPtrs = {}
 
 --- Allocates an array of pointers to routing table entries
--- This is used during burst lookup, to store references to the
--- result entries.
--- @param n Number of entry pointers
--- @return Wrapper table around the allocated array
+--- This is used during burst lookup, to store references to the
+--- result entries.
+--- @param n Number of entry pointers
+--- @return Wrapper table around the allocated array
 function mg_lpm4Table:allocateEntryPtrs(n)
   -- return ffi.C.mg_lpm_table_allocate_entry_prts(n)
   return setmetatable({
@@ -156,9 +163,9 @@ function mod.applyRoute(pkts, mask, entries, entryOffset)
   return ffi.C.mg_table_lpm_apply_route(pkts.array, mask.bitmask, ffi.cast("void **", entries.array), entryOffset, 128, 6)
 end
 
--- FIXME: this should not be in LPM module. but where?
+--- FIXME: this should not be in LPM module. but where?
 --- Decrements the IP TTL field of all masked packets by one.
---  out_mask masks the successfully decremented packets (TTL did not reach zero).
+---  out_mask masks the successfully decremented packets (TTL did not reach zero).
 function mod.decrementTTL(pkts, in_mask, out_mask, ipv4)
   ipv4 = ipv4 == nil or ipv4
   if ipv4 then
@@ -179,7 +186,7 @@ function mod.decrementTTL(pkts, in_mask, out_mask, ipv4)
       end
     end
   else
-    errorf("TTL decrement for ipv6 not yet implemented")
+    log:fatal("TTL decrement for ipv6 not yet implemented")
   end
 end
 
