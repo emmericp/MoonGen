@@ -22,6 +22,7 @@ include_directories(
 set(files
 	src/moongen-main
 	src/software-timestamping
+	src/crc-rate-limiter
 )
 
 set(libraries
