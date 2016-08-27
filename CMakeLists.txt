@@ -6,9 +6,11 @@ set(CMAKE_C_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -
 set(CMAKE_EXE_LINKER_FLAGS "-rdynamic")
 
 set(PHOBOS_BUILD_LIBRARY true)
+add_definitions(-DPHOBOS_LUA_MAIN_MODULE="moongen-main")
 add_subdirectory(phobos)
 
-INCLUDE_DIRECTORIES(
+
+include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/src
 	${CMAKE_CURRENT_SOURCE_DIR}/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/phobos/deps/dpdk/x86_64-native-linuxapp-gcc/include
@@ -33,3 +35,4 @@ link_directories(
 
 add_executable(MoonGen ${files})
 target_link_libraries(MoonGen ${libraries})
+
