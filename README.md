@@ -4,7 +4,7 @@ LuaJIT + DPDK = fast and flexible packet generator for 10 GBit Ethernet and beyo
 MoonGen uses hardware features for accurate and precise latency measurements and rate control.
 
 You have to write a simple script for your use case.
-The example [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua?ts=4) is a good starting point as it makes use of a lot of different features of MoonGen.
+The example [l3-load-latency.lua](https://github.com/emmericp/MoonGen/blob/master/examples/l3-load-latency.lua) is a good starting point as it makes use of a lot of different features of MoonGen.
 
 [API documentation](http://scholzd.github.io/MoonGen/index.html) (preliminary)
 
@@ -12,12 +12,12 @@ Detailed evaluation: [Paper](http://www.net.in.tum.de/fileadmin/bibtex/publicati
 
 # MoonGen Packet Generator
 
-MoonGen is a high-speed scriptable packet generator.
+MoonGen is a scriptable high-speed packet generator built on [Phobos](https://github.com/Phobos-Framework/phobos).
 The whole load generator is controlled by a Lua script: all packets that are sent are crafted by a user-provided script.
 Thanks to the incredibly fast LuaJIT VM and the packet processing library DPDK, it can saturate a 10 GBit Ethernet link with 64 Byte packets while using only a single CPU core.
 MoonGen can achieve this rate even if each packet is modified by a Lua script. It does not rely on tricks like replaying the same buffer.
 
-MoonGen can also receive packets, e.g. to check which packets are dropped by a
+MoonGen can also receive packets, e.g., to check which packets are dropped by a
 system under test. As the reception is also fully under control of the user's
 Lua script, it can be used to implement advanced test scripts. E.g. one can use
 two instances of MoonGen that establish a connection with each other. This
@@ -32,12 +32,14 @@ MoonGen focuses on four main points:
 * Precise and accurate timestamping: Timestamping with sub-microsecond precision on commodity hardware
 * Precise and accurate rate control: Reliable generation of arbitrary traffic patterns on commodity hardware
 
-You can have a look at [our slides from a recent talk](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/Slides.pdf) or read [our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) [1] for a more detailed discussion of MoonGen's internals.
+You can have a look at [our slides from a talk](https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/Slides.pdf) or read [our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) [1] for a more detailed discussion of MoonGen's internals.
 
 
 # Architecture
 
-MoonGen is basically a Lua wrapper around DPDK with utility functions for packet generation.
+MoonGen is built on [Phobos](https://github.com/Phobos-Framework/phobos), a Lua wrapper for DPDK.
+
+
 Users write custom scripts for their experiments. It is recommended to make use of hard-coded setup-specific constants in your scripts. The script is the configuration, it is beside the point to write a complicated configuration interface for a script.
 
 The following diagram shows the architecture and how multi-core support is handled.
@@ -46,10 +48,10 @@ The following diagram shows the architecture and how multi-core support is handl
 <img alt="Architecture" src="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png" srcset="https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture.png 1x, https://raw.githubusercontent.com/emmericp/MoonGen/master/doc/img/moongen-architecture@2x.png 2x"/>
 </p>
 
-Execution begins in the *master task* that must be defined in the user's script.
+Execution begins in the *master task* that must be defined in the userscript.
 This task configures queues and filters on the used NICs and then starts one or more *slave tasks*.
 
-Note that Lua does not have any native support for multi threading.
+Note that Lua does not have any native support for multi-threading.
 MoonGen therefore starts a new and completely independent LuaJIT VM for each thread.
 The new VMs receive serialized arguments: the function to execute and arguments like the queue to send packets from.
 Threads only share state through the underlying library.
@@ -60,15 +62,17 @@ A third task is used to categorize and count the incoming packets.
 
 
 # Hardware Timestamping
-Intel commodity NICs like the 82599, X540, and 82580 support time stamping in hardware for both transmitted and received packets.
+Intel commodity NICs from the igb, ixgbe, and i40e families support timestamping in hardware for both transmitted and received packets.
 The NICs implement this to support the IEEE 1588 PTP protocol, but this feature can be used to timestamp almost arbitrary UDP packets.
-The NICs achieve sub-microsecond precision and accuracy.
+MoonGen achieves a precision and accuracy of below 100 ns.
+
+Use ``test-timestamping-capabilities.lua`` in ``examples/timestamping-tests`` to test your NIC's timestamping capabilities.
 
 A more detailed evaluation can be found in [our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) [1].
 
 # Rate Control
 Precise control of inter-packet gaps is an important feature for reproducible tests.
-Bad rate control, e.g. generation of undesired micro-bursts, can affect the behavior of a device under test [1].
+Bad rate control, e.g., generation of undesired micro-bursts, can affect the behavior of a device under test [1].
 However, software packet generators are usually bad at controlling the inter-packet gaps [2].
 
 The following diagram illustrates how a typical software packet generator tries to control the packet rate.
@@ -93,7 +97,7 @@ MoonGen therefore implements two ways to prevent this problem.
 
 ## Hardware Rate Control
 
-Intel 10 GbE NICs (82599 and X540) support rate control in hardware.
+Intel 10 and 40 GbE NICs (ixgbe and i40e) support rate control in hardware.
 This can be used to generate CBR or bursty traffic with precise inter-departure times.
 
 [Our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) [1] features a detailed evaluation of this feature and compares it to software methods.
@@ -116,7 +120,7 @@ This does not affect the running software.
 [Our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) contains a measurement which shows that this is the case.
 
 If the DuT's NIC does not do this or if a hardware device is to be tested, then a switch can be used to remove these packets from the stream to generate 'real' space on the wire.
-The effects of the switch on the packet spacing needs to be analyzed carefully, e.g. with MoonGen's inter-arrival.lua example script.
+The effects of the switch on the packet spacing needs to be analyzed carefully, e.g., with MoonGen's inter-arrival.lua example script.
 
 
 
@@ -127,59 +131,46 @@ The effects of the switch on the packet spacing needs to be analyzed carefully, 
 # Installation
 
 1. Install the dependencies (see below)
-2. git submodule update --init
 2. ./build.sh
-3. ./setup-hugetlbfs.sh
-4. Run MoonGen from the build directory
+3. sudo ./bind-interfaces.sh
+4. sudo ./setup-hugetlbfs.sh
+5. sudo ./build/MoonGen examples/l3-load-latency.lua 0 1
 
-Note: You can also use the script `bind-interfaces.sh` to bind all currently unused NICs (no routing table entry in the system) to DPDK/MoonGen. `build.sh` calls this script automatically.
-Use `deps/dpdk/tools/dpdk_nic_bind.py` to unbind NICs from the DPDK driver.
+Note: You need to bind NICs to DPDK to use them. `bind-interfaces.sh` does this for all unused NICs (no routing table entry in the system).
+Use `phobos/deps/dpdk/tools/dpdk-devbind.py` to manage NICs manually.
 
 
 ## Dependencies
-* gcc
+* gcc >= 4.8
 * make
 * cmake
 * kernel headers (for the DPDK igb-uio driver)
+* lspci (for `dpdk-devbind.py`)
 
 # Examples
 MoonGen comes with examples in the examples folder which can be used as a basis for custom scripts.
 
-    ./build/MoonGen ./examples/quality-of-service-test.lua 0 1
+    ./build/MoonGen ./examples/l3-load-latency.lua 0 1
 
 The two command line arguments are the transmission and reception ports. MoonGen prints all available ports on startup, so adjust this if necessary.
 
-Note that we recently changed our internal API and some example scripts are outdated or even broken. See [issue #47](https://github.com/emmericp/MoonGen/issues/47) for details.
-However, `quality-of-service-test.lua` is always kept up to date and uses most important features.
+You can also check out the examples of the [Phobos](https://github.com/Phobos-Framework/phobos) project.
+All Phobos scripts are also valid MoonGen scripts as MoonGen extends Phobos.
 
 # Frequently Asked Questions
 
 ### Which NICs do you support?
 Basic functionality is available on all [NICs supported by DPDK](http://dpdk.org/doc/nics).
-Hardware timestamping is currently supported and tested on Intel 82599, X540 and 82580 chips.
-Hardware rate control is supported and tested on Intel 82599 and X540 chips.
+Hardware timestamping is currently supported and tested on Intel igb, ixgbe, and i40e NICs. However, support for specific features vary between models.
+Use ``test-timestamping-capabilities.lua`` in ``examples/timestamping-tests`` to find out what your NIC supports.
+Hardware rate control is supported and tested on Intel ixgbe and i40e NICs.
 
+### What's the difference between MoonGen and Phobos?
+MoonGen builds on [Phobos](https://github.com/Phobos-Framework/phobos) by extending it with features for packet generators such as software rate control and software timestamping.
 
-### How is MoonGen different from SnabbSwitch?
-[SnabbSwitch](https://github.com/SnabbCo/snabbswitch) is a framework for packet-processing in Lua. 
-There are a few important differences:
+If you want to write a packet generator or test your application: use MoonGen.
+If you want to prototype DPDK applications: use [Phobos](https://github.com/Phobos-Framework/phobos).
 
-* MoonGen comes with explicit multi-core support in its API, SnabbSwitch does not
-* MoonGen focuses on efficient packet generation, SnabbSwitch is a more generic framework
-* Our API is designed for packet-generation tasks, i.e. writing a packet generator script for MoonGen is a lot easier than writing one for SnabbSwitch
-* We implement driver-like functionality for hardware functions required by packet generators: timestamping, rate control, and packet filtering
-* SnabbSwitch reimplements the NIC driver in Lua, we rely on the DPDK driver for most parts
-
-
-### Why does MoonGen use DPDK instead of SnabbSwitch as driver?
-We decided for DPDK as back end for the following reasons:
-
-* DPDK is faster for raw packet IO. This is not really a drawback for the use cases SnabbSwitch is designed for where IO is only a small part of the processing. However, for packet generation, especially with small packets, the share of packet IO is significant and the performance of SnabbSwitch is not sufficient here.
-* DPDK provides a stable and mature code base whereas SnabbSwitch is a relatively young project.
-* DPDK currently supports more NICs (with stable and mature drivers) than SnabbSwitch. (We do not want to write our own drivers or debug existing ones.)
-* Lack of multi-core support. (Only possible by starting SnabbSwitch more than once.)
-
-Note that this might change. Using DPDK also comes with disadvantages like its bloated build system and configuration.
 
 # References
 [1] Paul Emmerich, Sebastian Gallenmüller, Daniel Raumer, Florian Wohlfart, and Georg Carle. MoonGen: A Scriptable High-Speed Packet Generator, 2015. IMC 2015. [Available online](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf).  [BibTeX](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015-BibTeX.txt).
