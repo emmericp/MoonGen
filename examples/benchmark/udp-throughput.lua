@@ -1,7 +1,7 @@
-local dpdk		= require "dpdk"
-local memory	= require "memory"
-local device	= require "device"
-local stats		= require "stats"
+local mg     = require "moongen"
+local memory = require "memory"
+local device = require "device"
+local stats  = require "stats"
 
 local PKT_SIZE	= 60
 
@@ -25,13 +25,12 @@ function master(...)
 	end
 	device.waitForLinks()
 	for i, dev in ipairs(devices) do
-		-- TODO: detect NUMA node and start on the right socket
 		local dev, cores = unpack(dev)
 		for i = 1, cores do
-			dpdk.launchLua("loadSlave", dev, dev:getTxQueue(i - 1), 256, i == 1)
+			mg.startTask("loadSlave", dev, dev:getTxQueue(i - 1), 256, i == 1)
 		end
 	end
-	dpdk.waitForSlaves()
+	mg.waitForTasks()
 end
 
 
@@ -50,7 +49,7 @@ function loadSlave(dev, queue, numFlows, showStats)
 	local baseIP = parseIPAddress("10.0.0.1")
 	local flow = 0
 	local ctr = stats:newDevTxCounter(dev, "plain")
-	while dpdk.running() do
+	while mg.running() do
 		bufs:alloc(PKT_SIZE)
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()

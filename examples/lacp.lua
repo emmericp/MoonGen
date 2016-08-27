@@ -1,10 +1,10 @@
-local dpdk		= require "dpdk"
-local memory	= require "memory"
-local device	= require "device"
-local ts		= require "timestamping"
-local stats		= require "stats"
-local hist		= require "histogram"
-local lacp		= require "proto.lacp"
+local mg     = require "moongen"
+local memory = require "memory"
+local device = require "device"
+local ts     = require "timestamping"
+local stats  = require "stats"
+local hist   = require "histogram"
+local lacp   = require "proto.lacp"
 
 local PKT_SIZE      = 60
 local ETH_DST       = "90:E2:BA:C0:EE:8C"
@@ -37,10 +37,10 @@ function master(...)
 	for i, port in ipairs(ports) do 
 		local queue = port:getTxQueue(0)
 		queue:setRate(rate)
-		dpdk.launchLua("loadSlave", queue, lacpSource)
+		mg.startTask("loadSlave", queue, lacpSource)
 	end
-	--dpdk.launchLua("timerSlave", pingQueues, lacpSource)
-	dpdk.waitForSlaves()
+	--mg.startTask("timerSlave", pingQueues, lacpSource)
+	mg.waitForTasks()
 end
 
 local function fillPacket(buf, srcMac, qid, size)
@@ -62,7 +62,7 @@ function loadSlave(queue, lacpSource)
 	local txCtr = stats:newDevTxCounter(queue.dev, "plain")
 	local rxCtr = stats:newDevRxCounter(queue.dev, "plain")
 	local counter = 0
-	while dpdk.running() do
+	while mg.running() do
 		bufs:alloc(PKT_SIZE)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
@@ -86,10 +86,10 @@ function timerSlave(queues, lacpSource)
 		timestampers[#timestampers + 1] = ts:newUdpTimestamper(queue.tx, queue.rx)
 	end
 	local hist = hist:new()
-	dpdk.sleepMillis(1000) -- ensure that the load task is running
+	mg.sleepMillis(1000) -- ensure that the load task is running
 	local size = math.max(84, PKT_SIZE)
 	local counter = 0
-	while dpdk.running() do
+	while mg.running() do
 		for i, queue in ipairs(queues) do
 			local timestamper = timestampers[i]
 			local lat = timestamper:measureLatency(size, function(buf)
