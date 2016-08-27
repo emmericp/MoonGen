@@ -1,5 +1,5 @@
 --- This script implements a simple QoS test by generating two flows and measuring their latencies.
-local mg		= require "dpdk" -- TODO: rename dpdk module to "moongen"
+local mg		= require "moongen" 
 local memory	= require "memory"
 local device	= require "device"
 local ts		= require "timestamping"
@@ -19,49 +19,52 @@ local PORT_SRC	= 1234
 local PORT_FG	= 42
 local PORT_BG	= 43
 
-function master(txPort, rxPort, bgRate, fgRate)
-	if not txPort or not rxPort then
-		return log:info("usage: txPort rxPort [bgRate [fgRate]]")
-	end
-	fgRate = fgRate or 100
-	bgRate = bgRate or 1500
+function configure(parser)
+	parser:description("Generates two flows of traffic and compares them. This example requires an ixgbe NIC due to the used hardware features.")
+	parser:argument("txDev", "Device to transmit from."):convert(tonumber)
+	parser:argument("rxDev", "Device to receive from."):convert(tonumber)
+	parser:option("-f --fg-rate", "Foreground traffic rate in Mbit/s."):default(1000):convert(tonumber):target("fgRate")
+	parser:option("-b --bg-rate", "Background traffic rate in Mbit/s."):default(4000):convert(tonumber):target("bgRate")
+end
+
+function master(args)
 	-- 3 tx queues: traffic, background traffic, and timestamped packets
 	-- 2 rx queues: traffic and timestamped packets
 	local txDev, rxDev
 	-- these two cases could actually be merged as re-configurations of ports are ignored
 	-- the dual-port case could just config the 'first' device with 2/3 queues
 	-- however, this example scripts shows the explicit configuration instead of implicit magic
-	if txPort == rxPort then
+	if args.txDev == args.rxDev then
 		-- sending and receiving from the same port
-		txDev = device.config{ port = txPort, rxQueues = 2, txQueues = 3}
+		txDev = device.config{port = args.txDev, rxQueues = 2, txQueues = 3}
 		rxDev = txDev
 	else
 		-- two different ports, different configuration
-		txDev = device.config{ port = txPort, rxQueues = 1, txQueues = 3}
-		rxDev = device.config{ port = rxPort, rxQueues = 2 }
+		txDev = device.config{port = args.txDev, rxQueues = 1, txQueues = 3}
+		rxDev = device.config{port = args.rxDev, rxQueues = 2}
 	end
 	-- wait until the links are up
 	device.waitForLinks()
-	log:info("Sending %d MBit/s background traffic to UDP port %d", bgRate, PORT_BG)
-	log:info("Sending %d MBit/s foreground traffic to UDP port %d", fgRate, PORT_FG)
+	log:info("Sending %d MBit/s background traffic to UDP port %d", args.bgRate, PORT_BG)
+	log:info("Sending %d MBit/s foreground traffic to UDP port %d", args.fgRate, PORT_FG)
 	-- setup rate limiters for CBR traffic
 	-- see l2-poisson.lua for an example with different traffic patterns
-	txDev:getTxQueue(0):setRate(bgRate)
-	txDev:getTxQueue(1):setRate(fgRate)
+	txDev:getTxQueue(0):setRate(args.bgRate)
+	txDev:getTxQueue(1):setRate(args.fgRate)
 	-- background traffic
-	if bgRate > 0 then
-		mg.launchLua("loadSlave", txDev:getTxQueue(0), PORT_BG)
+	if args.bgRate > 0 then
+		mg.startTask("loadSlave", txDev:getTxQueue(0), PORT_BG)
 	end
 	-- high priority traffic (different UDP port)
-	if fgRate > 0 then
-		mg.launchLua("loadSlave", txDev:getTxQueue(1), PORT_FG)
+	if args.fgRate > 0 then
+		mg.startTask("loadSlave", txDev:getTxQueue(1), PORT_FG)
 	end
 	-- count the incoming packets
-	mg.launchLua("counterSlave", rxDev:getRxQueue(0))
+	mg.startTask("counterSlave", rxDev:getRxQueue(0))
 	-- measure latency from a second queue
-	timerSlave(txDev:getTxQueue(2), rxDev:getRxQueue(1), PORT_BG, PORT_FG, fgRate / (fgRate + bgRate))
+	mg.startSharedTask("timerSlave", txDev:getTxQueue(2), rxDev:getRxQueue(1), PORT_BG, PORT_FG, args.fgRate / (args.fgRate + args.bgRate))
 	-- wait until all tasks are finished
-	mg.waitForSlaves()
+	mg.waitForTasks()
 end
 
 function loadSlave(queue, port)
@@ -140,7 +143,6 @@ end
 function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 	local txDev = txQueue.dev
 	local rxDev = rxQueue.dev
-	rxDev:filterTimestamps(rxQueue)
 	local timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	local histBg, histFg = hist(), hist()
 	-- wait one second, otherwise we might start timestamping before the load is applied

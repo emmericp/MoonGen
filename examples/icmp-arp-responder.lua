@@ -59,7 +59,7 @@ function pingResponder(dev, funny)
 		log:info("One notable exception is Linux ping from the iputils package")
 	end
 
-	local devMac = dev:getMac()
+	local devMac = dev:getMac(true)
 	local rxQueue = dev:getRxQueue(0)
 	local txQueue = dev:getTxQueue(0)
 
@@ -72,7 +72,7 @@ function pingResponder(dev, funny)
 			local pkt = buf:getIcmpPacket()
 			if pkt.ip4:getProtocol() == ip.PROTO_ICMP then
 				local tmp = pkt.ip4.src:get()
-				pkt.eth.dst:set(pkt.eth.src)
+				pkt.eth.dst:set(pkt.eth.src:get())
 				pkt.eth.src:set(devMac)
 				pkt.ip4.src:set(pkt.ip4.dst:get())
 				pkt.ip4.dst:set(tmp)

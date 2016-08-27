@@ -1,20 +1,18 @@
-local mg			= require "dpdk"
-local memory		= require "memory"
-local device		= require "device"
-local stats			= require "stats"
-local histogram		= require "histogram"
-local log			= require "log"
-local timer			= require "timer"
+local mg     = require "moongen"
+local memory = require "memory"
+local device = require "device"
+local stats	 = require "stats"
+local log    = require "log"
 
+function configure(parser)
+	parser:argument("rxDev", "The device to receive from"):convert(tonumber)
+end
 
-function master(rxPort, saveInterval)
-	if not rxPort then
-		return log:info("usage: rxPort")
-	end
-	local rxDev = device.config{ port = rxPort, dropEnable = false }
+function master(args)
+	local rxDev = device.config{port = args.rxDev, dropEnable = false}
 	device.waitForLinks()
-	mg.launchLua("dumpSlave", rxDev:getRxQueue(0))
-	mg.waitForSlaves()
+	mg.startTask("dumpSlave", rxDev:getRxQueue(0))
+	mg.waitForTasks()
 end
 
 

@@ -1,29 +1,29 @@
-local dpdk		= require "dpdk"
+local mg		= require "moongen"
 local memory	= require "memory"
 local device	= require "device"
 local stats		= require "stats"
 local log 		= require "log"
 
-function master(txPorts, minIp, numIps, rate)
-	if not txPorts then
-		log:info("usage: txPort1[,txPort2[,...]] [minIP numIPs rate]")
-		return
-	end
-	txPorts = tostring(txPorts)
-	minIp = minIp or "10.0.0.1"
-	numIps = numIps or 100
-	rate = rate or 0
-	for currentTxPort in txPorts:gmatch("(%d+),?") do
-		currentTxPort = tonumber(currentTxPort) 
-		local txDev = device.config{ port = currentTxPort }
-		txDev:wait()
-		txDev:getTxQueue(0):setRate(rate)
-		dpdk.launchLua("loadSlave", currentTxPort, 0, minIp, numIps)
-	end
-	dpdk.waitForSlaves()
+function configure(parser)
+	parser:description("Generates TCP SYN flood from varying source IPs, supports both IPv4 and IPv6")
+	parser:argument("dev", "Devices to transmit from."):args("*"):convert(tonumber)
+	parser:option("-r --rate", "Transmit rate in Mbit/s."):default(10000):convert(tonumber)
+	parser:option("-i --ip", "Source IP (IPv4 or IPv6)."):default("10.0.0.1")
+	parser:option("-d --destination", "Destination IP (IPv4 or IPv6).")
+	parser:option("-f --flows", "Number of different IPs to use."):default(100):convert(tonumber)
 end
 
-function loadSlave(port, queue, minA, numIPs)
+function master(args)
+	for i, dev in ipairs(args.dev) do
+		local dev = device.config{port = dev}
+		dev:wait()
+		dev:getTxQueue(0):setRate(args.rate)
+		mg.startTask("loadSlave", dev:getTxQueue(0), args.ip, args.flows, args.destination)
+	end
+	mg.waitForTasks()
+end
+
+function loadSlave(queue, minA, numIPs, dest)
 	--- parse and check ip addresses
 	local minIP, ipv4 = parseIPAddress(minA)
 	if minIP then
@@ -36,16 +36,17 @@ function loadSlave(port, queue, minA, numIPs)
 	local packetLen = ipv4 and 60 or 74
 	
 	-- continue normally
-	local queue = device.get(port):getTxQueue(queue)
 	local mem = memory.createMemPool(function(buf)
 		buf:getTcpPacket(ipv4):fill{ 
-			ethSrc="90:e2:ba:2c:cb:02", ethDst="90:e2:ba:35:b5:81", 
-			ip4Dst="192.168.1.1", 
-			ip6Dst="fd06::1",
-			tcpSyn=1,
-			tcpSeqNumber=1,
-			tcpWindow=10,
-			pktLength=packetLen }
+			ethSrc = queue,
+			ethDst = "12:34:56:78:90",
+			ip4Dst = dest, 
+			ip6Dst = dest,
+			tcpSyn = 1,
+			tcpSeqNumber = 1,
+			tcpWindow = 10,
+			pktLength = packetLen
+		}
 	end)
 
 	local bufs = mem:bufArray(128)
@@ -53,7 +54,7 @@ function loadSlave(port, queue, minA, numIPs)
 	local c = 0
 
 	local txStats = stats:newDevTxCounter(queue, "plain")
-	while dpdk.running() do
+	while mg.running() do
 		-- fill packets and set their size 
 		bufs:alloc(packetLen)
 		for i, buf in ipairs(bufs) do 			
@@ -83,3 +84,4 @@ function loadSlave(port, queue, minA, numIPs)
 	end
 	txStats:finalize()
 end
+

@@ -42,15 +42,16 @@ function pcapSinkSlave(queue, rxDev, sink, maxp)
 	print('pcapSinkSlave is running')
 	local numbufs = (maxp == 0) and 100 or math.min(100, maxp)
 	local bufs = memory.bufArray(numbufs)
-	local timestamps = ffi.new("uint64_t[?]", numbufs)
 
 	local pcapSinkWriter = pcapWriter:newPcapWriter(sink)
 	local ctr = stats:newDevRxCounter(rxDev, "plain")
 	local pkts = 0
 	while mg.running() and (maxp == 0 or pkts < maxp) do
 		local rxnum = (maxp == 0) and #bufs or math.min(#bufs, maxp - pkts)
-		local rx = queue:recvWithTimestamps(bufs, timestamps, rxnum)
-		pcapSinkWriter:writeTSC(bufs, timestamps, rx, true)
+		local rx = queue:recvWithTimestamps(bufs, rxnum)
+		if rx > 0 then
+			pcapSinkWriter:writeTSC(bufs, bufs[0].udata64, rx, true)
+		end
 		pkts = pkts + rx
 		ctr:update()
 		bufs:free(rx)

@@ -1,28 +1,29 @@
-local dpdk		= require "dpdk"
-local memory	= require "memory"
-local ts		= require "timestamping"
-local device	= require "device"
-local filter	= require "filter"
-local stats		= require "stats"
-local timer		= require "timer"
-local histogram	= require "histogram"
-local log		= require "log"
-
+local mg        = require "moongen"
+local memory    = require "memory"
+local ts        = require "timestamping"
+local device    = require "device"
+local filter    = require "filter"
+local stats     = require "stats"
+local timer     = require "timer"
+local histogram = require "histogram"
+local log       = require "log"
 
 local PKT_SIZE = 60
 
-function master(...)
-	local txPort, rxPort, rate = tonumberall(...)
-	if not txPort or not rxPort then
-		return log:info("usage: txPort rxPort [rate (Mpps)]")
-	end
-	rate = rate or 2
-	local txDev = device.config(txPort, 2, 2)
-	local rxDev = device.config(rxPort, 2, 2)
+function configure(parser)
+	parser:description("Generates traffic based on a poisson process with CRC-based rate control.")
+	parser:argument("txDev", "Device to transmit from."):args(1):convert(tonumber)
+	parser:argument("rxDev", "Device to receive from."):args(1):convert(tonumber)
+	parser:option("-r --rate", "Transmit rate in Mpps."):args(1):default(2)
+end
+
+function master(args)
+	local txDev = device.config({port = args.txDev, txQueues = 2, rxQueues = 2})
+	local rxDev = device.config({port = args.rxDev, txQueues = 2, rxQueues = 2})
 	device.waitForLinks()
-	dpdk.launchLua("loadSlave", txDev, rxDev, txDev:getTxQueue(0), rate, PKT_SIZE)
-	dpdk.launchLua("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE)
-	dpdk.waitForSlaves()
+	mg.startTask("loadSlave", txDev, rxDev, txDev:getTxQueue(0), args.rate, PKT_SIZE)
+	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE)
+	mg.waitForTasks()
 end
 
 function loadSlave(dev, rxDev, queue, rate, size)
@@ -35,7 +36,7 @@ function loadSlave(dev, rxDev, queue, rate, size)
 	local bufs = mem:bufArray()
 	local rxStats = stats:newDevRxCounter(rxDev, "plain")
 	local txStats = stats:newManualTxCounter(dev, "plain")
-	while dpdk.running() do
+	while mg.running() do
 		bufs:alloc(size)
 		for _, buf in ipairs(bufs) do
 			-- this script uses Mpps instead of Mbit (like the other scripts)
@@ -54,9 +55,9 @@ function timerSlave(txQueue, rxQueue, size)
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
 	local hist = histogram:new()
 	-- wait for a second to give the other task a chance to start
-	dpdk.sleepMillis(1000)
+	mg.sleepMillis(1000)
 	local rateLimiter = timer:new(0.001)
-	while dpdk.running() do
+	while mg.running() do
 		rateLimiter:reset()
 		hist:update(timestamper:measureLatency(size))
 		rateLimiter:busyWait()

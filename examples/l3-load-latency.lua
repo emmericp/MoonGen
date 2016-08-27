@@ -1,20 +1,20 @@
-local dpdk		= require "dpdk"
-local memory	= require "memory"
-local device	= require "device"
-local ts		= require "timestamping"
-local filter	= require "filter"
-local hist		= require "histogram"
-local stats		= require "stats"
-local timer		= require "timer"
-local arp		= require "proto.arp"
-local log		= require "log"
+local mg     = require "moongen"
+local memory = require "memory"
+local device = require "device"
+local ts     = require "timestamping"
+local filter = require "filter"
+local hist   = require "histogram"
+local stats  = require "stats"
+local timer  = require "timer"
+local arp    = require "proto.arp"
+local log    = require "log"
 
 -- set addresses here
 local DST_MAC		= nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
 local SRC_IP_BASE	= "10.0.0.10" -- actual address will be SRC_IP_BASE + random(0, flows)
 local DST_IP		= "10.1.0.10"
 local SRC_PORT		= 1234
-local DST_PORT		= 1234
+local DST_PORT		= 319
 
 -- answer ARP requests for this IP on the rx port
 -- change this if benchmarking something like a NAT device
@@ -24,31 +24,33 @@ local GW_IP		= DST_IP
 -- used as source IP to resolve GW_IP to DST_MAC
 local ARP_IP	= SRC_IP_BASE
 
-function master(...)
-	local txPort, rxPort, rate, flows, size = tonumberall(...)
-	if not txPort or not rxPort then
-		return log:info("usage: txPort rxPort [rate [flows [pktSize]]]")
-	end
-	flows = flows or 4
-	rate = rate or 2000
-	size = (size or 124)
-	txDev = device.config(txPort, 3, 3)
-	rxDev = device.config(rxPort, 3, 3)
+function configure(parser)
+	parser:description("Generates UDP traffic and measure latencies. Edit the source to modify constants like IPs.")
+	parser:argument("txDev", "Device to transmit from."):convert(tonumber)
+	parser:argument("rxDev", "Device to receive from."):convert(tonumber)
+	parser:option("-r --rate", "Transmit rate in Mbit/s."):default(10000):convert(tonumber)
+	parser:option("-f --flows", "Number of flows (randomized source IP)."):default(4):convert(tonumber)
+	parser:option("-s --size", "Packet size."):default(60):convert(tonumber)
+end
+
+function master(args)
+	txDev = device.config{port = args.txDev, rxQueues = 3, txQueues = 3}
+	rxDev = device.config{port = args.rxDev, rxQueues = 3, txQueues = 3}
 	device.waitForLinks()
 	-- max 1kpps timestamping traffic timestamping
 	-- rate will be somewhat off for high-latency links at low rates
-	if rate > 0 then
-		txDev:getTxQueue(0):setRate(rate - (size + 4) * 8 / 1000)
+	if args.rate > 0 then
+		txDev:getTxQueue(0):setRate(args.rate - (args.size + 4) * 8 / 1000)
 	end
-	dpdk.launchLua("loadSlave", txDev:getTxQueue(0), rxDev, size, flows)
-	dpdk.launchLua("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), size, flows)
-	dpdk.launchLua(arp.arpTask, {
+	mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, args.size, args.flows)
+	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), args.size, args.flows)
+	arp.startArpTask{
 		-- run ARP on both ports
 		{ rxQueue = rxDev:getRxQueue(2), txQueue = rxDev:getTxQueue(2), ips = RX_IP },
 		-- we need an IP address to do ARP requests on this interface
 		{ rxQueue = txDev:getRxQueue(2), txQueue = txDev:getTxQueue(2), ips = ARP_IP }
-	})
-	dpdk.waitForSlaves()
+	}
+	mg.waitForTasks()
 end
 
 local function fillUdpPacket(buf, len)
@@ -85,7 +87,7 @@ function loadSlave(queue, rxDev, size, flows)
 	local txCtr = stats:newDevTxCounter(queue, "plain")
 	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
 	local baseIP = parseIPAddress(SRC_IP_BASE)
-	while dpdk.running() do
+	while mg.running() do
 		bufs:alloc(size)
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
@@ -108,14 +110,13 @@ function timerSlave(txQueue, rxQueue, size, flows)
 		log:warn("Packet size %d is smaller than minimum timestamp size 84. Timestamped packets will be larger than load packets.", size)
 		size = 84
 	end
-	rxQueue.dev:filterTimestamps(rxQueue)
 	local timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	local hist = hist:new()
-	dpdk.sleepMillis(1000) -- ensure that the load task is running
+	mg.sleepMillis(1000) -- ensure that the load task is running
 	local counter = 0
 	local rateLimit = timer:new(0.001)
 	local baseIP = parseIPAddress(SRC_IP_BASE)
-	while dpdk.running() do
+	while mg.running() do
 		hist:update(timestamper:measureLatency(size, function(buf)
 			fillUdpPacket(buf, size)
 			local pkt = buf:getUdpPacket()
@@ -126,7 +127,7 @@ function timerSlave(txQueue, rxQueue, size, flows)
 		rateLimit:reset()
 	end
 	-- print the latency stats after all the other stuff
-	dpdk.sleepMillis(300)
+	mg.sleepMillis(300)
 	hist:print()
 	hist:save("histogram.csv")
 end

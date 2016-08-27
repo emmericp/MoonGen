@@ -64,7 +64,7 @@ function simplePcapStoreAndLoadTestSlave(source, sink, maxp)
 			while counter.total + counter.current < maxp do
 				pcapWriter:write(bufs)
 				local bytes = 0
-				for i=1,#bufs do bytes = bytes + bufs[i].pkt.pkt_len end
+				for i=1,#bufs do bytes = bytes + bufs[i].pkt_len end
 				counter:update(#bufs, bytes)
 			end
 
