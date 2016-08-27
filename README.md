@@ -1,5 +1,5 @@
 ### TL;DR
-LuaJIT + DPDK = fast and flexible packet generator for 10 GBit Ethernet and beyond.
+LuaJIT + DPDK = fast and flexible packet generator for 10 Gbit/s Ethernet and beyond.
 
 MoonGen uses hardware features for accurate and precise latency measurements and rate control.
 
@@ -14,7 +14,7 @@ Detailed evaluation: [Paper](http://www.net.in.tum.de/fileadmin/bibtex/publicati
 
 MoonGen is a scriptable high-speed packet generator built on [Phobos](https://github.com/Phobos-Framework/phobos).
 The whole load generator is controlled by a Lua script: all packets that are sent are crafted by a user-provided script.
-Thanks to the incredibly fast LuaJIT VM and the packet processing library DPDK, it can saturate a 10 GBit Ethernet link with 64 Byte packets while using only a single CPU core.
+Thanks to the incredibly fast LuaJIT VM and the packet processing library DPDK, it can saturate a 10 Gbit/s Ethernet link with 64 Byte packets while using only a single CPU core.
 MoonGen can achieve this rate even if each packet is modified by a Lua script. It does not rely on tricks like replaying the same buffer.
 
 MoonGen can also receive packets, e.g., to check which packets are dropped by a
@@ -23,11 +23,11 @@ Lua script, it can be used to implement advanced test scripts. E.g. one can use
 two instances of MoonGen that establish a connection with each other. This
 setup can be used to benchmark middle-boxes like firewalls.
 
-Reading the example script [l3-load-latency.lua](https://github.com/emmericp/MoonGen/blob/master/examples/l3-load-latency.lua?ts=4) is a good way to learn more about our scripting API as this script uses most features of MoonGen.
+Reading the example script [l3-load-latency.lua](https://github.com/emmericp/MoonGen/blob/master/examples/l3-load-latency.lua?ts=4) or [quality-of-service-test.lua](https://github.com/emmericp/MoonGen/blob/master/examples/quality-of-service-test.lua?ts=4) is a good way to learn more about our scripting API as these scripts uses most features of MoonGen.
 
 MoonGen focuses on four main points:
 
-* High performance and multi-core scaling: > 15 million packets per second per CPU core
+* High performance and multi-core scaling: > 20 million packets per second per CPU core
 * Flexibility: Each packet is crafted in real time by a user-provided Lua script
 * Precise and accurate timestamping: Timestamping with sub-microsecond precision on commodity hardware
 * Precise and accurate rate control: Reliable generation of arbitrary traffic patterns on commodity hardware
@@ -87,7 +87,7 @@ However, NICs do not work that way. Sending a packet to the API merely places it
 It is now up to the NIC (which may or may not be notified by the API about the new packet immediately) to fetch and transmit the packet asynchronously at a convenient time.
 
 This means that trying to push packets to a NIC is futile.
-This is especially important at rates above 1 GBit/s where nanosecond-level precision is required (length of a minimal sized packet at 10 GBit/s: 67.2 nanoseconds).
+This is especially important at rates above 1 Gbit/s where nanosecond-level precision is required (length of a minimal sized packet at 10 Gbit/s: 67.2 nanoseconds).
 Sending a single packet requires at least two round trips across the PCIe bus: One to notify the NIC about the updated queue, one for the NIC to fetch the packet. Each PCIe operation introduces latencies and jitter in the nanosecond-range.
 
 Another problem with this approach is that the queues, and therefore batch processing, cannot be used.
@@ -103,7 +103,7 @@ This can be used to generate CBR or bursty traffic with precise inter-departure 
 [Our paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) [1] features a detailed evaluation of this feature and compares it to software methods.
 
 ## Better Software Rate Control
-The hardware supports only CBR traffic. Other traffic patterns, especially a Poisson distribution, are desirable.
+The hardware supports only CBR traffic. Other traffic patterns, especially a Poisson process, are desirable.
 
 The problem that software rate control faces is that it needs to generate an 'empty space' on the wire.
 We circumvent this problem by sending bad packets in the space between packets instead of trying to send nothing.
