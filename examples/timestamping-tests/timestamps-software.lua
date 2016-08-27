@@ -1,12 +1,13 @@
 --- Software timestamping precision test.
-local mg		= require "dpdk"
-local ts		= require "timestamping"
-local device	= require "device"
-local hist		= require "histogram"
-local memory	= require "memory"
-local stats		= require "stats"
-local timer		= require "timer"
-local ffi		= require "ffi"
+--- (Used for an evaluation for a paper)
+local mg     = require "moongen"
+local ts     = require "timestamping"
+local device = require "device"
+local hist   = require "histogram"
+local memory = require "memory"
+local stats  = require "stats"
+local timer  = require "timer"
+local ffi    = require "ffi"
 
 local PKT_SIZE = 60
 
@@ -20,10 +21,12 @@ function master(txPort, rxPort, load)
 	local rxDev = device.config{port = rxPort, rxQueues = 2, txQueues = 2}
 	device.waitForLinks()
 	txDev:getTxQueue(0):setRate(load)
-	if load > 0 then mg.launchLua("loadSlave", txDev:getTxQueue(0)) end
-	mg.launchLua("txTimestamper", txDev:getTxQueue(1))
-	mg.launchLua("rxTimestamper", rxDev:getRxQueue(1))
-	mg.waitForSlaves()
+	if load > 0 then
+		mg.startTask("loadSlave", txDev:getTxQueue(0))
+	end
+	mg.startTask("txTimestamper", txDev:getTxQueue(1))
+	mg.startTask("rxTimestamper", rxDev:getRxQueue(1))
+	mg.waitForTasks()
 end
 
 function loadSlave(queue)
@@ -63,19 +66,17 @@ function txTimestamper(queue)
 	mg.stop()
 end
 
--- FIXME: the API should be nicer
 function rxTimestamper(queue)
 	local tscFreq = mg.getCyclesFrequency()
-	local timestamps = ffi.new("uint64_t[64]")
 	local bufs = memory.bufArray(64)
 	-- use whatever filter appropriate for your packet type
-	queue.dev:filterTimestamps(queue)
+	queue:filterUdpTimestamps()
 	local results = {}
 	local rxts = {}
 	while mg.running() do
-		local numPkts = queue:recvWithTimestamps(bufs, timestamps)
+		local numPkts = queue:recvWithTimestamps(bufs)
 		for i = 1, numPkts do
-			local rxTs = timestamps[i - 1]
+			local rxTs = bufs[i].udata64
 			local txTs = bufs[i]:getSoftwareTxTimestamp()
 			results[#results + 1] = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
 			rxts[#rxts + 1] = tonumber(rxTs)
