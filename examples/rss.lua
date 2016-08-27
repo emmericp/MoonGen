@@ -19,7 +19,7 @@ function master(txPort, rxPort, rxQueues)
 	local rxDev = device.config{
 		port = rxPort,
 		rxQueues = rxQueues + 1,
-		rssNQueues = rxQueues,
+		rssQueues = rxQueues,
 		rssBaseQueue = 1 -- optional and defaults to 0
 	}
 	device.waitForLinks()

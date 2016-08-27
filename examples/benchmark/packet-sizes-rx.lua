@@ -8,7 +8,6 @@ memory.enableCache()
 
 local RUN_TIME = 10
 
--- TODO: this
 function master(port1, port2)
 	if not port1 or not port2 then
 		return print("Usage: port1 port2")
@@ -20,8 +19,7 @@ function master(port1, port2)
 		print("Running test for packet size = " .. size)
 		local tx = dpdk.launchLua("loadSlave", dev1:getTxQueue(0), size)
 		local rx = dpdk.launchLua("rxSlave", dev2:getRxQueue(0), size)
-		tx:wait()
-		local avgRx = rx:wait()
+		dpdk.waitForSlaves()
 		if not dpdk.running() then
 			break
 		end
@@ -47,7 +45,6 @@ function loadSlave(queue, size)
 		ctr:update()
 	end
 	ctr:finalize()
-	return nil -- TODO
 end
 
 function rxSlave(queue, size)
@@ -60,6 +57,5 @@ function rxSlave(queue, size)
 		ctr:updateWithSize(rx, size)
 	end
 	ctr:finalize()
-	return nil -- TODO
 end
 

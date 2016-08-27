@@ -140,7 +140,6 @@ end
 function timerSlave(txQueue, rxQueue, bgPort, port, ratio)
 	local txDev = txQueue.dev
 	local rxDev = rxQueue.dev
-	rxDev:filterTimestamps(rxQueue)
 	local timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	local histBg, histFg = hist(), hist()
 	-- wait one second, otherwise we might start timestamping before the load is applied

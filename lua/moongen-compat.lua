@@ -61,6 +61,11 @@ function device.config(...)
 		end
 		return oldConfig(args)
 	end
+	local args = ...
+	if args.rssNQueues then
+		log:warn("rssNQueues has been renamed to rssQueues, udate your script.")
+		args.rssQueues = args.rssNQueues
+	end
 	return oldConfig(...)
 end
 

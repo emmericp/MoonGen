@@ -24,7 +24,7 @@ sudo ./build/MoonGen examples/pcap-test.lua 0			# transmits entire contents of p
 sudo ./build/MoonGen examples/pcap-test.lua 1 100 foo.pcap	# transmits 100 packets from foo.pcap on port 1
 ]])
 	end
-	source = source or "port-"..rxPort..'.pcap'
+	source = source or "port-"..txPort..'.pcap'
 	if maxp == 0 then maxp = nil end
 	local txDev = device.config{ port = txPort, txQueues = 1 }
 	mg.sleepMillis(100)

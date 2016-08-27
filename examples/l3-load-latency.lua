@@ -14,7 +14,7 @@ local DST_MAC		= nil -- resolved via ARP on GW_IP or DST_IP, can be overriden wi
 local SRC_IP_BASE	= "10.0.0.10" -- actual address will be SRC_IP_BASE + random(0, flows)
 local DST_IP		= "10.1.0.10"
 local SRC_PORT		= 1234
-local DST_PORT		= 1234
+local DST_PORT		= 319
 
 -- answer ARP requests for this IP on the rx port
 -- change this if benchmarking something like a NAT device
@@ -108,7 +108,6 @@ function timerSlave(txQueue, rxQueue, size, flows)
 		log:warn("Packet size %d is smaller than minimum timestamp size 84. Timestamped packets will be larger than load packets.", size)
 		size = 84
 	end
-	rxQueue.dev:filterTimestamps(rxQueue)
 	local timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	local hist = hist:new()
 	dpdk.sleepMillis(1000) -- ensure that the load task is running

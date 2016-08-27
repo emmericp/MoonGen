@@ -1,20 +1,17 @@
-local dpdk	= require "dpdk"
-local memory	= require "memory"
-local device	= require "device"
-local dpdkc	= require "dpdkc"
+local dpdk   = require "dpdk"
+local memory = require "memory"
+local device = require "device"
+local stats  = require "stats"
 
-local ffi	= require "ffi"
-
-function master(...)
-	local txPort = tonumberall(...)
+function master(txPort)
 	if not txPort then
 		errorf("usage: txPort")
 	end
-	local txDev = device.config(txPort, memory.createMemPool())
+	local txDev = device.config(txPort)
 	txDev:wait()
-	dpdk.launchLua("burstGenSlave", txPort, 10, 100, 6700, 67) -- TODO: consider using command line args here
+	stats.startStatsTask({txDev})
+	dpdk.launchLua("burstGenSlave", txPort, 10, 1000, 2 * 10^6, 0.1 * 10^6)
 	dpdk.sleepMillis(100) -- make sure the burst thread starts first
-	-- TODO: is there some way to disable TX completely? (or add a cross-thread sync mechanism)
 	dpdk.launchLua("loadSlave", txPort, 0)
 	dpdk.waitForSlaves()
 end
@@ -34,37 +31,12 @@ end
 function loadSlave(port, queue)
 	local queue = device.get(port):getTxQueue(queue)
 	local mem = memory.createMemPool(function(buf)
-		local data = ffi.cast("uint8_t*", buf:getData())
-		-- src/dst mac
-		for i = 0, 11 do
-			data[i] = i
-		end
-		-- eth type
-		data[12] = 0x12
-		data[13] = 0x34
+		buf:getUdpPacket():fill()
 	end)
-	local lastPrint = dpdk.getTime()
-	local totalSent = 0
-	local lastTotal = 0
-	local lastSent = 0
 	local bufs = mem:bufArray()
-	local seq = 0
 	while dpdk.running() do
 		bufs:alloc(60)
-		for i = 1, bufs.size do
-			local data = ffi.cast("uint32_t*", bufs[i]:getData())
-			data[4] = seq
-			seq = seq + 1
-		end
-		totalSent = totalSent + queue:send(bufs)
-		local time = dpdk.getTime()
-		if time - lastPrint > 1 then
-			local mpps = (totalSent - lastTotal) / (time - lastPrint) / 10^6
-			printf("Sent %d packets, current rate %.2f Mpps, %.2f MBit/s, %.2f MBit/s wire rate", totalSent, mpps, mpps * 64 * 8, mpps * 84 * 8)
-			lastTotal = totalSent
-			lastPrint = time
-		end
+		queue:send(bufs)
 	end
-	printf("Sent %d packets", totalSent)
 end
 

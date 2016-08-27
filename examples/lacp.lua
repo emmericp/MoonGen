@@ -1,4 +1,3 @@
--- vim:ts=4:sw=4:noexpandtab
 local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
@@ -27,12 +26,12 @@ function master(...)
 	local pingQueues = {}
 	for i = 1, select("#", ...) - 1 do
 		local port = device.config{port = ports[i], rxQueues = 3, txQueues = 3} 
-		lacpQueues[#lacpQueues + 1] = {rx = port:getRxQueue(1), tx = port:getTxQueue(1)}
+		lacpQueues[#lacpQueues + 1] = {rxQueue = port:getRxQueue(1), txQueue = port:getTxQueue(1)}
 		pingQueues[#pingQueues + 1] = {rx = port:getRxQueue(2), tx = port:getTxQueue(2)}
 		ports[i] = port
 	end
 	device.waitForLinks()
-	dpdk.launchLua(lacp.lacpTask, {name = "bond0", ports = lacpQueues})
+	lacp.startLacpTask("bond0", lacpQueues)
 	lacp.waitForLink("bond0")
 	local lacpSource = lacp.getMac("bond0")
 	for i, port in ipairs(ports) do 
