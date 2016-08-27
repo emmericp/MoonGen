@@ -1,11 +1,12 @@
 #!/bin/bash
-mkdir -p /mnt/huge
-(mount | grep hugetlbfs) > /dev/null || mount -t hugetlbfs nodev /mnt/huge
-for i in {0..7}
-do
-	if [[ -e "/sys/devices/system/node/node$i" ]]
-	then
-		echo 512 > /sys/devices/system/node/node$i/hugepages/hugepages-2048kB/nr_hugepages
-	fi
-done
+
+(
+cd $(dirname "${BASH_SOURCE[0]}")
+cd phobos
+if [[ -e setup-hugetlbfs.sh ]] ; then
+	./setup-hugetlbfs.sh
+else
+	echo "Phobos not found. Please run git submodule update --init --recursive"
+fi
+)
 
