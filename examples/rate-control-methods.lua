@@ -1,11 +1,11 @@
-local dpdk		= require "dpdk"
-local memory	= require "memory"
-local device	= require "device"
-local ts		= require "timestamping"
-local stats		= require "stats"
-local hist		= require "histogram"
-local log		= require "log"
-local limiter	= require "ratelimiter"
+local mg      = require "moongen"
+local memory  = require "memory"
+local device  = require "device"
+local ts      = require "timestamping"
+local stats   = require "stats"
+local hist    = require "histogram"
+local log     = require "log"
+local limiter = require "ratelimiter"
 
 local PKT_SIZE	= 60
 local ETH_DST	= "11:12:13:14:15:16"
@@ -26,9 +26,9 @@ function master(txPort, rate, rc, pattern, threads)
 		if rc == "sw" then
 			rateLimiter = limiter:new(txDev:getTxQueue(i - 1), pattern, 1 / rate * 1000)
 		end
-		dpdk.launchLua("loadSlave", txDev:getTxQueue(i - 1), txDev, rate, rc, pattern, rateLimiter, i, threads)
+		mg.startTask("loadSlave", txDev:getTxQueue(i - 1), txDev, rate, rc, pattern, rateLimiter, i, threads)
 	end
-	dpdk.waitForSlaves()
+	mg.waitForTasks()
 end
 
 function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numThreads)
@@ -47,8 +47,8 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 		end
 		txCtr = stats:newDevTxCounter(txDev, "plain")
 		queue:setRate(rate * (PKT_SIZE + 4) * 8)
-		dpdk.sleepMillis(100) -- for good meaasure
-		while dpdk.running() do
+		mg.sleepMillis(100) -- for good meaasure
+		while mg.running() do
 			bufs:alloc(PKT_SIZE)
 			queue:send(bufs)
 			if threadId == 1 then txCtr:update() end
@@ -57,7 +57,7 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 		-- larger batch size is useful when sending it through a rate limiter
 		local bufs = mem:bufArray(128)
 		txCtr = stats:newDevTxCounter(txDev, "plain")
-		while dpdk.running() do
+		while mg.running() do
 			bufs:alloc(PKT_SIZE)
 			rateLimiter:send(bufs)
 			if threadId == 1 then txCtr:update() end
@@ -67,7 +67,7 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 		local bufs = mem:bufArray(128)
 		txCtr = stats:newManualTxCounter(txDev, "plain")
 		local dist = pattern == "poisson" and poissonDelay or function(x) return x end
-		while dpdk.running() do
+		while mg.running() do
 			bufs:alloc(PKT_SIZE)
 			for _, buf in ipairs(bufs) do
 				buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - PKT_SIZE - 24))
