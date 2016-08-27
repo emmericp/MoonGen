@@ -4,6 +4,7 @@ local memory = require "memory"
 local ffi    = require "ffi"
 
 local txQueue = device.__txQueuePrototype
+local device = device.__devicePrototype
 local C = ffi.C
 
 ffi.cdef[[
@@ -55,3 +56,32 @@ end
 function pkt:setRate(rate)
 	self.udata64 = 10^10 / 8 / (rate * 10^6) - self.pkt_len - 24
 end
+
+ffi.cdef[[
+uint64_t moongen_get_bad_pkts_sent(uint8_t port_id);
+uint64_t moongen_get_bad_bytes_sent(uint8_t port_id);
+]]
+
+local function hookTxStats(dev)
+	if dev.__txStatsHooked then
+		return
+	end
+	dev.__txStatsHooked = true
+	local old = dev.getTxStats
+	if old then
+		dev.getTxStats = function(self)
+			local pkts, bytes = old(self)
+			local badPkts = tonumber(C.moongen_get_bad_pkts_sent(self.id))
+			local badBytes = tonumber(C.moongen_get_bad_bytes_sent(self.id))
+			return pkts - badPkts, bytes - badBytes
+		end
+	end
+end
+
+hookTxStats(device)
+for driver, dev in pairs(require("drivers")) do
+	if tostring(driver):match("^rte_") and type(dev) == "table" then
+		hookTxStats(dev)
+	end
+end
+

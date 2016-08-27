@@ -10,11 +10,11 @@ static uint64_t bad_pkts_sent[RTE_MAX_ETHPORTS];
 static uint64_t bad_bytes_sent[RTE_MAX_ETHPORTS];
 
 uint64_t moongen_get_bad_pkts_sent(uint8_t port_id) {
-	return __sync_fetch_and_and(&bad_pkts_sent[port_id], 0);
+	return __sync_fetch_and_add(&bad_pkts_sent[port_id], 0);
 }
 
 uint64_t moongen_get_bad_bytes_sent(uint8_t port_id) {
-	return __sync_fetch_and_and(&bad_bytes_sent[port_id], 0);
+	return __sync_fetch_and_add(&bad_bytes_sent[port_id], 0);
 }
 
 static struct rte_mbuf* get_delay_pkt_bad_crc(struct rte_mempool* pool, uint32_t* rem_delay, uint32_t min_pkt_size) {
