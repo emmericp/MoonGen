@@ -20,7 +20,8 @@ include_directories(
 )
 
 set(files
-	src/moongen-main.cpp
+	src/moongen-main
+	src/software-timestamping
 )
 
 set(libraries
