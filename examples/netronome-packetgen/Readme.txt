@@ -379,9 +379,9 @@ the flow will vary by the amounts specified by the following parameters):
   |================================================|
   | --dst-mac-vary  or -dmv  |  aa:bb:cc:dd:ee:ff  |
   |================================================|
-  | --src-ip-vary   or -sipv |  0.0.0.1>           |
+  | --src-ip-vary   or -sipv |  0.0.0.1            |
   |================================================|
-  | --dst-ip-vary   or -dipv |  0.0.0.1>           |
+  | --dst-ip-vary   or -dipv |  0.0.0.1            |
   |================================================|
   | --src-port-vary or -sptv |  1                  |
   |================================================|
@@ -396,7 +396,7 @@ The following paramters modify the packet properties per stream:
   |==================================================|
   | --dst-mac-stride  or -dmv  |  aa:bb:cc:dd:ee:ff  |
   |==================================================|
-  | --src-ip-stride   or -sipv |  0.0.0.1>           |
+  | --src-ip-stride   or -sipv |  0.0.0.1            |
   |==================================================|
   | --dst-ip-stride   or -dipv |  0.0.0.1            |
   |==================================================|
