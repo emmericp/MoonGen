@@ -24,7 +24,7 @@
    h) The stream base is incremented, if it is less than the number of streams,
       loop back to (a).
 
-   -- This redults in a set of streams that are separated by the MAC and IP 
+   -- This results in a set of streams that are separated by the MAC and IP 
       stride and repeat in bursts. The destination IP and MAC increase in 
       lock-step.
    -- Packet size can be constant, or selected from a 7:4:1 IMIX profile with 
@@ -269,7 +269,7 @@ function master(...)
         -- Check if the port must be used as a TX slave:
         for _, txPortId in ipairs(clParams.txSlavePorts) do
             if txPortId == portId then
-                moongen.launchLua(
+                moongen.startTask(
                     "txSlave", devices[i], portId, slaveId, clParams)
                 slaveId = slaveId + 1
                 break
@@ -278,7 +278,7 @@ function master(...)
         -- Check if the port must be used as a RX slave:
         for _, rxPortId in ipairs(clParams.rxSlavePorts) do
             if rxPortId == portId then
-                moongen.launchLua(
+                moongen.startTask(
                     "rxSlave", devices[i], portId, slaveId, clParams)
                 slaveId = slaveId + 1
                 break
