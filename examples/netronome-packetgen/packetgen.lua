@@ -24,7 +24,7 @@
    h) The stream base is incremented, if it is less than the number of streams,
       loop back to (a).
 
-   -- This reults in a set of streams that are separated by the MAC and IP 
+   -- This results in a set of streams that are separated by the MAC and IP 
       stride and repeat in bursts. The destination IP and MAC increase in 
       lock-step.
    -- Packet size can be constant, or selected from a 7:4:1 IMIX profile with 
@@ -130,47 +130,34 @@ local clParams = {
     timeout         = 0                       ,
     fileprefix      = ""                      ,
     writemode       = 1                       ,
-    ethSrcBaseNum   = 0x000d30596955          ,
-    ethSrcBase      = "00:0d:30:59:69:55"     ,
-    ethSrcVaryNum   = 0                       ,
-    ethSrcVary      = "00:00:00:00:00:00"     ,
-    ethDstBaseNum   = 0x5452deadbeef          ,
-    ethDstBase      = "54:52:de:ad:be:ef"     ,
-    ethDstVaryNum   = 1                       ,
-    ethDstVary      = "00:00:00:00:00:01"     ,
-    ethStrideNum    = 0                       ,
-    ethStride       = "00:00:00:00:00:00"     , 
-    ipSrcBaseNum    = 0                       ,
-    ipSrcBase       = "192.168.50.10"         ,
-    ipSrcVaryNum    = 0                       ,
-    ipSrcVary       = "0.0.0.0"               ,
-    ipDstBaseNum    = 0                       ,
-    ipDstBase       = "192.168.60.10"         ,
-    ipDstVaryNum    = 1                       ,
-    ipDstVary       = "0.0.0.1"               ,
-    ipStrideNum     = 0                       , 
-    ipStride        = "0.0.0.0"               ,
-    portSrcBase     = 4096                    ,
-    portSrcVary     = 1                       ,
-    portDstBase     = 2048                    ,
-    portDstVary     = 0                       ,
-    portStride      = 0                       ,
+    srcMacBase      = 0x021100000000          ,
+    dstMacBase      = 0x022200000000          ,
+    srcIpBase       = 3232238337              ,
+    dstIpBase       = 3232241153              ,
+    srcPortBase     = 50110                   ,
+    dstPortBase     = 50220                   ,
+    srcPortVary     = 1                       ,
+    dstPortVary     = 0                       ,
+    srcIpVary       = 0                       ,
+    dstIpVary       = 1                       ,
+    srcMacVary      = 0                       ,
+    dstMacVary      = 1                       ,
+    srcPortStride   = 0                       ,
+    dstPortStride   = 0                       ,
+    srcIpStride     = 0                       ,
+    dstIpStride     = 0                       ,
+    srcMacStride    = 0                       ,
+    dstMacStride    = 0 
 }
 
 -------------------------------------------------------------------------------
--- Defines parameters for a burst:
+-- Defines parameters for timing functionality.
 --
---  counter  : Counter for creating burst pattern.
---  flowid   : The flow ID of the burst.
---  streamid : The stream ID of the burst.
 --  prevtsc  : The previous clock count.
 --  currtsc  : The current clock count.
 --  difftsc  : The difference between the clock counts.
 -------------------------------------------------------------------------------
-local burstParams = {
-    counter  = 0 ,
-    flowid   = 0 ,
-    streamid = 0 ,
+local timeParams = {
     prevtsc  = 0 ,
     currtsc  = 0 , 
     difftsc  = 0
@@ -241,14 +228,15 @@ function master(...)
     -- Check which of the rx ports were already added as tx ports,
     -- and add any of the rx ports which are not already in the list:
     for i, rxPortId in ipairs(clParams.rxSlavePorts) do
-        local canAdd = false
+        local canAdd = true
         for _, portId in ipairs(portList) do
             if rxPortId == portId then
                 canAdd = false
+                break
             end
         end
         if canAdd then
-            portList[#portList + 1] = portId
+            portList[#portList + 1] = rxPortId
         end
     end
 
@@ -260,7 +248,7 @@ function master(...)
         devices[deviceIdx] = device.config{
             port     = port            , 
             rxQueues = 1               , -- Only 1 supported for now.
-            txQueus  = 1               , -- Only 1 supported for now.
+            txQueues = 1               , -- Only 1 supported for now.
             rxDescs  = clParams.rxDescs,
             txDescs  = clParams.txDescs 
         }
@@ -275,21 +263,24 @@ function master(...)
     clParams:print()
     moongen.sleepMillis(clParams.paramDisplay)
 
+    local slaveId = 0
     -- Launch the slaves:
     for i, portId in ipairs(portList) do
         -- Check if the port must be used as a TX slave:
         for _, txPortId in ipairs(clParams.txSlavePorts) do
             if txPortId == portId then
-                moongen.launchLua(
-                    "txSlave", devices[i], portId, clParams)
+                moongen.startTask(
+                    "txSlave", devices[i], portId, slaveId, clParams)
+                slaveId = slaveId + 1
                 break
             end
         end
         -- Check if the port must be used as a RX slave:
         for _, rxPortId in ipairs(clParams.rxSlavePorts) do
             if rxPortId == portId then
-                moongen.launchLua(
-                    "rxSlave", devices[i], portId, clParams)
+                moongen.startTask(
+                    "rxSlave", devices[i], portId, slaveId, clParams)
+                slaveId = slaveId + 1
                 break
             end
         end
@@ -304,12 +295,12 @@ end
 -- Slave function to perform RX.
 -- device   : The MoonGen device to sent the packets from.
 -- portId   : The port the device is configured to use.
+-- slaveId  : The identifier (index) of the slave.
 -- clParams : The command line parameters.
 -------------------------------------------------------------------------------
-function rxSlave(device, portId, clParams)
-  print(string.format("Launching RX slave: Core = %u, Port: %u", 
-      moongen:getCore(), portId)
-  )
+function rxSlave(device, portId, slaveId, clParams)
+  print(string.format("Launching RX slave: %u, Core: %u, Port: %u", 
+      slaveId, moongen:getCore(), portId))
 
   -- Variables for receiving:
   local rxPackets = 0                  
@@ -368,7 +359,7 @@ function rxSlave(device, portId, clParams)
             (constants.printTimePassPcnt * clParams.statsDisplay / 1000)
 
           -- Printing and logging:
-          if canPrint(clParams) and sufficientTimeSincePrint then 
+          if canPrint(slaveId, clParams) and sufficientTimeSincePrint then 
               lastPrintTime = moongen.getTime() - startTime
               if clParams.writemode == 1 then
                   os.execute("clear")      
@@ -490,24 +481,24 @@ end
 -- Slave function to perform TX.
 -- device   : The MoonGen device to sent the packets from.
 -- portId   : The port the device is configures to use.
+-- slaveId  : The identifier (index) of the slave.
 -- clParams : The command line parameters
 -------------------------------------------------------------------------------
-function txSlave(device, portId, clParams) 
-  print(string.format("Launching TX slave: Core = %u, Port: %u", 
-      moongen:getCore(), portId)
-  )
+function txSlave(device, portId, slaveId, clParams) 
+  print(string.format("Launching TX slave: %u, Core: %u, Port: %u", 
+      slaveId, moongen:getCore(), portId))
 
-  local state     = "canrun"
-  local stats     = deepCopy(statsTx)     
-  local txQueue   = device:getTxQueue(0) 
-  local bstParams = deepCopy(burstParams)
-  local outFile   = ""
+  local state       = "canrun"
+  local stats       = deepCopy(statsTx)     
+  local txQueue     = device:getTxQueue(0) 
+  local timerParams = deepCopy(timeParams)
+  local outFile     = ""
 
   -- Create the filename of the file to write to.
   if clParams.writemode == 2 then
       outFile = clParams.fileprefix .. ".txt"
   elseif clParams.writemode == 3 then
-      -- Pre core mode: write header
+      -- Per core mode: write header
       outFile = clParams.fileprefix                 .. 
                 "-c" .. tostring(moongen:getCore()) .. 
                 "-p" .. tostring(portId) .. ".txt";
@@ -536,8 +527,9 @@ function txSlave(device, portId, clParams)
     streams[i].bufArray = streams[i].mempool:bufArray(clParams.flowsPerStream)
   end
 
+  local counter = 0
   -- Modify all the packets so that their data follows the traffic pattern:
-  for i, stream in ipairs(streams) do
+  for streamid, stream in ipairs(streams) do
       -- Subtraction of 4 is for the FCS
       local maxPacketSize = clParams.packetSize - 4
       if clParams.mustImix then 
@@ -550,22 +542,14 @@ function txSlave(device, portId, clParams)
       stream.bufArray:alloc(maxPacketSize)
 
       -- Modify the packets:
-      for _, buf in ipairs(stream.bufArray) do
+      for flowid, buf in ipairs(stream.bufArray) do
           if clParams.mustImix then
               local pktSize = imixSize() - 4
               buf.pkt_len   = pktSize
               buf.data_len  = pktSize
           end 
 
-          bstParams.flowid = math.fmod(
-		          bstParams.counter, clParams.flowsPerStream) 
-          bstParams.streamid = math.floor(
-              bstParams.counter /  clParams.flowsPerStream)
-
-          buildTxFrame(device.id, buf, bstParams, clParams)
-
-          bstParams.counter = math.fmod(
-		          bstParams.counter + 1, clParams.totalFlows) 
+          buildTxFrame(device.id, buf, streamid - 1, flowid - 1, clParams)
       end 
       
       -- Offload the checksum to the NIC:
@@ -578,10 +562,10 @@ function txSlave(device, portId, clParams)
   local startTime     = moongen.getTime()
   while state == "canrun" and moongen.running() do
       for _, stream in ipairs(streams) do
-          bstParams.currtsc = tonumber(moongen:getCycles())
-          bstParams.difftsc = bstParams.currtsc - bstParams.prevtsc
+          timerParams.currtsc = tonumber(moongen:getCycles())
+          timerParams.difftsc = timerParams.currtsc - timerParams.prevtsc
 
-          sendBursts(txQueue, stats, bstParams, clParams, stream)
+          sendBursts(txQueue, stats, timerParams, clParams, stream)
       end
 
       -- Update the iteration and timeout params:
@@ -598,7 +582,7 @@ function txSlave(device, portId, clParams)
              (constants.printTimePassPcnt * clParams.statsDisplay / 1000))
 
           -- Printing and logging:
-          if canPrint(clParams) and sufficientTimeSincePrint then 
+          if canPrint(slaveId, clParams) and sufficientTimeSincePrint then 
               lastPrintTime = moongen.getTime() - startTime
               if clParams.writemode == 1 then
                   os.execute("clear")      
@@ -631,33 +615,30 @@ end
 -- Builds a frame for TX.
 -- portId     : The port of the device to build the frame for.
 -- buf        : The buffer for the packet holding the frame.
--- bstParams  : The parameters of the burst.
+-- streamid   : The id of the stream for the frame.
+-- flowid     : The id of the flow for the frame.
 -- clParams   : The command line parameters.
 -------------------------------------------------------------------------------
-function buildTxFrame(portId, buf, bstParams, clParams)
-    local varyEth  = clParams.ethStrideNum * bstParams.streamid 
-                   + bstParams.flowid
-    local varyIp   = clParams.ipStrideNum * bstParams.streamid 
-                   + bstParams.flowid
-    local varyPort = clParams.portStride * bstParams.streamid 
-                   + bstParams.flowid
-    local ethSrc   = clParams.ethSrcVaryNum * varyEth 
-                   + clParams.ethSrcBaseNum + portId
-    local ethDst   = clParams.ethDstBaseNum + clParams.ethDstVaryNum * varyEth
+function buildTxFrame(portId, buf, streamid, flowid, clParams)
+    local srcMac  = clParams.srcMacBase + (streamid * clParams.srcMacStride) 
+                  + (flowid * clParams.srcMacVary)
+    local dstMac  = clParams.dstMacBase + (streamid * clParams.dstMacStride) 
+                  + (flowid * clParams.dstMacVary)
+    local srcIp   = clParams.srcIpBase + (streamid * clParams.srcIpStride) 
+                  + (flowid * clParams.srcIpVary)
+    local dstIp   = clParams.dstIpBase + (streamid * clParams.dstIpStride) 
+                  + (flowid * clParams.dstIpVary)
+    local srcPort = band(clParams.srcPortBase
+                            + (streamid * clParams.srcPortStride) 
+                            + (flowid * clParams.srcPortVary),
+                         0xffff)
+    local dstPort = band(clParams.dstPortBase 
+                            + (streamid * clParams.dstPortStride) 
+                            + (flowid * clParams.dstPortVary),
+                         0xffff)
 
-    local ethSrcFlipped = rshift(bswap(ethSrc + 0ULL), 16)
-    local ethDstFlipped = rshift(bswap(ethDst + 0ULL), 16)
-
-    -- Create IP addresses:
-    local ipSrcAddr = clParams.ipSrcVaryNum * varyIp
-                    + clParams.ipSrcBaseNum + portId
-    local ipDstAddr = clParams.ipDstBaseNum + clParams.ipDstVaryNum * varyIp
-
-    -- Create port addresses:
-    local portSrcAddr = 
-        band(clParams.portSrcBase + clParams.portSrcVary * varyPort, 0xffff)
-    local portDstAddr = 
-        band(clParams.portDstBase + clParams.portDstVary * varyPort, 0xffff)
+    local srcMacFlipped = rshift(bswap(srcMac + 0ULL), 16)
+    local dstmacFlipped = rshift(bswap(dstMac + 0ULL), 16)
 
     local frameSize = buf.pkt_len
     local ethLength = constants.ethHeaderLength
@@ -668,22 +649,22 @@ function buildTxFrame(portId, buf, bstParams, clParams)
 
     -- ETH mod:
     pkt.eth:setType(constants.ethTypeIpv4)
-    pkt.eth:setSrc(ethSrcFlipped)
-    pkt.eth:setDst(ethDstFlipped)
+    pkt.eth:setSrc(srcMacFlipped)
+    pkt.eth:setDst(dstmacFlipped)
 
     -- IP mod:
     pkt.ip4:setLength(ipLength)
     pkt.ip4:setHeaderLength(5)  -- Number of 32 bit words : use min value.
     pkt.ip4:setProtocol(17)
     pkt.ip4:setTTL(64)
-    pkt.ip4:setSrc(ipSrcAddr)
-    pkt.ip4:setDst(ipDstAddr)
+    pkt.ip4:setSrc(srcIp)
+    pkt.ip4:setDst(dstIp)
     pkt.ip4:setVersion(4)
 
     -- UDP mod:
     pkt.udp:setLength(udpLength)
-    pkt.udp:setSrcPort(portSrcAddr)
-    pkt.udp:setDstPort(portDstAddr)
+    pkt.udp:setSrcPort(srcPort)
+    pkt.udp:setDstPort(dstPort)
 
     -- Start of payload looks as follows:
     --
@@ -693,8 +674,8 @@ function buildTxFrame(portId, buf, bstParams, clParams)
     -- ----------------------------------------------
     --
     -- The timestamp is alredy set, so set flow and stream id.
-    pkt.payload.uint32[2] = bstParams.flowid
-    pkt.payload.uint32[3] = bstParams.streamid
+    pkt.payload.uint32[2] = flowid
+    pkt.payload.uint32[3] = streamid
 
     -- Fill the rest of the payload
     local payLength   = udpLength - constants.udpHeaderLength
@@ -713,15 +694,15 @@ end
 -------------------------------------------------------------------------------
 -- Generates and sends a burst if enough time has passed to achieve the desired
 -- packet rate, otherwise nothing happens.
--- txQueue    : The queue to send the burst on.
--- stats      : The stats to update.
--- bstParams  : The parameters for the burst to send.
--- clParams   : The command line parameters.
--- stream     : The stream to send.
+-- txQueue     : The queue to send the burst on.
+-- stats       : The stats to update.
+-- timerParams : The parameters for the burst to send.
+-- clParams    : The command line parameters.
+-- stream      : The stream to send.
 -------------------------------------------------------------------------------
-function sendBursts(txQueue, stats , bstParams, clParams, stream) 
+function sendBursts(txQueue, stats , timerParams, clParams, stream)
     -- If enough time has passed to achieve the requested rate.
-    if bstParams.difftsc > clParams.txDelta then 
+    if timerParams.difftsc > clParams.txDelta then 
         local nbtx = 0
         for i = 1, clParams.burstsPerStream do
             stats.bursts = stats.bursts + 1
@@ -734,7 +715,8 @@ function sendBursts(txQueue, stats , bstParams, clParams, stream)
         stats.packets = stats.packets + nbtx
 
         for _, buf in ipairs(stream.bufArray) do 
-            stats.bytes = stats.bytes + 
+            -- Add four for the FCS.
+            stats.bytes = 4 + stats.bytes + 
                           (clParams.burstsPerStream * buf.pkt_len)
         end
 
@@ -742,7 +724,7 @@ function sendBursts(txQueue, stats , bstParams, clParams, stream)
             stats.short = stats.short + 1
         end
 
-        bstParams.prevtsc = bstParams.currtsc
+        timerParams.prevtsc = timerParams.currtsc
     end
 end
 
@@ -847,18 +829,18 @@ end
 
 -------------------------------------------------------------------------------
 -- Determines if a core is allowed to print it's stats.
+-- slaveId  : Identifier for the slave requesting to print.
 -- clParams : The command line parameters
 -------------------------------------------------------------------------------
-function canPrint(clParams) 
+function canPrint(slaveId, clParams) 
     local elapsedTime = moongen.getTime() - globalStartTime
     local timePerCore = clParams.statsDisplay / 
                         (#clParams.rxSlavePorts + #clParams.txSlavePorts)
 
     local timeMod = math.floor(
-        math.fmod(elapsedTime * 1000, clParams.statsDisplay)
-    )
+        math.fmod(elapsedTime * 1000, clParams.statsDisplay))
 
-    return timeMod == math.floor((timePerCore * (moongen:getCore() - 1)))
+    return timeMod == math.floor(timePerCore * slaveId)
 end
 
 -------------------------------------------------------------------------------
@@ -884,52 +866,58 @@ function clParams:print()
       "\n| File prefix        : %30s |"                                 ..
       "\n| Write mode         : %30u |"                                 ..
       "\n| ETH src base       : %30s |"                                 ..
-      "\n| ETH src vary       : %30s |"                                 ..
       "\n| ETH dst base       : %30s |"                                 ..
+      "\n| ETH src vary       : %30s |"                                 ..
       "\n| ETH dst vary       : %30s |"                                 ..
-      "\n| ETH stride         : %30s |"                                 ..
+      "\n| ETH src stride     : %30s |"                                 ..
+      "\n| ETH dst stride     : %30s |"                                 ..
       "\n| IP src base        : %30s |"                                 ..
-      "\n| IP src vary        : %30s |"                                 ..
       "\n| IP dst base        : %30s |"                                 ..
+      "\n| IP src vary        : %30s |"                                 ..
       "\n| IP dst vary        : %30s |"                                 ..
-      "\n| IP stride          : %30s |"                                 ..
+      "\n| IP src stride      : %30s |"                                 ..
+      "\n| IP dst stride      : %30s |"                                 ..
       "\n| PORT src base      : %30u |"                                 ..
-      "\n| PORT src vary      : %30u |"                                 ..
       "\n| PORT dst base      : %30u |"                                 ..
+      "\n| PORT src vary      : %30u |"                                 ..
       "\n| PORT dst vary      : %30u |"                                 ..
-      "\n| PORT stride        : %30u |"                                 ..
+      "\n| PORT src stride    : %30u |"                                 ..
+      "\n| PORT dst stride    : %30u |"                                 ..
       "\n+-----------------------------------------------------+\n"     ,
-      #self.rxSlavePorts      ,
-      #self.txSlavePorts      ,
-      self.rxDescs            ,
-      self.txDescs            ,
-      self.paramDisplay / 1000,
-      self.statsDisplay / 1000,
-      self.numberOfStreams    ,
-      self.burstsPerStream    ,
-      self.flowsPerStream     ,
-      self.totalFlows         ,
-      self.iterations         ,
-      self.timeout            ,
-      self.packetSize         , 
-      tostring(self.mustImix) ,
-      self.fileprefix         ,
-      self.writemode          ,
-      self.ethSrcBase         ,
-      self.ethSrcVary         ,
-      self.ethDstBase         ,
-      self.ethDstVary         ,
-      self.ethStride          ,
-      self.ipSrcBase          ,
-      self.ipSrcVary          ,
-      self.ipDstBase          ,
-      self.ipDstVary          ,
-      self.ipStride           ,
-      self.portSrcBase        ,
-      self.portSrcVary        ,
-      self.portDstBase        ,
-      self.portDstVary        ,
-      self.portStride  
+      #self.rxSlavePorts                       ,
+      #self.txSlavePorts                       ,
+      self.rxDescs                             ,
+      self.txDescs                             ,
+      self.paramDisplay / 1000                 ,
+      self.statsDisplay / 1000                 ,
+      self.numberOfStreams                     ,
+      self.burstsPerStream                     ,
+      self.flowsPerStream                      ,
+      self.totalFlows                          ,
+      self.iterations                          ,
+      self.timeout                             ,
+      self.packetSize                          ,  
+      tostring(self.mustImix)                  ,
+      self.fileprefix                          ,
+      self.writemode                           ,
+      string.format("%012x", self.srcMacBase)  ,
+      string.format("%012x", self.dstMacBase)  ,
+      string.format("%012x", self.srcMacVary)  ,
+      string.format("%012x", self.dstMacVary  ),
+      string.format("%012x", self.srcMacStride),
+      string.format("%012x", self.dstMacStride),
+      formatAsIp(self.srcIpBase)               ,
+      formatAsIp(self.dstIpBase)               ,
+      formatAsIp(self.srcIpVary)               ,
+      formatAsIp(self.dstIpVary)               ,
+      formatAsIp(self.srcIpStride)             ,
+      formatAsIp(self.dstIpStride)             ,
+      self.srcPortBase                         ,
+      self.dstPortBase                         ,
+      self.srcPortVary                         ,
+      self.dstPortVary                         ,
+      self.srcPortStride                       ,
+      self.dstPortStride  
     )
 
     print(paramString)
@@ -938,21 +926,32 @@ end
 ---- Argument Parsing ---------------------------------------------------------
 
 -------------------------------------------------------------------------------
--- Defines a table to specify which address have been converted to numeric
--- representations.
+-- Converts a MAC address from its string representation to a numeric one, in
+-- network byte order.
+-- address  : The address to convert.
 -------------------------------------------------------------------------------
-local addressConversionMask = {
-    ethSrcBase = false, 
-    ethSrcVary = false,
-    ethDstBase = false, 
-    ethDstVary = false,
-    ethStride  = false,
-    ipSrcBase  = true ,
-    ipSrcVary  = false,
-    ipDstBase  = true ,
-    ipDstVary  = false,
-    ipStride   = false
-}
+function convertMacAddress(address)
+	  local bytes = {string.match(address,
+                    '(%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)[-:](%x+)')}
+
+    local convertedAddress = 0
+    for i = 1, 6 do
+        convertedAddress = convertedAddress + 
+                           tonumber(bytes[#bytes + 1 - i], 16) * 256 ^ (i - 1)
+    end
+    return convertedAddress
+end
+
+
+-------------------------------------------------------------------------------
+-- Formats a 32 bit value as an IP address.
+-- ip   : The numeric representation of the IP address to format.
+-------------------------------------------------------------------------------
+function formatAsIp(ip) 
+    return string.format("%d.%d.%d.%d", 
+      band(rshift(ip, 24), 0xff), band(rshift(ip, 16), 0xff), 
+      band(rshift(ip, 8 ), 0xff), band(ip, 0xff))
+end
 
 -------------------------------------------------------------------------------
 -- Parses the command line arguments.
@@ -962,7 +961,7 @@ local addressConversionMask = {
 -------------------------------------------------------------------------------
 function parseArgs(params, ...)
     local command  = true  
-    local args     = {...} 
+    local args     = {...}
 
     for i,v in ipairs(args) do 
         if type(v) == "string" then 
@@ -1033,7 +1032,7 @@ function parseArgs(params, ...)
                     printUsage()
                     return false
                 end 
-                params.burstsPerStream = bursts
+                params.burstsPerStream = bps
             elseif v == "--flows-per-stream" or v == "-fps" then 
                 local fps = tonumber(args[i + 1])
                 if fps < 0 or fps > constants.maxFlowsPerStream then 
@@ -1120,48 +1119,73 @@ function parseArgs(params, ...)
                     return false
                 end
                 params.writemode = writemode
-            elseif v== "--vary-dst" or v == "-vd" then 
-                ethVar, ipVar, portVar =
-                  args[i + 1]:match("([^,]+),([^,]+),([^,]+)")
-                params.ethDstVary  = ethVar
-                params.ipDstVary   = ipVar
-                params.portDstVary = tonumber(portVar)
-
-                addressConversionMask.ethSDstVary = true
-                addressConversionMask.ipDstVary   = true
-            elseif v == "--vary-src" or v == "-vs" then 
-                ethVar, ipVar, portVar =
-                  args[i + 1]:match("([^,]+),([^,]+),([^,]+)")
-                params.ethSrcVary  = ethVar
-                params.ipSrcVary   = ipVar
-                params.portSrcVary = tonumber(portVar)
-
-                addressConversionMask.ethSrcVary = true
-                addressConversionMask.ipSrcVary  = true
-            elseif v == "--mac-stride" or v == "-ms" then
-                params.ethStride                = args[i + 1]
-                addressConversionMask.ethStride = true
-            elseif v == "--ip-stride" or v == "-ips" then 
-                params.ipStride                = args[i + 1]
-                addressConversionMask.ipStride = true
-            elseif v == "--port-stride" or v == "-pts" then 
-                params.portStride = tonumber(args[i + 1])
             elseif v == "--src-port" or v == "-spt" then 
-                params.portSrcBase = tonumber(args[i + 1])
+                params.srcPortBase = tonumber(args[i + 1])
             elseif v == "--dst-port" or v == "-dpt" then 
-                params.portDstBase = tonumber(args[i + 1])
-            elseif v == "--src-ip" or v == "-si" then 
-                params.ipSrcBase                = args[i + 1]
-                addressConversionMask.ipSrcBase = true
-            elseif v == "--dst-ip" or v == "-di" then
-                params.ipDstBase                = args[i + 1]
-                addressConversionMask.ipDstBase = true
+                params.dstPortBase = tonumber(args[i + 1])
+            elseif v == "--src-ip" or v == "-sip" then 
+                params.srcIpBase = parseIPAddress(
+                    string.match(args[i + 1],
+                        "%d%d?%d?%.%d%d?%d?%.%d%d?%d?%.%d%d?%d?"),
+                    true)
+            elseif v == "--dst-ip" or v == "-dip" then
+                params.dstIpBase = parseIPAddress(
+                    string.match(args[i + 1],
+                        "%d%d?%d?%.%d%d?%d?%.%d%d?%d?%.%d%d?%d?"),
+                    true)
             elseif v == "--src-mac" or v == "-sm" then 
-                params.ethSrcBase                = args[i + 1]
-                addressConversionMask.ethSrcBase = true
+                params.srcMacBase = convertMacAddress(
+                    string.match(args[i + 1],
+                        "%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"))
             elseif v == "--dst-mac" or v == "-dm" then 
-                params.ethDstBase                = args[i + 1]
-                addressConversionMask.ethDstBase = true
+                params.dstMacBase = convertMacAddress(
+                    string.match(args[i + 1],
+                        "%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"))
+            elseif v == "--src-port-vary" or v == "-sptv" then
+                params.srcPortVary = tonumber(string.match(args[i + 1], "%d+"))
+            elseif v == "--dst-port-vary" or v == "-dptv" then 
+                params.dstPortVary = tonumber(string.match(args[i + 1], "%d+"))
+            elseif v == "--src-ip-vary" or v == "-sipv" then 
+                params.srcIpVary = parseIPAddress(
+                    string.match(args[i +1 ],
+                        "%d%d?%d?%.%d%d?%d?%.%d%d?%d?%.%d%d?%d?"),
+                    true)
+            elseif v == "--dst-ip-vary" or v == "-dipv" then
+                params.dstIpVary = parseIPAddress(
+                    string.match(args[i + 1],
+                        "%d%d?%d?%.%d%d?%d?%.%d%d?%d?%.%d%d?%d?"),
+                    true)
+            elseif v == "--src-mac-vary" or v == "-smv" then 
+                params.srcMacVary = convertMacAddress(
+                    string.match(args[i + 1],
+                        "%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"))
+            elseif v == "--dst-mac-vary" or v == "-dmv" then 
+                params.dstMacVary = convertMacAddress(
+                    string.match(args[i + 1],
+                        "%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"))
+            elseif v == "--src-port-stride" or v == "-spts" then
+                params.srcPortStride = tonumber(string.match(args[i + 1], "%d+"))
+            elseif v == "--dst-port-stride" or v == "-dpts" then 
+                params.dstPortStride = tonumber(string.match(args[i + 1], "%d+"))
+            elseif v == "--src-ip-stride" or v == "-sips" then 
+                params.srcIpStride = parseIPAddress(
+                    string.match(args[i +1 ],
+                        "%d%d?%d?%.%d%d?%d?%.%d%d?%d?%.%d%d?%d?"),
+                    true)
+            elseif v == "--dst-ip-stride" or v == "-dips" then
+                params.dstIpStride = parseIPAddress(
+                    string.match(args[i + 1],
+                        "%d%d?%d?%.%d%d?%d?%.%d%d?%d?%.%d%d?%d?"),
+                    true)
+            elseif v == "--src-mac-stride" or v == "-sms" then 
+                params.srcMacStride = convertMacAddress(
+                    string.match(args[i + 1],
+                        "%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"))
+            elseif v == "--dst-mac-stride" or v == "-dms" then 
+                params.dstMacStride = convertMacAddress(
+                    string.match(args[i + 1],
+                        "%x%x:%x%x:%x%x:%x%x:%x%x:%x%x"))
+
             elseif v == "--help" or v == "-h" then 
                 printUsage()
                 return false
@@ -1170,9 +1194,6 @@ function parseArgs(params, ...)
     end
     params.totalFlows = params.numberOfStreams * params.flowsPerStream
 
-    -- Convert string addresses to numeric:
-    convertAddressesToNumeric(params)
-
     -- Check that the strides are valid:
     checkStrideValidity(params)
 
@@ -1180,68 +1201,27 @@ function parseArgs(params, ...)
 end
 
 -------------------------------------------------------------------------------
--- Converts string versions of the addresses to numeric ones
--- params   : The params to update the string address to numbric
--------------------------------------------------------------------------------
-function convertAddressesToNumeric(params) 
-    -- MAC related-------------------------------------------------------------
-
-    if addressConversionMask.ethSrcBase then 
-        params.ethSrcBaseNum = parseMacAddress(params.ethSrcBase, true)
-    end
-
-    if addressConversionMask.ethDstBase then 
-        params.ethDstBaseNum = parseMacAddress(params.ethDstBase, true)
-    end
-
-    if addressConversionMask.ethSrcVary then 
-        params.ethSrcVaryNum = parseMacAddress(params.ethSrcVary, true)
-    end
-
-    if addressConversionMask.ethDstVary then 
-        params.ethDstVaryNum = parseMacAddress(params.ethDstVary, true)
-    end 
-
-    if addressConversionMask.ethStride then 
-        params.ethStrideNum = parseMacAddress(params.ethStride, true)
-    end
-
-    -- IP related -------------------------------------------------------------
-
-    if addressConversionMask.ipSrcBase then 
-        params.ipSrcBaseNum = parseIPAddress(params.ipSrcBase, true)
-    end
-
-    if addressConversionMask.ipDstBase then 
-        params.ipDstBaseNum = parseIPAddress(params.ipDstBase, true)
-    end
-
-    if addressConversionMask.ipSrcVary then 
-        params.ipSrcVaryNum = parseIPAddress(params.ipSrcVary, true)
-    end
-
-    if addressConversionMask.ipDstVary then 
-        params.ipDstVaryNum = parseIPAddress(params.ipDstVary, true)
-    end 
-
-    if addressConversionMask.ipStride then 
-        params.ipStrideNum = parseIPAddress(params.ipStride, true)
-    end
-end
-
--------------------------------------------------------------------------------
 -- Checks that the strides for the parameters are valid
 -- params   : The parameters whose strides validity must be checked
 -------------------------------------------------------------------------------
 function checkStrideValidity(params)
-    if params.ethStrideNum == 0 then 
-        params.ethStrideNum = band(params.flowsPerStream, 0xffffffffffff)  
+    if params.srcMacStride == 0 then 
+        params.srsMacStride = band(params.flowsPerStream, 0xffffffffffff)  
     end
-    if params.ipStrideNum == 0 then 
-        params.ipStrideNum = band(params.flowsPerStream, 0xffffffff)  
+    if params.dstMacStride == 0 then 
+        params.dstMacStride = band(params.flowsPerStream, 0xffffffffffff)  
     end
-    if params.portStride == 0 then 
-        params.portStride = band(params.flowsPerStream, 0xffff) 
+    if params.srcIpStride == 0 then 
+        params.srcIpStride = band(params.flowsPerStream, 0xffffffff)  
+    end
+    if params.dstIpStride == 0 then 
+        params.dstIpStride = band(params.flowsPerStream, 0xffffffff)  
+    end
+    if params.srcPortStride == 0 then 
+        params.srcPortStride = band(params.flowsPerStream, 0xffff) 
+    end  
+    if params.dstPortStride == 0 then 
+        params.dstPortStride = band(params.flowsPerStream, 0xffff) 
     end  
 end
 
@@ -1297,47 +1277,60 @@ function printUsage()
         "     PREFIX : Prefix of the file to write results to\n"           ..
         "     NOTE   : .txt is added to the PREFIX so\n"                   ..
         "              -fp eg will write to eg.txt\n"                      ..
-        "              By default as single file is written, (-wm 2)\n"    ..
-        "              see --write-mode for more options\n\n"              ..
+        "              By default a single file is written, (-wm 2)\n"     ..
+        "              SEE --write-mode for more options\n\n"              ..
         "   --write-mode|-wm MODE where\n"                                 ..
         "     MODE : Writing mode for stats, options:\n"                   ..
         "       0  : Don't write or show stats\n"                          ..
         "       1  : Print stats to console (default)\n"                   ..
         "       2  : Write all core stats to a global file\n"              ..
         "       3  : Write separate stats for each core\n\n"               ..
-        "   --vary-dst|-vd MAC_VARY,IP_VARY,PORT_VARY where\n"             ..
-        "     MAC_VARY  : Vary source mac (format a:b:c:d:e:f)\n"          ..
-        "     IP_VARY   : Vary source ip  (format a.b.c.d)\n"              ..
-        "     PORT_VARY : Vary port ip (format a (number))\n"              ..
-        "     NOTE: comma separated list without spaces, example:\n"       ..
-        "           00:00:00:00:a0:21,0.0.0.1,2\n\n"                       ..
-        "   --vary-src|-vs MAC_VARY,IP_VARY,PORT_VARY where\n"             ..
-        "     MAC_VARY  : Vary source mac (format a:b:c:d:e:f)\n"          ..
-        "     IP_VARY   : Vary source ip  (format a.b.c.d)\n"              ..
-        "     PORT_VARY : Vary port ip (format a (number))\n"              ..
-        "     NOTE: comma separated list without spaces, example:\n"       ..
-        "           00:00:00:00:a0:21,0.0.0.1,2\n\n"                       ..
-        "   --mac-stride|-ms MAC_STRIDE where\n"                           ..
-        "     MAC_STRIDE : MAC stride between streams (a:b:c:d:e:f)\n\n"   ..
-        "   --ip-stride|-ips IP_STRIDE where\n"                            ..
-        "     IP_STRIDE : IP stride between streams (A.B.C.D)\n\n"         ..
-        "   --port-stride|-pts PORT_STRIDE where\n"                        ..
-        "     PORT_STRIDE : PORT stride between streams\n\n"               ..
         "   --src-mac|-sm SRC_MAC where\n"                                 ..
-        "     SRC_MAC : Base SRC mac address (a:b:c:d:e:f)\n\n"            ..
+        "     SRC_MAC : Base SRC mac address (aa:bb:cc:dd:ee:ff)\n\n"      ..
         "   --dst-mac|-dm DST_MAC where\n"                                 ..
-        "     DST_MAC : Base DST mac address (a:b:c:d:e:f)\n\n"            ..
+        "     DST_MAC : Base DST mac address (aa:bb:cc:dd:ee:ff)\n\n"      ..
         "   --src-ip|-sip SRC_IP where\n"                                  ..
         "     SRC_IP : Base SRC ip address (A.B.C.D)\n\n"                  ..
-        "   --dst-mac|-dip DST_IP where\n"                                 ..
+        "   --dst-ip|-dip DST_IP where\n"                                 ..
         "     DST_IP : Base DST ip address (A.B.C.D)\n\n"                  ..
         "   --src-port|-spt SRC_PORT where\n"                              ..
         "     SRC_PORT : Base source UDP port\n\n"                         ..
         "   --dst-port|-dpt DST_PORT where\n"                              ..
         "     DST_PORT : Base destination UDP port\n\n"                    ..
+        "   --src-mac-vary|-smv SRC_MAC_VARY where\n"                      ..
+        "     SRC_MAC_VARY : Variation in SRC mac address between flows\n" ..
+        "                    (aa:bb:cc:dd:ee:ff)\n\n"                      ..
+        "   --dst-mac-vary|-dmv DST_MAC_VARY where\n"                      ..
+        "     DST_MAC_VARY : Variation in DST mac address between flows\n" ..
+        "                    (aa:bb:cc:dd:ee:ff)\n\n"                      ..
+        "   --src-ip-vary|-sipv SRC_IP_VARY where\n"                       ..
+        "     SRC_IP_VARY : Variation in SRC ip address between flows\n"   ..
+        "                   (A.B.C.D)\n\n"                                 ..
+        "   --dst-ip-vary|-dipv DST_IP_VARY where\n"                       ..
+        "     DST_IP_VARY : Variation in DST ip address between flows\n"   ..
+        "                   (A.B.C.D)\n\n"                                 ..
+        "   --src-port-vary|-sptv SRC_PORT_VARY where\n"                   ..
+        "     SRC_PORT_VARY : Variation in SRC port between flows\n\n"     ..
+        "   --dst-port-vary|-dptv DST_PORT_VARY where\n"                   ..
+        "     DST_PORT_VARY : Variation in DST port between flows\n\n"     ..
+        "   --src-mac-stride|-sms SRC_MAC_STRIDE where\n"                  ..
+        "     SRC_MAC_STRIDE : Variation in SRC mac address between\n"     ..
+        "                      streams (aa:bb:cc:dd:ee:ff)\n\n"            ..
+        "   --dst-mac-stride|-dms DST_MAC_STRIDE where\n"                  ..
+        "     DST_MAC_STRIDE : Variation in DST mac address between\n"     ..
+        "                      streams (aa:bb:cc:dd:ee:ff)\n\n"            ..
+        "   --src-ip-stride|-sips SRC_IP_STRIDE where\n"                   ..
+        "     SRC_IP_STRIDE : Variation in SRC ip address between\n"       ..
+        "                     streams (A.B.C.D)\n\n"                       ..
+        "   --dst-ip-stride|-dips DST_IP_STRIDE where\n"                   ..
+        "     DST_IP_STRIDE: Variation in DST ip address between\n"        ..
+        "                     streams (A.B.C.D)\n\n"                       ..
+        "   --src-port-stride|-spts SRC_PORT_STRIDE where\n"               ..
+        "     SRC_PORT_STRIDE : Variation in SRC port between streams\n\n" ..
+        "   --dst-port-stride|-dpts DST_PORT_STRIDE where\n"               ..
+        "     DST_PORT_STRIDE : Variation in DST port between streams\n\n" ..
         "   --help|-h Print usage\n\n"                                     ..
-        "   NOTE: The later arguments have more preference than earlier\n" ..
-        "         ones.\n\n"
+        "   NOTE: Later arguments will overwrite earlier ones.\n"
     )
     print(usage)
 end
