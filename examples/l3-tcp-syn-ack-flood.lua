@@ -8,6 +8,15 @@ local libmoon	= require "libmoon"
 
 
 function configure(parser)
+	function convertMac(macStr)
+		mac = parseMacAddress(macStr, true)
+		if mac then
+			return mac
+		else
+			parser:error("failed to parse MAC "..macStr)
+		end
+	end
+
 	parser:description("Generates TCP SYN flood from varying source IPs, supports both IPv4 and IPv6")
 	parser:argument("dev", "Devices to transmit from."):args("*"):convert(tonumber)
 	parser:option("-r --rate", "Transmit rate in Mbit/s."):default(10000):convert(tonumber)
@@ -17,6 +26,7 @@ function configure(parser)
 	parser:option("-s --synq", "Number of SYN queues."):default(0):convert(tonumber)
 	parser:option("-x --synackq", "Number of SYN-ACK queues."):default(0):convert(tonumber)
 	parser:option("-a --ackq", "Number of ACK queues."):default(0):convert(tonumber)
+	parser:option("-m --ethDst", "Destination MAC, this option may be repeated."):count("*"):convert(convertMac)
 end
 
 function master(args)
@@ -49,7 +59,7 @@ function master(args)
 		for i = args.ackq+args.synackq, args.ackq+args.synackq+args.synq-1 do
 		   local txQ = dev:getTxQueue(i)
 		   txQ:setRate(args.rate)
-		   mg.startTask("synSlave", txQ, args.ip, args.flows, args.destination)
+		   mg.startTask("synSlave", txQ, args.ip, args.flows, args.destination, args.ethDst)
 		end
 
 	end
@@ -124,7 +134,7 @@ function replySlave(synack, txQ, rxQ)
 	txStats:finalize()
 end
 
-function synSlave(queue, minA, numIPs, dest)
+function synSlave(queue, minA, numIPs, dest, ethDst)
 	print("synSlave")
 	--- parse and check ip addresses
 	local minIP, ipv4 = parseIPAddress(minA)
@@ -137,11 +147,10 @@ function synSlave(queue, minA, numIPs, dest)
 	-- min TCP packet size for IPv6 is 74 bytes (+ CRC)
 	local packetLen = ipv4 and 60 or 74
 	
-	-- continue normally
 	local mem = memory.createMemPool(function(buf)
 		buf:getTcpPacket(ipv4):fill{ 
 			ethSrc = queue,
-			ethDst = "90:e2:ba:7d:85:6c",
+			ethDst = ethDst[1] or "90:e2:ba:7d:85:6c",
 			ip4Dst = dest, 
 			ip6Dst = dest,
 			tcpSyn = 1,
@@ -150,6 +159,21 @@ function synSlave(queue, minA, numIPs, dest)
 			pktLength = packetLen
 		}
 	end)
+
+	if #ethDst == 0 or #ethDst == 1 then
+		function updateEthDst(pkt)
+		end
+	else
+		local idx = nil
+		function updateEthDst(pkt)
+			idx, dst = next(ethDst, idx)
+			if not idx then
+				idx = nil
+				idx, dst = next(ethDst, idx)
+			end
+			pkt.eth:setDst(dst)
+		end
+	end
 
 	local bufs = mem:bufArray(128)
 	local counter = 0
@@ -166,6 +190,7 @@ function synSlave(queue, minA, numIPs, dest)
 
 				pkt.tcp:setDstPort(80)
 				pkt.ip4.src:set(minIP)
+				updateEthDst(pkt)
 				--increment IP
 				-- if ipv4 then
 				--	   pkt.ip4.src:set(minIP)
