@@ -8,13 +8,21 @@ local libmoon	= require "libmoon"
 
 
 function configure(parser)
-	function convertMac(macStr)
-		mac = parseMacAddress(macStr, true)
-		if mac then
-			return mac
-		else
-			parser:error("failed to parse MAC "..macStr)
+	function convertMac(str)
+		mac = parseMacAddress(str, true)
+		if not mac then
+			parser:error("failed to parse MAC "..str)
 		end
+		return mac
+	end
+
+	function convertTime(str)
+		local pattern = "^(%d+)([mu]?s)$"
+		local _, _, n, unit = string.find(str, pattern)
+		if not (n and unit) then
+			parser:error("failed to parse time '"..str.."', it should match '"..pattern.."' pattern")
+		end
+		return {n=tonumber(n), unit=unit}
 	end
 
 	parser:description("Generates TCP SYN flood from varying source IPs, supports both IPv4 and IPv6")
@@ -27,6 +35,7 @@ function configure(parser)
 	parser:option("-x --synackq", "Number of SYN-ACK queues."):default(0):convert(tonumber)
 	parser:option("-a --ackq", "Number of ACK queues."):default(0):convert(tonumber)
 	parser:option("-m --ethDst", "Destination MAC, this option may be repeated."):count("*"):convert(convertMac)
+	parser:option("--ipg", "Inter-packet gap, time units (s, ms, us) must be specified."):convert(convertTime)
 end
 
 function master(args)
@@ -59,7 +68,7 @@ function master(args)
 		for i = args.ackq+args.synackq, args.ackq+args.synackq+args.synq-1 do
 		   local txQ = dev:getTxQueue(i)
 		   txQ:setRate(args.rate)
-		   mg.startTask("synSlave", txQ, args.ip, args.flows, args.destination, args.ethDst)
+		   mg.startTask("synSlave", txQ, args.ip, args.flows, args.destination, args.ethDst, args.ipg)
 		end
 
 	end
@@ -134,8 +143,18 @@ function replySlave(synack, txQ, rxQ)
 	txStats:finalize()
 end
 
-function synSlave(queue, minA, numIPs, dest, ethDst)
-	print("synSlave")
+function synSlave(queue, minA, numIPs, dest, ethDst, ipg)
+	local ipgSleepFunc = function() end
+	if ipg and ipg.n ~= 0 then
+		if ipg.unit == "us" then
+			ipgSleepFunc = function() libmoon.sleepMicrosIdle(ipg.n) end
+		elseif ipg.unit == "ms" then
+			ipgSleepFunc = function() libmoon.sleepMillisIdle(ipg.n) end
+		elseif ipg.unit == "s" then
+			ipgSleepFunc = function() libmoon.sleepMillisIdle(ipg.n * 1000) end
+		end
+	end
+
 	--- parse and check ip addresses
 	local minIP, ipv4 = parseIPAddress(minA)
 	if minIP then
@@ -216,7 +235,7 @@ function synSlave(queue, minA, numIPs, dest, ethDst)
 			queue:send(bufs)
 			txStats:update()
 		end
-		libmoon.sleepMicrosIdle(1)
+		ipgSleepFunc()
 	end
 	txStats:finalize()
 end
