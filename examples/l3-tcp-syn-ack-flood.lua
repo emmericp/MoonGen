@@ -169,22 +169,24 @@ function synSlave(queue, minA, numIPs, dest, ethDst, ipg)
 	local mem = memory.createMemPool(function(buf)
 		buf:getTcpPacket(ipv4):fill{ 
 			ethSrc = queue,
-			ethDst = ethDst[1] or "90:e2:ba:7d:85:6c",
+			ethDst = "90:e2:ba:7d:85:6c",
 			ip4Dst = dest, 
 			ip6Dst = dest,
 			tcpSyn = 1,
 			tcpSeqNumber = 1,
 			tcpWindow = 10,
-			pktLength = packetLen
-		}
+			pktLength = packetLen}
+		-- FIXME: workaround
+		if ethDst[1] then
+			buf:getTcpPacket(ipv4).eth:setDst(ethDst[1])
+		end
 	end)
 
-	if #ethDst == 0 or #ethDst == 1 then
-		function updateEthDst(pkt)
-		end
-	else
+	local updateEthDst = function(pkt) end
+	if #ethDst > 1 then
 		local idx = nil
-		function updateEthDst(pkt)
+		local dst
+		updateEthDst = function(pkt)
 			idx, dst = next(ethDst, idx)
 			if not idx then
 				idx = nil
