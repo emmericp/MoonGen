@@ -2,18 +2,19 @@ local mg		= require "moongen"
 local memory	= require "memory"
 local device	= require "device"
 local stats		= require "stats"
-local log 		= require "log"
+local log		= require "log"
 local ip4		= require "proto.ip4"
 local libmoon	= require "libmoon"
 
 
 function configure(parser)
-	function convertMac(str)
+	-- do nothing, just check parse errors
+	function convertMac_fake(str)
 		mac = parseMacAddress(str, true)
 		if not mac then
 			parser:error("failed to parse MAC "..str)
 		end
-		return mac
+		return str
 	end
 
 	function convertTime(str)
@@ -34,7 +35,7 @@ function configure(parser)
 	parser:option("-s --synq", "Number of SYN queues."):default(0):convert(tonumber)
 	parser:option("-x --synackq", "Number of SYN-ACK queues."):default(0):convert(tonumber)
 	parser:option("-a --ackq", "Number of ACK queues."):default(0):convert(tonumber)
-	parser:option("-m --ethDst", "Destination MAC, this option may be repeated."):count("*"):convert(convertMac)
+	parser:option("-m --ethDst", "Destination MAC, this option may be repeated."):count("*"):convert(convertMac_fake)
 	parser:option("--ipg", "Inter-packet gap, time units (s, ms, us) must be specified."):convert(convertTime)
 end
 
@@ -52,23 +53,23 @@ function master(args)
 		dev:wait()
 
 		for i = 0, args.ackq-1 do
-		   local txQ = dev:getTxQueue(i)
-		   local rxQ = dev:getRxQueue(i)
-		   txQ:setRate(args.rate)
-		   mg.startTask("replySlave", false, txQ, rxQ)
+			local txQ = dev:getTxQueue(i)
+			local rxQ = dev:getRxQueue(i)
+			txQ:setRate(args.rate)
+			mg.startTask("replySlave", false, txQ, rxQ)
 		end
 
 		for i = args.ackq, args.ackq+args.synackq-1 do
-		   local txQ = dev:getTxQueue(i)
-		   local rxQ = dev:getRxQueue(i)
-		   txQ:setRate(args.rate)
-		   mg.startTask("replySlave", true, txQ, rxQ)
+			local txQ = dev:getTxQueue(i)
+			local rxQ = dev:getRxQueue(i)
+			txQ:setRate(args.rate)
+			mg.startTask("replySlave", true, txQ, rxQ)
 		end
 
 		for i = args.ackq+args.synackq, args.ackq+args.synackq+args.synq-1 do
-		   local txQ = dev:getTxQueue(i)
-		   txQ:setRate(args.rate)
-		   mg.startTask("synSlave", txQ, args.ip, args.flows, args.destination, args.ethDst, args.ipg)
+			local txQ = dev:getTxQueue(i)
+			txQ:setRate(args.rate)
+			mg.startTask("synSlave", txQ, args.ip, args.flows, args.destination, args.ethDst, args.ipg)
 		end
 
 	end
@@ -143,7 +144,12 @@ function replySlave(synack, txQ, rxQ)
 	txStats:finalize()
 end
 
-function synSlave(queue, minA, numIPs, dest, ethDst, ipg)
+function synSlave(queue, minA, numIPs, dest, ethDst_str, ipg)
+	ethDst = {}
+	for i,x in ipairs(ethDst_str) do
+		ethDst[i] = parseMacAddress(x, true)
+	end
+
 	local ipgSleepFunc = function() end
 	if ipg and ipg.n ~= 0 then
 		if ipg.unit == "us" then
@@ -202,41 +208,39 @@ function synSlave(queue, minA, numIPs, dest, ethDst, ipg)
 	local c = 0
 
 	local txStats = stats:newDevTxCounter(queue, "plain")
-	while true do
-		if mg.running() then
-			-- fill packets and set their size
-			bufs:alloc(packetLen)
-			for i, buf in ipairs(bufs) do
-				local pkt = buf:getTcpPacket(ipv4)
+	while mg.running() do
+		-- fill packets and set their size
+		bufs:alloc(packetLen)
+		for i, buf in ipairs(bufs) do
+			local pkt = buf:getTcpPacket(ipv4)
 
-				pkt.tcp:setDstPort(80)
-				pkt.ip4.src:set(minIP)
-				updateEthDst(pkt)
-				--increment IP
-				-- if ipv4 then
-				--	   pkt.ip4.src:set(minIP)
-				--	   pkt.ip4.src:add(counter)
-				-- else
-				--	   pkt.ip6.src:set(minIP)
-				--	   pkt.ip6.src:add(counter)
-				-- end
-				-- counter = incAndWrap(counter, numIPs)
+			pkt.tcp:setDstPort(80)
+			pkt.ip4.src:set(minIP)
+			updateEthDst(pkt)
+			--increment IP
+			-- if ipv4 then
+			--	   pkt.ip4.src:set(minIP)
+			--	   pkt.ip4.src:add(counter)
+			-- else
+			--	   pkt.ip6.src:set(minIP)
+			--	   pkt.ip6.src:add(counter)
+			-- end
+			-- counter = incAndWrap(counter, numIPs)
 
-				pkt.tcp:setSrcPort(1000+portCounter)
-				portCounter = incAndWrap(portCounter, 100)
+			pkt.tcp:setSrcPort(1000+portCounter)
+			portCounter = incAndWrap(portCounter, 100)
 
-				-- dump first 3 packets
-				if c < 3 then
-					buf:dump()
-					c = c + 1
-				end
+			-- dump first 3 packets
+			if c < 3 then
+				buf:dump()
+				c = c + 1
 			end
-			--offload checksums to NIC
-			bufs:offloadTcpChecksums(ipv4)
-
-			queue:send(bufs)
-			txStats:update()
 		end
+		--offload checksums to NIC
+		bufs:offloadTcpChecksums(ipv4)
+
+		queue:send(bufs)
+		txStats:update()
 		ipgSleepFunc()
 	end
 	txStats:finalize()
