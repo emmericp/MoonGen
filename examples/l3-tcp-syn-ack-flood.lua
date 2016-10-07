@@ -88,8 +88,8 @@ function replySlave(synack, txQ, rxQ)
 	local rxStats = stats:newDevRxCounter(rxQ, "plain")
 
 	while mg.running() do
-		local rx = rxQ:recv(rxBufs)
 		local tx = 0
+		local rx = rxQ:recv(rxBufs)
 		for i = 1, rx do
 			local buf = rxBufs[i]
 			-- alter buf
@@ -124,18 +124,19 @@ function replySlave(synack, txQ, rxQ)
 				pkt.tcp:setDstPort(pkt.tcp:getSrcPort())
 				pkt.tcp:setSrcPort(tmp2)
 
+				pkt.ip4:setChecksum(0)
+
 				tx = tx + 1
 				txBufs[tx] = buf
 			end
 		end
+		rxBufs:freeAfter(rx)
 		if tx > 0 then
 			txBufs:resize(tx)
 			--offload checksums to NIC
-			txBufs:offloadTcpChecksums(ipv4) -- FIXME
+			txBufs:offloadTcpChecksums(ipv4)
 			txQ:send(txBufs)
-			--txQ:sendN(txBufs, tx)
 
-			--bufs:freeAll()
 			rxStats:update()
 			txStats:update()
 		end
@@ -245,4 +246,3 @@ function synSlave(queue, minA, numIPs, dest, ethDst_str, ipg)
 	end
 	txStats:finalize()
 end
-
