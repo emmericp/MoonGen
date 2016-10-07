@@ -41,15 +41,17 @@ function configure(parser)
 end
 
 function master(args)
-	if args.synq == 0 and args.ackq == 0 and args.synackq == 0 then
+	if args.synq == 0 and args.ackq == 0 and args.synackq == 0 and not args.c then
 		log:fatal("Use at least one queue")
 	end
 
 	local txQueues = args.synq + args.ackq + args.synackq
 	local rxQueues = args.ackq + args.synackq
+	if args.c then rxQueues = rxQueues + 1 end
 
 	for i, dev in ipairs(args.dev) do
 		if rxQueues == 0 then rxQueues = 1 end
+		if txQueues == 0 then txQueues = 1 end
 		local dev = device.config{port = dev, txQueues = txQueues, rxQueues = rxQueues}
 		dev:wait()
 
@@ -74,7 +76,7 @@ function master(args)
 		end
 
 		if args.c then
-			mg.startTask("rxCount", dev)
+			mg.startTask("rxCount", dev:getRxQueue(rxQueues-1))
 		end
 	end
 	mg.waitForTasks()
@@ -226,14 +228,14 @@ function synSlave(queue, minA, numIPs, dest, ethDst_str, ipg)
 			pkt.ip4.src:set(minIP)
 			updateEthDst(pkt)
 			--increment IP
-			-- if ipv4 then
-			--	   pkt.ip4.src:set(minIP)
-			--	   pkt.ip4.src:add(counter)
-			-- else
-			--	   pkt.ip6.src:set(minIP)
-			--	   pkt.ip6.src:add(counter)
-			-- end
-			-- counter = incAndWrap(counter, numIPs)
+			if ipv4 then
+				   pkt.ip4.src:set(minIP)
+				   pkt.ip4.src:add(counter)
+			else
+				   pkt.ip6.src:set(minIP)
+				   pkt.ip6.src:add(counter)
+			end
+			counter = incAndWrap(counter, numIPs)
 
 			pkt.tcp:setSrcPort(1000+portCounter)
 			portCounter = incAndWrap(portCounter, 100)
@@ -254,9 +256,13 @@ function synSlave(queue, minA, numIPs, dest, ethDst_str, ipg)
 	txStats:finalize()
 end
 
-function rxCount(dev)
-	local rxCtr = stats:newDevRxCounter(dev)
+function rxCount(rxQ)
+	print("rxCount")
+	local rxCtr = stats:newDevRxCounter(rxQ)
+	local rxBufs = memory.bufArray(128)
 	while mg.running() do
+		local rx = rxQ:recv(rxBufs)
+		rxBufs:freeAll()
 		rxCtr:update()
 	end
 	rxCtr:finalize()
