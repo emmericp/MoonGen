@@ -35,6 +35,7 @@ function configure(parser)
 	parser:option("-s --synq", "Number of SYN queues."):default(0):convert(tonumber)
 	parser:option("-x --synackq", "Number of SYN-ACK queues."):default(0):convert(tonumber)
 	parser:option("-a --ackq", "Number of ACK queues."):default(0):convert(tonumber)
+	parser:flag("-c", "Add RX counter.")
 	parser:option("-m --ethDst", "Destination MAC, this option may be repeated."):count("*"):convert(convertMac_fake)
 	parser:option("--ipg", "Inter-packet gap, time units (s, ms, us) must be specified."):convert(convertTime)
 end
@@ -72,9 +73,14 @@ function master(args)
 			mg.startTask("synSlave", txQ, args.ip, args.flows, args.destination, args.ethDst, args.ipg)
 		end
 
+		if args.c then
+			mg.startTask("rxCount", dev)
+		end
 	end
 	mg.waitForTasks()
 end
+
+local zero16 = hton16(0)
 
 function replySlave(synack, txQ, rxQ)
 	if synack then
@@ -125,7 +131,7 @@ function replySlave(synack, txQ, rxQ)
 				pkt.tcp:setSrcPort(tmp2)
 
 				--pkt.ip4:setChecksum(0)
-				pkt.ip4.cs = 0 -- FIXME: setChecksum() is extremely slow
+				pkt.ip4.cs = zero16 -- FIXME: setChecksum() is extremely slow
 
 				tx = tx + 1
 				txBufs[tx] = buf
@@ -246,4 +252,12 @@ function synSlave(queue, minA, numIPs, dest, ethDst_str, ipg)
 		ipgSleepFunc()
 	end
 	txStats:finalize()
+end
+
+function rxCount(dev)
+	local rxCtr = stats:newDevRxCounter(dev)
+	while mg.running() do
+		rxCtr:update()
+	end
+	rxCtr:finalize()
 end
