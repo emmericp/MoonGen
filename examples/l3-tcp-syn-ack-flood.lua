@@ -124,7 +124,8 @@ function replySlave(synack, txQ, rxQ)
 				pkt.tcp:setDstPort(pkt.tcp:getSrcPort())
 				pkt.tcp:setSrcPort(tmp2)
 
-				pkt.ip4:setChecksum(0)
+				--pkt.ip4:setChecksum(0)
+				pkt.ip4.cs = 0 -- FIXME: setChecksum() is extremely slow
 
 				tx = tx + 1
 				txBufs[tx] = buf
