@@ -5,8 +5,8 @@ local stats		= require "stats"
 local log 		= require "log"
 local ip4		= require "proto.ip4"
 local libmoon	= require "libmoon"
-local dpdkc     = require "dpdkc"
-
+local dpdkc		= require "dpdkc"
+local ffi		= require "ffi"
 
 -- non-blocking version of rxQueue:recv()
 local function recv_nb(rxQ, bufArray)
@@ -69,6 +69,11 @@ function task(rxQ, txQ, args)
 		log:setLevel("DEBUG")
 	end
 
+	local packetLen = 60
+	local chunkSize = args.buf + 1
+	
+	local mem = memory.createMemPool()
+
 	local ipDst = args.destination and parseIPAddress(args.destination)
 	local ethDst = args.ethDst and parseMacAddress(args.ethDst, true)
 	
@@ -78,38 +83,49 @@ function task(rxQ, txQ, args)
 	local ringSize
 	do
 		local delay = args.delay; if delay <= 0 then delay = 1 end
-		local extra = 4.0 -- just in case
+		local extra = 2.0 -- just in case
 		local _, e = math.frexp(14.88 * delay * extra / args.buf)
 		if e < 2 then e = 2 end
 		ringSize = bit.lshift(1, e)
 		log:info("buf size: %d, ringSize: %d, e: %d", args.buf, ringSize, e)
 	end
 	local ringDblSize = ringSize * 2
+	local ringBufferRaw = memory.alloc("uint8_t*", ringSize * chunkSize * packetLen)
 
-	local ringBuffer = {}
-	for i = 0, ringSize-1 do
-		ringBuffer[i] = {}
-	end
-	bufs = memory.bufArray((args.buf + 1) * ringSize)
-	
+	local mem = memory.createMemPool()
+	local bufs_write = mem:bufArray(chunkSize - 1)
+	local bufs_read = mem:bufArray(chunkSize - 1)
+
 	-- ring buffer pointers (not using "tx", "rx" due to confusion), ax is to be "greater" than bx
-	local ax = 0
-	local bx = 0
+	local ax, bx = 0, 0
 
 	local function do_write()
 		-- TODO: use bit operations
 		while (ax - bx) % ringDblSize ~= 0 do
-			local ringIdx = bx % ringSize
-			local item = ringBuffer[ringIdx]
-			local sec, usec = gettimeofday_n()
-			local delta_usec = (sec - item.sec) * 1000000 + (usec - item.usec)
+			local chunkIdx = bx % ringSize
 
-			local bufs = bufs:refArray(ringIdx * (args.buf + 1), item.size)
+			local meta_raw = ffi.cast("uint32_t*", ringBufferRaw + (((chunkIdx + 1) * chunkSize - 1) * packetLen))
+			log:debug("WRITE phase 0: %d %d %d", meta_raw[0], meta_raw[1], meta_raw[2])
+			local sec, usec = gettimeofday_n()
+			local delta_usec = (sec - meta_raw[1]) * 1000000 + (usec - meta_raw[2])
 
 			if delta_usec > args.delay then
 				log:debug("WRITE %03x, %03x, delta: %d", ax, bx, delta_usec)
-				bufs:offloadTcpChecksums(ipv4)
-				txQ:send(bufs)
+				
+				bufs_write:resize(meta_raw[0])
+				bufs_write:alloc(packetLen)
+			
+				for i, buf in ipairs(bufs_write) do
+					local pkt_raw = ringBufferRaw + ((chunkIdx * chunkSize + i-1) * packetLen)
+					local pktSize = ffi.cast("uint32_t*", pkt_raw)[0]
+					buf:setSize(pktSize)
+					ffi.copy(buf:getData(), pkt_raw+4, pktSize)
+				end
+				log:debug("WRITE phase 2")
+				bufs_write:offloadTcpChecksums(ipv4)
+				txQ:send(bufs_write)
+				log:debug("WRITE phase 3")
+
 				txStats:update()
 
 				bx = (bx + 1) % ringDblSize
@@ -125,13 +141,12 @@ function task(rxQ, txQ, args)
 	local function do_read()
 		-- TODO: use bit operations
 		if (ax - bx) % ringDblSize ~= ringSize then
-			local ringIdx = ax % ringSize
-			local item = ringBuffer[ringIdx]
-			local bufs = bufs:refArray(ringIdx * (args.buf + 1), args.buf)
-			item.sec, item.usec = gettimeofday_n()
-			local rx = recv_nb(rxQ, bufs)
+			local chunkIdx = ax % ringSize
 
-			--bufs:freeAfter(rx)
+			local sec, usec = gettimeofday_n()
+			local rx = recv_nb(rxQ, bufs_read)
+
+			bufs_read:freeAfter(rx)
 			if rx == 0 then
 				return
 			end
@@ -140,7 +155,7 @@ function task(rxQ, txQ, args)
 			ax = (ax + 1) % ringDblSize
 
 			for i = 1, rx do
-				local buf = bufs[i]
+				local buf = bufs_read[i]
 				local pkt = buf:getTcpPacket(ipv4)
 				if pkt.ip4:getProtocol() == ip4.PROTO_TCP then
 					if ethDst then
@@ -151,9 +166,18 @@ function task(rxQ, txQ, args)
 					--pkt.ip4:setChecksum(0)
 					pkt.ip4.cs = zero16 -- FIXME: setChecksum() is extremely slow
 				end
+
+				local pkt_raw = ringBufferRaw + ((chunkIdx * chunkSize + i-1) * packetLen)
+				ffi.cast("uint32_t*", pkt_raw)[0] = buf:getSize()
+				ffi.copy(pkt_raw + 4, buf:getRawPacket(), buf:getSize())
 			end
-			item.size = rx
-			
+			log:debug("READ phase 2")
+
+			local meta_raw = ffi.cast("uint32_t*", ringBufferRaw + (((chunkIdx + 1) * chunkSize - 1) * packetLen))
+			log:debug("READ phase 3: %d %d %d", rx, sec, usec)
+			meta_raw[0], meta_raw[1], meta_raw[2] = rx, sec, usec
+			log:debug("READ phase 4")
+
 			rxStats:update()
 		else
 			log:warn("Buffer is full")
