@@ -140,13 +140,15 @@ function task(rxQ, txQ, args)
 			for i = 1, rx do
 				local buf = bufs[i]
 				local pkt = buf:getTcpPacket(ipv4)
-				if ethDst then
-					pkt.eth.dst:set(ethDst)
-					pkt.eth.src:set(txQ.dev:getMac(true))
+				if pkt.ip4:getProtocol() == ip4.PROTO_TCP then
+					if ethDst then
+						pkt.eth.dst:set(ethDst)
+						pkt.eth.src:set(txQ.dev:getMac(true))
+					end
+					if ipDst then pkt.ip4.dst:set(ipDst) end
+					--pkt.ip4:setChecksum(0)
+					pkt.ip4.cs = zero16 -- FIXME: setChecksum() is extremely slow
 				end
-				if ipDst then pkt.ip4.dst:set(ipDst) end
-				--pkt.ip4:setChecksum(0)
-				pkt.ip4.cs = zero16 -- FIXME: setChecksum() is extremely slow
 			end
 			bufs:resize(rx)
 			bufs:offloadTcpChecksums(ipv4)
