@@ -117,15 +117,24 @@ function task(rxQ, txQ, args)
 				bufs_write:alloc(packetLen)
 			
 				for i, buf in ipairs(bufs_write) do
+					local pkt = buf:getTcpPacket(ipv4)
+					if pkt.ip4:getProtocol() == ip4.PROTO_TCP then
+						if ethDst then
+							pkt.eth.dst:set(ethDst)
+							pkt.eth.src:set(ethSrc)
+						end
+						if ipDst then pkt.ip4.dst:set(ipDst) end
+						--pkt.ip4:setChecksum(0)
+						pkt.ip4.cs = zero16 -- FIXME: setChecksum() is extremely slow
+					end
+
 					local pkt_raw = ringBufferRaw + ((chunkIdx * chunkSize + i-1) * packetLen)
 					local pktSize = ffi.cast("uint32_t*", pkt_raw)[0]
 					buf:setSize(pktSize)
 					ffi.copy(buf:getData(), pkt_raw+4, pktSize)
 				end
-				log:debug("WRITE phase 2")
 				bufs_write:offloadTcpChecksums(ipv4)
 				txQ:send(bufs_write)
-				log:debug("WRITE phase 3")
 
 				txStats:update()
 
@@ -157,27 +166,14 @@ function task(rxQ, txQ, args)
 
 			for i = 1, rx do
 				local buf = bufs_read[i]
-				local pkt = buf:getTcpPacket(ipv4)
-				if pkt.ip4:getProtocol() == ip4.PROTO_TCP then
-					if ethDst then
-						pkt.eth.dst:set(ethDst)
-						pkt.eth.src:set(ethSrc)
-					end
-					if ipDst then pkt.ip4.dst:set(ipDst) end
-					--pkt.ip4:setChecksum(0)
-					pkt.ip4.cs = zero16 -- FIXME: setChecksum() is extremely slow
-				end
 
 				local pkt_raw = ringBufferRaw + ((chunkIdx * chunkSize + i-1) * packetLen)
 				ffi.cast("uint32_t*", pkt_raw)[0] = buf:getSize()
 				ffi.copy(pkt_raw + 4, buf:getRawPacket(), buf:getSize())
 			end
-			log:debug("READ phase 2")
 
 			local meta_raw = ffi.cast("uint32_t*", ringBufferRaw + (((chunkIdx + 1) * chunkSize - 1) * packetLen))
-			log:debug("READ phase 3: %d %d %d", rx, sec, usec)
 			meta_raw[0], meta_raw[1], meta_raw[2] = rx, sec, usec
-			log:debug("READ phase 4")
 
 			rxStats:update()
 		else
