@@ -39,7 +39,7 @@ function configure(parser)
 	parser:option("-d --destination", "Rewrite destination IP.")
 	parser:option("-m --ethDst", "Rewrite destination MAC."):convert(convertMac_fake)
 	parser:option("--delay", "Delay in us."):convert(tonumber):default(0)
-	parser:option("--buf", "Buffer size."):convert(tonumber)
+	parser:option("--buf", "Buffer size."):convert(tonumber):default(63)
 	parser:flag("--debug", "Debug ring buffer.")
 end
 
@@ -78,19 +78,15 @@ function task(rxQ, txQ, args)
 	local ringSize
 	local ringBuffer = {}
 	do
-		local bufs0 = memory.bufArray(args.buf) -- NB: args.buf may be nil
-		local buf_size = bufs0.size
-
 		local delay = args.delay; if delay <= 0 then delay = 1 end
 		local extra = 4.0 -- just in case
-		local _, e = math.frexp(14.88 * delay * extra / buf_size)
+		local _, e = math.frexp(14.88 * delay * extra / args.buf)
 		if e < 2 then e = 2 end
 		ringSize = bit.lshift(1, e)
-		log:debug("buf size: %d, ringSize: %d, e: %d", buf_size, ringSize, e)
+		log:debug("buf size: %d, ringSize: %d, e: %d", args.buf, ringSize, e)
 
-		ringBuffer[0] = { bufs = bufs0 }
-		for i = 1, ringSize-1 do
-			ringBuffer[i] = { bufs = memory.bufArray(buf_size) }
+		for i = 0, ringSize-1 do
+			ringBuffer[i] = { bufs = memory.bufArray(args.buf) }
 		end
 	end
 	local ringDblSize = ringSize * 2
