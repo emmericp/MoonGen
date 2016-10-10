@@ -76,21 +76,22 @@ function task(rxQ, txQ, args)
 	local rxStats = stats:newDevRxCounter(rxQ, "plain")
 
 	local ringSize
-	local ringBuffer = {}
 	do
 		local delay = args.delay; if delay <= 0 then delay = 1 end
 		local extra = 4.0 -- just in case
 		local _, e = math.frexp(14.88 * delay * extra / args.buf)
 		if e < 2 then e = 2 end
 		ringSize = bit.lshift(1, e)
-		log:debug("buf size: %d, ringSize: %d, e: %d", args.buf, ringSize, e)
-
-		for i = 0, ringSize-1 do
-			ringBuffer[i] = { bufs = memory.bufArray(args.buf) }
-		end
+		log:info("buf size: %d, ringSize: %d, e: %d", args.buf, ringSize, e)
 	end
 	local ringDblSize = ringSize * 2
 
+	local ringBuffer = {}
+	for i = 0, ringSize-1 do
+		ringBuffer[i] = {}
+	end
+	bufs = memory.bufArray((args.buf + 1) * ringSize)
+	
 	-- ring buffer pointers (not using "tx", "rx" due to confusion), ax is to be "greater" than bx
 	local ax = 0
 	local bx = 0
@@ -98,13 +99,17 @@ function task(rxQ, txQ, args)
 	local function do_write()
 		-- TODO: use bit operations
 		while (ax - bx) % ringDblSize ~= 0 do
-			local item = ringBuffer[bx % ringSize]
+			local ringIdx = bx % ringSize
+			local item = ringBuffer[ringIdx]
 			local sec, usec = gettimeofday_n()
 			local delta_usec = (sec - item.sec) * 1000000 + (usec - item.usec)
 
+			local bufs = bufs:refArray(ringIdx * (args.buf + 1), item.size)
+
 			if delta_usec > args.delay then
 				log:debug("WRITE %03x, %03x, delta: %d", ax, bx, delta_usec)
-				txQ:send(item.bufs)
+				bufs:offloadTcpChecksums(ipv4)
+				txQ:send(bufs)
 				txStats:update()
 
 				bx = (bx + 1) % ringDblSize
@@ -120,8 +125,9 @@ function task(rxQ, txQ, args)
 	local function do_read()
 		-- TODO: use bit operations
 		if (ax - bx) % ringDblSize ~= ringSize then
-			local item = ringBuffer[ax % ringSize]
-			local bufs = item.bufs
+			local ringIdx = ax % ringSize
+			local item = ringBuffer[ringIdx]
+			local bufs = bufs:refArray(ringIdx * (args.buf + 1), args.buf)
 			item.sec, item.usec = gettimeofday_n()
 			local rx = recv_nb(rxQ, bufs)
 
@@ -146,8 +152,7 @@ function task(rxQ, txQ, args)
 					pkt.ip4.cs = zero16 -- FIXME: setChecksum() is extremely slow
 				end
 			end
-			bufs:resize(rx)
-			bufs:offloadTcpChecksums(ipv4)
+			item.size = rx
 			
 			rxStats:update()
 		else
