@@ -69,6 +69,7 @@ function task(rxQ, txQ, args)
 		log:setLevel("DEBUG")
 	end
 
+	local ethSrc = txQ.dev:getMac(true)
 	local packetLen = 60
 	local chunkSize = args.buf + 1
 	
@@ -160,7 +161,7 @@ function task(rxQ, txQ, args)
 				if pkt.ip4:getProtocol() == ip4.PROTO_TCP then
 					if ethDst then
 						pkt.eth.dst:set(ethDst)
-						pkt.eth.src:set(txQ.dev:getMac(true))
+						pkt.eth.src:set(ethSrc)
 					end
 					if ipDst then pkt.ip4.dst:set(ipDst) end
 					--pkt.ip4:setChecksum(0)
