@@ -7,6 +7,7 @@ local ip4		= require "proto.ip4"
 local libmoon	= require "libmoon"
 local dpdkc		= require "dpdkc"
 local ffi		= require "ffi"
+local syscall	= require "syscall"
 
 -- non-blocking version of rxQueue:recv()
 local function recv_nb(rxQ, bufArray)
@@ -44,6 +45,12 @@ function configure(parser)
 end
 
 function master(args)
+	local shm_filename = "/MoonGen"
+	local shm_fd, err = syscall.shm_open(shm_filename, "CREAT,RDWR,EXCL", "RUSR,WUSR")
+	if not shm_fd then
+		error("shm_open(%s, ...) failed: %s", shm_filename, err)
+	end
+
 	local srcDev = device.config{port = args.srcDev, rxQueues = args.n}
 	local dstDev = device.config{port = args.dstDev, txQueues = args.n}
 
@@ -51,10 +58,12 @@ function master(args)
 	dstDev:wait()
 
 	for i = 0, args.n - 1 do
-		mg.startTask("task", srcDev:getRxQueue(i), dstDev:getTxQueue(i), args)
+		mg.startTask("task", shm_filename, srcDev:getRxQueue(i), dstDev:getTxQueue(i), args)
 	end
 	
 	mg.waitForTasks()
+	syscall.close(shm_fd)
+	syscall.shm_unlink(shm_filename)
 end
 
 local function gettimeofday_n()
@@ -64,11 +73,7 @@ end
 
 local zero16 = hton16(0)
 
-function task(rxQ, txQ, args)
-	if args.debug then
-		log:setLevel("DEBUG")
-	end
-
+function task(shm_filename, rxQ, txQ, args)
 	local ethSrc = txQ.dev:getMac(true)
 	local packetLen = 60
 	local chunkSize = args.buf + 1
@@ -91,7 +96,29 @@ function task(rxQ, txQ, args)
 		log:info("buf size: %d, ringSize: %d, e: %d", args.buf, ringSize, e)
 	end
 	local ringDblSize = ringSize * 2
-	local ringBufferRaw = memory.alloc("uint8_t*", ringSize * chunkSize * packetLen)
+
+	local ringBufferRaw, ax_ptr, bx_ptr
+	local cleanupFunc
+	do
+		local shm_fd, err = syscall.shm_open(shm_filename, "RDWR", "RUSR,WUSR")
+		if not shm_fd then
+			error("shm_open(%s, ...) failed: %s", shm_filename, err)
+		end
+		local memSize = ringSize * chunkSize * packetLen
+		local ptr, err = syscall.mmap(nil, memSize+8, "READ,WRITE", "SHARED,ANONYMOUS", shm_fd, 0)
+		if not ptr then
+			error("nmap(...) failed: %s", err)
+		end
+		ringBufferRaw = ffi.cast("uint8_t*", ptr)
+		ax_ptr = ffi.cast("volatile uint32_t*", ringBufferRaw+memSize)
+		bx_ptr = ffi.cast("volatile uint32_t*", ringBufferRaw+memSize+4)
+
+		cleanupFunc = function() syscall.munmap(ptr, memSize+8); syscall.close(shm_fd) end
+	end
+	
+	if args.debug then
+		log:setLevel("DEBUG")
+	end
 
 	local mem = memory.createMemPool()
 	local bufs_write = mem:bufArray(chunkSize - 1)
@@ -99,8 +126,12 @@ function task(rxQ, txQ, args)
 
 	-- ring buffer pointers (not using "tx", "rx" due to confusion), ax is to be "greater" than bx
 	local ax, bx = 0, 0
+	ax_ptr[0] = 0
+	bx_ptr[0] = 0
 
 	local function do_write()
+		ax = ax_ptr[0]
+		bx = bx_ptr[0]
 		-- TODO: use bit operations
 		while (ax - bx) % ringDblSize ~= 0 do
 			local chunkIdx = bx % ringSize
@@ -139,6 +170,7 @@ function task(rxQ, txQ, args)
 				txStats:update()
 
 				bx = (bx + 1) % ringDblSize
+				bx_ptr[0] = bx
 			else
 				if delta_usec < 0 then
 					log:warn("Oops, something wrong with time")
@@ -149,6 +181,8 @@ function task(rxQ, txQ, args)
 	end
 
 	local function do_read()
+		ax = ax_ptr[0]
+		bx = bx_ptr[0]
 		-- TODO: use bit operations
 		if (ax - bx) % ringDblSize ~= ringSize then
 			local chunkIdx = ax % ringSize
@@ -163,6 +197,7 @@ function task(rxQ, txQ, args)
 
 			log:debug("READ %03x, %03x", ax, bx)
 			ax = (ax + 1) % ringDblSize
+			ax_ptr[0] = ax
 
 			for i = 1, rx do
 				local buf = bufs_read[i]
@@ -188,4 +223,5 @@ function task(rxQ, txQ, args)
 
 	rxStats:finalize()
 	txStats:finalize()
+	cleanupFunc()
 end
