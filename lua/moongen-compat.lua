@@ -8,7 +8,7 @@ local device  = require "device"
 dpdk.__name = "dpdk"
 moongen.__name = "moongen"
 
--- make functions that were moved to the phobos/moongen module available
+-- make functions that were moved to the libmoons/moongen module available
 local function deprecatedFunction(oldMod, oldName, newMod, newName)
 	newName = newName or oldName
 	oldMod[oldName] = function(...)
@@ -47,7 +47,7 @@ function device.config(...)
 	if type((...)) == "number" then
 		local args = {...}
 	    -- this is for legacy compatibility when calling the function  without named arguments
-		log:warn("device.config() without named arguments is deprecated and will be removed. See documentation for phobos device.config().")
+		log:warn("device.config() without named arguments is deprecated and will be removed. See documentation for libmoons device.config().")
 		if not args[2] or type(args[2]) == "number" then
 			args.port       = args[1]
 			args.rxQueues   = args[2]
@@ -57,7 +57,7 @@ function device.config(...)
 			args.speed      = args[6]
 			args.dropEnable = args[7]
 		else -- called with mempool which was changed to mempools (one per queue)
-			log:fatal("mempool option was removed. See phobos device.config() for the new \"mempools\" option.")
+			log:fatal("mempool option was removed. See libmoon device.config() for the new \"mempools\" option.")
 		end
 		return oldConfig(args)
 	end

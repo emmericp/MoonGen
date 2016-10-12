@@ -12,7 +12,7 @@ Detailed evaluation: [Paper](http://www.net.in.tum.de/fileadmin/bibtex/publicati
 
 # MoonGen Packet Generator
 
-MoonGen is a scriptable high-speed packet generator built on [Phobos](https://github.com/Phobos-Framework/phobos).
+MoonGen is a scriptable high-speed packet generator built on [libmoon](https://github.com/libmoon/libmoon).
 The whole load generator is controlled by a Lua script: all packets that are sent are crafted by a user-provided script.
 Thanks to the incredibly fast LuaJIT VM and the packet processing library DPDK, it can saturate a 10 Gbit/s Ethernet link with 64 Byte packets while using only a single CPU core.
 MoonGen can achieve this rate even if each packet is modified by a Lua script. It does not rely on tricks like replaying the same buffer.
@@ -37,7 +37,7 @@ You can have a look at [our slides from a talk](https://raw.githubusercontent.co
 
 # Architecture
 
-MoonGen is built on [Phobos](https://github.com/Phobos-Framework/phobos), a Lua wrapper for DPDK.
+MoonGen is built on [libmoon](https://github.com/libmoon/libmoon), a Lua wrapper for DPDK.
 
 
 Users write custom scripts for their experiments. It is recommended to make use of hard-coded setup-specific constants in your scripts. The script is the configuration, it is beside the point to write a complicated configuration interface for a script.
@@ -137,7 +137,7 @@ The effects of the switch on the packet spacing needs to be analyzed carefully, 
 5. sudo ./build/MoonGen examples/l3-load-latency.lua 0 1
 
 Note: You need to bind NICs to DPDK to use them. `bind-interfaces.sh` does this for all unused NICs (no routing table entry in the system).
-Use `phobos/deps/dpdk/tools/dpdk-devbind.py` to manage NICs manually.
+Use `libmoon/deps/dpdk/tools/dpdk-devbind.py` to manage NICs manually.
 
 
 ## Dependencies
@@ -154,8 +154,8 @@ MoonGen comes with examples in the examples folder which can be used as a basis 
 
 The two command line arguments are the transmission and reception ports. MoonGen prints all available ports on startup, so adjust this if necessary.
 
-You can also check out the examples of the [Phobos](https://github.com/Phobos-Framework/phobos) project.
-All Phobos scripts are also valid MoonGen scripts as MoonGen extends Phobos.
+You can also check out the examples of the [libmoon](https://github.com/libmoon/libmoon) project.
+All libmoon scripts are also valid MoonGen scripts as MoonGen extends libmoon.
 
 # Frequently Asked Questions
 
@@ -165,11 +165,11 @@ Hardware timestamping is currently supported and tested on Intel igb, ixgbe, and
 Use ``test-timestamping-capabilities.lua`` in ``examples/timestamping-tests`` to find out what your NIC supports.
 Hardware rate control is supported and tested on Intel ixgbe and i40e NICs.
 
-### What's the difference between MoonGen and Phobos?
-MoonGen builds on [Phobos](https://github.com/Phobos-Framework/phobos) by extending it with features for packet generators such as software rate control and software timestamping.
+### What's the difference between MoonGen and libmoon?
+MoonGen builds on [libmoon](https://github.com/libmoon/libmoon) by extending it with features for packet generators such as software rate control and software timestamping.
 
 If you want to write a packet generator or test your application: use MoonGen.
-If you want to prototype DPDK applications: use [Phobos](https://github.com/Phobos-Framework/phobos).
+If you want to prototype DPDK applications: use [libmoon](https://github.com/libmoon/libmoon).
 
 
 # References
