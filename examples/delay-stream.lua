@@ -49,7 +49,6 @@ local function setup(isMaster, taskNum, args)
 		end
 	end
 	local ringRawSize = ringSize * chunkSize * packetSpace
-	log:info("ringRawSize: %d", ringRawSize)
 	local shm_size = ringRawSize + 8
 	local ok, err = syscall.ftruncate(shm_fd, shm_size)
 	if not ok then
@@ -115,12 +114,14 @@ function master(args)
 		cleanupFuncs[i] = setup(true, i, args)
 	end
 
-	local aux_rxQueues, aux_txQueues
-	if args.srcDev == args.dstDev then aux_rxQueues = args.n; aux_txQueues = args.n end
-
-	local srcDev = device.config{port = args.srcDev, rxQueues = args.n, txQueues = aux_txQueues}
-	local dstDev = device.config{port = args.dstDev, txQueues = args.n, rxQueues = aux_rxQueues}
-
+	local srcDev, dstDev
+	if args.srcDev == args.dstDev then
+		srcDev = device.config{port = args.srcDev, rxQueues = args.n, txQueues = args.n}
+		dstDev = srcDev
+	else
+		srcDev = device.config{port = args.srcDev, rxQueues = args.n}
+		dstDev = device.config{port = args.dstDev, txQueues = args.n}
+	end
 	srcDev:wait()
 	dstDev:wait()
 
@@ -141,9 +142,7 @@ end
 local zero16 = hton16(0)
 
 function task_read(taskNum, rxQ, args)
-	log:info("task_read")
 	local cleanupFunc, ringSize, chunkSize, ringBufferRaw, ax_ptr, bx_ptr = setup(false, taskNum, args)
-	log:info("task_read, ringBufferRaw: %s", ringBufferRaw)
 	local ringDblSize = ringSize * 2
 
 	local rxStats = stats:newDevRxCounter(rxQ, "plain")
@@ -191,11 +190,9 @@ function task_read(taskNum, rxQ, args)
 				totStats:countPacket(buf)
 			end
 
-			log:debug("READ meta_raw, at %d", (((chunkIdx + 1) * chunkSize - 1) * packetSpace))
 			local meta_raw = ffi.cast("volatile uint32_t*", ringBufferRaw + (((chunkIdx + 1) * chunkSize - 1) * packetSpace))
 			meta_raw[0], meta_raw[1], meta_raw[2] = rx, sec, usec
-			log:debug("READ meta_raw done")
-			log:debug("READ %03x, %03x", ax, bx)
+			log:debug("READ-%d %03x, %03x", taskNum, ax, bx)
 			ax = (ax + 1) % ringDblSize
 			ax_ptr[0] = ax
 
@@ -221,7 +218,6 @@ function task_read(taskNum, rxQ, args)
 end
 
 function task_write(taskNum, txQ, args)
-	log:info("task_write")
 	local cleanupFunc, ringSize, chunkSize, ringBufferRaw, ax_ptr, bx_ptr = setup(false, taskNum, args)
 	local ringDblSize = ringSize * 2
 
@@ -242,14 +238,12 @@ function task_write(taskNum, txQ, args)
 		-- TODO: use bit operations
 		while (ax - bx) % ringDblSize ~= 0 do
 			local chunkIdx = bx % ringSize
-			log:debug("WRITE %03x, %03x, get meta_raw..., at %d", ax, bx, (((chunkIdx + 1) * chunkSize - 1) * packetSpace))
 			local meta_raw = ffi.cast("volatile uint32_t*", ringBufferRaw + (((chunkIdx + 1) * chunkSize - 1) * packetSpace))
-			log:debug("WRITE phase 0: %d %d %d", meta_raw[0], meta_raw[1], meta_raw[2])
 			local sec, usec = gettimeofday_n()
 			local delta_usec = (sec - meta_raw[1]) * 1000000 + (usec - meta_raw[2])
 
 			if delta_usec > args.delay then
-				log:debug("WRITE %03x, %03x, delta: %d", ax, bx, delta_usec)
+				log:debug("WRITE-%d %03x, %03x, delta: %d", taskNum, ax, bx, delta_usec)
 
 				local nRecvd = meta_raw[0]
 				if nRecvd > chunkSize - 1 then
