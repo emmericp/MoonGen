@@ -113,6 +113,10 @@ local function setup(isMaster, taskNum, args)
 end
 
 function master(args)
+	if bit.band(args.buf, args.buf + 1) ~= 0 then
+		log:warn("Recommended buffer size is 2^n-1")
+	end
+
 	local cfgs = {}
 	for i = 1, args.n do
 		cfgs[i] = setup(true, i, args)
@@ -122,12 +126,13 @@ function master(args)
 	if args.srcDev == args.dstDev then
 		srcDev = device.config{port = args.srcDev, rxQueues = args.n, txQueues = args.n}
 		dstDev = srcDev
+		srcDev:wait()
 	else
 		srcDev = device.config{port = args.srcDev, rxQueues = args.n}
 		dstDev = device.config{port = args.dstDev, txQueues = args.n}
+		srcDev:wait()
+		dstDev:wait()
 	end
-	srcDev:wait()
-	dstDev:wait()
 
 	for i = 0, args.n - 1 do
 		mg.startTask("task_read", i+1, srcDev:getRxQueue(i), dstDev:getMac(true), args)
@@ -147,13 +152,23 @@ local zero16 = hton16(0)
 
 function task_read(taskNum, rxQ, ethSelf, args)
 	local cfg = setup(false, taskNum, args)
+	local ringDblMask = cfg.ringDblMask
+	local ax_ptr = cfg.ax_ptr
+	local bx_ptr = cfg.bx_ptr
+	local ringBufferRaw = cfg.ringBufferRaw
+	local chunkSize = cfg.chunkSize
+	local packetSpace = cfg.packetSpace
+	local ringMask = cfg.ringSize - 1
+	local ringDblSize = cfg.ringDblSize
+
+	local max_pktlen, feed_self = args.max_pktlen, args.feed_self
 
 	local rxStats = stats:newDevRxCounter(rxQ, "plain")
 	local manStats = stats:newManualRxCounter("man:" .. tostring(taskNum))
 	local timesBufferFull = 0
 
 	local mem = memory.createMemPool()
-	local bufs_read = mem:bufArray(cfg.chunkSize - 1)
+	local bufs_read = mem:bufArray(chunkSize - 1)
 
 	-- ring buffer pointers (not using "tx", "rx" due to confusion), ax is to be "greater" than bx
 	local ax, bx = 0, 0
@@ -164,23 +179,21 @@ function task_read(taskNum, rxQ, ethSelf, args)
 	end
 
 	while mg.running() do
-		bx = cfg.bx_ptr[0]
-		if bit.band(ax - bx, cfg.ringDblSize) == 0 -- ring not full
+		bx = bx_ptr[0]
+		if bit.band(ax - bx, ringDblSize) == 0 -- ring not full
 		then
 			local sec, usec = gettimeofday_n()
 			local rx = rxQ:recv(bufs_read)
-			bufs_read:freeAfter(rx)
 			manStats:update(rx, 0)
 
-			local chunkIdx = ax % cfg.ringSize
+			local chunkIdx = bit.band(ax, ringMask)
 			local j = 0
 			for i = 1, rx do
 				local buf = bufs_read.array[i-1]
 				local pkt = buf:getTcpPacket(ipv4)
+				local pkt_raw = ringBufferRaw + ((chunkIdx * chunkSize + j) * packetSpace)
 				local bufSize = buf:getSize()
-
-				local pkt_raw = cfg.ringBufferRaw + ((chunkIdx * cfg.chunkSize + j) * cfg.packetSpace)
-				if bufSize <= args.max_pktlen and (args.feed_self or pkt.eth.src:get() ~= ethSelf)
+				if bufSize <= max_pktlen and (feed_self or pkt.eth.src:get() ~= ethSelf)
 				then
 					ffi.cast("uint32_t*", pkt_raw)[0] = bufSize
 					ffi.copy(pkt_raw + 4, buf:getRawPacket(), bufSize)
@@ -188,13 +201,14 @@ function task_read(taskNum, rxQ, ethSelf, args)
 				end
 			end
 
-			local meta_raw = ffi.cast("volatile uint32_t*", cfg.ringBufferRaw + (((chunkIdx + 1) * cfg.chunkSize - 1) * cfg.packetSpace))
+			local meta_raw = ffi.cast("volatile uint32_t*", ringBufferRaw + (((chunkIdx + 1) * chunkSize - 1) * packetSpace))
 			meta_raw[0], meta_raw[1], meta_raw[2] = rx, sec, usec
 			log:debug("READ-%d %03x, %03x", taskNum, ax, bx)
-			ax = bit.band(ax + 1, cfg.ringDblMask)
-			cfg.ax_ptr[0] = ax
+			ax = bit.band(ax + 1, ringDblMask)
+			ax_ptr[0] = ax
 
 			rxStats:update()
+			bufs_read:freeAll()
 		else
 			if timesBufferFull == 0 then
 				log:warn("Buffer is full")
@@ -220,6 +234,15 @@ end
 
 function task_write(taskNum, txQ, args)
 	local cfg = setup(false, taskNum, args)
+	local ringDblMask = cfg.ringDblMask
+	local ax_ptr = cfg.ax_ptr
+	local bx_ptr = cfg.bx_ptr
+	local ringBufferRaw = cfg.ringBufferRaw
+	local chunkSize = cfg.chunkSize
+	local packetSpace = cfg.packetSpace
+	local ringMask = cfg.ringSize - 1
+
+	local delay, max_pktlen, fake_write = args.delay, args.max_pktlen, args.fake_write
 
 	local ipDst = args.destination and parseIPAddress(args.destination)
 	local ethDst = args.ethDst and parseMacAddress(args.ethDst, true)
@@ -228,35 +251,35 @@ function task_write(taskNum, txQ, args)
 	local txStats = stats:newDevTxCounter(txQ, "plain")
 
 	local mem = memory.createMemPool()
-	local bufs_write = mem:bufArray(cfg.chunkSize - 1)
+	local bufs_write = mem:bufArray(chunkSize - 1)
 
 	-- ring buffer pointers (not using "tx", "rx" due to confusion), ax is to be "greater" than bx
 	local ax, bx = 0, 0
 
 	local function do_write()
-		ax = cfg.ax_ptr[0]
-		while bit.band(ax - bx, cfg.ringDblMask) ~= 0 -- ring not empty
+		ax = ax_ptr[0]
+		while bit.band(ax - bx, ringDblMask) ~= 0 -- ring not empty
 		do
-			local chunkIdx = bx % cfg.ringSize
-			local meta_raw = ffi.cast("volatile uint32_t*", cfg.ringBufferRaw + (((chunkIdx + 1) * cfg.chunkSize - 1) * cfg.packetSpace))
-			local sec, usec = gettimeofday_n()
-			local delta_usec = (sec - meta_raw[1]) * 1000000 + (usec - meta_raw[2])
+			if not fake_write then
+				local chunkIdx = bit.band(bx, ringMask)
+				local meta_raw = ffi.cast("volatile uint32_t*", ringBufferRaw + (((chunkIdx + 1) * chunkSize - 1) * packetSpace))
+				local sec, usec = gettimeofday_n()
+				local delta_usec = (sec - meta_raw[1]) * 1000000 + (usec - meta_raw[2])
 
-			if delta_usec > args.delay then
-				log:debug("WRITE-%d %03x, %03x, delta: %d", taskNum, ax, bx, delta_usec)
+				if delta_usec > delay then
+					log:debug("WRITE-%d %03x, %03x, delta: %d", taskNum, ax, bx, delta_usec)
 
-				if not args.fake_write then
 					local nRecvd = meta_raw[0]
-					if nRecvd > cfg.chunkSize - 1 then
-						nRecvd = cfg.chunkSize - 1
-						log:warn("Probably garbage in ring buffer (nRecvd): %d > %d", nRecvd, cfg.chunkSize-1)
+					if nRecvd > chunkSize - 1 then
+						nRecvd = chunkSize - 1
+						log:warn("Probably garbage in ring buffer (nRecvd): %d > %d", nRecvd, chunkSize-1)
 					end
 					bufs_write:resize(nRecvd)
-					bufs_write:alloc(args.max_pktlen)
+					bufs_write:alloc(max_pktlen)
 
 					local i = 0
 					for j = 0, nRecvd-1 do
-						local pkt_raw = cfg.ringBufferRaw + ((chunkIdx * cfg.chunkSize + j) * cfg.packetSpace)
+						local pkt_raw = ringBufferRaw + ((chunkIdx * chunkSize + j) * packetSpace)
 						local pktSize = ffi.cast("uint32_t*", pkt_raw)[0]
 						if pktSize ~= 0 then
 							i = i + 1
@@ -281,16 +304,18 @@ function task_write(taskNum, txQ, args)
 						bufs_write:offloadTcpChecksums(ipv4)
 						txQ:send(bufs_write)
 					end
+					txStats:update()
+					bx = bit.band(bx + 1, ringDblMask)
+					bx_ptr[0] = bx
+				else
+					if delta_usec < 0 then
+						log:warn("Oops, something wrong with time")
+					end
+					return
 				end
-				txStats:update()
-
-				bx = bit.band(bx + 1, cfg.ringDblMask)
-				cfg.bx_ptr[0] = bx
 			else
-				if delta_usec < 0 then
-					log:warn("Oops, something wrong with time")
-				end
-				return
+				bx = bit.band(bx + 1, ringDblMask)
+				bx_ptr[0] = bx
 			end
 		end
 	end
