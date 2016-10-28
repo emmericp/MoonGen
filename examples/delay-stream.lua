@@ -117,24 +117,25 @@ function master(args)
 		log:warn("Recommended buffer size is 2^n-1")
 	end
 
+	local n = args.n
 	local cfgs = {}
-	for i = 1, args.n do
+	for i = 1, n do
 		cfgs[i] = setup(true, i, args)
 	end
 
 	local srcDev, dstDev
 	if args.srcDev == args.dstDev then
-		srcDev = device.config{port = args.srcDev, rxQueues = args.n, txQueues = args.n}
+		srcDev = device.config{port = args.srcDev, rxQueues = n, txQueues = n, rssQueues = n}
 		dstDev = srcDev
 		srcDev:wait()
 	else
-		srcDev = device.config{port = args.srcDev, rxQueues = args.n}
-		dstDev = device.config{port = args.dstDev, txQueues = args.n}
+		srcDev = device.config{port = args.srcDev, rxQueues = n, rssQueues = n}
+		dstDev = device.config{port = args.dstDev, txQueues = n}
 		srcDev:wait()
 		dstDev:wait()
 	end
 
-	for i = 0, args.n - 1 do
+	for i = 0, n - 1 do
 		mg.startTask("task_read", i+1, srcDev:getRxQueue(i), dstDev:getMac(true), args)
 		mg.startTask("task_write", i+1, dstDev:getTxQueue(i), args)
 	end

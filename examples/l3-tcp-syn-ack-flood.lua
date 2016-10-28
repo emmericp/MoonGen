@@ -52,7 +52,7 @@ function master(args)
 	for i, dev in ipairs(args.dev) do
 		if rxQueues == 0 then rxQueues = 1 end
 		if txQueues == 0 then txQueues = 1 end
-		local dev = device.config{port = dev, txQueues = txQueues, rxQueues = rxQueues}
+		local dev = device.config{port = dev, txQueues = txQueues, rxQueues = rxQueues, rssQueues = rxQueues}
 		dev:wait()
 
 		for i = 0, args.ackq-1 do
