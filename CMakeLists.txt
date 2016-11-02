@@ -39,6 +39,9 @@ link_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/luajit/usr/local/lib
 )
 
+add_custom_target(tman ALL
+  COMMAND ${CMAKE_COMMAND} -E create_symlink MoonGen tman)
+
 add_executable(MoonGen ${files})
 target_link_libraries(MoonGen ${libraries})
 
