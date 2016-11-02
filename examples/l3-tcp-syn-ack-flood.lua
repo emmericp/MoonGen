@@ -267,3 +267,10 @@ function rxCount(rxQ)
 	end
 	rxCtr:finalize()
 end
+
+defaults = {rx_queues = 0, tx_queues = 1}
+
+function task(taskNum, txInfo, rxInfo, args)
+	local txQ = txInfo[1].queue
+	synSlave(txQ, args.ip, args.flows, args.destination, args.ethDst, args.ipg)
+end
