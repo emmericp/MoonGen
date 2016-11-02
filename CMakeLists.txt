@@ -23,6 +23,7 @@ set(files
 	src/moongen-main
 	src/software-timestamping
 	src/crc-rate-limiter
+	src/software-rate-limiter
 )
 
 set(libraries
