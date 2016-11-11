@@ -158,7 +158,11 @@ local function master(arg0, ...)
     local rxQueues = 0
     local txQueues = 0
     for i, taskInfo in ipairs(pargs) do
-        if not taskInfo.rx_queues or not taskInfo.tx_queues then
+		taskInfo.rx_buf = taskInfo.rx_buf or taskInfo.buf or main_pargs.rx_buf or main_pargs.buf
+		taskInfo.tx_buf = taskInfo.tx_buf or taskInfo.buf or main_pargs.tx_buf or main_pargs.buf
+		taskInfo.buf = nil
+
+		if not taskInfo.rx_queues or not taskInfo.tx_queues then
             log:fatal("Numbers of RX/TX queues for task '%s' must be set. Use --rx-queues, --tx-queues options or set defaults.rx_queues, defaults.tx_queues", taskInfo.file)
         end
         rxQueues = rxQueues + taskInfo.rx_queues * taskInfo.n
