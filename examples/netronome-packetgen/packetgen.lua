@@ -31,6 +31,8 @@
       packet sizes 1514, 570, and 64, respectively. 
 --]]
 
+local libmoon  = require "libmoon"
+local mg       = require "moongen"
 local moongen  = require "dpdk"      
 local dpdkc    = require "dpdkc"       
 local memory   = require "memory"
@@ -199,7 +201,7 @@ constants = {
 
 -- Start time of the appliction. This is used to sync 
 -- the printing and logging accross the slaves.
-local globalStartTime = moongen.getTime()
+local globalStartTime = mg.getTime()
 
 -------------------------------------------------------------------------------
 -- Master function to do the slave setup and invoke the slave instances.
@@ -261,7 +263,7 @@ function master(...)
 
     -- Display the parameters:
     clParams:print()
-    moongen.sleepMillis(clParams.paramDisplay)
+    mg.sleepMillis(clParams.paramDisplay)
 
     local slaveId = 0
     -- Launch the slaves:
@@ -269,8 +271,7 @@ function master(...)
         -- Check if the port must be used as a TX slave:
         for _, txPortId in ipairs(clParams.txSlavePorts) do
             if txPortId == portId then
-                moongen.startTask(
-                    "txSlave", devices[i], portId, slaveId, clParams)
+                libmoon.startTask("txSlave", devices[i], portId, slaveId, clParams)
                 slaveId = slaveId + 1
                 break
             end
@@ -278,15 +279,14 @@ function master(...)
         -- Check if the port must be used as a RX slave:
         for _, rxPortId in ipairs(clParams.rxSlavePorts) do
             if rxPortId == portId then
-                moongen.startTask(
-                    "rxSlave", devices[i], portId, slaveId, clParams)
+                libmoon.startTask("rxSlave", devices[i], portId, slaveId, clParams)
                 slaveId = slaveId + 1
                 break
             end
         end
     end
 
-    moongen.waitForSlaves()
+    mg.waitForTasks()
 end 
 
 ---- RX Functionality ---------------------------------------------------------
@@ -299,8 +299,7 @@ end
 -- clParams : The command line parameters.
 -------------------------------------------------------------------------------
 function rxSlave(device, portId, slaveId, clParams)
-  print(string.format("Launching RX slave: %u, Core: %u, Port: %u", 
-      slaveId, moongen:getCore(), portId))
+  print(string.format("Launching RX slave: %u, Core: %u, Port: %u", slaveId, mg:getCore(), portId))
 
   -- Variables for receiving:
   local rxPackets = 0                  
@@ -312,7 +311,7 @@ function rxSlave(device, portId, slaveId, clParams)
   -- Variables for logging, printing, stopping:
   local state         = "canrun"   
   local stats         = deepCopy(statsRx) 
-  local startTime     = moongen.getTime()    
+  local startTime     = mg.getTime()    
   local lastPrintTime = 0
   local iteration     = 0
 
@@ -322,12 +321,12 @@ function rxSlave(device, portId, slaveId, clParams)
   elseif clParams.writemode == 3 then
       -- Prer core mode - create file and write header:
       outFile = clParams.fileprefix                 .. 
-                "-c" .. tostring(moongen:getCore()) .. 
+                "-c" .. tostring(mg:getCore()) .. 
                 "-p" .. tostring(portId) .. ".txt";
       writeStatsHeader(outFile)
   end
 
-  while state == "canrun" and moongen.running() do
+  while state == "canrun" and mg.running() do
       rxPackets     = rxQueue:tryRecv(rxBurst, constants.receiveTimeout)
       stats.packets = stats.packets + rxPackets
       stats.dropped = stats.dropped + rxPackets
@@ -347,8 +346,8 @@ function rxSlave(device, portId, slaveId, clParams)
 
       -- Update termination params:
       iteration         = iteration + 1
-      stats.deltaTime   = (moongen.getTime() - startTime) - stats.elapsedTime
-      stats.elapsedTime = moongen.getTime() - startTime
+      stats.deltaTime   = (mg.getTime() - startTime) - stats.elapsedTime
+      stats.elapsedTime = mg.getTime() - startTime
       
       -- If printing or logging must be done:
       if clParams.writemode > 0 then 
@@ -360,7 +359,7 @@ function rxSlave(device, portId, slaveId, clParams)
 
           -- Printing and logging:
           if canPrint(slaveId, clParams) and sufficientTimeSincePrint then 
-              lastPrintTime = moongen.getTime() - startTime
+              lastPrintTime = mg.getTime() - startTime
               if clParams.writemode == 1 then
                   os.execute("clear")      
                   stats:print(portId)
@@ -402,13 +401,13 @@ end
 -------------------------------------------------------------------------------
 function calculateLatency(buf)
     local pkt       = buf:getUdpPacket()
-    local cycles    = tonumber(moongen:getCycles())
+    local cycles    = tonumber(mg:getCycles())
     local timestamp = tonumber(pkt.payload.uint64[0])
     local latency   = 0
 
     if timestamp ~= 0 then 
         latency = tonumber(cycles - timestamp) 
-                / tonumber(moongen:getCyclesFrequency())
+                / tonumber(mg:getCyclesFrequency())
     end
     return latency
 end
@@ -429,7 +428,7 @@ function statsRx:print(portId)
     "\n| Packets dropped on receive : %32u |"                               ..
     "\n| RX mean latency            : %32.10f |"                            ..
     "\n+---------------------------------------------------------------+"   ,
-    moongen:getCore()                                   ,
+    mg:getCore()                                   ,
     portId                                              ,
     self.packets                                        ,
     (self.packets - self.prevPackets) / self.deltaTime  ,
@@ -456,7 +455,7 @@ end
 function statsRx:write(filename, portId)
     file = io.open(filename, "a")
 
-    local time = moongen.getTime() - globalStartTime
+    local time = mg.getTime() - globalStartTime
 
     local statsString = string.format(
         "%6.3f,%13u,%18.2f,%18.2f,%13u,%18.2f,%18.2f,%5u,%5u\n", 
@@ -467,7 +466,7 @@ function statsRx:write(filename, portId)
         self.packets                                        ,
         (self.packets - self.prevPackets) / self.deltaTime  ,
         self.packets / self.elapsedTime                     ,
-        moongen:getCore()                                   ,
+        mg:getCore()                                   ,
         portId                                              
     ) 
 
@@ -486,7 +485,7 @@ end
 -------------------------------------------------------------------------------
 function txSlave(device, portId, slaveId, clParams) 
   print(string.format("Launching TX slave: %u, Core: %u, Port: %u", 
-      slaveId, moongen:getCore(), portId))
+      slaveId, mg:getCore(), portId))
 
   local state       = "canrun"
   local stats       = deepCopy(statsTx)     
@@ -500,7 +499,7 @@ function txSlave(device, portId, slaveId, clParams)
   elseif clParams.writemode == 3 then
       -- Per core mode: write header
       outFile = clParams.fileprefix                 .. 
-                "-c" .. tostring(moongen:getCore()) .. 
+                "-c" .. tostring(mg:getCore()) .. 
                 "-p" .. tostring(portId) .. ".txt";
       writeStatsHeader(outFile)
   end
@@ -559,10 +558,11 @@ function txSlave(device, portId, slaveId, clParams)
   -- Do sending:
   local iteration     = 0
   local lastPrintTime = 0
-  local startTime     = moongen.getTime()
-  while state == "canrun" and moongen.running() do
+  local startTime     = mg.getTime()
+
+  while state == "canrun" and mg.running() do
       for _, stream in ipairs(streams) do
-          timerParams.currtsc = tonumber(moongen:getCycles())
+          timerParams.currtsc = tonumber(mg:getCycles())
           timerParams.difftsc = timerParams.currtsc - timerParams.prevtsc
 
           sendBursts(txQueue, stats, timerParams, clParams, stream)
@@ -570,8 +570,8 @@ function txSlave(device, portId, slaveId, clParams)
 
       -- Update the iteration and timeout params:
       iteration         = iteration + 1
-      stats.deltaTime   = (moongen.getTime() - startTime) - stats.elapsedTime
-      stats.elapsedTime = moongen.getTime() - startTime
+      stats.deltaTime   = (mg.getTime() - startTime) - stats.elapsedTime
+      stats.elapsedTime = mg.getTime() - startTime
 
       -- Printing and writing:
       if clParams.writemode > 0 then
@@ -583,7 +583,7 @@ function txSlave(device, portId, slaveId, clParams)
 
           -- Printing and logging:
           if canPrint(slaveId, clParams) and sufficientTimeSincePrint then 
-              lastPrintTime = moongen.getTime() - startTime
+              lastPrintTime = mg.getTime() - startTime
               if clParams.writemode == 1 then
                   os.execute("clear")      
                   stats:print(portId)
@@ -735,7 +735,7 @@ end
 -------------------------------------------------------------------------------
 function updateTimestamp(buf)
     local pkt             = buf:getUdpPacket()
-    local cycles          = moongen:getCycles()
+    local cycles          = mg:getCycles()
     pkt.payload.uint64[0] = cycles
 end
 
@@ -755,7 +755,7 @@ function statsTx:print(portId)
     "\n| Packets short              : %32u |"                               ..
     "\n| Bursts                     : %32u |"                               ..
     "\n+---------------------------------------------------------------+"   ,
-    moongen:getCore()                                   ,
+    mg:getCore()                                   ,
     portId                                              ,
     self.packets                                        ,
     (self.packets - self.prevPackets) / self.deltaTime  ,
@@ -782,7 +782,7 @@ end
 function statsTx:write(filename, portId)
     file = io.open(filename, "a")
 
-    local time = moongen.getTime() - globalStartTime
+    local time = mg.getTime() - globalStartTime
 
     local statsString = string.format(
         "%6.3f,%13u,%18.2f,%18.2f,%13u,%18.2f,%18.2f,%5u,%5u\n", 
@@ -793,7 +793,7 @@ function statsTx:write(filename, portId)
         0                                                   ,
         0                                                   ,
         0                                                   ,
-        moongen:getCore()                                   ,
+        mg:getCore()                                   ,
         portId                                              
     ) 
 
@@ -833,7 +833,7 @@ end
 -- clParams : The command line parameters
 -------------------------------------------------------------------------------
 function canPrint(slaveId, clParams) 
-    local elapsedTime = moongen.getTime() - globalStartTime
+    local elapsedTime = mg.getTime() - globalStartTime
     local timePerCore = clParams.statsDisplay / 
                         (#clParams.rxSlavePorts + #clParams.txSlavePorts)
 
@@ -1104,7 +1104,7 @@ function parseArgs(params, ...)
                 end
 
                 params.txDelta = 
-                    math.floor(moongen:getCyclesFrequency() / txPps) *
+                    math.floor(mg:getCyclesFrequency() / txPps) *
                       params.flowsPerStream * params.burstsPerStream
             elseif v == "--file-prefix" or v == "-fp" then
                 params.fileprefix = args[i + 1]
