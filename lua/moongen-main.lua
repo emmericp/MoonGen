@@ -7,6 +7,6 @@ require "software-timestamps"
 require "crc-ratecontrol"
 require "software-ratecontrol"
 
--- phobos main, contains main()
+-- libmoon main, contains main()
 require "main"
 

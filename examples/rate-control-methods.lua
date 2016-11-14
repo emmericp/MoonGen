@@ -5,7 +5,7 @@ local ts      = require "timestamping"
 local stats   = require "stats"
 local hist    = require "histogram"
 local log     = require "log"
-local limiter = require "ratelimiter"
+local limiter = require "software-ratecontrol"
 
 local PKT_SIZE	= 60
 local ETH_DST	= "11:12:13:14:15:16"
@@ -19,8 +19,9 @@ function master(txPort, rate, rc, pattern, threads)
 	if pattern == "cbr" and threads ~= 1 then
 		return log:error("cbr only supports one thread")
 	end
-	local txDev = device.config{ port = txPort, txQueues = threads, disableOffloads = rc ~= "moongen" }
+	local txDev = device.config{port = txPort, txQueues = threads, disableOffloads = rc ~= "moongen"}
 	device.waitForLinks()
+	stats.startStatsTask{txDevices = {txDev}}
 	for i = 1, threads do
 		local rateLimiter
 		if rc == "sw" then
@@ -39,45 +40,37 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 			ethType = 0x1234
 		}
 	end)
-	local txCtr
 	if rc == "hw" then
 		local bufs = mem:bufArray()
 		if pattern ~= "cbr" then
 			return log:error("HW only supports CBR")
 		end
-		txCtr = stats:newDevTxCounter(txDev, "plain")
 		queue:setRate(rate * (PKT_SIZE + 4) * 8)
 		mg.sleepMillis(100) -- for good meaasure
 		while mg.running() do
 			bufs:alloc(PKT_SIZE)
 			queue:send(bufs)
-			if threadId == 1 then txCtr:update() end
 		end
 	elseif rc == "sw" then
 		-- larger batch size is useful when sending it through a rate limiter
 		local bufs = mem:bufArray(128)
-		txCtr = stats:newDevTxCounter(txDev, "plain")
 		while mg.running() do
 			bufs:alloc(PKT_SIZE)
 			rateLimiter:send(bufs)
-			if threadId == 1 then txCtr:update() end
 		end
 	elseif rc == "moongen" then
 		-- larger batch size is useful when sending it through a rate limiter
 		local bufs = mem:bufArray(128)
-		txCtr = stats:newManualTxCounter(txDev, "plain")
 		local dist = pattern == "poisson" and poissonDelay or function(x) return x end
 		while mg.running() do
 			bufs:alloc(PKT_SIZE)
 			for _, buf in ipairs(bufs) do
 				buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - PKT_SIZE - 24))
 			end
-			--txCtr:updateWithSize(queue:sendWithDelay(bufs), PKT_SIZE)
-			txCtr:updateWithSize(queue:sendWithDelay(bufs, rate * numThreads), PKT_SIZE)
+			queue:sendWithDelay(bufs, rate * numThreads)
 		end
 	else
 		log:error("Unknown rate control method")
 	end
-	txCtr:finalize()
 end
 
