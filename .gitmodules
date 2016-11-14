@@ -1,3 +1,3 @@
-[submodule "phobos"]
-	path = phobos
-	url = https://github.com/Phobos-Framework/phobos
+[submodule "libmoon"]
+	path = libmoon
+	url = https://github.com/libmoon/libmoon
