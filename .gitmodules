@@ -1,3 +1,0 @@
-[submodule "libmoon"]
-	path = client/libmoon
-	url = https://github.com/libmoon/libmoon
