@@ -87,7 +87,7 @@ end
 local function configure_main(parser)
     parser:description("Task manager used to run any number of various tasks.")
 	parser:epilog(string.format("Run multiple tasks: \n\t%s [tman options...] [-- <task1-file> [task1 options...]] [-- <task2-file> [task2 options...]] [-- ...]\nGet help on a certain task:\n\t%s -- <task-file> -h", parser._name, parser._name))
-    parser:option("-d --dev", "Devices to transmit from/to."):args("*"):convert(tonumber)
+    parser:option("-d --dev", "Devices to transmit from/to."):count("*"):convert(tonumber)
 --    passer:option("--dpdk-config", "DPDK config file")
     parser:option("-r --rate", "Transmit rate in Mbit/s."):default(10000):convert(tonumber)
 end
