@@ -16,7 +16,8 @@ end
 local zero16 = hton16(0)
 
 function task(taskNum, txInfo, rxInfo, args)
-	local txQ, rxQ = txInfo[1].queue, rxInfo[1].queue
+	local txQ = txInfo[1].queue
+	local rxQ = rxInfo[1].queue
 	local synack = args.SYNACK
 	if synack then
 		print("Running in SYN+ACK mode")

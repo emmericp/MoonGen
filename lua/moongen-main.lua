@@ -136,9 +136,9 @@ local function master(arg0, ...)
             defaults = _G.defaults or {}
             taskInfo.task = _G.task
             taskInfo.file = file
-            -- _G.configure = nil
-            -- _G.defaults = nil
-            -- _G.task = nil
+            _G.configure = nil
+            _G.defaults = nil
+            _G.task = nil
             _G = _G_saved
         end
         configure_common(parser, main_defaults, defaults)
@@ -200,7 +200,19 @@ local function master(arg0, ...)
                     txNum = txNum + 1
                 end
 
-                mg.startTask("task", taskNum, txInfo, rxInfo, taskInfo) -- FIXME
+				_G_saved = _G
+				-- run the userscript
+				local ok = run(taskInfo.file)
+				if not ok then
+					return
+				end
+                mg.startTask("task", taskNum, txInfo, rxInfo, taskInfo)
+				mg.sleepMillis(100) -- FIXME: this is workaround
+				_G.configure = nil
+				_G.defaults = nil
+				_G.task = nil
+				_G = _G_saved
+
                 taskNum = taskNum + 1
             end
         end
