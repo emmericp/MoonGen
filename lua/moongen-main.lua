@@ -182,7 +182,7 @@ local function master(arg0, ...)
 	for _, dev in ipairs(main_pargs.dev) do
         local rxNum = 0
         local txNum = 0
-		local dev = device.config{port = dev, txQueues = txQueues, rxQueues = rxQueues}
+		local dev = device.config{port = dev, txQueues = txQueues, rxQueues = rxQueues, rssQueues = rxQueues}
 		dev:wait()
 
         for _, taskInfo in ipairs(pargs) do
