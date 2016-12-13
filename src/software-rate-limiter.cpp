@@ -43,15 +43,19 @@ namespace rate_limiter {
 				next_send = cur;
 			}
 			if (rc == 0) {
-				uint32_t sent = 0;
-				while (sent < batch_size) {
-					uint64_t pkt_time = (bufs[sent]->pkt_len + 24) * 8 / (link_speed / 1000);
-					uint64_t avg = (uint64_t) (tsc_hz / (1000000000 / target) - pkt_time);
-					std::exponential_distribution<double> distribution(1.0 / avg);
+				for (int i = 0; i < batch_size; i++) {
+					uint64_t pkt_time = (bufs[i]->pkt_len + 24) * 8 / (link_speed / 1000);
+					// ns to cycles
+					pkt_time *= (double) tsc_hz / 1000000000.0;
+					int64_t avg = (int64_t) (tsc_hz / (1000000000.0 / target) - pkt_time);
 					while ((cur = rte_get_tsc_cycles()) < next_send);
-					next_send += distribution(rand) + pkt_time;
-					sent += rte_eth_tx_burst(device, queue, bufs + sent, 1);
+					std::exponential_distribution<double> distribution(1.0 / avg);
+					double delay = (avg <= 0) ? 0 : distribution(rand);
+					next_send += pkt_time + delay;
+					while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0);
 				}
+			} else if (!libmoon::is_running(0)) {
+				return;
 			}
 		}
 	}
@@ -69,12 +73,13 @@ namespace rate_limiter {
 				next_send = cur;
 			}
 			if (rc == 0) {
-				uint32_t sent = 0;
-				while (sent < batch_size) {
+				for (int i = 0; i < batch_size; i++) {
 					while ((cur = rte_get_tsc_cycles()) < next_send);
 					next_send += id_cycles;
-					sent += rte_eth_tx_burst(device, queue, bufs + sent, 1);
+					while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0);
 				}
+			} else if (!libmoon::is_running(0)) {
+				return;
 			}
 		}
 	}
