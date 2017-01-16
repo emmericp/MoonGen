@@ -41,14 +41,26 @@ function pcapSinkSlave(queue, sink, maxp)
 	local numbufs = (maxp == 0) and 100 or math.min(100, maxp)
 	local bufs = memory.bufArray(numbufs)
 
-	local pcapSinkWriter = sink and pcapWriter:newPcapWriter(sink)
+	local writer = sink and pcap:newWriter(sink)
 	local ctr = stats:newDevRxCounter(queue, "plain")
 	local pkts = 0
 	while mg.running() and (maxp == 0 or pkts < maxp) do
 		local rxnum = (maxp == 0) and #bufs or math.min(#bufs, maxp - pkts)
-		local rx = queue:recvWithTimestamps(bufs, rxnum)
-		if pcapSinkWriter and rx > 0 then
-			pcapSinkWriter:writeTSC(bufs, bufs, rx, true)
+		local rx = queue:tryRecv(bufs, rxnum)
+		local batchTime = mg.getTime()
+		for i = 1, rx do
+			local buf = bufs[i]
+			if writer then
+				writer:writeBuf(batchTime, buf, 0)
+			end
+			if handleArp and buf:getEthernetPacket().eth:getType() == eth.TYPE_ARP then
+				-- inject arp packets to the ARP task
+				-- this is done this way instead of using filters to also dump ARP packets here
+				arp.handlePacket(buf)
+			else
+				-- do not free packets handlet by the ARP task, this is done by the arp task
+				buf:free()
+			end
 		end
 		pkts = pkts + rx
 		ctr:update()
@@ -58,7 +70,7 @@ function pcapSinkSlave(queue, sink, maxp)
 	bufs:freeAll()
 
 	ctr:finalize()
-	if pcapSinkWriter then
-		pcapSinkWriter:close()
+	if writer then
+		writer:close()
 	end
 end
