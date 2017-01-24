@@ -1,1 +1,1 @@
-../../phobos/examples/hardware-timestamping.lua
+../../libmoon/examples/hardware-timestamping.lua
