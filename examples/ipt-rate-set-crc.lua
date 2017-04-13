@@ -20,13 +20,13 @@ function master(txPort, rxPort, pattern, threads, pktSize, rate, waitTime)
 	--end
 
 	local rxDev = device.config{ port = rxPort, rxDescs = 4096, dropEnable = true }
-	local txDev = device.config{port = txPort, txQueues = threads, disableOffloads = false, dropEnable = false}
+	local txDev = device.config{ port = txPort, txQueues = threads, disableOffloads = true, dropEnable = false }
 	-- rxDev:wait()
 	-- txDev:wait()
 	device.waitForLinks()
 
 	local queue = rxDev:getRxQueue(0)
-	queue:enableTimestampsAllPackets()
+	-- queue:enableTimestampsAllPackets()
 	local total = 0
 	local bufs = memory.createBufArray()
 	local times = {}
@@ -84,27 +84,51 @@ function master(txPort, rxPort, pattern, threads, pktSize, rate, waitTime)
 end
 
 
+function loadSlave2(queue, txDev, rate, threadId, numThreads, pktSize)
+	local ETH_DST	= "11:12:13:14:15:16"
+	local PKT_SIZE  = 60
+
+        local mem = memory.createMemPool(function(buf)
+                buf:getEthernetPacket():fill{
+                        ethSrc = txDev,
+                        ethDst = ETH_DST,
+                        ethType = 0x1234
+                }
+        end)
+        local bufs = mem:bufArray()
+        while mg.running() do
+                bufs:alloc(PKT_SIZE)
+                queue:send(bufs)
+        end
+end
+
+
 
 function loadSlave(queue, txDev, rate, threadId, numThreads, pktSize)
-	local mem = memory.createMemPool(4096, function(buf)
+	local ETH_DST	= "11:12:13:14:15:16"
+	local PKT_SIZE  = 60
+
+	local mem = memory.createMemPool{n=4096, func=function(buf)
+	--local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
 			ethSrc = txDev,
 			ethDst = ETH_DST,
 			ethType = 0x1234
 		}
-	end)
+	end}
 
 	-- larger batch size is useful when sending it through a rate limiter
-	local bufs = mem:bufArray(128)
+	local bufs = mem:bufArray()  --(128)
 	local dist = pattern == "poisson" and poissonDelay or function(x) return x end
 	while mg.running() do
 		bufs:alloc(pktSize)
 		for _, buf in ipairs(bufs) do
-			--buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - pktSize - 24))
-			buf:setDelay(1000000)
+			buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - pktSize - 24))
+		--	--buf:setDelay(1000000)
 		end
 		-- the rate here doesn't affect the result afaict.  It's just to help decide the size of the bad pkts
 		queue:sendWithDelay(bufs, rate * numThreads)
+		--queue:send(bufs)
 	end
 end
 
