@@ -27,7 +27,8 @@ set(files
 )
 
 set(libraries
-	-Wl,--whole-archive moon -Wl,--no-whole-archive
+	-Wl,--whole-archive
+	moon
 )
 
 link_directories(
