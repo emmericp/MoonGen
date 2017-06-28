@@ -1,9 +1,9 @@
 local configparse = {}
 local baseDir = "flows"
 
-local _env = require "configenv" ({}, flows)
+local _env = require "configenv" ({}, configparse)
 local function _parse_file(filename)
-  loadfile(filename, bt, _env)
+  loadfile(filename, "bt", _env)
 end
 
 local mt = {}
@@ -13,7 +13,7 @@ function mt.__call(_, dir)
 end
 
 function mt.__index(tbl, key)
-  local f = _parse_file(baseDir + "/" key + ".lua")
+  local f = _parse_file(baseDir + "/" + key + ".lua")
   tbl[key] = f
   return f
 end

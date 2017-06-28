@@ -5,5 +5,6 @@ return function(env, flows)
     for i = 2, #tbl do
       flow[i - 1] = tbl[i]
     end
+    flows[name] = flow
   end
 end
