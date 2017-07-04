@@ -5,8 +5,8 @@ return function(env)
 
     if not limit then
       return function()
-        local v = r_start
-        r_start = r_start + step
+        local v = start
+        start = start + step
         return v
       end
     end
@@ -24,7 +24,7 @@ return function(env)
     end
   end
 
-  function list(tbl)
+  function env.list(tbl)
     local index, len = 1, #tbl
     return function()
       local v = tbl[index]
@@ -35,6 +35,7 @@ return function(env)
       end
 
       return v
+    end
   end
 
 end
