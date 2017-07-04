@@ -4,7 +4,7 @@ return function(env, flows)
     local flow = {}
 
 --[[
-  NOTE intended order:
+  NOTE support multiple?, intended order:
     paket1 variation1,
     paket2 variation1, ...
     paketN variation1,
@@ -31,7 +31,7 @@ return function(env, flows)
           local pkt, var = string.match(i, "^([^_]+)_([^_]+)$");
           assert(pkt) -- TODO error string
 
-          i = pkt .. string.upper(string.sub(i, 1, 1)) .. string.sub(i, 2)
+          i = pkt .. string.upper(string.sub(var, 1, 1)) .. string.sub(var, 2)
           if type(v) == "function" then
             table.insert(packet.dynvars, {
               pkt = pkt, var = var, func = v

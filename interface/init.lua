@@ -11,13 +11,19 @@ end
 
 function master(args)
   local flowcfg = crawl()
-  for _,v in ipairs(args.flows) do
-    local f = flowcfg[v]
+  for _,fname in ipairs(args.flows) do
+    local f = flowcfg[fname]
     if not f then
-      print("Flow " .. v .. " not found.")
+      print("Flow " .. fname .. " not found.")
     else
       for i,v in pairs(f[1].fillTbl) do
         print(i, v)
+      end
+      print(string.rep("-", 50))
+      for i = 1, 2 do
+        for _,v in ipairs(f[1].dynvars) do
+          print(table.concat{"pkt.", v.pkt, ".", v.var, " = ", tostring(v.func())})
+        end
       end
     end
   end

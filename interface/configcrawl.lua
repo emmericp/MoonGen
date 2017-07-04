@@ -11,8 +11,9 @@ end
 
 return function()
   for f in lfs.dir(baseDir) do
+    f = baseDir .. "/" .. f
     if lfs.attributes(f, "mode") == "file" then
-      _parse_file(baseDir .. "/" .. f)
+      _parse_file(f)
     end
   end
   return flows
