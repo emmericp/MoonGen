@@ -5,7 +5,8 @@ local baseDir = "flows"
 
 local _env = require "configenv" ({}, flows)
 local function _parse_file(filename)
-  loadfile(filename, "bt", _env)
+  local f = loadfile(filename)
+  setfenv(f, _env)()
 end
 
 return function()
