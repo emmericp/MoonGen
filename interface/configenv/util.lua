@@ -1,10 +1,21 @@
+local arp = require "proto.arp"
+
 return function(env)
+
+  -- arp(ip:ip_addr, timeout:number = 5)
+  -- TODO consider deducing ip
   env.arp = function(ip, timeout)
-    ip = ip or 5; timeout = timeout or 5
-    if type(ip) == "number" then
-      return {"arpRequest", timeout = ip}
-    else
-      return {"arpRequest", ip = ip, timeout = timeout}
+    timeout = timeout or 5
+    -- TODO input assertions
+
+    local result
+    return function()
+      if timeout then
+        result = arp.blockingLookup(ip, timeout)
+        timeout = nil
+      end
+      return result
     end
   end
+
 end

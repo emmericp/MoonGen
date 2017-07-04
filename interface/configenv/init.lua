@@ -1,6 +1,6 @@
 return function(...)
-  require "protos" (...)
-  require "setup" (...)
-  require "util" (...)
+  require "configenv.protos" (...)
+  require "configenv.setup" (...)
+  require "configenv.util" (...)
   return ...
 end

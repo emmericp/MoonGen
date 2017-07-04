@@ -1,4 +1,5 @@
-local cp = require "configparse"
+package.path = package.path .. ";interface/?.lua;interface/?/init.lua"
+local crawl = require "configcrawl"
 
 function configure(parser)
   parser:description("Configuration based interface for MoonGen.")
@@ -9,8 +10,8 @@ function configure(parser)
 end
 
 function master(args)
-  cp(args.config)
+  local flowcfg = crawl()
   for _,v in ipairs(args.flows) do
-    print(cp[v][1])
+    print(flowcfg[v][1])
   end
 end
