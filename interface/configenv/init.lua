@@ -5,6 +5,7 @@ for v in string.gmatch([[
   ipairs next pairs
   rawequal rawget rawlen
   tonumber tostring type
+  parseIPAddress
 ]], "%S+") do
   _safe_methods[v] = _G[v]
 end

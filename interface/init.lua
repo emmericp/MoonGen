@@ -28,7 +28,7 @@ function master(args)
     if not f then
       print("Flow " .. fname .. " not found.")
     else
-      mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, f)
+      mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, fname)
       for i,v in pairs(f[1].fillTbl) do
         print(i, v)
       end
@@ -44,7 +44,8 @@ function master(args)
   mg.waitForTasks()
 end
 
-function loadSlave(txQueue, rxDev, flow)
+function loadSlave(txQueue, rxDev, fname)
+  local flow = crawl()[fname] -- TODO improve
   -- TODO arp ?
   local mempool = memory.createMemPool(function(buf)
     buf["get" .. flow[1].proto .. "Packet"](buf):fill(flow[1].fillTbl)
@@ -71,7 +72,12 @@ function loadSlave(txQueue, rxDev, flow)
       end
 
       if dv then
-        pkt[dv.pkt][dv.var]:set(dv.func())
+				local var = pkt[dv.pkt][dv.var]
+				if type(var) == "cdata" then
+					var:set(dv.func())
+				else
+	        pkt[dv.pkt][dv.var] = dv.func()
+				end
       end
 		end
 
