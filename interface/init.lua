@@ -47,7 +47,7 @@ end
 function loadSlave(txQueue, rxDev, flow)
   -- TODO arp ?
   local mempool = memory.createMemPool(function(buf)
-    buf["get" .. flow[1].proto .. "Packet"]():fill(flow[1].fillTbl)
+    buf["get" .. flow[1].proto .. "Packet"](buf):fill(flow[1].fillTbl)
 	end)
 
   local bufs = mempool:bufArray()
