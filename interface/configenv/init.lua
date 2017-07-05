@@ -6,7 +6,7 @@ for v in string.gmatch([[
   rawequal rawget rawlen
   tonumber tostring type
 ]], "%S+") do
-  safeMethods[v] = _G[v]
+  _safe_methods[v] = _G[v]
 end
 
 return function(tbl, ...)
