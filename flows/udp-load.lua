@@ -1,4 +1,4 @@
-Flow{"udp-load", Packet.udp{
+Flow{"udp-load", Packet.Udp{
     eth_src = nil,
     --eth_dst = arp("10.1.0.10"), -- TODO figure out ARP
     ip4_src = list{
