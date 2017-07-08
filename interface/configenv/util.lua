@@ -2,6 +2,14 @@ local arp = require "proto.arp"
 
 return function(env)
 
+	env.ip = function(str)
+		return (parseIPAddress(str))
+	end
+	env.mac = function(str)
+		return (parseMacAddress(str))
+	end
+	
+	
 	-- arp(ip:ip_addr, timeout:number = 5)
 	-- TODO consider deducing ip
 	env.arp = function(ip, timeout)
