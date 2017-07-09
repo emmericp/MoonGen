@@ -26,12 +26,13 @@ function master(args)
 
 	local flowcfg = crawl()
 	for _,fname in ipairs(args.flows) do
-		local f = flowcfg[fname]
+			local f = flowcfg[fname]
 
-		if not f then
-			print("Flow " .. fname .. " not found.")
-		else
-			mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, fname)
+			if not f then
+				print("Flow " .. fname .. " not found.")
+			else
+				mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, fname)
+			end
 		end
 
 	mg.waitForTasks()
@@ -57,7 +58,7 @@ function loadSlave(txQueue, rxDev, fname)
 
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
-			local dv = flow[1].dynvars[dynvarIndex]
+			local dv = flow.packet.dynvars[dynvarIndex]
 
 			dynvarIndex = dynvarIndex + 1
 			if dynvarIndex > dynvarSize then
