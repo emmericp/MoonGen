@@ -28,16 +28,16 @@ return function(env, flows)
 				packet.fillTbl = {}
 				packet.dynvars = {}
 				for i,v in pairs(tbl) do
-					local pkt, var = string.match(i, "^([^_]+)_([^_]+)$");
-					assert(pkt) -- TODO error string
+					local pkt, var = string.match(i, "^([%l%d]+)(%u[%l%d]*)$");
 
-					i = pkt .. string.upper(string.sub(var, 1, 1)) .. string.sub(var, 2)
 					if type(v) == "function" then
+						var = string.lower(var)
 						table.insert(packet.dynvars, {
 							pkt = pkt, var = var, func = v
 						})
 						v = v() -- NOTE arp will execute in master
 					end
+
 					packet.fillTbl[i] = v
 				end
 				return packet
