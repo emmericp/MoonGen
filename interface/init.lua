@@ -27,21 +27,12 @@ function master(args)
 	local flowcfg = crawl()
 	for _,fname in ipairs(args.flows) do
 		local f = flowcfg[fname]
+
 		if not f then
 			print("Flow " .. fname .. " not found.")
 		else
 			mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, fname)
-			for i,v in pairs(f[1].fillTbl) do
-				print(i, v)
-			end
-			print(string.rep("-", 50))
-			for _ = 1, 2 do
-				for _,v in ipairs(f[1].dynvars) do
-					print(table.concat{"pkt.", v.pkt, ".", v.var, " = ", tostring(v.func())})
-				end
-			end
 		end
-	end
 
 	mg.waitForTasks()
 end
@@ -50,7 +41,7 @@ function loadSlave(txQueue, rxDev, fname)
 	local flow = crawl()[fname] -- TODO improve
 	-- TODO arp ?
 	local mempool = memory.createMemPool(function(buf)
-		buf["get" .. flow[1].proto .. "Packet"](buf):fill(flow[1].fillTbl)
+		buf["get" .. flow.packet.proto .. "Packet"](buf):fill(flow.packet.fillTbl)
 	end)
 
 	local bufs = mempool:bufArray()
@@ -59,10 +50,10 @@ function loadSlave(txQueue, rxDev, fname)
 
 	-- start at 0 to leave first packet unchanged
 	-- would skip first values of ranges otherwise
-	local dynvarIndex, dynvarSize = 0, #flow[1].dynvars
+	local dynvarIndex, dynvarSize = 0, #flow.packet.dynvars
 
 	while mg.running() do
-		bufs:alloc(flow[1].fillTbl.pktLength)
+		bufs:alloc(flow.packet.fillTbl.pktLength)
 
 		for _, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()

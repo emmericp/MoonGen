@@ -2,10 +2,12 @@ local arp = require "proto.arp"
 
 return function(env)
 
+	-- luacheck: read globals parseIPAddress
 	env.ip = function(str)
 		return (parseIPAddress(str))
 	end
 
+	-- luacheck: read globals parseMacAddress
 	env.mac = function(str)
 		return (parseMacAddress(str, true))
 	end

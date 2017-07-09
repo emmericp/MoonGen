@@ -3,17 +3,7 @@ return function(env, flows)
 		local name = tbl[1]
 		local flow = {}
 
---[[
-	NOTE support multiple?, intended order:
-		paket1 variation1,
-		paket2 variation1, ...
-		paketN variation1,
-		paket1 variation2, ...
-]]
-
-		for i = 2, #tbl do
-			flow[i - 1] = tbl[i]
-		end
+		flow.packet = tbl[2]
 
 		flows[name] = flow
 	end
