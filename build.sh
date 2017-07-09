@@ -1,5 +1,6 @@
 #!/bin/bash
 
+FLAGS="$@"
 OPTIONS=''
 MLX5=false
 MLX4=false
@@ -64,6 +65,6 @@ make -j $NUM_CPUS
 
 echo Trying to bind interfaces, this will fail if you are not root
 echo Try "sudo ./bind-interfaces.sh" if this step fails
-./bind-interfaces.sh
+./bind-interfaces.sh ${FLAGS}
 )
 
