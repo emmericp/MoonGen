@@ -1,3 +1,31 @@
+local function _init_tbl(tbl, key)
+	local result = tbl[key]
+	if not result then
+		result = {}
+		tbl[key] = result
+	end
+	return result
+end
+
+local function _copy_packet(src, dest)
+	if dest.proto then
+		assert(dest.proto == src.proto) -- TODO error message
+	else
+		dest.proto = src.proto
+	end
+
+
+	local tbl = _init_tbl(dest, "fillTbl")
+	for i,v in pairs(src.fillTbl) do
+		tbl[i] = v
+	end
+
+	tbl = _init_tbl(dest, "dynvars")
+	for _,v in ipairs(src.dynvars) do
+		table.insert(tbl, v)
+	end
+end
+
 return function(env, flows)
 	function env.Flow(tbl)
 		local name = tbl[1]
@@ -8,18 +36,14 @@ return function(env, flows)
 		if tbl.parent then
 			for i,v in pairs(flows[tbl.parent]) do
 				if i == "packet" then
-					for j,w in pairs(v) do
-						flow.packet[i] = v
-					end
+					_copy_packet(v, flow.packet)
 				else
 					flow[i] = v
 				end
 			end
 		end
 
-		for i,v in pairs(tbl[2]) do
-			flow.packet[i] = v
-		end
+		_copy_packet(tbl[2], flow.packet)
 
 		flows[name] = flow
 	end

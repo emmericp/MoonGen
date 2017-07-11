@@ -30,7 +30,7 @@ function crawl.receiveFlow(f)
 end
 
 return setmetatable(crawl, {
-	__call = function(baseDir)
+	__call = function(_, baseDir)
 		baseDir = baseDir or "flows"
 		for f in lfs.dir(baseDir) do
 			f = baseDir .. "/" .. f
