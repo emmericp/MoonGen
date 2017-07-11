@@ -10,7 +10,7 @@ local flows = {}
 local _env_flows = setmetatable({}, {
 	__newindex = function(_, key, val)
 		if flows[key] then
-			errhnd(nil, "Duplicate flow %q. Also in file %s.", key, flows[key].file)
+			errhnd("Duplicate flow %q. Also in file %s.", key, flows[key].file)
 		end
 
 		val.file = _current_file
@@ -21,7 +21,12 @@ local _env_flows = setmetatable({}, {
 
 local _env = require "configenv" ({}, errhnd, _env_flows)
 local function _parse_file(filename)
-	local f = loadfile(filename)
+	local f, msg = loadfile(filename)
+	if not f then
+		errhnd(0, msg)
+		return
+	end
+
 	_current_file = filename
 	setfenv(f, _env)()
 end
