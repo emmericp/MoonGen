@@ -20,7 +20,7 @@ function errors:print(format, level, gLevel)
 end
 
 function errors:log(level, message, ...)
-  level = (level or 2) + 1
+  level = (level or 3) + 1
   local info = debug.getinfo(level, "Sl")
   table.insert(self, {
     info = info, msg = string.format(message, ...)
