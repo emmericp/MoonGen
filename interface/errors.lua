@@ -2,20 +2,18 @@ local log = require "log"
 
 local errors = {}
 
-function errors:print(format, level, gLevel)
-	format = format or "%s:%d: %s"
-	level = level or "warn"
-	gLevel = gLevel or "error"
-
+function errors:print()
 	local cnt = #self
 	if cnt == 0 then return end
 
-	log[gLevel](log, "%d errors found while crawling config:", cnt)
+	log:error("%d errors found while crawling config:", cnt)
 
 	for _,v in ipairs(self) do
-		log[level](log, format,
-			v.info.short_src, v.info.currentline, v.msg
-		)
+		if v.info then
+			log:warn("%s:%d: %s", v.info.short_src, v.info.currentline, v.msg)
+		else
+			log:warn(v.msg)
+		end
 	end
 end
 
@@ -28,7 +26,11 @@ function errors:log(level, message, ...)
 		level = level + 1
 	end
 
-	local info = debug.getinfo(level, "Sl")
+	local info
+	if level > 1 then
+		info = debug.getinfo(level, "Sl")
+	end
+
 	table.insert(self, {
 		info = info, msg = message
 	})

@@ -4,8 +4,12 @@ return function(env, error)
 
 	-- luacheck: read globals parseIPAddress
 	env.ip = function(str)
-		error:assert(type(str) == "string",
-			"Function 'ip': string expected, got %s.", type(str))
+		local t = type(str)
+		if t ~= "string" then
+			error("Function 'ip': string expected, got %s.", t)
+			return
+		end
+
 		local ip = parseIPAddress(str)
 		error:assert(ip, "Invalid ip address %q.", str)
 		return ip
@@ -13,8 +17,12 @@ return function(env, error)
 
 	-- luacheck: read globals parseMacAddress
 	env.mac = function(str)
-		error:assert(type(str) == "string",
-			"Function 'mac': string expected, got %s.", type(str))
+		local t = type(str)
+		if t ~= "string" then
+			error("Function 'mac': string expected, got %s.", t)
+			return
+		end
+		
 		local mac = parseMacAddress(str, true)
 		error:assert(mac, "Invalid mac address %q.", str)
 		return mac
