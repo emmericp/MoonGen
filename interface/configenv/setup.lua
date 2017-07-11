@@ -26,7 +26,7 @@ local function _copy_packet(src, dest)
 	end
 end
 
-return function(env, flows)
+return function(env, error, flows)
 	function env.Flow(tbl)
 		local name = tbl[1]
 		local flow = {
