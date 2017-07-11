@@ -1,9 +1,24 @@
 return function(env, flows)
 	function env.Flow(tbl)
 		local name = tbl[1]
-		local flow = {}
+		local flow = {
+			packet = {}
+		}
 
-		flow.packet = tbl[2]
+		if tbl.parent then
+			for i,v in pairs(flows[tbl.parent]) do
+				if i == "packet" then
+					for j,w in pairs(v) do
+						flow.packet[i] = v
+					end
+				else
+					flow[i] = v
+				end
+		end
+
+		for i,v in pairs(tbl[2]) do
+			flow.packet[i] = v
+		end
 
 		flows[name] = flow
 	end
