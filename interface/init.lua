@@ -24,22 +24,23 @@ function master(args)
 
 	-- TODO rate limits
 
-	local flowcfg = crawl()
+	local flowcfg = crawl(args.config)
 	for _,fname in ipairs(args.flows) do
 			local f = flowcfg[fname]
 
 			if not f then
 				print("Flow " .. fname .. " not found.")
 			else
-				mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, fname)
+				mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, crawl.passFlow(fname))
 			end
 		end
 
 	mg.waitForTasks()
 end
 
-function loadSlave(txQueue, rxDev, fname)
-	local flow = crawl()[fname] -- TODO improve
+function loadSlave(txQueue, rxDev, flow)
+	flow = crawl.receiveFlow(flow)
+
 	-- TODO arp ?
 	local mempool = memory.createMemPool(function(buf)
 		buf["get" .. flow.packet.proto .. "Packet"](buf):fill(flow.packet.fillTbl)

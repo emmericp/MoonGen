@@ -14,6 +14,7 @@ return function(env, flows)
 				else
 					flow[i] = v
 				end
+			end
 		end
 
 		for i,v in pairs(tbl[2]) do
