@@ -47,6 +47,7 @@ return function(env, error, flows)
 			end
 		end
 
+		flow.name = name
 		_copy_packet(tbl[2], flow.packet)
 
 		flows[name] = flow

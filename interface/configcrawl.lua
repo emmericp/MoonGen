@@ -34,7 +34,7 @@ end
 
 -- Flow syntax <name>:<tx>:<rx>{,<key>=<value>}
 function crawl.getFlow(fname)
-	local name, tx, rx, optstring = string.match(fname, "^([^:]+):([^:]+):([^,]+),?(.*)^")
+	local name, tx, rx, optstring = string.match(fname, "^([^:]+):([^:]+):([^,]+),?(.*)$")
 	if not name then
 		log:fatal("Invalid parameter: %q. Expected format: '<name>:<tx>:<rx>{,<key>=<value>}'.", fname)
 	end
