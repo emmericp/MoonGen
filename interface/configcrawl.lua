@@ -34,7 +34,11 @@ end
 
 -- Flow syntax <name>:<tx>:<rx>{,<key>=<value>}
 function crawl.getFlow(fname)
-	local name, tx, rx, optstring = string.match(fname, "$([^:]+):([^:]+):([^,]+),(.*)^")
+	local name, tx, rx, optstring = string.match(fname, "^([^:]+):([^:]+):([^,]+),?(.*)^")
+	if not name then
+		log:fatal("Invalid parameter: %q. Expected format: '<name>:<tx>:<rx>{,<key>=<value>}'.")
+	end
+
 	local f = flows[name]
 
 	if not f then
@@ -54,6 +58,14 @@ function crawl.getFlow(fname)
 	end
 
 	return setmetatable({ options = options, tx = tx, rx = rx }, { __index = f })
+end
+
+function crawl.validateFlow(f)
+	if type(f) == "string" then
+		f = crawl.getFlow(f)
+	end
+
+	return f and true or false -- TODO validation
 end
 
 function crawl.passFlow(f)
