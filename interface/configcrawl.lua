@@ -36,7 +36,7 @@ end
 function crawl.getFlow(fname)
 	local name, tx, rx, optstring = string.match(fname, "^([^:]+):([^:]+):([^,]+),?(.*)^")
 	if not name then
-		log:fatal("Invalid parameter: %q. Expected format: '<name>:<tx>:<rx>{,<key>=<value>}'.")
+		log:fatal("Invalid parameter: %q. Expected format: '<name>:<tx>:<rx>{,<key>=<value>}'.", fname)
 	end
 
 	local f = flows[name]
