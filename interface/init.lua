@@ -11,29 +11,46 @@ local crawl = require "configcrawl"
 function configure(parser)
 	parser:description("Configuration based interface for MoonGen.")
 	parser:option("-c --config", "Config file directory."):default("flows")
-	parser:argument("txDev", "Device to transmit from."):convert(tonumber)
-	parser:argument("rxDev", "Device to receive from."):convert(tonumber)
 	parser:argument("flows", "List of flow names."):args "+"
 end
 
 function master(args)
-	-- TODO figure out queue count
-	local txDev = device.config{port = args.txDev, rxQueues = 1, txQueues = 1}
-	local rxDev = device.config{port = args.rxDev, rxQueues = 1, txQueues = 1}
+	crawl(args.config)
+
+	local devices = setmetatable({}, {
+		__index = function(tbl, key)
+			local r = { rxq = 0, txq = 0, rxqi = 0, txqi = 0 }
+			tbl[key] = r; return r
+		end
+	})
+	local flows = {}
+	for _,fname in ipairs(args.flows) do
+		local f = crawl.getFlow(fname)
+		table.insert(flows, f)
+
+		local txDev = devices[f.tx]
+		local rxDev = devices[f.rx]
+
+		-- TODO figure out queue count per flow
+		txDev.txq = txDev.txq + 1
+		txDev.rxq = txDev.rxq + 1
+		rxDev.txq = rxDev.txq + 1
+		rxDev.rxq = rxDev.rxq + 1
+	end
+
+	for i,v in pairs(devices) do
+		v.dev = device.config{ port = i, rxQueues = v.rxq, txQueues = v.txq }
+	end
 	device.waitForLinks()
 
-	-- TODO rate limits
+	-- TODO rate limits & other options
+	for _,f in ipairs(flows) do
+		local txDev = devices[f.tx]
+		local rxDev = devices[f.rx]
 
-	local flowcfg = crawl(args.config)
-	for _,fname in ipairs(args.flows) do
-			local f = flowcfg[fname]
-
-			if not f then
-				print("Flow " .. fname .. " not found.")
-			else
-				mg.startTask("loadSlave", txDev:getTxQueue(0), rxDev, crawl.passFlow(fname))
-			end
-		end
+		mg.startTask("loadSlave", txDev.dev:getTxQueue(txDev.txqi), rxDev.dev, crawl.passFlow(f))
+		txDev.txqi = txDev.txqi + 1
+	end
 
 	mg.waitForTasks()
 end

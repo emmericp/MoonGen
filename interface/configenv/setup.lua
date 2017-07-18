@@ -29,6 +29,10 @@ end
 return function(env, error, flows)
 	function env.Flow(tbl)
 		local name = tbl[1]
+		error.assert(not string.find(name, ","), "Invalid character ',' in flow name.")
+		error.assert(not string.find(name, ":"), "Invalid character ':' in flow name.")
+		error.assert(not string.find(name, " "), "Invalid character ' ' in flow name.")
+
 		local flow = {
 			packet = {}
 		}

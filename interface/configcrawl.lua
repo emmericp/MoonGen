@@ -1,4 +1,5 @@
 local lfs = require "lfs"
+local log = require "log"
 
 local errors = require "errors"
 
@@ -31,13 +32,40 @@ local function _parse_file(filename)
 	setfenv(f, _env)()
 end
 
-function crawl.passFlow(name)
-	return { name = name, file = flows[name].file }
+-- Flow syntax <name>:<tx>:<rx>{,<key>=<value>}
+function crawl.getFlow(fname)
+	local name, tx, rx, optstring = string.match(fname, "$([^:]+):([^:]+):([^,]+),(.*)^")
+	local f = flows[name]
+
+	if not f then
+		log:fatal("Flow %q not found.", name)
+	end
+
+	tx, rx = tonumber(tx), tonumber(rx)
+	if not tx then
+		log:fatal("Transmit port for flow %q needs to be a valid number.", name)
+	elseif not rx then
+		log:fatal("Receive port for flow %q needs to be a valid number.", name)
+	end
+
+	local options = {}
+	for i,v in string.gmatch(optstring, "([^=,]+)=([^,]+)") do
+		options[i] = v
+	end
+
+	return setmetatable({ options = options, tx = tx, rx = rx }, { __index = f })
+end
+
+function crawl.passFlow(f)
+	if type(f) == "string" then
+		f = crawl.getFlow(f)
+	end
+	return { name = f.name, file = f.file, options = f.options }
 end
 
 function crawl.receiveFlow(f)
 	_parse_file(f.file)
-	return flows[f.name]
+	return setmetatable({ options = f.options }, { __index = flows[f.name] })
 end
 
 return setmetatable(crawl, {
