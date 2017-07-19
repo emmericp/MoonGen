@@ -15,12 +15,12 @@ return function(env, error, flows)
 			flows[name] = Flow.new(name, tbl, error)
 		end
 
-	  env.Packet = setmetatable({}, {
+		env.Packet = setmetatable({}, {
 			__newindex = function() error() end, -- TODO message
 			__index = function(_, proto)
-	      return function(tbl)
-	        return Packet.new(proto, tbl, error)
-	      end
-	    end
-	  })
+				return function(tbl)
+					return Packet.new(proto, tbl, error)
+				end
+			end
+		})
 end

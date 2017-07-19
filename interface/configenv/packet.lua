@@ -25,7 +25,21 @@ function Packet.new(proto, tbl, error)
     end
   end
 
-  return setmetatable(self, Packet)
+  return setmetatable(self, { __index = Packet })
+end
+
+function Packet:inherit(other)
+  if other then
+    for i,v in pairs(other.fillTbl) do
+      if not self.fillTbl[i] then
+        self.fillTbl[i] = v
+      end
+    end
+
+    -- TODO dynvar inheritance
+  end
+
+  return self
 end
 
 function Packet:validate()

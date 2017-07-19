@@ -60,14 +60,6 @@ function crawl.getFlow(fname)
 	return setmetatable({ options = options, tx = tx, rx = rx }, { __index = f })
 end
 
-function crawl.validateFlow(f)
-	if type(f) == "string" then
-		f = crawl.getFlow(f)
-	end
-
-	return f and true or false -- TODO validation
-end
-
 function crawl.passFlow(f)
 	if type(f) == "string" then
 		f = crawl.getFlow(f)
