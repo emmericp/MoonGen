@@ -2,6 +2,7 @@ local mg     = require "moongen"
 local memory = require "memory"
 local device = require "device"
 local stats  = require "stats"
+local log    = require "log"
 
 package.path = package.path .. ";interface/?.lua;interface/?/init.lua"
 local crawl = require "configcrawl"
@@ -26,6 +27,11 @@ function master(args)
 	local flows = {}
 	for _,fname in ipairs(args.flows) do
 		local f = crawl.getFlow(fname)
+
+		if not f:validate() then
+			log:fatal("Flow %q is invalid.", fname)
+		end
+
 		table.insert(flows, f)
 
 		local txDev = devices[f.tx]

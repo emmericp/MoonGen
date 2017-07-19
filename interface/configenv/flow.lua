@@ -1,0 +1,23 @@
+local Packet = select(2, require "configenv.packet")
+
+local Flow = {}
+
+function Flow.new(name, tbl)
+	local parent = tbl.parent
+	local self = {
+		name = name,
+		packet = Packet.new(tbl[2], parent and parent.packet)
+	}
+
+	if parent then
+		self.parent = parent.name
+		-- NOTE add copy opertations here
+	end
+	return setmetatable(self, { __index = Flow })
+end
+
+function Flow:validate()
+	return self.packet:validate() -- TODO more validation
+end
+
+return Flow

@@ -22,7 +22,7 @@ return function(env, error)
 			error("Function 'mac': string expected, got %s.", t)
 			return
 		end
-		
+
 		local mac = parseMacAddress(str, true)
 		error:assert(mac, "Invalid mac address %q.", str)
 		return mac
