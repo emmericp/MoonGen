@@ -12,6 +12,11 @@ return function(env, error, flows)
 				error("Invalid flow name %q. Names cannot include the characters ' ;:,'.", name)
 			end
 
+			if type(tbl.parent) == "string" then
+				tbl.parent = flows[tbl.parent]
+				-- TODO error message when not found
+			end
+
 			flows[name] = Flow.new(name, tbl, error)
 		end
 
