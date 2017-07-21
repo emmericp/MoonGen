@@ -14,8 +14,8 @@ function Flow.new(name, tbl)
 	return setmetatable(self, { __index = Flow })
 end
 
-function Flow:validate()
-	return self.packet:validate() -- TODO more validation
+function Flow:validate(val)
+	return self.packet:validate(val) -- TODO more validation
 end
 
 return Flow

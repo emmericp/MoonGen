@@ -2,6 +2,7 @@ local lfs = require "lfs"
 local log = require "log"
 
 local errors = require "errors"
+local validator = require "validator"
 
 local crawl = {}
 local errhnd = errors()
@@ -42,9 +43,19 @@ function crawl.getFlow(fname)
 	local f = flows[name]
 
 	if not f then
-		log:fatal("Flow %q not found.", name)
+		log:error("Flow %q not found.", name)
+		return
 	end
 
+	local val = validator()
+	f:validate(val)
+	if not val.valid then
+		log:error("Flow %q is invalid.", name)
+		val:print(log.warn, log)
+		return
+	end
+
+	-- TODO check port existence
 	tx, rx = tonumber(tx), tonumber(rx)
 	if not tx then
 		log:fatal("Transmit port for flow %q needs to be a valid number.", name)
@@ -82,7 +93,12 @@ return setmetatable(crawl, {
 			end
 		end
 
-		errhnd:print()
+		local cnt = errhnd:count()
+		if cnt > 0 then
+			log:error("%d errors found while crawling config:", cnt)
+			errhnd:print(log.warn, log)
+		end
+
 		return flows
 	end
 })

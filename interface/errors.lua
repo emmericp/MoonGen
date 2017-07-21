@@ -1,26 +1,19 @@
-local log = require "log"
-
 local errors = {}
 
-function errors:print()
-	local cnt = #self
-	if cnt == 0 then return end
-
-	log:error("%d errors found while crawling config:", cnt)
-
+function errors:print(fn, ...)
 	for _,v in ipairs(self) do
 		if v.info then
-			log:warn("%s:%d: %s", v.info.short_src, v.info.currentline, v.msg)
-		else
-			log:warn(v.msg)
+			v.msg = string.format("%s:%d: %s", v.info.short_src, v.info.currentline, v.msg)
 		end
+
+		fn(..., v.msg)
 	end
 end
 
 function errors:log(level, message, ...)
 	if type(level) == "string" then
 		message = string.format(level, message, ...)
-		level = 4
+		level = 3
 	else
 		message = string.format(message, ...)
 		level = level + 1
@@ -36,10 +29,18 @@ function errors:log(level, message, ...)
 	})
 end
 
-function errors:assert(test, ...)
+function errors:assert(test, level, ...)
 	if not test then
-		errors.log(self, ...)
+		if type(level) == "number" then
+			errors.log(self, level + 1, ...)
+		else
+			error.log(self, 3, level, ...)
+		end
 	end
+end
+
+function errors:count()
+	return #self
 end
 
 return function()

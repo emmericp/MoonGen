@@ -18,30 +18,35 @@ end
 function master(args)
 	crawl(args.config)
 
+	-- auto-filling device index
 	local devices = setmetatable({}, {
 		__index = function(tbl, key)
 			local r = { rxq = 0, txq = 0, rxqi = 0, txqi = 0 }
 			tbl[key] = r; return r
 		end
 	})
+
 	local flows = {}
 	for _,fname in ipairs(args.flows) do
 		local f = crawl.getFlow(fname)
 
-		if not f:validate() then
-			log:fatal("Flow %q is invalid.", fname)
+		if f then
+			table.insert(flows, f)
+
+			local txDev = devices[f.tx]
+			local rxDev = devices[f.rx]
+
+			-- TODO figure out queue count per flow
+			txDev.txq = txDev.txq + 1
+			txDev.rxq = txDev.rxq + 1
+			rxDev.txq = rxDev.txq + 1
+			rxDev.rxq = rxDev.rxq + 1
 		end
+	end
 
-		table.insert(flows, f)
-
-		local txDev = devices[f.tx]
-		local rxDev = devices[f.rx]
-
-		-- TODO figure out queue count per flow
-		txDev.txq = txDev.txq + 1
-		txDev.rxq = txDev.rxq + 1
-		rxDev.txq = rxDev.txq + 1
-		rxDev.rxq = rxDev.rxq + 1
+	if #flows == 0 then
+		log:error("No valid flows remaining.")
+		return
 	end
 
 	for i,v in pairs(devices) do
