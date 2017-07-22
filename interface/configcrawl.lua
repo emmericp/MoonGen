@@ -80,9 +80,11 @@ function crawl.passFlow(f)
 	return { name = f.name, file = f.file, options = f.options }
 end
 
-function crawl.receiveFlow(f)
-	_parse_file(f.file)
-	return setmetatable({ options = f.options }, { __index = flows[f.name] })
+function crawl.receiveFlow(fdef)
+	_parse_file(fdef.file)
+	local f = setmetatable({ options = fdef.options }, { __index = flows[fdef.name] })
+	f:prepare()
+	return f
 end
 
 return setmetatable(crawl, {

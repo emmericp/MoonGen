@@ -33,6 +33,7 @@ function master(args)
 		if f then
 			table.insert(flows, f)
 
+			-- less error-prone way of hardcoding all four assignments
 			for a in string.gmatch("txrx", "..") do
 				for b in string.gmatch("txqrxq", "...") do
 					local dev = devices[f[a]]
@@ -66,6 +67,10 @@ end
 
 function loadSlave(txQueue, rxDev, flow)
 	flow = crawl.receiveFlow(flow)
+
+	if flow.cbr then
+		txQueue:setRate(flow.cbr)
+	end
 
 	-- TODO arp ?
 	local mempool = memory.createMemPool(function(buf)
