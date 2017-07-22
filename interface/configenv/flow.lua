@@ -24,7 +24,7 @@ function Flow:validate(val)
 end
 
 local _time_units = {
-	ms = 1 / 1000, s = 1, m = 60, h = 3600
+	[""] = 1, ms = 1 / 1000, s = 1, m = 60, h = 3600
 }
 local _size_units = {
 	[""] = 1,
@@ -33,9 +33,12 @@ local _size_units = {
 	g = 10 ^ 9, gi = 2 ^ 30
 }
 local function _parse_rate(self)
-	local num, unit, time = string.match(self.options.rate, "^(%d+.?%d*)(%a+)/(%a+)$")
+	local num, unit, time = string.match(self.options.rate, "^(%d+%.?%d*)(%a*)/?(%a*)$")
 	num, unit, time = tonumber(num), string.lower(unit), _time_units[time]
-	if string.find(unit, "bit$") then
+
+	if unit == "" then
+		unit = _size_units.m * 8
+	elseif string.find(unit, "bit$") then
 		unit = _size_units[string.sub(unit, 1, -4)]
 	elseif string.find(unit, "b$") then
 		unit = _size_units[string.sub(unit, 1, -2)] * 8
@@ -44,7 +47,7 @@ local function _parse_rate(self)
 	end
 
 	unit = unit / 10 ^ 6 -- cbr is in mbit/s
-	self.cbr = math.round(num * unit / time)
+	self.cbr = num * unit / time
 end
 
 function Flow:prepare()
@@ -55,7 +58,9 @@ function Flow:prepare()
 		end
 	end
 
-	_parse_rate(self)
+	if self.options.rate then
+		_parse_rate(self)
+	end
 end
 
 return Flow
