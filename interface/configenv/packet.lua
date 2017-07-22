@@ -21,7 +21,7 @@ function Packet.new(proto, tbl, error)
 
 			self.fillTbl[i] = v
 		else
-			error("Invalid packet field %q.", i) -- TODO add hint?
+			error("Invalid packet field %q. Format is 'layerField' (e.g. ip4Dst).", i)
 		end
 	end
 

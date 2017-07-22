@@ -1,6 +1,8 @@
 local lfs = require "lfs"
 local log = require "log"
 
+local devnum = require("device").numDevices()
+
 local errors = require "errors"
 local validator = require "validator"
 
@@ -55,12 +57,13 @@ function crawl.getFlow(fname)
 		return
 	end
 
-	-- TODO check port existence
 	tx, rx = tonumber(tx), tonumber(rx)
-	if not tx then
-		log:fatal("Transmit port for flow %q needs to be a valid number.", name)
-	elseif not rx then
-		log:fatal("Receive port for flow %q needs to be a valid number.", name)
+	if not tx or tx >= devnum then
+		log:error("Transmit port for flow %q needs to be a valid device number.", name)
+		return
+	elseif not rx or rx >= devnum then
+		log:error("Receive port for flow %q needs to be a valid device number.", name)
+		return
 	end
 
 	local options = {}

@@ -34,7 +34,7 @@ function errors:assert(test, level, ...)
 		if type(level) == "number" then
 			errors.log(self, level + 1, ...)
 		else
-			error.log(self, 3, level, ...)
+			errors.log(self, 3, level, ...)
 		end
 	end
 end
