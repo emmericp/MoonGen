@@ -33,14 +33,12 @@ function master(args)
 		if f then
 			table.insert(flows, f)
 
-			local txDev = devices[f.tx]
-			local rxDev = devices[f.rx]
-
-			-- TODO figure out queue count per flow
-			txDev.txq = txDev.txq + 1
-			txDev.rxq = txDev.rxq + 1
-			rxDev.txq = rxDev.txq + 1
-			rxDev.rxq = rxDev.rxq + 1
+			for a in string.gmatch("txrx", "..") do
+				for b in string.gmatch("txqrxq", "...") do
+					local dev = devices[f[a]]
+					dev[b] = dev[b] + f[a .. "_" .. b]
+				end
+			end
 		end
 	end
 

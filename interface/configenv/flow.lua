@@ -4,6 +4,8 @@ function Flow.new(name, tbl)
 	local parent = tbl.parent
 	local self = {
 		name = name,
+		-- TODO figure out actual queue requirements
+		tx_txq = 1, tx_rxq = 1, rx_txq = 1, rx_rxq = 1,
 		packet = tbl[2]:inherit(parent and parent.packet)
 	}
 
