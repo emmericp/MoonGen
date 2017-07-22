@@ -51,8 +51,9 @@ function Packet:inherit(other)
 	return self
 end
 
-function Packet:validate()
-	return type(self.fillTbl.pktLength) == "number" -- TODO more validation
+function Packet:validate(val)
+	val:assert(type(self.fillTbl.pktLength) == "number",
+		"Packet field pktLength has to be set to a valid number.")
 end
 
 return Packet
