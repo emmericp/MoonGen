@@ -1,12 +1,11 @@
 local lfs = require "lfs"
 local log = require "log"
 
-local devnum = require("device").numDevices()
-
 local errors = require "errors"
 local validator = require "validator"
 
 local crawl = {}
+local devnum
 local errhnd = errors()
 
 local _current_file
@@ -52,7 +51,7 @@ function crawl.getFlow(fname)
 	local val = validator()
 	f:validate(val)
 	if not val.valid then
-		log:error("Flow %q is invalid.", name)
+		log:error("Flow %q is invalid:", name)
 		val:print(log.warn, log)
 		return
 	end
@@ -88,6 +87,8 @@ end
 
 return setmetatable(crawl, {
 	__call = function(_, baseDir)
+		devnum = require("device").numDevices()
+
 		baseDir = baseDir or "flows"
 		for f in lfs.dir(baseDir) do
 			f = baseDir .. "/" .. f

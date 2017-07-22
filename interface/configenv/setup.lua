@@ -28,19 +28,19 @@ return function(env, error, flows)
 		end
 
 		local packetmsg = "Invalid usage of Packet. Try Packet.proto{...}."
-		local function _packet_error() error(3, packetmsg) end
+		local function _packet_error() error(packetmsg) end
 		env.Packet = setmetatable({}, {
 			__newindex = _packet_error,
 			__call = _packet_error,
 			__index = function(_, proto)
 				if type(proto) ~= "string" then
-					_packet_error()
+					error(packetmsg)
 					return function() end
 				end
 
 				return function(tbl)
 					if type(tbl) ~= "table" then
-						_packet_error()
+						error(packetmsg)
 					else
 						return Packet.new(proto, tbl, error)
 					end
