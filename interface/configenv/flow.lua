@@ -34,52 +34,58 @@ local _option_list = {
 			unit = unit / 10 ^ 6 -- cbr is in mbit/s
 			self.cbr = num * unit / time
 		end,
-		validate = function(val, rate)
+		test = function(error, rate)
 			if type(rate) ~= "number" then
-				val:assert(string.match(rate, "^(%d+%.?%d*)(%a*)/?(%a*)$"),
+				error:assert(string.match(rate, "^(%d+%.?%d*)(%a*)/?(%a*)$"), 3,
 					"Invalid value for option 'rate.'")
 			end
 		end
 	}
 }
 
-function Flow.new(name, tbl)
-	tbl.name, tbl.packet = name, tbl[2]
+function Flow.new(name, tbl, error)
+	local self = { name = name, packet = tbl[2], parent = tbl.parent }
+	tbl[1], tbl[2], tbl.parent = nil, nil, nil
 
 	-- TODO figure out actual queue requirements
-	tbl.tx_txq, tbl.tx_rxq, tbl.rx_txq, tbl.rx_rxq = 1, 1, 1, 1
+	self.tx_txq, self.tx_rxq, self.rx_txq, self.rx_rxq = 1, 1, 1, 1
 
-	if type(tbl.parent) == "table" then
-		local parent = tbl.parent
-		tbl.packet:inherit(parent.packet)
+	-- check and copy options
+	for i,v in pairs(tbl) do
+		local opt = _option_list[i]
 
+		if opt then
+			if (not opt.test) or opt.test(error, v) then
+				self[i] = v
+			end
+		else
+			error(4, "Unknown field %q in flow %q.", i, name)
+		end
+	end
+
+	if type(self.parent) == "table" then
+		local parent = self.parent
+		self.packet:inherit(parent.packet)
+
+		-- copy parent options
 		for i in pairs(_option_list) do
-			if not tbl[i] then
-				tbl[i] = parent[i]
+			if not self[i] then
+				self[i] = parent[i]
 			end
 		end
 	end
 
-	return setmetatable(tbl, { __index = Flow })
+	return setmetatable(self, { __index = Flow })
 end
 
-local _flow_ignored = {}
-for _,v in ipairs{
-	1, 2, "name", "tx_txq", "tx_rxq", "rx_txq", "rx_rxq", "file", "parent"
-} do
-	_flow_ignored[v] = true
-end
 function Flow:validate(val)
-	for i,v in pairs(self) do
-		if _flow_ignored[i] then -- luacheck: ignore
-		elseif i == "packet" then
-			v:validate(val)
-		else
-			local opt = _option_list[i]
-			val:assert(opt, "Unknown field %q in flow %q.", i, self.name)
-			if opt then
-				opt:validate(val, v)
-			end
+	self.packet:validate(val)
+
+	-- validate options
+	for i,opt in pairs(_option_list) do
+		local v = self.options[i] or self[i]
+		if v and opt.validate then
+			opt.validate(val, v)
 		end
 	end
 end

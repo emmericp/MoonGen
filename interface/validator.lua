@@ -1,5 +1,8 @@
 local validator = {}
 
+-- NOTE validation finds mistakes that would result in a possibly confusing lua
+-- error down the line
+
 function validator.new()
 	return setmetatable({ valid = true }, {
 		__index = validator,
