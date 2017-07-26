@@ -83,12 +83,14 @@ function Flow:validate(val)
 
 	-- validate options
 	for i,opt in pairs(_option_list) do
-		local v = self.options[i] or self[i]
+		local v = self[i]
 		if v and opt.validate then
 			opt.validate(val, v)
 		end
 	end
 end
+
+-- TODO test dynamic options
 
 function Flow:prepare()
 	for name, opt in pairs(_option_list) do
