@@ -49,7 +49,7 @@ function Flow.new(name, tbl)
 	-- TODO figure out actual queue requirements
 	tbl.tx_txq, tbl.tx_rxq, tbl.rx_txq, tbl.rx_rxq = 1, 1, 1, 1
 
-	if tbl.parent then
+	if type(tbl.parent) == "table" then
 		local parent = tbl.parent
 		tbl.packet:inherit(parent.packet)
 
@@ -64,7 +64,9 @@ function Flow.new(name, tbl)
 end
 
 local _flow_ignored = {}
-for _,v in ipairs{ 1, 2, "name", "tx_txq", "tx_rxq", "rx_txq", "rx_rxq" } do
+for _,v in ipairs{
+	1, 2, "name", "tx_txq", "tx_rxq", "rx_txq", "rx_rxq", "file", "parent"
+} do
 	_flow_ignored[v] = true
 end
 function Flow:validate(val)

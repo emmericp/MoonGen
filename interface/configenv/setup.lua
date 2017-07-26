@@ -24,7 +24,9 @@ return function(env, error, flows)
 				tbl.parent = parent
 			end
 
-			flows[name] = Flow.new(name, tbl, error)
+			local flow = Flow.new(name, tbl, error)
+			flows[name] = flow
+			return flow
 		end
 
 		local packetmsg = "Invalid usage of Packet. Try Packet.proto{...}."
