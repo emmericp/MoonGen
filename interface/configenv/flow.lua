@@ -44,38 +44,49 @@ local _option_list = {
 }
 
 function Flow.new(name, tbl)
-	local parent = tbl.parent
+	tbl.name, tbl.packet = name, tbl[2]
 
-	local self = {
-		name = name, parent = parent,
-		-- TODO figure out actual queue requirements
-		tx_txq = 1, tx_rxq = 1, rx_txq = 1, rx_rxq = 1,
-		packet = tbl[2]:inherit(parent and parent.packet)
-	}
+	-- TODO figure out actual queue requirements
+	tbl.tx_txq, tbl.tx_rxq, tbl.rx_txq, tbl.rx_rxq = 1, 1, 1, 1
 
-	for i in pairs(_option_list) do
-		self[i] = tbl[i] or (parent and parent[i])
+	if tbl.parent then
+		local parent = tbl.parent
+		tbl.packet:inherit(parent.packet)
+
+		for i in pairs(_option_list) do
+			if not tbl[i] then
+				tbl[i] = parent[i]
+			end
+		end
 	end
 
-	return setmetatable(self, { __index = Flow })
+	return setmetatable(tbl, { __index = Flow })
 end
 
+local _flow_ignored = {}
+for _,v in ipairs{ 1, 2, "name", "tx_txq", "tx_rxq", "rx_txq", "rx_rxq" } do
+	_flow_ignored[v] = true
+end
 function Flow:validate(val)
-	self.packet:validate(val)
-
-	for name, ops in pairs(_option_list) do
-		local v = self.options[name] or self[name]
-		if v then
-			ops.validate(val, v)
+	for i,v in pairs(self) do
+		if _flow_ignored[i] then -- luacheck: ignore
+		elseif i == "packet" then
+			v:validate(val)
+		else
+			local opt = _option_list[i]
+			val:assert(opt, "Unknown field %q in flow %q.", i, self.name)
+			if opt then
+				opt:validate(val, v)
+			end
 		end
 	end
 end
 
 function Flow:prepare()
-	for name, ops in pairs(_option_list) do
+	for name, opt in pairs(_option_list) do
 		local v = self.options[name] or self[name]
 		if v then
-			ops.parse(self, v)
+			opt.parse(self, v)
 		end
 	end
 end
