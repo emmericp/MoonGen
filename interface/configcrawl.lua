@@ -59,9 +59,13 @@ function crawl.getFlow(fname)
 	tx, rx = tonumber(tx), tonumber(rx)
 	if not tx or tx >= devnum then
 		log:error("Transmit port for flow %q needs to be a valid device number.", name)
-		return
-	elseif not rx or rx >= devnum then
+		tx = false
+	end
+	if not rx or rx >= devnum then
 		log:error("Receive port for flow %q needs to be a valid device number.", name)
+		rx = false
+	end
+	if (not tx) or (not rx) then
 		return
 	end
 

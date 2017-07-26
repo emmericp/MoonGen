@@ -35,9 +35,12 @@ local _option_list = {
 			self.cbr = num * unit / time
 		end,
 		test = function(error, rate)
-			if type(rate) ~= "number" then
+			local t = type(rate)
+			if t == "string" then
 				error:assert(string.match(rate, "^(%d+%.?%d*)(%a*)/?(%a*)$"), 3,
 					"Invalid value for option 'rate.'")
+			elseif t ~= "number" then
+				error(3, "Invalid value for option 'rate': string or number expected, got %s.", t)
 			end
 		end
 	}
