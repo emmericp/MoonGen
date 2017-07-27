@@ -31,7 +31,7 @@ return function(env, error, flows)
 				local parent = flows[pname]
 				error:assert(parent, "Unknown parent %q of flow %q.", pname, name)
 				tbl.parent = parent
-			elseif t ~= "table" then
+			elseif t ~= "table" and t ~= "nil" then
 				error("Invalid value for parent of flow %q. String or flow expected, got %s.", name, t)
 			end
 
