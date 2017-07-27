@@ -14,10 +14,10 @@ end
 
 local _valid_modes = {
 	single = function(self, pkt)
-		local index = self._update_index or 1
-		_update_packet(pkt, self.packet.dynvars[index])
+		local index = self._update_index or 0
+		_update_packet(pkt, self.packet.dynvars[index + 1])
 		-- luacheck: globals incAndWrap
-		self._update_index = incAndWrap(index, #self.packet.dynvars + 1)
+		self._update_index = incAndWrap(index, #self.packet.dynvars)
 	end,
 	all = function(self, pkt)
 		for _,dv in ipairs(self.packet.dynvars) do
@@ -64,7 +64,7 @@ function option.parse(self, mode)
 	-- Don't change the first packet
 	self.updatePacket = _update_delay_one
 
-	mode = _valid_modes[string.lower(mode)]
+	mode = type(mode) == "string" and _valid_modes[string.lower(mode)]
 	self._update_packet = mode or _valid_modes.single
 end
 

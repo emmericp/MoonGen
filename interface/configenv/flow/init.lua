@@ -42,7 +42,7 @@ function Flow:validate(val)
 	end
 end
 
-function Flow.testOptions(options, error)
+function Flow:testOptions(options, error)
 	for i,v in pairs(options) do
 		local opt = _option_list[i]
 
