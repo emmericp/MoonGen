@@ -4,13 +4,13 @@ local errors = {}
 -- occur during initial processing
 -- point out mistakes that do not prevent flow execution
 
-function errors:print(fn, ...)
+function errors:print(info, fn, ...)
 	for _,v in ipairs(self) do
-		if v.info then
-			v.msg = string.format("%s:%d: %s", v.info.short_src, v.info.currentline, v.msg)
+		if info and v.info then
+			fn(string.format("%s:%d: %s", v.info.short_src, v.info.currentline, v.msg), ...)
+		else
+			fn(..., v.msg)
 		end
-
-		fn(..., v.msg)
 	end
 end
 

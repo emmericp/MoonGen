@@ -74,6 +74,14 @@ function crawl.getFlow(fname)
 		options[i] = v
 	end
 
+	local opterrors = errors()
+	f:testOptions(options, errors)
+	if opterrors:count() > 0 then
+		log:error("Options for flow %q are invalid:", name)
+		opterrors:print(false, log.warn, log)
+		return
+	end
+
 	return setmetatable({ options = options, tx = tx, rx = rx }, { __index = f })
 end
 
@@ -106,7 +114,7 @@ return setmetatable(crawl, {
 		local cnt = errhnd:count()
 		if cnt > 0 then
 			log:error("%d errors found while crawling config:", cnt)
-			errhnd:print(log.warn, log)
+			errhnd:print(true, log.warn, log)
 		end
 
 		return flows

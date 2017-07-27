@@ -41,7 +41,17 @@ function Flow:validate(val)
 	end
 end
 
--- TODO test dynamic options
+function Flow.testOptions(options, error)
+  for i,v in pairs(options) do
+    local opt = _option_list[i]
+
+    if not opt then
+      error("Unknown field %q.", i)
+		else
+      opt.test(error, v)
+		end
+  end
+end
 
 function Flow:prepare()
 	for name, opt in pairs(_option_list) do
