@@ -15,24 +15,19 @@ function Flow.new(name, tbl, error)
 	for i,v in pairs(tbl) do
 		local opt = _option_list[i]
 
-		if opt then
-			if (not opt.test) or opt.test(error, v) then
-				self[i] = v
-			end
-		else
-			error(3, "Unknown field %q in flow %q.", i, name)
+		if not opt then
+      error(3, "Unknown field %q in flow %q.", i, name)
+		elseif opt.test(error, v) then
+      self[i] = v
 		end
 	end
 
-	if type(self.parent) == "table" then
-		local parent = self.parent
+  -- inherit packet and options
+  local parent = self.parent
+	if type(parent) == "table" then
 		self.packet:inherit(parent.packet)
-
-		-- copy parent options
 		for i in pairs(_option_list) do
-			if not self[i] then
-				self[i] = parent[i]
-			end
+			self[i] = self[i] or parent[i]
 		end
 	end
 
@@ -41,13 +36,8 @@ end
 
 function Flow:validate(val)
 	self.packet:validate(val)
-
-	-- validate options
 	for i,opt in pairs(_option_list) do
-		local v = self[i]
-		if v and opt.validate then
-			opt.validate(val, v)
-		end
+		opt.validate(val, self[i])
 	end
 end
 
@@ -55,10 +45,7 @@ end
 
 function Flow:prepare()
 	for name, opt in pairs(_option_list) do
-		local v = self.options[name] or self[name]
-		if v then
-			opt.parse(self, v)
-		end
+		opt.parse(self, self.options[name] or self[name])
 	end
 end
 
