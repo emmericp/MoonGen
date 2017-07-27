@@ -40,28 +40,28 @@ end
 local option = {}
 
 function option.parse(self, rate)
-  if type(rate) == "number" then
-    self.cbr = rate
-  elseif type(rate) == "string" then
-    self.cbr = _parse_rate(rate, self.packet:size())
-  end
+	if type(rate) == "number" then
+		self.cbr = rate
+	elseif type(rate) == "string" then
+		self.cbr = _parse_rate(rate, self.packet:size())
+	end
 end
 
 function option.validate() end
 
 function option.test(error, rate)
-  local t = type(rate)
+	local t = type(rate)
 
-  if t == "string" then
-    local status, msg = _parse_rate(rate, 1)
-    error:assert(status, 4, "Option 'rate': %s", msg)
-    return type(status) ~= "nil"
-  elseif t ~= "number" and t ~= "nil" then
-    error(4, "Option 'rate': Invalid argument, string or number expected, got %s.", t)
-    return false
-  end
+	if t == "string" then
+		local status, msg = _parse_rate(rate, 1)
+		error:assert(status, 4, "Option 'rate': %s", msg)
+		return type(status) ~= "nil"
+	elseif t ~= "number" and t ~= "nil" then
+		error(4, "Option 'rate': Invalid argument, string or number expected, got %s.", t)
+		return false
+	end
 
-  return true
+	return true
 end
 
 return option

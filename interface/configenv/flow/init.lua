@@ -16,14 +16,14 @@ function Flow.new(name, tbl, error)
 		local opt = _option_list[i]
 
 		if not opt then
-      error(3, "Unknown field %q in flow %q.", i, name)
+			error(3, "Unknown field %q in flow %q.", i, name)
 		elseif opt.test(error, v) then
-      self[i] = v
+			self[i] = v
 		end
 	end
 
-  -- inherit packet and options
-  local parent = self.parent
+	-- inherit packet and options
+	local parent = self.parent
 	if type(parent) == "table" then
 		self.packet:inherit(parent.packet)
 		for i in pairs(_option_list) do
@@ -42,15 +42,15 @@ function Flow:validate(val)
 end
 
 function Flow.testOptions(options, error)
-  for i,v in pairs(options) do
-    local opt = _option_list[i]
+	for i,v in pairs(options) do
+		local opt = _option_list[i]
 
-    if not opt then
-      error("Unknown field %q.", i)
+		if not opt then
+			error("Unknown field %q.", i)
 		else
-      opt.test(error, v)
+			opt.test(error, v)
 		end
-  end
+	end
 end
 
 function Flow:prepare()

@@ -75,7 +75,7 @@ function crawl.getFlow(fname)
 	end
 
 	local opterrors = errors()
-	f:testOptions(options, errors)
+	f.testOptions(options, opterrors)
 	if opterrors:count() > 0 then
 		log:error("Options for flow %q are invalid:", name)
 		opterrors:print(false, log.warn, log)

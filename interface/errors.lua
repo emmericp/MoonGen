@@ -7,7 +7,7 @@ local errors = {}
 function errors:print(info, fn, ...)
 	for _,v in ipairs(self) do
 		if info and v.info then
-			fn(string.format("%s:%d: %s", v.info.short_src, v.info.currentline, v.msg), ...)
+			fn(..., string.format("%s:%d: %s", v.info.short_src, v.info.currentline, v.msg))
 		else
 			fn(..., v.msg)
 		end
