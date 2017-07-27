@@ -21,13 +21,13 @@ local function _parse_rate(rstring, psize)
 	end
 
 	if unit == "" then
-		unit = _size_units.m * 8
+		unit = _size_units.m --default is mbit/s
 	elseif string.find(unit, "bit$") then
 		unit = _size_units[string.sub(unit, 1, -4)]
 	elseif string.find(unit, "b$") then
 		unit = _size_units[string.sub(unit, 1, -2)] * 8
 	elseif string.find(unit, "p$") then
-		unit = _size_units[string.sub(unit, 1, -2)] * psize
+		unit = _size_units[string.sub(unit, 1, -2)] * psize * 8
 	else
 		return nil, "Invalid size unit. Can be <k|m|g>[i]<bit|b|p>"
 	end
