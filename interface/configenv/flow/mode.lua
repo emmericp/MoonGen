@@ -75,7 +75,7 @@ function option.test(self, error, mode)
 	if t == "string" then
 		error:assert(#self.packet.dynvars > 0, 4, "Option 'mode': Value set, but no dynvars in associated packet.")
 
-		if _valid_modes[string.lower(mode)] then
+		if not _valid_modes[string.lower(mode)] then
 			error(4, "Option 'mode': Invalid value %q. Can be one of %s.",
 				mode, table.concat(_modelist, ", "))
 			return false
