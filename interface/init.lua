@@ -81,29 +81,12 @@ function loadSlave(txQueue, rxDev, flow)
 	local txCtr = stats:newDevTxCounter(txQueue, "plain")
 	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
 
-	-- start at 0 to leave first packet unchanged
-	-- would skip first values of ranges otherwise
-	local dynvarIndex, dynvarSize = 0, #flow.packet.dynvars
-
 	while mg.running() do
 		bufs:alloc(flow.packet.fillTbl.pktLength)
 
-		for _, buf in ipairs(bufs) do
-			local pkt = buf:getUdpPacket()
-			local dv = flow.packet.dynvars[dynvarIndex]
-
-			dynvarIndex = dynvarIndex + 1
-			if dynvarIndex > dynvarSize then
-				dynvarIndex = 1
-			end
-
-			if dv then
-				local var = pkt[dv.pkt][dv.var]
-				if type(var) == "cdata" then
-					var:set(dv.func())
-				else
-					pkt[dv.pkt][dv.var] = dv.func()
-				end
+		if flow.updatePacket then
+			for _, buf in ipairs(bufs) do
+				flow:updatePacket(buf["get" .. flow.packet.proto .. "Packet"](buf))
 			end
 		end
 

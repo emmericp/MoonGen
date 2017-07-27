@@ -1,7 +1,8 @@
 local Flow = {}
 
 local _option_list = {
-	rate = require "configenv.flow.rate"
+	rate = require "configenv.flow.rate",
+	mode = require "configenv.flow.mode",
 }
 
 function Flow.new(name, tbl, error)
@@ -17,7 +18,7 @@ function Flow.new(name, tbl, error)
 
 		if not opt then
 			error(3, "Unknown field %q in flow %q.", i, name)
-		elseif opt.test(error, v) then
+		elseif opt.test(self, error, v) then
 			self[i] = v
 		end
 	end
@@ -37,7 +38,7 @@ end
 function Flow:validate(val)
 	self.packet:validate(val)
 	for i,opt in pairs(_option_list) do
-		opt.validate(val, self[i])
+		opt.validate(self, val, self[i])
 	end
 end
 
@@ -48,7 +49,7 @@ function Flow.testOptions(options, error)
 		if not opt then
 			error("Unknown field %q.", i)
 		else
-			opt.test(error, v)
+			opt.test(self, error, v)
 		end
 	end
 end

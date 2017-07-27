@@ -49,7 +49,7 @@ end
 
 function option.validate() end
 
-function option.test(error, rate)
+function option.test(_, error, rate)
 	local t = type(rate)
 
 	if t == "string" then
@@ -57,7 +57,7 @@ function option.test(error, rate)
 		error:assert(status, 4, "Option 'rate': %s", msg)
 		return type(status) ~= "nil"
 	elseif t ~= "number" and t ~= "nil" then
-		error(4, "Option 'rate': Invalid argument, string or number expected, got %s.", t)
+		error(4, "Option 'rate': Invalid argument. String or number expected, got %s.", t)
 		return false
 	end
 
