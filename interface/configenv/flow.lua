@@ -37,10 +37,10 @@ local _option_list = {
 		test = function(error, rate)
 			local t = type(rate)
 			if t == "string" then
-				error:assert(string.match(rate, "^(%d+%.?%d*)(%a*)/?(%a*)$"), 3,
+				error:assert(string.match(rate, "^(%d+%.?%d*)(%a*)/?(%a*)$"), 4,
 					"Invalid value for option 'rate.'")
 			elseif t ~= "number" then
-				error(3, "Invalid value for option 'rate': string or number expected, got %s.", t)
+				error(4, "Invalid value for option 'rate': string or number expected, got %s.", t)
 			end
 		end
 	}
@@ -62,7 +62,7 @@ function Flow.new(name, tbl, error)
 				self[i] = v
 			end
 		else
-			error(4, "Unknown field %q in flow %q.", i, name)
+			error(3, "Unknown field %q in flow %q.", i, name)
 		end
 	end
 

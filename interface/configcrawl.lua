@@ -13,7 +13,7 @@ local flows = {}
 local _env_flows = setmetatable({}, {
 	__newindex = function(_, key, val)
 		if flows[key] then
-			errhnd("Duplicate flow %q. Also in file %s.", key, flows[key].file)
+			errhnd(3, "Duplicate flow %q. Also in file %s.", key, flows[key].file)
 		end
 
 		val.file = _current_file

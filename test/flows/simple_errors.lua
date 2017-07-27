@@ -1,6 +1,10 @@
 Flow()
 Flow("abc")
-Flow(";ab")
+Flow{" ab"}
+Flow{";ab"}
+Flow{":ab"}
+Flow{",ab"}
+
 Packet()
 Packet{}
 Packet.abc()

@@ -1,9 +1,8 @@
 Flow{"errors", Packet.udp{},
 	test = 1,
-	rate = "abc"
+	rate = {}
 }
 
 Flow{"errors", Packet.udp{},
-	test = 1,
 	rate = "mb/s"
 }
