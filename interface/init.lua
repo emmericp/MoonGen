@@ -1,6 +1,7 @@
 local mg     = require "moongen"
 local memory = require "memory"
 local device = require "device"
+local packet = require "packet"
 local stats  = require "stats"
 local log    = require "log"
 
@@ -73,8 +74,9 @@ function loadSlave(txQueue, rxDev, flow)
 	end
 
 	-- TODO arp ?
+	local getPacket = packet["get" .. flow.packet.proto .. "Packet"]
 	local mempool = memory.createMemPool(function(buf)
-		buf["get" .. flow.packet.proto .. "Packet"](buf):fill(flow.packet.fillTbl)
+		getPacket(buf):fill(flow.packet.fillTbl)
 	end)
 
 	local bufs = mempool:bufArray()
@@ -86,7 +88,7 @@ function loadSlave(txQueue, rxDev, flow)
 
 		if flow.updatePacket then
 			for _, buf in ipairs(bufs) do
-				flow:updatePacket(buf["get" .. flow.packet.proto .. "Packet"](buf))
+				flow:updatePacket(getPacket(buf))
 			end
 		end
 
