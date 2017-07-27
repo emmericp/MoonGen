@@ -1,4 +1,6 @@
 Flow()
+Flow{{}}
+Flow{""}
 Flow("abc")
 Flow{" ab"}
 Flow{";ab"}

@@ -1,14 +1,16 @@
 Flow{"errors", Packet.udp{},
 	test = 1,
-	rate = {}
+	rate = {},
+	parent = 1
 }
 
 Flow{"errors", Packet.udp{},
-	rate = "mb/s"
+	rate = "mb/s",
+	parent = "??"
 }
 
 Flow{"e1", Packet.udp{},
-	rate = "1a"
+	rate = "1a",
 }
 
 Flow{"e2", Packet.udp{},
