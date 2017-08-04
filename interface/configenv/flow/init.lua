@@ -3,6 +3,16 @@ local Flow = {}
 local _option_list = {
 	rate = require "configenv.flow.rate",
 	mode = require "configenv.flow.mode",
+	packetLength = {
+		parse = function(self, packetLength)
+			self.psize = tonumber(packetLength)
+		end,
+		validate = function() end,
+		test = function(_, error, packetLength)
+			error:assert(type(tonumber(packetLength)) == "number",
+				"Option 'packetLength': Value needs to be a valid integer.")
+		end
+	},
 }
 
 function Flow.new(name, tbl, error)
@@ -33,6 +43,19 @@ function Flow.new(name, tbl, error)
 	end
 
 	return setmetatable(self, { __index = Flow })
+end
+
+function Flow:getPacketLength(finalLength)
+	if not self.flow then
+		_option_list.packetLength.parse(self, self.options.packetLength or self.packetLength)
+	end
+
+	-- TODO adapt for possible size changes
+	if finalLength then
+		return self.psize + 4
+	end
+
+	return self.psize
 end
 
 function Flow:validate(val)

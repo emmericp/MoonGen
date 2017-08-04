@@ -27,7 +27,7 @@ local function _parse_rate(rstring, psize)
 	elseif string.find(unit, "b$") then
 		unit = _size_units[string.sub(unit, 1, -2)] * 8
 	elseif string.find(unit, "p$") then
-		unit = _size_units[string.sub(unit, 1, -2)] * (psize + 4) * 8
+		unit = _size_units[string.sub(unit, 1, -2)] * psize * 8
 	else
 		return nil, "Invalid size unit. Can be <k|m|g>[i]<bit|b|p>"
 	end
@@ -43,7 +43,7 @@ function option.parse(self, rate)
 	if type(rate) == "number" then
 		self.cbr = rate
 	elseif type(rate) == "string" then
-		self.cbr = _parse_rate(rate, self.packet:size())
+		self.cbr = _parse_rate(rate, self:getPacketLength(true))
 	end
 end
 

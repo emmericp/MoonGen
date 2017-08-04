@@ -84,7 +84,7 @@ function loadSlave(txQueue, rxDev, flow)
 	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
 
 	while mg.running() do
-		bufs:alloc(flow.packet.fillTbl.pktLength)
+		bufs:alloc(flow:getPacketLength())
 
 		if flow.updatePacket then
 			for _, buf in ipairs(bufs) do
