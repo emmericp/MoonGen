@@ -5,7 +5,7 @@ local _option_list = {
 	mode = require "configenv.flow.mode",
 	packetLength = {
 		parse = function(self, packetLength)
-			self.psize = tonumber(packetLength)
+			self.psize = tonumber(packetLength) or self.packet.fillTbl.pktLength
 		end,
 		validate = function() end,
 		test = function(_, error, packetLength)
@@ -46,7 +46,7 @@ function Flow.new(name, tbl, error)
 end
 
 function Flow:getPacketLength(finalLength)
-	if not self.flow then
+	if not self.psize then
 		_option_list.packetLength.parse(self, self.options.packetLength or self.packetLength)
 	end
 

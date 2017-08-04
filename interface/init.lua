@@ -2,7 +2,7 @@ local mg      = require "moongen"
 local memory  = require "memory"
 local device  = require "device"
 local dpdkc   = require "dpdkc"
-local limiter = require "ratelimiter"
+local limiter = require "software-ratecontrol"
 local packet  = require "packet"
 local stats   = require "stats"
 local log     = require "log"
@@ -16,6 +16,12 @@ function configure(parser)
 	parser:description("Configuration based interface for MoonGen.")
 	parser:option("-c --config", "Config file directory."):default("flows")
 	parser:argument("flows", "List of flow names."):args "+"
+end
+
+local function _cbr_to_delay(cbr, psize)
+	-- cbr      => mbit/s        => bit/1000ns
+	-- psize    => b/p           => 8bit/p
+	return 8000 * psize / cbr -- => ns/p
 end
 
 function master(args)
@@ -56,29 +62,32 @@ function master(args)
 	end
 	device.waitForLinks()
 
-	-- TODO rate limits & other options
-	for _,f in ipairs(flows) do
-		local txDev = devices[f.tx]
-		local rxDev = devices[f.rx]
+	for _,flow in ipairs(flows) do
+		flow:prepare()
 
-		mg.startTask("loadSlave", txDev.dev:getTxQueue(txDev.txqi), rxDev.dev, crawl.passFlow(f))
+		local txDev = devices[flow.tx]
+		local rxDev = devices[flow.rx]
+
+		-- setup rate limit
+		local txQueue = txDev.dev:getTxQueue(txDev.txqi)
+		local sendQueue = txQueue
+		if flow.cbr then
+			-- NOTE need to use directly to get rc, maybe change in device.lua
+			local rc = dpdkc.rte_eth_set_queue_rate_limit(txQueue.id, txQueue.qid, flow.cbr)
+			if rc ~= 0 then -- fallback to software ratelimiting
+				sendQueue = limiter:new(txQueue, "cbr", _cbr_to_delay(flow.cbr, flow:getPacketLength(true)))
+			end
+		end
+
+		mg.startTask("loadSlave", txQueue, sendQueue, rxDev.dev, crawl.passFlow(flow))
 		txDev.txqi = txDev.txqi + 1
 	end
 
 	mg.waitForTasks()
 end
 
-function loadSlave(txQueue, rxDev, flow)
+function loadSlave(txQueue, sendQueue, rxDev, flow)
 	flow = crawl.receiveFlow(flow)
-
-	local sendQueue = txQueue
-	if flow.cbr then
-		-- NOTE need to use directly to get rc, maybe change in device.lua
-		local rc = dpdkc.rte_eth_set_queue_rate_limit(txQueue.id, txQueue.qid, flow.cbr)
-		if rc ~= 0 then -- fallback to software ratelimiting
-			sendQueue = limiter.new(txQueue, "cbr", flow.cbr)
-		end
-	end
 
 	-- TODO arp ?
 	local getPacket = packet["get" .. flow.packet.proto .. "Packet"]
