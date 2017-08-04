@@ -13,6 +13,7 @@ local function _update_packet(pkt, dv)
 end
 
 local _valid_modes = {
+	none = true, -- NOTE setting this makes validation easier (see option.test)
 	single = function(self, pkt)
 		local index = self._update_index or 0
 		_update_packet(pkt, self.packet.dynvars[index + 1])
@@ -57,8 +58,8 @@ end
 local option = {}
 
 function option.parse(self, mode)
-	if #self.packet.dynvars == 0 then
-		return
+	if #self.packet.dynvars == 0  or mode == "none" then
+		return -- packets will not change
 	end
 
 	-- Don't change the first packet
