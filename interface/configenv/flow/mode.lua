@@ -20,8 +20,8 @@ local _valid_modes = {
 		self._update_index = incAndWrap(index, #self.packet.dynvars)
 	end,
 	all = function(self, pkt)
-		for _,dv in ipairs(self.packet.dynvars) do
-			_update_packet(pkt, dv)
+		for i = 1, #self.packet.dynvars do
+			_update_packet(pkt, self.packet.dynvars[i])
 		end
 	end,
 	random = function(self, pkt)
