@@ -1,9 +1,11 @@
-local mg     = require "moongen"
-local memory = require "memory"
-local device = require "device"
-local packet = require "packet"
-local stats  = require "stats"
-local log    = require "log"
+local mg      = require "moongen"
+local memory  = require "memory"
+local device  = require "device"
+local dpdkc   = require "dpdkc"
+local limiter = require "ratelimiter"
+local packet  = require "packet"
+local stats   = require "stats"
+local log     = require "log"
 
 package.path = package.path .. ";interface/?.lua;interface/?/init.lua"
 local crawl = require "configcrawl"
@@ -69,8 +71,13 @@ end
 function loadSlave(txQueue, rxDev, flow)
 	flow = crawl.receiveFlow(flow)
 
+	local sendQueue = txQueue
 	if flow.cbr then
-		txQueue:setRate(flow.cbr)
+		-- NOTE need to use directly to get rc, maybe change in device.lua
+		local rc = dpdkc.rte_eth_set_queue_rate_limit(txQueue.id, txQueue.qid, flow.cbr)
+		if rc ~= 0 then -- fallback to software ratelimiting
+			sendQueue = limiter.new(txQueue, "cbr", flow.cbr)
+		end
 	end
 
 	-- TODO arp ?
@@ -93,7 +100,7 @@ function loadSlave(txQueue, rxDev, flow)
 		end
 
 		bufs:offloadUdpChecksums()
-		txQueue:send(bufs)
+		sendQueue:send(bufs)
 		txCtr:update()
 		rxCtr:update()
 	end
