@@ -42,7 +42,7 @@ function Packet:inherit(other)
 		end
 
 		for _,v in ipairs(other.dynvars) do
-			if dynvarIndex[v.pkt .. "_" .. v.var] then
+			if not dynvarIndex[v.pkt .. "_" .. v.var] then
 				table.insert(self.dynvars, v)
 			end
 		end
