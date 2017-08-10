@@ -1,6 +1,6 @@
 local validator = {}
 
--- NOTE validation finds mistakes that would result in a possibly confusing lua
+-- validation finds mistakes that would result in a possibly confusing lua
 -- error down the line
 
 function validator.new()

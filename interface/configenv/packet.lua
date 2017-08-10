@@ -52,7 +52,7 @@ function Packet:inherit(other)
 end
 
 function Packet:size()
-	return self.fillTbl.pktLength -- TODO may need to be more sophisticated
+	return self.fillTbl.pktLength
 end
 
 function Packet:validate(val)

@@ -1,6 +1,6 @@
 local errors = {}
 
--- NOTE errors do one of two things:
+-- errors do one of two things:
 -- occur during initial processing
 -- point out mistakes that do not prevent flow execution
 

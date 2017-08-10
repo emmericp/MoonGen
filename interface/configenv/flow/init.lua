@@ -52,7 +52,6 @@ function Flow:getPacketLength(finalLength)
 		_option_list.packetLength.parse(self, self.options.packetLength or self.packetLength)
 	end
 
-	-- TODO adapt for possible size changes
 	if finalLength then
 		return self.psize + 4
 	end

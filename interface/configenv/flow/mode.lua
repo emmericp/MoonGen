@@ -13,7 +13,7 @@ local function _update_packet(pkt, dv)
 end
 
 local _valid_modes = {
-	none = true, -- NOTE setting this makes validation easier (see option.test)
+	none = true, -- setting this makes validation easier (see option.test)
 	single = function(self, pkt)
 		local index = self._update_index or 0
 		_update_packet(pkt, self.packet.dynvars[index + 1])
