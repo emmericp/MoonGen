@@ -3,8 +3,10 @@ local memory  = require "memory"
 local device  = require "device"
 local dpdkc   = require "dpdkc"
 local limiter = require "software-ratecontrol"
+local pipe    = require "pipe"
 local packet  = require "packet"
 local stats   = require "stats"
+local timer   = require "timer"
 local log     = require "log"
 
 package.path = package.path .. ";interface/?.lua;interface/?/init.lua"
@@ -89,6 +91,18 @@ end
 function loadSlave(txQueue, sendQueue, rxDev, flow)
 	flow = crawl.receiveFlow(flow)
 
+	-- NOTE patching sendN, may be moved to software-ratecontrol.lua
+	-- NOTE remember pipe when removing
+	if not sendQueue.sendN then
+		function sendQueue:sendN(bufs, n)
+			repeat
+				if pipe.packetRing.sendN(self, bufs, n) then
+					break
+				end
+			until not mg.running()
+		end
+	end
+
 	-- TODO arp ?
 	local getPacket = packet["get" .. flow.packet.proto .. "Packet"]
 	local mempool = memory.createMemPool(function(buf)
@@ -99,12 +113,27 @@ function loadSlave(txQueue, sendQueue, rxDev, flow)
 	local txCtr = stats:newDevTxCounter(txQueue, "plain")
 	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
 
-	while mg.running() do
+	-- timeLimit in seconds
+	-- dataLimit in packets
+	local data, runtime = flow.dlim, nil
+	if flow.tlim then
+		runtime = timer:new(flow.tlim)
+	end
+
+	while mg.running() and (not runtime or runtime:running()) do
 		bufs:alloc(flow:getPacketLength())
 
 		if flow.updatePacket then
 			for _, buf in ipairs(bufs) do
 				flow:updatePacket(getPacket(buf))
+			end
+		end
+
+		if data then
+			data = data - bufs.size
+			if data <= 0 then
+				sendQueue:sendN(bufs, bufs.size + data)
+				break
 			end
 		end
 
