@@ -2,6 +2,7 @@ local Flow = {}
 
 local _option_list = {
 	rate = require "configenv.flow.rate",
+	ratePattern = require "configenv.flow.ratePattern",
 	mode = require "configenv.flow.mode",
 	timeLimit = require "configenv.flow.timeLimit",
 	dataLimit = require "configenv.flow.dataLimit",

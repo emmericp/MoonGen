@@ -32,6 +32,14 @@ function rateLimiter:send(bufs)
 	until not mg.running()
 end
 
+function rateLimiter:sendN(bufs, n)
+	repeat
+		if pipe.packetRing.sendN(self, bufs, n) then
+			break
+		end
+	until not mg.running()
+end
+
 function rateLimiter:__serialize()
 	return "require 'software-ratecontrol'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('software-ratecontrol').rateLimiter"), true
 end
@@ -70,4 +78,3 @@ function __MG_RATE_LIMITER_MAIN(ring, devId, qid, mode, delay, speed)
 end
 
 return mod
-
