@@ -10,6 +10,7 @@ local log     = require "log"
 
 package.path = package.path .. ";interface/?.lua;interface/?/init.lua"
 local crawl = require "configcrawl"
+local parse = require "flowparse"
 
 -- luacheck: globals configure master loadSlave
 
@@ -40,12 +41,21 @@ function master(args)
 			tbl[key] = r; return r
 		end
 	})
+	local devnum = device.numDevices()
 
 	local flows = {}
-	for _,fname in ipairs(args.flows) do
-		local f = crawl.getFlow(fname)
+	for _,arg in ipairs(args.flows) do
+		local name, devs, opts = parse(arg, devnum)
+		local f = crawl.getFlow(name, opts)
+
+		if #devs < 2 then
+			log:error("Need to pass tx and rx device to this type of flow.")
+			f = nil
+		end
 
 		if f then
+			-- TODO maybe move to flow.lua, mind test for #devs above
+			f.tx, f.rx = devs[1], devs[2]
 			table.insert(flows, f)
 
 			-- less error-prone way of hardcoding all four assignments

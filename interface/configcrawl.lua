@@ -5,7 +5,6 @@ local errors = require "errors"
 local validator = require "validator"
 
 local crawl = {}
-local devnum
 local errhnd = errors()
 
 local _current_file
@@ -34,13 +33,7 @@ local function _parse_file(filename)
 	setfenv(f, _env)()
 end
 
--- Flow syntax <name>:<tx>:<rx>{,<key>=<value>}
-function crawl.getFlow(fname)
-	local name, tx, rx, optstring = string.match(fname, "^([^:]+):([^:]+):([^,]+),?(.*)$")
-	if not name then
-		log:fatal("Invalid parameter: %q. Expected format: '<name>:<tx>:<rx>{,<key>=<value>}'.", fname)
-	end
-
+function crawl.getFlow(name, options)
 	local f = flows[name]
 
 	if not f then
@@ -56,24 +49,6 @@ function crawl.getFlow(fname)
 		return
 	end
 
-	tx, rx = tonumber(tx), tonumber(rx)
-	if not tx or tx >= devnum then
-		log:error("Transmit port for flow %q needs to be a valid device number.", name)
-		tx = false
-	end
-	if not rx or rx >= devnum then
-		log:error("Receive port for flow %q needs to be a valid device number.", name)
-		rx = false
-	end
-	if (not tx) or (not rx) then
-		return
-	end
-
-	local options = {}
-	for i,v in string.gmatch(optstring, "([^=,]+)=([^,]+)") do
-		options[i] = v
-	end
-
 	local opterrors = errors()
 	f:testOptions(options, opterrors)
 	if opterrors:count() > 0 then
@@ -82,7 +57,7 @@ function crawl.getFlow(fname)
 		return
 	end
 
-	return setmetatable({ options = options, tx = tx, rx = rx }, { __index = f })
+	return setmetatable({ options = options }, { __index = f })
 end
 
 function crawl.passFlow(f)
@@ -101,8 +76,6 @@ end
 
 return setmetatable(crawl, {
 	__call = function(_, baseDir, suppressWarnings)
-		devnum = require("device").numDevices()
-
 		baseDir = baseDir or "flows"
 		for f in lfs.dir(baseDir) do
 			f = baseDir .. "/" .. f
