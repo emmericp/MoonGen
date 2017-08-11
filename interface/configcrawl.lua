@@ -100,7 +100,7 @@ function crawl.receiveFlow(fdef)
 end
 
 return setmetatable(crawl, {
-	__call = function(_, baseDir)
+	__call = function(_, baseDir, suppressWarnings)
 		devnum = require("device").numDevices()
 
 		baseDir = baseDir or "flows"
@@ -112,7 +112,7 @@ return setmetatable(crawl, {
 		end
 
 		local cnt = errhnd:count()
-		if cnt > 0 then
+		if cnt > 0 and not suppressWarnings then
 			log:error("%d errors found while crawling config:", cnt)
 			errhnd:print(true, log.warn, log)
 		end
