@@ -1,0 +1,2 @@
+#!/bin/sh
+sudo build/MoonGen interface/init.lua "$@"
