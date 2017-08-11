@@ -21,16 +21,22 @@ local function _parse_limit(lstring, psize)
 		return nil, unit.sizeError
 	end
 
-	return num * unit / (psize * 8)
+	return num, unit
 end
 
--- TODO round up or down?
 function option.parse(self, limit)
 	local psize = self:getPacketLength(true)
+
+	local num, unit
 	if type(limit) == "number" then
-		self.dlim = limit * units.size.m / (psize * 8)
+		num, unit = limit, units.size.m
 	elseif type(limit) == "string" then
-		self.dlim = _parse_limit(limit, psize)
+		num, unit = _parse_limit(limit, psize)
+	end
+
+	-- round up to mimic behaviour of timeLimit
+	if num then
+		self.dlim = math.ceil(num * unit / (psize * 8))
 	end
 end
 
