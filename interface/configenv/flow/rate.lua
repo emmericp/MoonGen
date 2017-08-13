@@ -30,6 +30,9 @@ end
 
 local option = {}
 
+option.formatString = "<number>[size][/<time>]"
+option.helpString   = "Limit the bitrate of the flow. Automatically falls back to software ratelimiting."
+
 function option.parse(self, rate)
 	if type(rate) == "number" then
 		self.cbr = rate

@@ -6,6 +6,8 @@ for _,v in ipairs(_patternlist) do
 end
 
 local option = {}
+option.formatString = "<cbr|poisson>"
+option.helpString = "Poisson will create bursts of packets instead of a constant flow. (default = cbr)"
 
 function option.parse(self, pattern)
 	self.rpattern = _patternset[pattern] and pattern or "cbr"

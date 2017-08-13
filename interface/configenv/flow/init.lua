@@ -14,9 +14,28 @@ local _option_list = {
 		test = function(_, error, packetLength)
 			error:assert(type(tonumber(packetLength)) == "number",
 				"Option 'packetLength': Value needs to be a valid integer.")
-		end
+		end,
+		formatString = "<integer>",
+		helpString   = "Resize packets when starting a flow."
 	},
 }
+
+function Flow.getOptionHelpString()
+	local result = {}
+
+	for i,v in pairs(_option_list) do
+		table.insert(result, i)
+		table.insert(result, "=")
+		table.insert(result, v.formatString)
+		table.insert(result, "\n   ")
+		table.insert(result, v.helpString)
+		table.insert(result, "\n\n")
+	end
+
+	table.remove(result)
+
+	return table.concat(result)
+end
 
 function Flow.new(name, tbl, error)
 	local self = { name = name, packet = tbl[2], parent = tbl.parent }

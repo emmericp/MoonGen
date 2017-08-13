@@ -7,7 +7,7 @@ units.time = {
 	m  = 60,
 	h  = 3600,
 }
-units.timeError = "Invalid time unit. Can be one of 'ms', 's', 'm', 'h'."
+units.timeError  = "Invalid time unit. Can be one of 'ms', 's', 'm', 'h'."
 
 units.size = {
 	[""] = 1,

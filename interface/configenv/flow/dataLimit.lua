@@ -1,6 +1,8 @@
 local units = require "configenv.flow.units"
 
 local option = {}
+option.formatString = "<number><time>"
+option.helpString   = "Stop after <number> units of data. Will be rounded up to the nearest whole number of packets."
 
 local function _parse_limit(lstring, psize)
 	local num, unit = string.match(lstring, "^(%d+%.?%d*)(%a+)$")

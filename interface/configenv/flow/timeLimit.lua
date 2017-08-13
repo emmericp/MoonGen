@@ -1,6 +1,8 @@
 local units = require "configenv.flow.units"
 
 local option = {}
+option.formatString = "<number><time>"
+option.helpString   = "Stop after <number> units of time. Will stop after the last buffer is sent."
 
 local function _parse_limit(lstring)
 	local num, unit = string.match(lstring, "^(%d+%.?%d*)(%a+)$")
