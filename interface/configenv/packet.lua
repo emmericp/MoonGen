@@ -1,10 +1,12 @@
+local Dynvars = require "configenv.dynvars"
+
 local Packet = {}
 
 function Packet.new(proto, tbl, error)
 	local self = {
 		proto = proto,
 		fillTbl = {},
-		dynvars = {}
+		dynvars = Dynvars.new()
 	}
 
 	for i,v in pairs(tbl) do
@@ -13,10 +15,7 @@ function Packet.new(proto, tbl, error)
 		if pkt then
 			if type(v) == "function" then
 				var = string.lower(var)
-				table.insert(self.dynvars, {
-					pkt = pkt, var = var, func = v
-				})
-				v = v() -- NOTE arp will execute in master
+				v = self.dynvars:add(pkt, var, v).value
 			end
 
 			self.fillTbl[i] = v
@@ -36,16 +35,7 @@ function Packet:inherit(other)
 			end
 		end
 
-		local dynvarIndex = {}
-		for _,v in ipairs(self.dynvars) do
-			dynvarIndex[v.pkt .. "_" .. v.var] = true
-		end
-
-		for _,v in ipairs(other.dynvars) do
-			if not dynvarIndex[v.pkt .. "_" .. v.var] then
-				table.insert(self.dynvars, v)
-			end
-		end
+		self.dynvars:inherit(other.dynvars)
 	end
 
 	return self
@@ -53,6 +43,10 @@ end
 
 function Packet:size()
 	return self.fillTbl.pktLength
+end
+
+function Packet:prepare()
+	self.dynvars:finalize()
 end
 
 function Packet:validate(val)

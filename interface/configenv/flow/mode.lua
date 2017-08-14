@@ -3,31 +3,20 @@ local function _update_delay_one(self)
 	self._update_packet = nil
 end
 
-local function _update_packet(pkt, dv)
-	local var = pkt[dv.pkt][dv.var]
-	if type(var) == "cdata" then
-		var:set(dv.func())
-	else
-		pkt[dv.pkt][dv.var] = dv.func()
-	end
-end
-
+-- TODO add modes that apply all instead of apply single
 local _valid_modes = {
 	none = true, -- setting this makes validation easier (see option.test)
 	single = function(self, pkt)
 		local index = self._update_index or 0
-		_update_packet(pkt, self.packet.dynvars[index + 1])
-		-- luacheck: globals incAndWrap
-		self._update_index = incAndWrap(index, #self.packet.dynvars)
-	end,
-	all = function(self, pkt)
-		for i = 1, #self.packet.dynvars do
-			_update_packet(pkt, self.packet.dynvars[i])
-		end
+		self.packet.dynvars[index + 1]:updateApply(pkt)
+		self._update_index = incAndWrap(index, #self.packet.dynvars) -- luacheck: globals incAndWrap
 	end,
 	random = function(self, pkt)
-		local index = math.random(#self.packet.dynvars)
-		_update_packet(pkt, self.packet.dynvars[index])
+		local index = math.random(self.packet.dynvars.count)
+		self.packet.dynvars[index]:updateApply(pkt)
+	end,
+	all = function(self, pkt)
+		self.packet.dynvars:updateApplyAll(pkt)
 	end,
 }
 

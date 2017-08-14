@@ -99,6 +99,7 @@ function Flow:testOptions(options, error)
 end
 
 function Flow:prepare()
+	self.packet:prepare()
 	for name, opt in pairs(_option_list) do
 		opt.parse(self, self.options[name] or self[name])
 	end
