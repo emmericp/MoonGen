@@ -29,25 +29,6 @@ local _valid_modes = {
 		local index = math.random(#self.packet.dynvars)
 		_update_packet(pkt, self.packet.dynvars[index])
 	end,
-	randommulti = function(self, pkt)
-		local num = #self.packet.dynvars
-		local count = math.random(num)
-
-		-- array of 1 .. n
-		local indices = {}
-		for i = 1, num do indices[i] = i end
-
-		-- remove (n - count) random indices
-		for i = num, count + 1, -1 do
-			local r = math.random(i) -- to be removed
-			indices[r] = indices[i] -- keep last index
-			-- indices[i] = nil -- can be ignored by using count below
-		end
-
-		for i = 1, count do
-			_update_packet(pkt, self.packet.dynvars[indices[i]])
-		end
-	end
 }
 
 local _modelist = {}
