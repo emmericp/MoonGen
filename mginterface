@@ -1,2 +1,2 @@
 #!/bin/sh
-sudo build/MoonGen interface/init.lua "$@"
+exec sudo build/MoonGen interface/init.lua "$@"
