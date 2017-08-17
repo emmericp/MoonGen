@@ -17,6 +17,11 @@ local parse = require "flowparse"
 function configure(parser)
 	parser:description("Configuration based interface for MoonGen.")
 	parser:option("-c --config", "Config file directory."):default("flows")
+	parser:option("-d --debug", "Print the first n packets of a flow instead of sending."):action(function(args, _, val)
+		-- mg.config.skipInit = true
+		-- TODO just alloc single pkt ?
+		args.debug = val
+	end):convert(tonumber)
 	parser:flag("--help-options", "Display information about flow options and exit"):action(function()
 		print(require("configenv.flow").getOptionHelpString())
 		os.exit(0)
@@ -36,6 +41,10 @@ local function _cbr_to_delay(cbr, psize)
 end
 
 function master(args)
+	if args.debug then
+		return require "debugout" (args)
+	end
+
 	crawl(args.config)
 
 	-- auto-filling device index
