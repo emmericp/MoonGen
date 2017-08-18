@@ -1,8 +1,25 @@
+local proto = require "proto.proto"
+
 local dynvar = {}
 local _mt_dynvar = { __index = dynvar }
 
+local _aliases = {
+	udp_src = "setSrcPort", udp_dst = "setDstPort",
+	tcp_src = "setSrcPort", tcp_dst = "setDstPort",
+}
+local function _find_setter(pkt, var)
+	local alias = _aliases[pkt .. "_" .. var]
+	if alias then
+		return proto[pkt].metatype[alias]
+	end
+
+	return proto[pkt].metatype["set" .. string.upper(string.sub(var, 1, 1)) .. string.sub(var, 2)]
+end
+
 local function _new_dynvar(pkt, var, func)
 	local self = { pkt = pkt, var = var, func = func }
+	self.applyfn = _find_setter(pkt, var)
+	assert(self.applyfn, pkt .. "_" .. var)
 	self.value = func() -- NOTE arp will execute in master
 
 	return setmetatable(self, _mt_dynvar)
@@ -14,24 +31,13 @@ function dynvar:update()
 	return v
 end
 
--- TODO improve apply
 function dynvar:apply(pkt)
-	local var = pkt[self.pkt][self.var]
-	if type(var) == "cdata" then
-		var:set(self.value)
-	else
-		pkt[self.pkt][self.var] = self.value
-	end
+	self.applyfn(pkt[self.pkt], self.value)
 end
 
 function dynvar:updateApply(pkt)
 	dynvar.update(self)
-	local var = pkt[self.pkt][self.var]
-	if type(var) == "cdata" then
-		var:set(self.value)
-	else
-		pkt[self.pkt][self.var] = self.value
-	end
+	self.applyfn(pkt[self.pkt], self.value)
 end
 
 local dynvars, dv_final = {}, {}
