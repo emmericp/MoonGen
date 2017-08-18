@@ -1,8 +1,10 @@
-local function _update_delay_one(self)
-	self.updatePacket = self._update_packet
-	self._update_packet = nil
+local flow
+local function _update_delay_one()
+	flow.updatePacket = flow._update_packet
+	flow._update_packet = nil
 end
 
+-- closures are ok because the script is reinstanced per slave-thread
 local _single_index, _alt_index = 0, 0
 local _valid_modes = {
 	none = true, -- setting this makes validation easier (see option.test)
@@ -50,6 +52,7 @@ function option.parse(self, mode)
 	end
 
 	-- Don't change the first packet
+	flow = self
 	self.updatePacket = _update_delay_one
 
 	mode = type(mode) == "string" and _valid_modes[string.lower(mode)]
