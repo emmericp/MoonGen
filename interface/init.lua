@@ -18,8 +18,7 @@ function configure(parser)
 	parser:description("Configuration based interface for MoonGen.")
 	parser:option("-c --config", "Config file directory."):default("flows")
 	parser:option("-d --debug", "Print the first n packets of a flow instead of sending."):action(function(args, _, val)
-		-- mg.config.skipInit = true
-		-- TODO just alloc single pkt ?
+		mg.config.skipInit = true
 		args.debug = val
 	end):convert(tonumber)
 	parser:flag("--help-options", "Display information about flow options and exit"):action(function()
