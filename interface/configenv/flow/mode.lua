@@ -3,20 +3,29 @@ local function _update_delay_one(self)
 	self._update_packet = nil
 end
 
--- TODO add modes that apply all instead of apply single
+local _single_index, _alt_index = 0, 0
 local _valid_modes = {
 	none = true, -- setting this makes validation easier (see option.test)
-	single = function(self, pkt)
-		local index = self._update_index or 0
-		self.packet.dynvars[index + 1]:updateApply(pkt)
-		self._update_index = incAndWrap(index, #self.packet.dynvars) -- luacheck: globals incAndWrap
+	single = function(dv, pkt)
+		dv[_single_index + 1]:update()
+		dv:applyAll(pkt)
+		_single_index = incAndWrap(_single_index, dv.count) -- luacheck: globals incAndWrap
 	end,
-	random = function(self, pkt)
-		local index = math.random(self.packet.dynvars.count)
-		self.packet.dynvars[index]:updateApply(pkt)
+	alternating = function(dv, pkt)
+		dv[_alt_index + 1]:updateApply(pkt)
+		_alt_index = incAndWrap(_alt_index, dv.count) -- luacheck: globals incAndWrap
 	end,
-	all = function(self, pkt)
-		self.packet.dynvars:updateApplyAll(pkt)
+	random = function(dv, pkt)
+		local index = math.random(dv.count)
+		dv[index]:update()
+		dv:applyAll(pkt)
+	end,
+	random_alt = function(dv, pkt)
+		local index = math.random(dv.count)
+		dv[index]:updateApply(pkt)
+	end,
+	all = function(dv, pkt)
+		dv:updateApplyAll(pkt)
 	end,
 }
 

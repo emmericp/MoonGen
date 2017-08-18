@@ -143,12 +143,13 @@ function loadSlave(txQueue, sendQueue, rxDev, flow)
 		runtime = timer:new(flow.tlim)
 	end
 
+	local dv = flow.packet.dynvars
 	while mg.running() and (not runtime or runtime:running()) do
 		bufs:alloc(flow:getPacketLength())
 
 		if flow.updatePacket then
 			for _, buf in ipairs(bufs) do
-				flow:updatePacket(getPacket(buf))
+				flow.updatePacket(dv, getPacket(buf))
 			end
 		end
 
