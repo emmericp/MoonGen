@@ -61,16 +61,16 @@ namespace rate_limiter {
 				cur_batch_size /= 2;
 				rc = ring_dequeue(ring, reinterpret_cast<void**>(bufs), cur_batch_size);
 			}
-		    if (rc == 0) {
-		    	for (int i = 0; i < cur_batch_size; i++) {
-		        	// desired inter-frame spacing is encoded in the hash 'usr' field (bytes)
-		            id_cycles = ((uint64_t) bufs[i]->udata64 * 8 / link_bps) * tsc_hz;
-		            next_send += id_cycles;
-		            while ((cur = rte_get_tsc_cycles()) < next_send); // waiting
-		            while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0);
-		        }
-		    }
-		    cur = rte_get_tsc_cycles();
+			if (rc == 0) {
+				for (int i = 0; i < cur_batch_size; i++) {
+					// desired inter-frame spacing is encoded in the hash 'usr' field (bytes)
+					id_cycles = ((uint64_t) bufs[i]->udata64 * 8 / link_bps) * tsc_hz;
+					next_send += id_cycles;
+					while ((cur = rte_get_tsc_cycles()) < next_send); // waiting
+					while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0);
+				}
+			}
+			cur = rte_get_tsc_cycles();
 		}
 		return;
 	}
