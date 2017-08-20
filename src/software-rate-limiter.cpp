@@ -10,6 +10,7 @@
 #include <random>
 #include <atomic>
 #include <iostream>
+#include <unistd.h>
 #include "ring.h"
 #include "lifecycle.hpp"
 
@@ -39,8 +40,42 @@ namespace rate_limiter {
 		};
 	};
 	
-	// FIXME: NYI
-	static inline void main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue) {
+	/*
+	 * Arbitrary time software rate control main
+	 * link_speed: DPDK link speed is expressed in Mbit/s
+	 */
+	static inline void main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t link_speed, limiter_control* ctl) {
+		uint64_t tsc_hz = rte_get_tsc_hz();
+		uint64_t id_cycles = 0;
+		struct rte_mbuf* bufs[batch_size];
+		double link_bps = link_speed * 1000000.0;
+		uint64_t cur = rte_get_tsc_cycles();
+		uint64_t next_send = cur;
+		while (libmoon::is_running(0)) {
+			int cur_batch_size = batch_size;
+			int n = ring_dequeue(ring, reinterpret_cast<void**>(bufs), cur_batch_size);
+			while (!n && cur_batch_size > 1) {
+				cur_batch_size /= 2;
+				n = ring_dequeue(ring, reinterpret_cast<void**>(bufs), cur_batch_size);
+			}
+			if (n) {
+				for (int i = 0; i < cur_batch_size; i++) {
+					// desired inter-frame spacing is encoded in the udata field (bytes on the wire)
+					id_cycles = ((uint64_t) bufs[i]->udata64 * 8 / link_bps) * tsc_hz;
+					next_send += id_cycles;
+					while ((cur = rte_get_tsc_cycles()) < next_send);
+					while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0) {
+						if (!ctl->running()) {
+							return;
+						}
+					}
+				}
+				ctl->count_packets(n);
+			} else if (!ctl->running()) {
+				return;
+			}
+		}
+		return;
 	}
 	
 	static inline void main_loop_poisson(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed, limiter_control* ctl) {
@@ -119,9 +154,8 @@ extern "C" {
 		rate_limiter::main_loop_poisson(ring, device, queue, target, link_speed, ctl);
 	}
 
-	void mg_rate_limiter_main_loop(rte_ring* ring, uint8_t device, uint16_t queue) {
-		// NYI
-		//rate_limiter::main_loop(ring, device, queue);
+	void mg_rate_limiter_main_loop(rte_ring* ring, uint8_t device, uint16_t queue, uint32_t link_speed, rate_limiter::limiter_control* ctl) {
+		rate_limiter::main_loop(ring, device, queue, link_speed, ctl);
 	}
 }
 
