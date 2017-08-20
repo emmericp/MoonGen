@@ -20,36 +20,36 @@ end
 function master(args)
 	local dev = device.config{port = args.dev}
 	device.waitForLinks()
-	rateLimiter = nil
-	if args.rateMultiplier == 1 then
+	local rateLimiter
+	if args.rateMultiplier > 0 then
 		rateLimiter = limiter:new(dev:getTxQueue(0), "custom")
 	end
-	mg.startTask("replay", dev:getTxQueue(0), args.file, args.loop, rateLimiter)
+	mg.startTask("replay", dev:getTxQueue(0), args.file, args.loop, rateLimiter, args.rateMultiplier)
 	stats.startStatsTask{txDevices = {dev}}
 	mg.waitForTasks()
 end
 
-function replay(queue, file, loop, rateLimiter)
-	local mempool = memory:createMemPool()
+function replay(queue, file, loop, rateLimiter, multiplier)
+	local mempool = memory:createMemPool(4096)
 	local bufs = mempool:bufArray()
-	-- software-ratecontrol.lua#L29 For now it's mandatory to use a buffer of 1 position (lower or equal to the #packets in the pcap file)
-	if rateLimiter ~= nil then
-		bufs = mempool:bufArray(1)
-	end
 	local pcapFile = pcap:newReader(file)
-	local prev = 0;
+	local prev = 0
+	local linkSpeed = queue.dev:getLinkStatus().speed
 	while mg.running() do
 		local n = pcapFile:read(bufs)
 		if n > 0 then
 			if rateLimiter ~= nil then
 				if prev == 0 then
-					prev = (bufs.array[0].udata64 % 1000000) * 1000000 + math.floor(tonumber(bufs.array[0].udata64) / 1000000)
+					prev = bufs.array[0].udata64
 				end
-				-- using pcap don't use ipairs (ipairs starts in 1 and C code in 0 - this produce index fails)
-				for i=0, n-1 do
-					local cur = (bufs.array[i].udata64 % 1000000) * 1000000 + math.floor(tonumber(bufs.array[i].udata64) / 1000000)
-					bufs.array[i]:setDelay((cur-prev) * queue.dev:getLinkStatus().speed / 8)
-					prev = cur
+				for i, buf in ipairs(bufs) do
+					-- ts is in microseconds
+					local ts = buf.udata64
+					local delay = ts - prev
+					delay = tonumber(delay * 10^3) / multiplier -- nanoseconds
+					delay = delay / (8000 / linkSpeed) -- delay in bytes
+					buf:setDelay(delay)
+					prev = ts
 				end
 			end
 		else
@@ -59,9 +59,8 @@ function replay(queue, file, loop, rateLimiter)
 				break
 			end
 		end
-		if rateLimiter ~= nil then
-			-- TODO: create sendN instead of send or solve software-ratecontrol.lua#L29
-			rateLimiter:send(bufs)
+		if rateLimiter then
+			rateLimiter:sendN(bufs, n)
 		else
 			queue:sendN(bufs, n)
 		end
