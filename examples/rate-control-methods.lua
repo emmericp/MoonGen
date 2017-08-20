@@ -34,10 +34,10 @@ end
 
 function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numThreads)
 	local mem = memory.createMemPool(4096, function(buf)
-		buf:getEthernetPacket():fill{
+		buf:getUdpPacket():fill{
 			ethSrc = txDev,
 			ethDst = ETH_DST,
-			ethType = 0x1234
+			pktLength = PKT_SIZE
 		}
 	end)
 	if rc == "hw" then

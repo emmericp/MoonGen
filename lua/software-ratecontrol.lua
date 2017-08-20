@@ -13,9 +13,14 @@ ffi.cdef[[
 		void* bufs[0];
 	};
 
+	struct limiter_control {
+		uint64_t count;
+		uint8_t stop;
+	};
+
 	//void mg_rate_limiter_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue);
-	void mg_rate_limiter_cbr_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target);
-	void mg_rate_limiter_poisson_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed);
+	void mg_rate_limiter_cbr_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, struct limiter_control* ctl);
+	void mg_rate_limiter_poisson_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed, struct limiter_control* ctl);
 ]]
 
 local mod = {}
@@ -31,6 +36,14 @@ function rateLimiter:send(bufs)
 		end
 	until not mg.running()
 end
+
+-- stop a rate limiter thread
+-- you must not continue to use a stopped rate limiter
+function rateLimiter:stop()
+	self.ctl.stop = 1
+	memory.fence()
+end
+
 
 function rateLimiter:__serialize()
 	return "require 'software-ratecontrol'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('software-ratecontrol').rateLimiter"), true
@@ -52,18 +65,19 @@ function mod:new(queue, mode, delay)
 		ring = ring.ring,
 		mode = mode,
 		delay = delay,
-		queue = queue
+		queue = queue,
+		ctl = memory.alloc("struct limiter_control*", ffi.sizeof("struct limiter_control"))
 	}, rateLimiter)
-	mg.startTask("__MG_RATE_LIMITER_MAIN", obj.ring, queue.id, queue.qid, mode, delay, queue.dev:getLinkStatus().speed)
+	mg.startTask("__MG_RATE_LIMITER_MAIN", obj.ring, queue.id, queue.qid, mode, delay, queue.dev:getLinkStatus().speed, obj.ctl)
 	return obj
 end
 
 
-function __MG_RATE_LIMITER_MAIN(ring, devId, qid, mode, delay, speed)
+function __MG_RATE_LIMITER_MAIN(ring, devId, qid, mode, delay, speed, ctl)
 	if mode == "cbr" then
-		C.mg_rate_limiter_cbr_main_loop(ring, devId, qid, delay)
+		C.mg_rate_limiter_cbr_main_loop(ring, devId, qid, delay, ctl)
 	elseif mode == "poisson" then
-		C.mg_rate_limiter_poisson_main_loop(ring, devId, qid, delay, speed)
+		C.mg_rate_limiter_poisson_main_loop(ring, devId, qid, delay, speed, ctl)
 	else
 		log:fatal("generic IPG mode NYI, please specifiy either cbr or poisson")
 	end

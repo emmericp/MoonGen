@@ -8,6 +8,7 @@
 #include <rte_ether.h>
 #include <rte_cycles.h>
 #include <random>
+#include <atomic>
 #include <iostream>
 #include "ring.h"
 #include "lifecycle.hpp"
@@ -24,26 +25,39 @@
 // FIXME: duplicate code (needed for a paper, so the usual quick & dirty hacks)
 namespace rate_limiter {
 	constexpr int batch_size = 64;
+
+	struct limiter_control {
+		std::atomic<uint64_t> count = {0};
+		std::atomic<uint8_t> stop = {0};
+
+		inline bool running() {
+			return libmoon::is_running(0) && !stop.load(std::memory_order_relaxed);
+		};
+
+		inline void count_packets(uint64_t n) {
+			count.fetch_add(n, std::memory_order_relaxed);
+		};
+	};
 	
 	// FIXME: NYI
 	static inline void main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue) {
 	}
 	
-	static inline void main_loop_poisson(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed) {
+	static inline void main_loop_poisson(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed, limiter_control* ctl) {
 		uint64_t tsc_hz = rte_get_tsc_hz();
 		// control IPGs instead of IDT as IDTs < packet_time are physically impossible
 		std::default_random_engine rand;
 		uint64_t next_send = 0;
 		struct rte_mbuf* bufs[batch_size];
-		while (1) {
-			int rc = ring_dequeue(ring, reinterpret_cast<void**>(bufs), batch_size);
+		while (libmoon::is_running(0)) {
+			int n = ring_dequeue(ring, reinterpret_cast<void**>(bufs), batch_size);
 			uint64_t cur = rte_get_tsc_cycles();
 			// nothing sent for 10 ms, restart rate control
 			if (((int64_t) cur - (int64_t) next_send) > (int64_t) tsc_hz / 100) {
 				next_send = cur;
 			}
-			if (rc == 0) {
-				for (int i = 0; i < batch_size; i++) {
+			if (n) {
+				for (int i = 0; i < n; i++) {
 					uint64_t pkt_time = (bufs[i]->pkt_len + 24) * 8 / (link_speed / 1000);
 					// ns to cycles
 					pkt_time *= (double) tsc_hz / 1000000000.0;
@@ -52,33 +66,44 @@ namespace rate_limiter {
 					std::exponential_distribution<double> distribution(1.0 / avg);
 					double delay = (avg <= 0) ? 0 : distribution(rand);
 					next_send += pkt_time + delay;
-					while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0);
+					while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0) {
+						if (!ctl->running()) {
+							return;
+						}
+					}
 				}
-			} else if (!libmoon::is_running(0)) {
+				ctl->count_packets(n);
+			} else if (!ctl->running()) {
 				return;
 			}
 		}
 	}
 
-	static inline void main_loop_cbr(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target) {
+	static inline void main_loop_cbr(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, limiter_control* ctl) {
 		uint64_t tsc_hz = rte_get_tsc_hz();
 		uint64_t id_cycles = (uint64_t) (target / (1000000000.0 / ((double) tsc_hz)));
 		uint64_t next_send = 0;
 		struct rte_mbuf* bufs[batch_size];
 		while (libmoon::is_running(0)) {
-			int rc = ring_dequeue(ring, reinterpret_cast<void**>(bufs), batch_size);
+			int n = ring_dequeue(ring, reinterpret_cast<void**>(bufs), batch_size);
 			uint64_t cur = rte_get_tsc_cycles();
 			// nothing sent for 10 ms, restart rate control
 			if (((int64_t) cur - (int64_t) next_send) > (int64_t) tsc_hz / 100) {
 				next_send = cur;
 			}
-			if (rc == 0) {
-				for (int i = 0; i < batch_size; i++) {
+			if (n) {
+				for (int i = 0; i < n; i++) {
 					while ((cur = rte_get_tsc_cycles()) < next_send);
 					next_send += id_cycles;
-					while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0);
+					while (rte_eth_tx_burst(device, queue, bufs + i, 1) == 0) {
+						// mellanox nics like to not accept packets when stopping for... reasons
+						if (!ctl->running()) {
+							return;
+						}
+					}
 				}
-			} else if (!libmoon::is_running(0)) {
+				ctl->count_packets(n);
+			} else if (!ctl->running()) {
 				return;
 			}
 		}
@@ -86,12 +111,12 @@ namespace rate_limiter {
 }
 
 extern "C" {
-	void mg_rate_limiter_cbr_main_loop(rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target) {
-		rate_limiter::main_loop_cbr(ring, device, queue, target);
+	void mg_rate_limiter_cbr_main_loop(rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, rate_limiter::limiter_control* ctl) {
+		rate_limiter::main_loop_cbr(ring, device, queue, target, ctl);
 	}
 
-	void mg_rate_limiter_poisson_main_loop(rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed) {
-		rate_limiter::main_loop_poisson(ring, device, queue, target, link_speed);
+	void mg_rate_limiter_poisson_main_loop(rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed, rate_limiter::limiter_control* ctl) {
+		rate_limiter::main_loop_poisson(ring, device, queue, target, link_speed, ctl);
 	}
 
 	void mg_rate_limiter_main_loop(rte_ring* ring, uint8_t device, uint16_t queue) {
