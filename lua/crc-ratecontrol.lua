@@ -80,7 +80,7 @@ end
 
 hookTxStats(device)
 for driver, dev in pairs(require("drivers")) do
-	if tostring(driver):match("^rte_") and type(dev) == "table" then
+	if tostring(driver):match("^net_") and type(dev) == "table" then
 		hookTxStats(dev)
 	end
 end
