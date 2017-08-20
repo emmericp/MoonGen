@@ -18,7 +18,7 @@ ffi.cdef[[
 		uint8_t stop;
 	};
 
-	//void mg_rate_limiter_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue);
+	void mg_rate_limiter_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t link_speed);
 	void mg_rate_limiter_cbr_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, struct limiter_control* ctl);
 	void mg_rate_limiter_poisson_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed, struct limiter_control* ctl);
 ]]
@@ -31,6 +31,9 @@ rateLimiter.__index = rateLimiter
 
 function rateLimiter:send(bufs)
 	repeat
+		-- FIXME: in libmoon sendToPacketRing inject in ring bufs.size packets and size != count. If we use a buffer with
+		-- a size of 64 but the count is only 32 we will have a memory error because sendToPacketRing inject 64 packets and
+		-- when we dequeue we dequeu 64 packets but only 32 are valid.
 		if pipe:sendToPacketRing(self.ring, bufs) then
 			break
 		end
@@ -79,7 +82,7 @@ function __MG_RATE_LIMITER_MAIN(ring, devId, qid, mode, delay, speed, ctl)
 	elseif mode == "poisson" then
 		C.mg_rate_limiter_poisson_main_loop(ring, devId, qid, delay, speed, ctl)
 	else
-		log:fatal("generic IPG mode NYI, please specifiy either cbr or poisson")
+		C.mg_rate_limiter_main_loop(ring, devId, qid, speed)
 	end
 end
 
