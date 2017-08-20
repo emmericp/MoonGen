@@ -16,7 +16,7 @@ function master(txPort, rate, rc, pattern, threads)
 	end
 	rate = rate or 2
 	threads = threads or 1
-	pattern = pattern or "custom"
+	pattern = pattern or "cbr"
 	if pattern == "cbr" and threads ~= 1 then
 		return log:error("cbr only supports one thread")
 	end
@@ -55,11 +55,12 @@ function loadSlave(queue, txDev, rate, rc, pattern, rateLimiter, threadId, numTh
 	elseif rc == "sw" then
 		-- larger batch size is useful when sending it through a rate limiter
 		local bufs = mem:bufArray(128)
+		local linkSpeed = txDev:getLinkStatus().speed
 		while mg.running() do
 			bufs:alloc(PKT_SIZE)
 			if pattern == "custom" then
 				for _, buf in ipairs(bufs) do
-					buf:setDelay(rate * txDev:getLinkStatus().speed / 8)
+					buf:setDelay(rate * linkSpeed / 8)
 				end
 			end
 			rateLimiter:send(bufs)
