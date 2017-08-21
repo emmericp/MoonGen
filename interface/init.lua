@@ -156,6 +156,9 @@ function loadSlave(txQueue, sendQueue, rxDev, flow)
 			data = data - bufs.size
 			if data <= 0 then
 				sendQueue:sendN(bufs, bufs.size + data)
+				if sendQueue.stop then
+					sendQueue:stop()
+				end
 				break
 			end
 		end
