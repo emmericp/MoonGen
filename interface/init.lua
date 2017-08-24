@@ -13,25 +13,7 @@ local crawl = require "configcrawl"
 local parse = require "flowparse"
 
 -- luacheck: globals configure master loadSlave
-
-function configure(parser)
-	parser:description("Configuration based interface for MoonGen.")
-	parser:option("-c --config", "Config file directory."):default("flows")
-	parser:option("-d --debug", "Print the first n packets of a flow instead of sending."):action(function(args, _, val)
-		mg.config.skipInit = true
-		args.debug = val
-	end):convert(tonumber)
-	parser:flag("--help-options", "Display information about flow options and exit"):action(function()
-		print(require("configenv.flow").getOptionHelpString())
-		os.exit(0)
-	end)
-	parser:flag("-l --list", "List all valid flows and exit."):action(function(args)
-		require "flowlist" (args.config)
-		os.exit(0)
-	end)
-
-	parser:argument("flows", "List of flow names."):args "+"
-end
+configure = require "cli"
 
 local function _cbr_to_delay(cbr, psize)
 	-- cbr      => mbit/s        => bit/1000ns
@@ -40,10 +22,6 @@ local function _cbr_to_delay(cbr, psize)
 end
 
 function master(args)
-	if args.debug then
-		return require "debugout" (args)
-	end
-
 	crawl(args.config)
 
 	-- auto-filling device index

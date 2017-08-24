@@ -1,7 +1,9 @@
 local crawl = require "configcrawl"
 local validator = require "validator"
 
-return function(config)
+local list = {}
+
+local function _print_list(config)
 	local flows = crawl(config, true)
 
 	local files = setmetatable({}, {
@@ -35,3 +37,14 @@ return function(config)
 		end
 	end
 end
+
+function list.configure(parser)
+  parser:argument("directory", "Change the base directory to search flows."):args("?"):default("flows")
+
+  parser:action(function(args)
+    _print_list(args.directory)
+    os.exit(0)
+  end)
+end
+
+return list
