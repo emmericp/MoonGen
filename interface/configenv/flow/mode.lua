@@ -55,7 +55,11 @@ function option.parse(self, mode)
 	flow = self
 	self.updatePacket = _update_delay_one
 
-	mode = type(mode) == "string" and _valid_modes[string.lower(mode)]
+	local t = type(mode)
+	if t ~= "function" then
+		mode = t == "string" and _valid_modes[string.lower(mode)]
+	end
+
 	self._update_packet = mode or _valid_modes.single
 end
 
@@ -71,7 +75,7 @@ function option.test(self, error, mode)
 				mode, table.concat(_modelist, ", "))
 			return false
 		end
-	else
+	elseif t ~= "function" then
 		error(4, "Option 'mode': Invalid argument. String expected, got %s.", t)
 		return false
 	end

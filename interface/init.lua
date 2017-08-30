@@ -89,10 +89,6 @@ function master(args)
 			end
 		end
 
-		-- NOTE software ratelimiting will throw off results for dataLimit
-		-- and cause either limit to fail quitting correctly
-		-- TODO add limiter:stop
-
 		mg.startTask("loadSlave", txQueue, sendQueue, rxDev.dev, crawl.passFlow(flow))
 		txDev.txqi = txDev.txqi + 1
 	end
@@ -113,8 +109,7 @@ function loadSlave(txQueue, sendQueue, rxDev, flow)
 	local txCtr = stats:newDevTxCounter(txQueue, "plain")
 	local rxCtr = stats:newDevRxCounter(rxDev, "plain")
 
-	-- timeLimit in seconds
-	-- dataLimit in packets
+	-- dataLimit in packets, timeLimit in seconds
 	local data, runtime = flow.dlim, nil
 	if flow.tlim then
 		runtime = timer:new(flow.tlim)
