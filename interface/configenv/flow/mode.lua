@@ -38,6 +38,22 @@ end
 
 local option = {}
 
+option.description = "Control how fields of dynamic flows are updated and applied."
+option.configHelp = "Will take a function (dynvars, packet). Dynvars use numeric indices"
+	.. " to access single fields. Those expose the functions :update(), :apply(packet) and"
+	.. " :updateApply(packet). For convenience dynvars:updateAll(), dynvars:applyAll(packet) and"
+	.. " dynvars:updateApplyAll(packet) are provided."
+function option.getHelp()
+	return {
+		{ "none", "Ignore all dynamic fields and send the first packet created." },
+		{ "single", "Update one field at a time, but apply every change so far." },
+		{ "alternating", "Update and apply one field at a time." },
+		{ "random", "Like single, but the order of updates is not fixed."},
+		{ "random_alt", "Like alternating, but the order of updates is not fixed."},
+		{ "all", "Update and apply all fields every time."},
+	}
+end
+
 option.formatString = {}
 for _,v in ipairs(_modelist) do
 	table.insert(option.formatString, v)

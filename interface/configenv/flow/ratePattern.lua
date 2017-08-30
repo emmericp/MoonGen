@@ -6,8 +6,11 @@ for _,v in ipairs(_patternlist) do
 end
 
 local option = {}
-option.formatString = "<cbr|poisson>"
-option.helpString = "Poisson will create bursts of packets instead of a constant flow. (default = cbr)"
+
+option.description = "Control how bytes are distributed over time, when a ratelimit is set."
+function option.getHelp()
+	return { { "(cbr|poisson)", "Poisson will create bursts of packets instead of a constant bitrate. (default = cbr)" } }
+end
 
 function option.parse(self, pattern)
 	self.rpattern = _patternset[pattern] and pattern or "cbr"

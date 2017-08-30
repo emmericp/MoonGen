@@ -1,8 +1,14 @@
 local units = require "configenv.flow.units"
 
 local option = {}
-option.formatString = "<number><time>"
-option.helpString   = "Stop after <number> units of data. Will be rounded up to the nearest whole number of packets."
+
+option.description = "Stop sending this flow after a certain amount of data. As"
+	.. " flows should only be cut short at a whole number of packets sent, every"
+	.. " value passed will be rounded up to the nearest whole number of packets."
+option.configHelp = "Passing a number instead of a string will interpret the value as megabit."
+function option.getHelp()
+	return { { "<number><sizeUnit>", "Default use case." } }
+end
 
 local function _parse_limit(lstring, psize)
 	local num, unit = string.match(lstring, "^(%d+%.?%d*)(%a+)$")

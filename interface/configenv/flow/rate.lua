@@ -30,8 +30,17 @@ end
 
 local option = {}
 
-option.formatString = "<number>[size][/<time>]"
-option.helpString   = "Limit the bitrate of the flow. Automatically falls back to software ratelimiting."
+option.description = "Limit the rate of data from this flow. Will automatically"
+	.. " fallback to software ratelimiting if needed."
+option.configHelp = "Passing a number instead of a string will interpret the value as mbit/s."
+function option.getHelp()
+	return {
+		{ "<number><sizeUnit>/<timeUnit>", "Default use case."},
+		{ "<number><sizeUnit>", "Time unit defaults to seconds."},
+		{ "<number>/<timeUnit>", "Size unit defaults to megabit."},
+		{ "<number>", "Defaults to mbit/s."},
+	}
+end
 
 function option.parse(self, rate)
 	if type(rate) == "number" then

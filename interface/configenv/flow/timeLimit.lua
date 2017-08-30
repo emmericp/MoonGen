@@ -1,8 +1,17 @@
 local units = require "configenv.flow.units"
 
 local option = {}
-option.formatString = "<number><time>"
-option.helpString   = "Stop after <number> units of time. Will stop after the last buffer is sent."
+
+option.description = "Stop sending this flow after a certain time, starting with"
+	.. " the first packet sent. Time will only be checked after a full buffer"
+	.. " has been sent (usually 64 packets). For this reason, the actual time"
+	.. " passed between first and last packet might be longer, but should never"
+	.. " be shorter than expected."
+option.configHelp = "Passing a number instead of a string will interpret the value as number of seconds."
+function option.getHelp()
+	return { { "<number><timeUnit>", "Default use case." }}
+end
+
 
 local function _parse_limit(lstring)
 	local num, unit = string.match(lstring, "^(%d+%.?%d*)(%a+)$")
