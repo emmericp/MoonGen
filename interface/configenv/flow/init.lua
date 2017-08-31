@@ -24,88 +24,36 @@ local _option_list = {
 	},
 }
 
-local function formatIndented(result, cols, indent, text)
-	if type(indent) == "number" then
-		indent = string.rep(" ", indent)
-	end
-
-	local current, nextSpace = 0, ""
-	table.insert(result, indent)
-	for w, s in string.gmatch(text, "(%S+)(%s*)") do
-		local next = current + #w + #nextSpace
-
-		if next > cols then
-			table.insert(result, "\n")
-			table.insert(result, indent)
-			current, nextSpace = 0, ""
-		else
-			current = next
-		end
-
-		table.insert(result, nextSpace)
-		nextSpace = s
-
-		table.insert(result, w)
-	end
-end
-
-function Flow.getOptionHelpString()
-	local result = {}
-
-	local tput = io.popen("tput cols")
-	local cols = tonumber(tput:read()) - 12
-	tput:close()
-
-	table.insert(result, "OPTIONS\n")
-	formatIndented(result, cols, 6, "List of options available when customizing flows using"
+function Flow.getOptionHelpString(help_printer)
+	help_printer:section("Options")
+	help_printer:body("List of options available when customizing flows using"
 		.. " command line or configuration files.")
-	table.insert(result, "\n\n")
 
-	table.insert(result, "UNITS\n")
-
-	table.insert(result, string.rep(" ", 6))
-	table.insert(result, "Size Units '\27[4m<prefix><unit>\27[0m'\n")
-	formatIndented(result, cols, 12, "Prefix can be one of '\27[4m[k|M|G[i]]\27[0m'"
+	help_printer:section("Units")
+	help_printer:subsection("Size Units '\27[4m<prefix><unit>\27[0m'\n")
+	help_printer:body("Prefix can be one of '\27[4m[k|M|G[i]]\27[0m'"
 		.. " with the i marking an IEC-prefix using multiples of 1024 instead of 1000.")
-	table.insert(result, "\n\n")
-	formatIndented(result, cols, 12, "Unit can be one of '\27[4m(B|bit|p)\27[0m',"
+	help_printer:body("Unit can be one of '\27[4m(B|bit|p)\27[0m',"
 		.. " meaning byte, bit and packet respectively.")
-	table.insert(result, "\n\n")
 
-	table.insert(result, string.rep(" ", 6))
-	table.insert(result, "Time Units\n")
-	formatIndented(result, cols, 12, "Available time units are '\27[4m(ms|s|m|h)\27[0m'"
+	help_printer:subsection("Time Units")
+	help_printer:body("Available time units are '\27[4m(ms|s|m|h)\27[0m'"
 		.. " for millisecond, second, minute or hour.")
-	table.insert(result, "\n\n")
 
 	for i,v in pairs(_option_list) do
-		table.insert(result, string.upper(i))
-		table.insert(result, "\n\n")
-		formatIndented(result, cols, 6,  v.description)
-		table.insert(result, "\n\n")
+		help_printer:section(i)
+		help_printer:body(v.description)
 
 		for _,fmt in ipairs(v.getHelp()) do
-			table.insert(result, string.rep(" ", 6))
-			table.insert(result, i)
-			table.insert(result, " = \27[4m")
-			table.insert(result, fmt[1])
-			table.insert(result, "\27[0m")
-			table.insert(result, "\n")
-			formatIndented(result, cols, 12, fmt[2])
-			table.insert(result, "\n\n")
+			help_printer:subsection(string.format("%s = \27[4m%s\27[0m", i, fmt[1]))
+			help_printer:body(fmt[2])
 		end
 
 		if v.configHelp then
-			table.insert(result, string.rep(" ", 6))
-			table.insert(result, "Configuration\n")
-			formatIndented(result, cols, 12, v.configHelp)
-			table.insert(result, "\n\n")
+			help_printer:subsection("Configuration\n")
+			help_printer:body(v.configHelp)
 		end
 	end
-
-	table.remove(result)
-
-	return table.concat(result)
 end
 
 function Flow.new(name, tbl, error)

@@ -39,10 +39,21 @@ end
 local option = {}
 
 option.description = "Control how fields of dynamic flows are updated and applied."
-option.configHelp = "Will take a function (dynvars, packet). Dynvars use numeric indices"
-	.. " to access single fields. Those expose the functions :update(), :apply(packet) and"
-	.. " :updateApply(packet). For convenience dynvars:updateAll(), dynvars:applyAll(packet) and"
-	.. " dynvars:updateApplyAll(packet) are provided."
+option.configHelp = "Will also accept a function that will be called for each"
+	.. " packet sent but the first. Use closures for flow control purposes."
+	.. " The following function demonstrates the available api:\n\n"
+	.. [[function mode(dynvars, packet)
+	-- available api
+	dynvars[1]:update()
+	dynvars[1]:apply(packet)
+	dynvars[1]:updateApply(packet)
+
+	-- convenience api
+	dynvars:updateAll()
+	dynvars:applyAll(packet)
+	dynvars:updateApplyAll(packet)
+end]]
+
 function option.getHelp()
 	return {
 		{ "none", "Ignore all dynamic fields and send the first packet created." },
