@@ -4,8 +4,9 @@ local _option_list = {
 	rate = require "configenv.flow.rate",
 	ratePattern = require "configenv.flow.ratePattern",
 	mode = require "configenv.flow.mode",
-	timeLimit = require "configenv.flow.timeLimit",
 	dataLimit = require "configenv.flow.dataLimit",
+	timeLimit = require "configenv.flow.timeLimit",
+	timestamp = require "configenv.flow.timestamp",
 	packetLength = {
 		parse = function(self, packetLength)
 			self.psize = tonumber(packetLength) or self.packet.fillTbl.pktLength
@@ -45,7 +46,11 @@ function Flow.getOptionHelpString(help_printer)
 		help_printer:body(v.description)
 
 		for _,fmt in ipairs(v.getHelp()) do
-			help_printer:subsection(string.format("%s = \27[4m%s\27[0m", i, fmt[1]))
+			if fmt[1] then
+				help_printer:subsection(string.format("%s = \27[4m%s\27[0m", i, fmt[1]))
+			else
+				help_printer:subsection(i)
+			end
 			help_printer:body(fmt[2])
 		end
 
