@@ -68,7 +68,10 @@ function crawl.passFlow(f)
 end
 
 function crawl.receiveFlow(fdef)
-	_parse_file(fdef.file)
+	if not flows[fdef.name] then
+		_parse_file(fdef.file)
+	end
+
 	local f = setmetatable({ options = fdef.options }, { __index = flows[fdef.name] })
 	f:prepare()
 	return f
