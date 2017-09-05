@@ -64,14 +64,14 @@ local function _print_debug(args)
 end
 
 function debug.configure(parser)
-  parser:option("-c --config", "Config file directory."):default("flows")
-  parser:option("-n --count", "Amount of variants to display."):default("1"):convert(tonumber)
+	parser:option("-c --config", "Config file directory."):default("flows")
+	parser:option("-n --count", "Amount of variants to display."):default("1"):convert(tonumber)
 	parser:argument("flow", "Name of the flow to display.")
 
-  parser:action(function(args)
-    _print_debug(args)
-    os.exit(0)
-  end)
+	parser:action(function(args)
+		_print_debug(args)
+		os.exit(0)
+	end)
 end
 
 return debug

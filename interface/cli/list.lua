@@ -39,12 +39,12 @@ local function _print_list(config)
 end
 
 function list.configure(parser)
-  parser:argument("directory", "Change the base directory to search flows."):args("?"):default("flows")
+	parser:argument("directory", "Change the base directory to search flows."):args("?"):default("flows")
 
-  parser:action(function(args)
-    _print_list(args.directory)
-    os.exit(0)
-  end)
+	parser:action(function(args)
+		_print_list(args.directory)
+		os.exit(0)
+	end)
 end
 
 return list
