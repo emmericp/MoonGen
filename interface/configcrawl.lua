@@ -60,6 +60,16 @@ function crawl.getFlow(name, options)
 	return setmetatable({ options = options }, { __index = f })
 end
 
+function crawl.cloneFlow(flow)
+	local f = {}
+
+	for i,v in pairs(flow) do
+		f[i] = v
+	end
+
+	return setmetatable(f, getmetatable(flow))
+end
+
 function crawl.passFlow(f)
 	if type(f) == "string" then
 		f = crawl.getFlow(f)

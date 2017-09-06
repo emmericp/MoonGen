@@ -44,8 +44,7 @@ function master(args)
 		end
 
 		if f then
-			-- TODO maybe move to flow.lua, mind test for #devs above
-			f.tx, f.rx = devs[1], devs[2]
+			f.tx, f.rx = devs[1][1], devs[2][1]
 			table.insert(flows, f)
 
 			-- less error-prone way of hardcoding all four assignments
