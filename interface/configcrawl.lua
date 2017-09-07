@@ -33,13 +33,16 @@ local function _parse_file(filename)
 	setfenv(f, _env)()
 end
 
-function crawl.getFlow(name, options)
+function crawl.getFlow(name, options, presets)
 	local f = flows[name]
 
 	if not f then
 		log:error("Flow %q not found.", name)
 		return
 	end
+
+	presets = presets or {}
+	f = setmetatable(presets, { __index = f })
 
 	local val = validator()
 	f:validate(val)
@@ -57,24 +60,33 @@ function crawl.getFlow(name, options)
 		return
 	end
 
-	return setmetatable({ options = options }, { __index = f })
+	presets.options = options
+	return f
 end
 
-function crawl.cloneFlow(flow)
+function crawl.cloneFlow(flow, changes)
 	local f = {}
 
 	for i,v in pairs(flow) do
 		f[i] = v
 	end
 
+	for i,v in pairs(changes) do
+		f[i] = v
+	end
+
 	return setmetatable(f, getmetatable(flow))
 end
 
-function crawl.passFlow(f)
-	if type(f) == "string" then
-		f = crawl.getFlow(f)
+function crawl.passFlow(flow)
+	local f = {}
+
+	for i,v in pairs(flow) do
+		f[i] = v
 	end
-	return { name = f.name, file = f.file, options = f.options }
+
+	f.file, f.name = flow.file, flow.name
+	return f
 end
 
 function crawl.receiveFlow(fdef)
@@ -82,7 +94,7 @@ function crawl.receiveFlow(fdef)
 		_parse_file(fdef.file)
 	end
 
-	local f = setmetatable({ options = fdef.options }, { __index = flows[fdef.name] })
+	local f = setmetatable(fdef, { __index = flows[fdef.name] })
 	f:prepare()
 	return f
 end
