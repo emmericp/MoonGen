@@ -65,9 +65,6 @@ function Flow.new(name, tbl, error)
 	local self = { name = name, packet = tbl[2], parent = tbl.parent }
 	tbl[1], tbl[2], tbl.parent = nil, nil, nil
 
-	-- TODO figure out actual queue requirements
-	self.tx_txq, self.tx_rxq, self.rx_txq, self.rx_rxq = 1, 1, 1, 1
-
 	-- check and copy options
 	for i,v in pairs(tbl) do
 		local opt = _option_list[i]

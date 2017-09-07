@@ -30,7 +30,10 @@ function option.parse(self, bool)
 	end
 end
 
-function option.validate() end
+function option.validate(flow, val, bool)
+	if type(bool) ~= "boolean" then bool = translations[bool] end
+	val:assert((not bool) or #flow.rx == 1, "Cannot timestamp flows with more than one receiving device.")
+end
 
 function option.test(_, error, bool)
 	local t = type(bool)

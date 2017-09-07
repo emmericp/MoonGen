@@ -11,6 +11,7 @@ local function configure(parser)
 
 	local send = parser:command("send", "Send one or more flows.")
 	send:option("-c --config", "Config file directory."):default("flows")
+	send:option("-o --output", "Output directory (histograms etc.)."):default(".")
 	send:argument("flows", "List of flow names."):args "+"
 end
 
