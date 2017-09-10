@@ -58,7 +58,7 @@ function master(args)
 			})
 		end
 
-		if f and #f.tx > 0 and #f.rx > 0 then
+		if f then
 			f:prepare()
 			log:info("Flow %s => %s", f.name, f.uid)
 
@@ -84,7 +84,7 @@ function master(args)
 		end
 	end
 
-	if #load_flows == 0 then -- checking load_flows is enough (see above)
+	if #load_flows == 0 and #receive_flows == 0 then
 		log:error("No valid flows remaining.")
 		return
 	end
