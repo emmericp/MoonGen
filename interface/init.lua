@@ -89,12 +89,23 @@ function master(args)
 		return
 	end
 
+	local txStats, rxStats = {}, {}
 	for i,v in pairs(devices) do
-		if v.txq == 0 then v.txq = 1 end
-		if v.rxq == 0 then v.rxq = 1 end
-		v.dev = device.config{ port = i, rxQueues = v.rxq, txQueues = v.txq }
+		local txq, rxq = v.txq, v.rxq
+		txq, rxq = (txq == 0) and 1 or txq, (rxq == 0) and 1 or rxq
+
+		v.dev = device.config{ port = i, rxQueues = rxq, txQueues = txq }
+
+		if v.txq > 0 then
+			table.insert(txStats, v.dev)
+		end
+		if v.rxq > 0 then
+			table.insert(rxStats, v.dev)
+		end
 	end
 	device.waitForLinks()
+
+	stats.startStatsTask{ txDevices = txStats, rxDevices = rxStats }
 
 	local statsPipe = pipe:newSlowPipe()
 
@@ -117,8 +128,7 @@ function master(args)
 	for _,flow in ipairs(load_flows) do
 		local txDev = devices[flow.tx_dev]
 
-		local statsQueue = txDev.dev:getTxQueue(txDev.txqi)
-		local txQueue = statsQueue
+		local txQueue = txDev.dev:getTxQueue(txDev.txqi)
 		txDev.txqi = txDev.txqi + 1
 
 		-- setup rate limit
@@ -133,7 +143,7 @@ function master(args)
 			end
 		end
 
-		mg.startTask("loadSlave", crawl.passFlow(flow), txQueue, statsQueue)
+		mg.startTask("loadSlave", crawl.passFlow(flow), txQueue)
 	end
 
 	for i,flow in ipairs(timestamp_flows) do
@@ -158,7 +168,7 @@ function master(args)
 	mg.waitForTasks()
 end
 
-function loadSlave(flow, sendQueue, statsQueue)
+function loadSlave(flow, sendQueue)
 	flow = crawl.receiveFlow(flow)
 
 	-- TODO arp ?
@@ -168,7 +178,6 @@ function loadSlave(flow, sendQueue, statsQueue)
 	end)
 
 	local bufs = mempool:bufArray()
-	local txCtr = stats:newDevTxCounter(flow.uid, statsQueue, "plain")
 
 	-- dataLimit in packets, timeLimit in seconds
 	local data, runtime = flow.dlim, nil
@@ -196,13 +205,11 @@ function loadSlave(flow, sendQueue, statsQueue)
 
 		bufs:offloadUdpChecksums()
 		sendQueue:send(bufs)
-		txCtr:update()
 	end
 
 	if sendQueue.stop then
 		sendQueue:stop()
 	end
-	txCtr:finalize()
 end
 
 local function statsSlaveRunning(numCtrs)
