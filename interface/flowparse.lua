@@ -1,33 +1,39 @@
 local log = require "log"
 
-return function(s, devnum)
-	local name, devstring, optstring = string.match(s, "^([^:,]+):?([^,]*),?(.*)$")
-	if not name then
-		log:fatal("Invalid parameter: %q. Expected format: '<name>{:<devnum>{.<devnum>}}{,<key>=<value>}'.", s)
-	end
+local function parse_devices(s, devnum, name)
+	local result = {}
 
-	local tx_rx = {}
-	for nums in string.gmatch(devstring, "([^:]+)") do
-		local devices = {}
-		for num in string.gmatch(nums, "([^.]+)") do
+	for num in string.gmatch(s, "([^,]+)") do
+		if num ~= "" then
 			local n = tonumber(num)
 			if not n or n < 0 or n >= devnum then
 				log:error("Invalid device number %q for flow %q.", num, name)
 			else
-				table.insert(devices, n)
+				table.insert(result, n)
 			end
 		end
-		table.insert(tx_rx, devices)
+	end
+
+	return result
+end
+
+return function(s, devnum)
+	local name, tx, rx, optstring = string.match(s, "^([^:]+):([^:]*):([^:]*):?(.*)$")
+	if not name then
+		log:fatal("Invalid parameter: %q. Expected format: '<name>:{<devnum>}:{<devnum>}[:{<option>}]'."
+			.. " All options are comma (',') seperated.", s)
 	end
 
 	local options = {}
 	for opt in string.gmatch(optstring, "([^,]+)") do
-		local k, v = string.match(opt, "^([^=]+)=([^=]+)$")
-		if not k then
-			k, v = opt, true
+		if opt ~= "" then
+			local k, v = string.match(opt, "^([^=]+)=([^=]+)$")
+			if not k then
+				k, v = opt, true
+			end
+			options[k] = v
 		end
-		options[k] = v
 	end
 
-	return name, tx_rx, options
+	return name, parse_devices(tx, devnum, name), parse_devices(rx, devnum, name), options
 end

@@ -47,14 +47,14 @@ function master(args)
 
 	local load_flows, timestamp_flows, receive_flows = {}, {}, {}
 	for _,arg in ipairs(args.flows) do
-		local name, devs, opts = parse(arg, devnum)
+		local name, tx, rx, opts = parse(arg, devnum)
 		local f
 
-		if #devs < 2 then
-			log:error("Need to pass tx and rx device to this type of flow.")
+		if #tx == 0 and #rx == 0 then
+			log:error("Need to pass at least one tx or rx device.")
 		else
 			f = crawl.getFlow(name, opts, {
-				uid = _generate_uid(), tx = devs[1], rx = devs[2]
+				uid = _generate_uid(), tx = tx, rx = rx
 			})
 		end
 
