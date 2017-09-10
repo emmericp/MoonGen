@@ -111,7 +111,7 @@ function master(args)
 		mg.startTask("receiveSlave", flow, rxQueue, statsPipe, endDelay)
 	end
 
-	mg.startTask("statsSlave", statsPipe)
+	mg.startSharedTask("statsSlave", statsPipe)
 
 
 	for _,flow in ipairs(load_flows) do
@@ -152,7 +152,7 @@ function master(args)
 	end
 
 	if #timestamp_flows >0 then
-		mg.startTask("timestampSlave", timestamp_flows, args.output)
+		mg.startSharedTask("timestampSlave", timestamp_flows, args.output)
 	end
 
 	mg.waitForTasks()
