@@ -10,10 +10,27 @@ local timer      = require "timer"
 local hist       = require "histogram"
 local ts         = require "timestamping"
 local log        = require "log"
+local lock        = require "lock"
+local ffi        = require "ffi"
 
 package.path = package.path .. ";interface/?.lua;interface/?/init.lua"
 local crawl = require "configcrawl"
 local parse = require "flowparse"
+
+ffi.cdef[[
+	typedef struct {
+		uint8_t active;
+		uint32_t count;
+	} counter_t;
+]]
+local function _new_counter()
+	local cnt = memory.alloc("counter_t*", 5)
+	cnt.active, cnt.count = 0, 0
+	return voidPtrType(cnt) -- luacheck: globals voidPtrType
+end
+local function counter(cnt)
+	return ffi.cast("counter_t*", cnt)
+end
 
 -- luacheck: globals configure master loadSlave statsSlave receiveSlave timestampSlave
 configure = require "cli"
@@ -54,7 +71,10 @@ function master(args)
 			log:error("Need to pass at least one tx or rx device.")
 		else
 			f = crawl.getFlow(name, opts, {
-				uid = _generate_uid(), tx = tx, rx = rx
+				uid = _generate_uid(),
+				lock = lock:new(),
+				counter = _new_counter(),
+				tx = tx, rx = rx
 			})
 		end
 
@@ -105,7 +125,8 @@ function master(args)
 	end
 	device.waitForLinks()
 
-	stats.startStatsTask{ txDevices = txStats, rxDevices = rxStats }
+	-- TODO stopping stats task
+	-- stats.startStatsTask{ txDevices = txStats, rxDevices = rxStats }
 
 	local statsPipe = pipe:newSlowPipe()
 
@@ -170,6 +191,7 @@ end
 
 function loadSlave(flow, sendQueue)
 	flow = crawl.receiveFlow(flow)
+	flow.counter = counter(flow.counter)
 
 	-- TODO arp ?
 	local getPacket = packet["get" .. flow.packet.proto .. "Packet"]
@@ -184,6 +206,11 @@ function loadSlave(flow, sendQueue)
 	if flow.tlim then
 		runtime = timer:new(flow.tlim)
 	end
+
+	flow.lock:lock()
+	flow.counter.count = flow.counter.count + 1
+	flow.counter.active = 1
+	flow.lock:unlock()
 
 	local dv = flow.packet.dynvars
 	while mg.running() and (not runtime or runtime:running()) do
@@ -206,6 +233,10 @@ function loadSlave(flow, sendQueue)
 		bufs:offloadUdpChecksums()
 		sendQueue:send(bufs)
 	end
+
+	flow.lock:lock()
+	flow.counter.count = flow.counter.count - 1
+	flow.lock:unlock()
 
 	if sendQueue.stop then
 		sendQueue:stop()
@@ -245,13 +276,14 @@ function statsSlave(statsPipe)
 end
 
 function receiveSlave(flow, rxQueue, statsPipe, delay)
+	flow.counter = counter(flow.counter)
 	local bufs = memory.bufArray()
 	local pkts, bytes = 0, 0
 	local runtime
 
 	statsPipe:send{ flow.uid, "start" }
 
-	while mg.running() and (not runtime or runtime:running()) do
+	while mg.running(delay) and (not runtime or not runtime:running()) do
 		local rx = rxQueue:recv(bufs)
 		for i = 1, rx do
 			local buf = bufs[i]
@@ -268,15 +300,13 @@ function receiveSlave(flow, rxQueue, statsPipe, delay)
 		pkts, bytes = 0, 0
 		bufs:freeAll()
 
-		-- TODO fix limit based stops
-		--[[if not runtime and (stop_ns or 1) < 1 then
-			print(delay)
+		if not runtime and flow.counter.active == 1 and flow.counter.count == 0 then
 			runtime = timer:new(delay / 1000)
-		end]]
+		end
 	end
 
 	statsPipe:send{ flow.uid, "stop" }
-	-- TODO: check the queue's overflow counter to detect lost packets
+	-- TODO check the queue's overflow counter to detect lost packets
 end
 
 function timestampSlave(flows, directory)
@@ -284,6 +314,8 @@ function timestampSlave(flows, directory)
 
 	for i,v in ipairs(flows) do
 		flows[i] = crawl.receiveFlow(v)
+		flows[i].counter = counter(flows[i].counter)
+
 		local isUdp = v.packet.proto == "Udp"
 		timeStampers[i] = ts:newTimestamper(v.txQueue, v.rxQueue, nil, isUdp)
 		getPacket[i] = packet["get" .. v.packet.proto .. "Packet"]
@@ -296,13 +328,18 @@ function timestampSlave(flows, directory)
 	end
 
 	local rateLimit = timer:new(0.001)
-	while mg.running() do
+	local activeFlows = 1
+	while mg.running() and activeFlows > 0 do
+		activeFlows = 0
 		for i,v in ipairs(flows) do
-			hists[i]:update(timeStampers[i]:measureLatency(v:getPacketLength(), function(buf)
-				local pkt = getPacket[i](buf)
-				pkt:fill(v.packet.fillTbl)
-				v.updatePacket(v.packet.dynvars, pkt)
-			end))
+			if not v.counter.active or v.counter.count > 0 then
+				activeFlows = activeFlows + 1
+				hists[i]:update(timeStampers[i]:measureLatency(v:getPacketLength(), function(buf)
+					local pkt = getPacket[i](buf)
+					pkt:fill(v.packet.fillTbl)
+					v.updatePacket(v.packet.dynvars, pkt)
+				end))
+			end
 		end
 		rateLimit:wait()
 		rateLimit:reset()
