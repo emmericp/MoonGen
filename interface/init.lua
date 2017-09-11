@@ -18,18 +18,22 @@ local crawl = require "configcrawl"
 local parse = require "flowparse"
 
 ffi.cdef[[
-	typedef struct {
+	struct counter_t {
 		uint8_t active;
 		uint32_t count;
-	} counter_t;
+	};
 ]]
+ffi.metatype("struct counter_t", {
+	__index = {
+		isZero = function(self)
+			return self.active == 1 and self.count == 0
+		end
+	}
+})
 local function _new_counter()
-	local cnt = memory.alloc("counter_t*", 5)
+	local cnt = memory.alloc("struct counter_t*", 5)
 	cnt.active, cnt.count = 0, 0
-	return voidPtrType(cnt) -- luacheck: globals voidPtrType
-end
-local function counter(cnt)
-	return ffi.cast("counter_t*", cnt)
+	return cnt
 end
 
 -- luacheck: globals configure master loadSlave statsSlave receiveSlave timestampSlave
@@ -191,7 +195,6 @@ end
 
 function loadSlave(flow, sendQueue)
 	flow = crawl.receiveFlow(flow)
-	flow.counter = counter(flow.counter)
 
 	-- TODO arp ?
 	local getPacket = packet["get" .. flow.packet.proto .. "Packet"]
@@ -276,7 +279,6 @@ function statsSlave(statsPipe)
 end
 
 function receiveSlave(flow, rxQueue, statsPipe, delay)
-	flow.counter = counter(flow.counter)
 	local bufs = memory.bufArray()
 	local pkts, bytes = 0, 0
 	local runtime
@@ -300,7 +302,7 @@ function receiveSlave(flow, rxQueue, statsPipe, delay)
 		pkts, bytes = 0, 0
 		bufs:freeAll()
 
-		if not runtime and flow.counter.active == 1 and flow.counter.count == 0 then
+		if not runtime and flow.counter:isZero() then
 			runtime = timer:new(delay / 1000)
 		end
 	end
@@ -314,7 +316,6 @@ function timestampSlave(flows, directory)
 
 	for i,v in ipairs(flows) do
 		flows[i] = crawl.receiveFlow(v)
-		flows[i].counter = counter(flows[i].counter)
 
 		local isUdp = v.packet.proto == "Udp"
 		timeStampers[i] = ts:newTimestamper(v.txQueue, v.rxQueue, nil, isUdp)
@@ -332,7 +333,7 @@ function timestampSlave(flows, directory)
 	while mg.running() and activeFlows > 0 do
 		activeFlows = 0
 		for i,v in ipairs(flows) do
-			if not v.counter.active or v.counter.count > 0 then
+			if not v.counter:isZero() then
 				activeFlows = activeFlows + 1
 				hists[i]:update(timeStampers[i]:measureLatency(v:getPacketLength(), function(buf)
 					local pkt = getPacket[i](buf)
