@@ -46,7 +46,10 @@ function Packet:size()
 end
 
 function Packet:prepare()
-	self.dynvars:finalize()
+	if not self.prepared then
+		self.dynvars:finalize()
+		self.prepared = true
+	end
 end
 
 function Packet:validate(val)
