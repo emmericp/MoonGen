@@ -25,7 +25,7 @@ local debug_packet = ffi.metatype("debug_packet_t", {
 local function _print_debug(args)
 	crawl(args.config)
 
-	local name, _, opts = parse(args.flow, math.huge)
+	local name, _, _, opts = parse(args.flow, math.huge)
 	local flow = crawl.getFlow(name, opts)
 	flow:prepare()
 

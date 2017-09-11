@@ -18,9 +18,9 @@ local function parse_devices(s, devnum, name)
 end
 
 return function(s, devnum)
-	local name, tx, rx, optstring = string.match(s, "^([^:]+):([^:]*):?([^:]*):?(.*)$")
+	local name, tx, rx, optstring = string.match(s, "^([^:]+):?([^:]*):?([^:]*):?(.*)$")
 	if not name then
-		log:fatal("Invalid parameter: %q. Expected format: '<name>:{<devnum>}[:{<devnum>}[:{<option>}]]'."
+		log:fatal("Invalid parameter: %q. Expected format: '<name>[:{<devnum>}[:{<devnum>}[:{<option>}]]]'."
 			.. " All options are comma (',') seperated.", s)
 	end
 
