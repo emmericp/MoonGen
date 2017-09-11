@@ -85,7 +85,7 @@ function crawl.passFlow(flow)
 		f[i] = v
 	end
 
-	f.file, f.name = flow.file, flow.name
+	f.file, f.name, f.prepared = flow.file, flow.name, false
 	return f
 end
 
