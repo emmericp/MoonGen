@@ -21,6 +21,12 @@ return function(env)
 		end
 	end
 
+	function env.randomRange(start, limit)
+		return function()
+			return math.random(start, limit)
+		end
+	end
+
 	function env.list(tbl)
 		local index, len = 1, #tbl
 		return function()
@@ -35,4 +41,10 @@ return function(env)
 		end
 	end
 
+	function env.randomList(tbl)
+		local len = #tbl
+		return function()
+			return tbl[math.random(len)]
+		end
+	end
 end

@@ -12,8 +12,19 @@ Flow{"udp-load", Packet.Udp{
 		ip4Src = list{
 				ip"10.0.0.10", ip"10.0.0.11",
 				ip"10.0.0.20", ip"10.0.0.21"
-		}, -- NOTE automatic conversion ?
+		},
 		udpSrc = range(1234, 1245),
 	},
 	parent = "udp-simple"
+}
+
+Flow{"udp-random", Packet.Udp{
+		ip4Src = randomList{
+				ip"10.0.0.10", ip"10.0.0.11",
+				ip"10.0.0.20", ip"10.0.0.21"
+		},
+		udpSrc = randomRange(1234, 1245),
+	},
+	parent = "udp-simple",
+	mode = "random",
 }
