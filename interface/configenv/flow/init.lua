@@ -114,6 +114,19 @@ function Flow:getPacketLength(finalLength)
 	return size
 end
 
+local function _cbr_to_delay(cbr, psize)
+	-- cbr      => mbit/s        => bit/1000ns
+	-- psize    => b/p           => 8bit/p
+	return 8000 * psize / cbr -- => ns/p
+end
+
+function Flow:getDelay()
+	local cbr = self.results.rate
+	if cbr then
+		return _cbr_to_delay(cbr, self:getPacketLenth(true))
+	end
+end
+
 function Flow:getInstance(options, inst)
 	inst = inst or {}
 	inst.options, inst.results = options, {}
