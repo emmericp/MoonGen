@@ -45,13 +45,11 @@ local function _cbr_to_delay(cbr, psize)
 	return 8000 * psize / cbr -- => ns/p
 end
 
-local _uid_length = 16
-local function _generate_uid()
-	local result = {}
-	for i = 1, _uid_length do
-		result[i] = string.format("%x", math.random(0, 15))
-	end
-	return table.concat(result)
+local uids = {}
+local function _generate_uid(uid)
+	uid = uid or (#uids + 1)
+	uids[uid] = true
+	return uid
 end
 
 function master(args)
@@ -74,6 +72,7 @@ function master(args)
 		if #tx == 0 and #rx == 0 then
 			log:error("Need to pass at least one tx or rx device.")
 		else
+			-- TODO support for custom uid
 			f = crawl.getFlow(name, opts, {
 				uid = _generate_uid(),
 				lock = lock:new(),
@@ -216,12 +215,15 @@ function loadSlave(flow, sendQueue)
 	flow.lock:unlock()
 
 	local dv = flow.packet.dynvars
+	local uid = flow.uid
 	while mg.running() and (not runtime or runtime:running()) do
 		bufs:alloc(flow:getPacketLength())
 
 		if flow.updatePacket then
 			for _, buf in ipairs(bufs) do
-				flow.updatePacket(dv, getPacket(buf))
+				local pkt = getPacket(buf)
+				flow.updatePacket(dv, pkt)
+				pkt.payload.uint32[0] = uid
 			end
 		end
 
@@ -287,6 +289,7 @@ function receiveSlave(flow, rxQueue, statsPipe, delay)
 
 	while mg.running(delay) and (not runtime or not runtime:running()) do
 		local rx = rxQueue:recv(bufs)
+		local uid
 		for i = 1, rx do
 			local buf = bufs[i]
 
@@ -347,6 +350,6 @@ function timestampSlave(flows, directory)
 	end
 
 	for i,v in ipairs(flows) do
-		hists[i]:save(string.format("%s/%s-%d-%d.csv", directory, v.uid, v.txqi, v.rxqi))
+		hists[i]:save(string.format("%s/%s_%d-%d_%d.csv", directory, v.name, v.uid, v.txQueue.id, v.rxQueue.id))
 	end
 end
