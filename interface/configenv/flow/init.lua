@@ -7,6 +7,7 @@ local _option_list = {
 	dataLimit = require "configenv.flow.dataLimit",
 	timeLimit = require "configenv.flow.timeLimit",
 	timestamp = require "configenv.flow.timestamp",
+	uid = require "configenv.flow.uid",
 	packetLength = {
 		parse = function(self, packetLength)
 			self.psize = tonumber(packetLength) or self.packet.fillTbl.pktLength

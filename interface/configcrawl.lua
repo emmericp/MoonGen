@@ -33,6 +33,7 @@ local function _parse_file(filename)
 	setfenv(f, _env)()
 end
 
+local uids = {}
 function crawl.getFlow(name, options, presets)
 	local f = flows[name]
 
@@ -61,6 +62,16 @@ function crawl.getFlow(name, options, presets)
 	end
 
 	presets.options = options
+	f:prepare()
+
+	if not f.uid then
+		f.uid = #uids + 1
+	elseif uids[f.uid] then
+		log:error("Uid %d is not unique to flow %d.", f.uid, name)
+		return nil
+	end
+	uids[f.uid] = f
+
 	return f
 end
 

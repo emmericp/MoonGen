@@ -45,13 +45,6 @@ local function _cbr_to_delay(cbr, psize)
 	return 8000 * psize / cbr -- => ns/p
 end
 
-local uids = {}
-local function _generate_uid(uid)
-	uid = uid or (#uids + 1)
-	uids[uid] = true
-	return uid
-end
-
 function master(args)
 	crawl(args.config)
 
@@ -74,7 +67,6 @@ function master(args)
 		else
 			-- TODO support for custom uid
 			f = crawl.getFlow(name, opts, {
-				uid = _generate_uid(),
 				lock = lock:new(),
 				counter = _new_counter(),
 				tx = tx, rx = rx
@@ -82,7 +74,6 @@ function master(args)
 		end
 
 		if f then
-			f:prepare()
 			log:info("Flow %s => %s", f.name, f.uid)
 
 			for _,v in ipairs(f.tx) do
