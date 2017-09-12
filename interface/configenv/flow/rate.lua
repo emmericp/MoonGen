@@ -42,29 +42,23 @@ function option.getHelp()
 	}
 end
 
-function option.parse(self, rate)
-	if type(rate) == "number" then
-		self.cbr = rate
-	elseif type(rate) == "string" then
-		self.cbr = _parse_rate(rate, self:getPacketLength(true))
-	end
-end
+function option.parse(self, rate, error)
+	if not rate then return end
 
-function option.validate() end
-
-function option.test(_, error, rate)
 	local t = type(rate)
 
-	if t == "string" then
-		local status, msg = _parse_rate(rate, 1)
-		error:assert(status, 4, "Option 'rate': %s", msg)
-		return type(status) ~= "nil"
-	elseif t ~= "number" and t ~= "nil" then
-		error(4, "Option 'rate': Invalid argument. String or number expected, got %s.", t)
-		return false
+	local cbr
+	if t == "number" then
+		cbr = rate
+	elseif t == "string" then
+		local msg
+		cbr, msg = _parse_rate(rate, self:getPacketLength(true))
+		error:assert(cbr, msg)
+	else
+		error("Invalid argument. String or number expected, got %s.", t)
 	end
 
-	return true
+	return cbr
 end
 
 return option

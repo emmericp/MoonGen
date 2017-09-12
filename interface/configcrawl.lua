@@ -2,7 +2,6 @@ local lfs = require "lfs"
 local log = require "log"
 
 local errors = require "errors"
-local validator = require "validator"
 
 local crawl = {}
 local errhnd = errors()
@@ -35,42 +34,17 @@ end
 
 local uids = {}
 function crawl.getFlow(name, options, presets)
-	local f = flows[name]
+	local f = flows[name]:getInstance(options, presets)
 
-	if not f then
-		log:error("Flow %q not found.", name)
-		return
-	end
+	if not f then return end
 
-	presets = presets or {}
-	f = setmetatable(presets, { __index = f })
-
-	local val = validator()
-	f:validate(val)
-	if not val.valid then
-		log:error("Flow %q is invalid:", name)
-		val:print(log.warn, log)
-		return
-	end
-
-	local opterrors = errors()
-	f:testOptions(options, opterrors)
-	if opterrors:count() > 0 then
-		log:error("Options for flow %q are invalid:", name)
-		opterrors:print(false, log.warn, log)
-		return
-	end
-
-	presets.options = options
-	f:prepare()
-
-	if not f.uid then
-		f.uid = #uids + 1
-	elseif uids[f.uid] then
-		log:error("Uid %d is not unique to flow %d.", f.uid, name)
+	if not f.results.uid then
+		f.results.uid = #uids + 1
+	elseif uids[f.results.uid] then
+		log:error("Uid %d is not unique to flow %d.", f.results.uid, name)
 		return nil
 	end
-	uids[f.uid] = f
+	uids[f.results.uid] = f
 
 	return f
 end

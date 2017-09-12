@@ -1,9 +1,5 @@
 local errors = {}
 
--- errors do one of two things:
--- occur during initial processing
--- point out mistakes that do not prevent flow execution
-
 function errors:print(info, fn, ...)
 	for _,v in ipairs(self) do
 		if info and v.info then
@@ -14,13 +10,21 @@ function errors:print(info, fn, ...)
 	end
 end
 
+function errors:setPrefix(...)
+	self.prefix = string.format(...)
+end
+
 function errors:log(level, message, ...)
 	if type(level) == "string" then
 		message = string.format(level, message, ...)
-		level = 3
+		level = self.defaultLevel
 	else
 		message = string.format(message, ...)
 		level = level + 1
+	end
+
+	if self.prefix then
+		message = self.prefix .. message
 	end
 
 	local info
@@ -33,14 +37,29 @@ function errors:log(level, message, ...)
 	})
 end
 
-function errors:assert(test, level, ...)
+function errors:logInvalidate(...)
+	self.valid = false
+	errors.log(self, ...)
+end
+
+local function _assert(self, logfn, test, level, ...)
 	if not test then
 		if type(level) == "number" then
-			errors.log(self, level + 1, ...)
+			level = (level > 0) and level + 1 or level
+			errors[logfn](self, level, ...)
 		else
-			errors.log(self, 3, level, ...)
+			errors[logfn](self, self.defaultLevel, level, ...)
 		end
 	end
+	return test
+end
+
+function errors:assert(...)
+	return _assert(self, "log", ...)
+end
+
+function errors:assertInvalidate(...)
+	return _assert(self, "logInvalidate", ...)
 end
 
 function errors:count()
@@ -48,7 +67,7 @@ function errors:count()
 end
 
 return function()
-	return setmetatable({}, {
+	return setmetatable({ valid = true, defaultLevel = 3 }, {
 		__index = errors,
 		__call = errors.log
 	})

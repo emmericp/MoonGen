@@ -24,32 +24,27 @@ local function _parse_limit(lstring)
 		return nil, unit.timeError
 	end
 
-	return num * unit
+	return num, unit
 end
 
-function option.parse(self, limit)
-	if type(limit) == "number" then
-		self.tlim = limit
-	elseif type(limit) == "string" then
-		self.tlim = _parse_limit(limit)
-	end
-end
+function option.parse(_, limit, error)
+	if not limit then return end
 
-function option.validate() end
-
-function option.test(_, error, limit)
 	local t = type(limit)
 
-	if t == "string" then
-		local status, msg = _parse_limit(limit, 1)
-		error:assert(status, 4, "Option 'timeLimit': %s", msg)
-		return type(status) ~= "nil"
-	elseif t ~= "number" and t ~= "nil" then
-		error(4, "Option 'timeLimit': Invalid argument. String or number expected, got %s.", t)
-		return false
+	local num, unit
+	if t == "number" then
+		num, unit = limit, units.time.s
+	elseif t == "string" then
+		num, unit = _parse_limit(limit)
+		error:assert(num, unit)
+	else
+		error("Invalid argument. String or number expected, got %s.", t)
 	end
 
-	return true
+	if num then
+		return num * unit
+	end
 end
 
 return option

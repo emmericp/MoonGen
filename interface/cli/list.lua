@@ -1,5 +1,4 @@
 local crawl = require "configcrawl"
-local validator = require "validator"
 
 local list = {}
 
@@ -14,9 +13,7 @@ local function _print_list(config)
 
 	local count = 0
 	for _,f in pairs(flows) do
-		local val = validator()
-		f:validate(val)
-		if val.valid then
+		if f:getInstance{} then
 			table.insert(files[f.file], f)
 			count = count + 1
 		end

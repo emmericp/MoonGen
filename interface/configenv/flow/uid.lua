@@ -10,34 +10,20 @@ function option.getHelp()
 	}
 end
 
-function option.parse(self, number)
-	if type(number) == "number" then
-		self.uid = number
-	elseif type(number) == "string" then
-		self.uid = tonumber(number)
-	end
-end
+function option.parse(_, number, error)
+	if not number then return end
 
-function option.validate() end
-
-function option.test(_, error, number)
 	local t = type(number)
-
-	if t == "string" then
-		number = tonumber(number)
-		if not number or number <= 0  then
-			error("Option 'uid': Invalid value. Needs to be a unique positive integer.")
-			return false
-		end
-	elseif t ~= "number" and t ~= "nil" then
-		error(4, "Option 'uid': Invalid argument. String or number expected, got %s.", t)
-		return false
-	elseif number <= 0 then
-		error("Option 'uid': Invalid value. Needs to be a unique positive integer.")
-		return false
+	if type(number) == "string" then
+		number = error:assert(tonumber(number), "Invalid string. Needs to be convertible to a number.")
+	elseif t ~= "number" then
+		error("Invalid argument. String or number expected, got %s.", t)
+		number = nil
 	end
 
-	return true
+	if number and assert(number > 0, "Invalid value. Needs to be a unique positive integer.") then
+		return number
+	end
 end
 
 return option

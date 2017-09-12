@@ -74,7 +74,7 @@ function master(args)
 		end
 
 		if f then
-			log:info("Flow %s => %s", f.name, f.uid)
+			log:info("Flow %s => %s", f.name, f.results.uid)
 
 			for _,v in ipairs(f.tx) do
 				table.insert(load_flows, crawl.cloneFlow(f, { tx_dev = v }))
@@ -86,7 +86,7 @@ function master(args)
 				devices[v].rxq = devices[v].rxq + 1
 			end
 
-			if f.ts then
+			if f.results.timestamp then
 				for _,v in ipairs(f.tx) do
 					table.insert(timestamp_flows, crawl.cloneFlow(f, {
 						tx_dev = v, rx_dev = f.rx[1]
@@ -130,8 +130,8 @@ function master(args)
 		rxDev.rxqi = rxDev.rxqi + 1
 
 		local endDelay = 1000
-		if flow.cbr then
-			endDelay = _cbr_to_delay(flow.cbr, flow:getPacketLength(true)) * 64
+		if flow.results.rate then
+			endDelay = _cbr_to_delay(flow.results.rate, flow:getPacketLength(true)) * 64
 		end
 
 		mg.startTask("receiveSlave", flow, rxQueue, statsPipe, endDelay)
@@ -147,14 +147,14 @@ function master(args)
 		txDev.txqi = txDev.txqi + 1
 
 		-- setup rate limit
-		if flow.cbr then
-			if flow.rpattern == "cbr" then
-				local rc = dpdkc.rte_eth_set_queue_rate_limit(txQueue.id, txQueue.qid, flow.cbr)
+		if flow.results.rate then
+			if flow.results.ratePattern == "cbr" then
+				local rc = dpdkc.rte_eth_set_queue_rate_limit(txQueue.id, txQueue.qid, flow.results.rate)
 				if rc ~= 0 then -- fallback to software ratelimiting
-					txQueue = limiter:new(txQueue, "cbr", _cbr_to_delay(flow.cbr, flow:getPacketLength(true)))
+					txQueue = limiter:new(txQueue, "cbr", _cbr_to_delay(flow.results.rate, flow:getPacketLength(true)))
 				end
-			elseif flow.rpattern == "poisson" then
-				txQueue = limiter:new(txQueue, "poisson", _cbr_to_delay(flow.cbr, flow:getPacketLength(true)))
+			elseif flow.results.ratePattern == "poisson" then
+				txQueue = limiter:new(txQueue, "poisson", _cbr_to_delay(flow.results.rate, flow:getPacketLength(true)))
 			end
 		end
 
@@ -195,9 +195,9 @@ function loadSlave(flow, sendQueue)
 	local bufs = mempool:bufArray()
 
 	-- dataLimit in packets, timeLimit in seconds
-	local data, runtime = flow.dlim, nil
-	if flow.tlim then
-		runtime = timer:new(flow.tlim)
+	local data, runtime = flow.results.dataLimit, nil
+	if flow.results.timeLimit then
+		runtime = timer:new(flow.results.timeLimit)
 	end
 
 	flow.lock:lock()
@@ -206,7 +206,7 @@ function loadSlave(flow, sendQueue)
 	flow.lock:unlock()
 
 	local dv = flow.packet.dynvars
-	local uid = flow.uid
+	local uid = flow.results.uid
 	while mg.running() and (not runtime or runtime:running()) do
 		bufs:alloc(flow:getPacketLength())
 
@@ -276,7 +276,7 @@ function receiveSlave(flow, rxQueue, statsPipe, delay)
 	local pkts, bytes = 0, 0
 	local runtime
 
-	statsPipe:send{ flow.uid, "start" }
+	statsPipe:send{ flow.results.uid, "start" }
 
 	while mg.running(delay) and (not runtime or not runtime:running()) do
 		local rx = rxQueue:recv(bufs)
@@ -291,7 +291,7 @@ function receiveSlave(flow, rxQueue, statsPipe, delay)
 		end
 
 		if pkts > 0 then
-			statsPipe:send{ flow.uid, pkts, bytes }
+			statsPipe:send{ flow.results.uid, pkts, bytes }
 		end
 		pkts, bytes = 0, 0
 		bufs:freeAll()
@@ -301,7 +301,7 @@ function receiveSlave(flow, rxQueue, statsPipe, delay)
 		end
 	end
 
-	statsPipe:send{ flow.uid, "stop" }
+	statsPipe:send{ flow.results.uid, "stop" }
 	-- TODO check the queue's overflow counter to detect lost packets
 end
 
@@ -341,6 +341,6 @@ function timestampSlave(flows, directory)
 	end
 
 	for i,v in ipairs(flows) do
-		hists[i]:save(string.format("%s/%s_%d-%d_%d.csv", directory, v.name, v.uid, v.txQueue.id, v.rxQueue.id))
+		hists[i]:save(string.format("%s/%s_%d-%d_%d.csv", directory, v.name, v.results.uid, v.txQueue.id, v.rxQueue.id))
 	end
 end

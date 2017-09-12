@@ -1,4 +1,10 @@
+local errors = require "errors"
+local log = require "log"
+
+local Packet = require "configenv.packet"
+
 local Flow = {}
+Flow.__index = Flow
 
 local _option_list = {
 	rate = require "configenv.flow.rate",
@@ -9,15 +15,23 @@ local _option_list = {
 	timestamp = require "configenv.flow.timestamp",
 	uid = require "configenv.flow.uid",
 	packetLength = {
-		parse = function(self, packetLength)
-			self.psize = tonumber(packetLength) or self.packet.fillTbl.pktLength
+		parse = function(self, packetLength, error)
+			if type(packetLength) == "string" then
+				packetLength = error:assert(tonumber(packetLength),
+					"Value needs to be a valid integer.")
+			end
+
+			local t = type(packetLength)
+			if t == "number" then
+				-- TODO check minimum sizes
+			elseif t ~= "nil" then
+				error("Invalid argument. String or number expected, got %s.", t)
+				packetLength = nil
+			end
+
+			return packetLength or self.packet.fillTbl.pktLength
 		end,
-		validate = function() end,
-		test = function(_, error, packetLength)
-			error:assert(type(tonumber(packetLength)) == "number",
-				"Option 'packetLength': Value needs to be a valid integer.")
-		end,
-		description = "Redefine the actualy size of packets sent using the command line.",
+		description = "Redefine the actualy size of sent packets using the command line.",
 		configHelp =  "Designed for command line usage only. Use pktLength in the Packet"
 			.. " descriptor, when editing configuration files.",
 		getHelp = function()
@@ -63,17 +77,15 @@ function Flow.getOptionHelpString(help_printer)
 end
 
 function Flow.new(name, tbl, error)
-	local self = { name = name, packet = tbl[2], parent = tbl.parent }
+	local self = { name = name, packet = tbl[2], parent = tbl.parent, configOpts = {} }
 	tbl[1], tbl[2], tbl.parent = nil, nil, nil
 
 	-- check and copy options
 	for i,v in pairs(tbl) do
-		local opt = _option_list[i]
-
-		if not opt then
+		if not _option_list[i] then
 			error(3, "Unknown field %q in flow %q.", i, name)
-		elseif opt.test(self, error, v) then
-			self[i] = v
+		else
+			self.configOpts[i] = v
 		end
 	end
 
@@ -90,41 +102,44 @@ function Flow.new(name, tbl, error)
 end
 
 function Flow:getPacketLength(finalLength)
-	if not self.psize then
-		_option_list.packetLength.parse(self, self.options.packetLength or self.packetLength)
+	local size = self.results.packetLength
+	if not size then
+		size = _option_list.packetLength.parse(self,
+			self.options.packetLength or self.packetLength, errors())
 	end
 
 	if finalLength then
-		return self.psize + 4
+		return size + 4
 	end
-
-	return self.psize
+	return size
 end
 
-function Flow:validate(val)
-	self.packet:validate(val)
-	for i,opt in pairs(_option_list) do
-		opt.validate(self, val, self[i])
-	end
-end
+function Flow:getInstance(options, inst)
+	inst = inst or {}
+	inst.options, inst.results = options, {}
+	setmetatable(inst, { __index = self })
 
-function Flow:testOptions(options, error)
-	for i,v in pairs(options) do
-		local opt = _option_list[i]
-
-		if not opt then
-			error("Unknown field %q.", i)
-		else
-			opt.test(self, error, v)
-		end
+	local error = inst:prepare()
+	if error.valid then
+		return inst
+	else
+		log:error("Options for flow %q are invalid:", self.name)
+		error:print(nil, log.warn, log)
 	end
 end
 
 function Flow:prepare()
-	self.packet:prepare()
+	local error = errors()
+	error.defaultLevel = -1
+
 	for name, opt in pairs(_option_list) do
-		opt.parse(self, self.options[name] or self[name])
+		local val = self.options[name] or self.configOpts[name]
+		error:setPrefix("Option '%s':", name)
+		self.results[name] = opt.parse(self, val, error)
 	end
+
+	self.packet:prepare(error)
+	return error
 end
 
 return Flow

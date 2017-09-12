@@ -32,37 +32,26 @@ local function _parse_limit(lstring, psize)
 	return num, unit
 end
 
-function option.parse(self, limit)
+function option.parse(self, limit, error)
+	if not limit then return end
+
 	local psize = self:getPacketLength(true)
+	local t = type(limit)
 
 	local num, unit
-	if type(limit) == "number" then
+	if t == "number" then
 		num, unit = limit, units.size.m
-	elseif type(limit) == "string" then
+	elseif t == "string" then
 		num, unit = _parse_limit(limit, psize)
+		error:assert(num, unit)
+	else
+		error("Invalid argument. String or number expected, got %s.", t)
 	end
 
 	-- round up to mimic behaviour of timeLimit
 	if num then
-		self.dlim = math.ceil(num * unit / (psize * 8))
+		return math.ceil(num * unit / (psize * 8))
 	end
-end
-
-function option.validate() end
-
-function option.test(_, error, limit)
-	local t = type(limit)
-
-	if t == "string" then
-		local status, msg = _parse_limit(limit, 1)
-		error:assert(status, 4, "Option 'dataLimit': %s", msg)
-		return type(status) ~= "nil"
-	elseif t ~= "number" and t ~= "nil" then
-		error(4, "Option 'dataLimit': Invalid argument. String or number expected, got %s.", t)
-		return false
-	end
-
-	return true
 end
 
 return option

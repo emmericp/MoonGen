@@ -22,32 +22,23 @@ function option.getHelp()
 	}
 end
 
-function option.parse(self, bool)
-	if type(bool) == "boolean" then
-		self.ts = bool
-	elseif type(bool) == "string" then
-		self.ts = translations[bool]
-	end
-end
+function option.parse(self, bool, error)
+	if not bool then return end
 
-function option.validate(flow, val, bool)
-	if type(bool) ~= "boolean" then bool = translations[bool] end
-	val:assert((not bool) or #flow.rx == 1, "Cannot timestamp flows with more than one receiving device.")
-end
-
-function option.test(_, error, bool)
 	local t = type(bool)
-
 	if t == "string" then
-		local result = type(translations[bool]) ~= "nil"
-		error:assert(result, "Option 'timestamp': Invalid value. Can be one of %s.", table.concat(translations_list, ","))
-		return result
-	elseif t ~= "boolean" and t ~= "nil" then
-		error(4, "Option 'timestamp': Invalid argument. String or boolean expected, got %s.", t)
+		bool = error:assert(translations[bool], "Invalid value. Can be one of %s.",
+			table.concat(translations_list, ","))
+	elseif t ~= "boolean" then
+		error("Invalid argument. String or boolean expected, got %s.", t)
+	end
+
+
+	if bool and not error:assert(#self.rx == 1,
+		"Cannot timestamp flows with more than one receiving device.") then
 		return false
 	end
-
-	return true
+	return bool
 end
 
 return option

@@ -1,6 +1,7 @@
 local Dynvars = require "configenv.dynvars"
 
 local Packet = {}
+Packet.__index = Packet
 
 function Packet.new(proto, tbl, error)
 	local self = {
@@ -24,7 +25,7 @@ function Packet.new(proto, tbl, error)
 		end
 	end
 
-	return setmetatable(self, { __index = Packet })
+	return setmetatable(self, Packet)
 end
 
 function Packet:inherit(other)
@@ -45,16 +46,15 @@ function Packet:size()
 	return self.fillTbl.pktLength
 end
 
-function Packet:prepare()
+function Packet:prepare(error)
+	error:assertInvalidate(type(self.fillTbl.pktLength) == "number",
+		"Packet field pktLength has to be set to a valid number.")
+	-- TODO check minimum size
+
 	if not self.prepared then
 		self.dynvars:finalize()
 		self.prepared = true
 	end
-end
-
-function Packet:validate(val)
-	val:assert(type(self.fillTbl.pktLength) == "number",
-		"Packet field pktLength has to be set to a valid number.")
 end
 
 return Packet
