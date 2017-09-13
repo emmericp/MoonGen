@@ -1,49 +1,10 @@
 local errors = require "errors"
 local log = require "log"
 
+local options = require "options"
+
 local Flow = {}
 Flow.__index = Flow
-
-local _option_list = {}
-for _,v in ipairs {
-	"rate", "ratePattern", "packetLength", "timestamp", "uid", "mode", "dataLimit", "timeLimit"
-} do _option_list[v] =  require("options." .. v) end
-
-function Flow.getOptionHelpString(help_printer)
-	help_printer:section("Options")
-	help_printer:body("List of options available when customizing flows using"
-		.. " command line or configuration files.")
-
-	help_printer:section("Units")
-	help_printer:subsection("Size Units '\27[4m<prefix><unit>\27[0m'\n")
-	help_printer:body("Prefix can be one of '\27[4m[k|M|G[i]]\27[0m'"
-		.. " with the i marking an IEC-prefix using multiples of 1024 instead of 1000.")
-	help_printer:body("Unit can be one of '\27[4m(B|bit|p)\27[0m',"
-		.. " meaning byte, bit and packet respectively.")
-
-	help_printer:subsection("Time Units")
-	help_printer:body("Available time units are '\27[4m(ms|s|m|h)\27[0m'"
-		.. " for millisecond, second, minute or hour.")
-
-	for i,v in pairs(_option_list) do
-		help_printer:section(i)
-		help_printer:body(v.description)
-
-		for _,fmt in ipairs(v.getHelp()) do
-			if fmt[1] then
-				help_printer:subsection(string.format("%s = \27[4m%s\27[0m", i, fmt[1]))
-			else
-				help_printer:subsection(i)
-			end
-			help_printer:body(fmt[2])
-		end
-
-		if v.configHelp then
-			help_printer:subsection("Configuration\n")
-			help_printer:body(v.configHelp)
-		end
-	end
-end
 
 function Flow.new(name, tbl, error)
 	local self = { name = name, packet = tbl[2], parent = tbl.parent, configOpts = {} }
@@ -51,7 +12,7 @@ function Flow.new(name, tbl, error)
 
 	-- check and copy options
 	for i,v in pairs(tbl) do
-		if not _option_list[i] then
+		if not options[i] then
 			error(3, "Unknown field %q in flow %q.", i, name)
 		else
 			self.configOpts[i] = v
@@ -62,7 +23,7 @@ function Flow.new(name, tbl, error)
 	local parent = self.parent
 	if type(parent) == "table" then
 		self.packet:inherit(parent.packet)
-		for i in pairs(_option_list) do
+		for i in pairs(options) do
 			self[i] = self[i] or parent[i]
 		end
 	end
@@ -73,7 +34,7 @@ end
 function Flow:getPacketLength(finalLength)
 	local size = self.results.packetLength
 	if not size then
-		size = _option_list.packetLength.parse(self,
+		size = options.packetLength.parse(self,
 			self.options.packetLength or self.packetLength, errors()) or 0
 	end
 
@@ -96,15 +57,15 @@ function Flow:getDelay()
 	end
 end
 
-function Flow:getInstance(options, inst)
+function Flow:getInstance(cli_options, inst)
 	inst = inst or {}
-	inst.options, inst.results = options, {}
+	inst.options, inst.results = cli_options, {}
 	setmetatable(inst, { __index = self })
 
 	local error = inst:prepare()
 
-	for i in pairs(options) do
-		error:assert(_option_list[i], "Unknown option '%s'.", i)
+	for i in pairs(cli_options) do
+		error:assert(options[i], "Unknown option '%s'.", i)
 	end
 
 	if #error > 0 then
@@ -121,7 +82,7 @@ function Flow:prepare(final)
 	local error = errors()
 	error.defaultLevel = -1
 
-	for name, opt in pairs(_option_list) do
+	for name, opt in pairs(options) do
 		local val = self.options[name] or self.configOpts[name]
 		error:setPrefix("Option '%s': ", name)
 		self.results[name] = opt.parse(self, val, error)

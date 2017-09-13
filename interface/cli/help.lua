@@ -78,6 +78,42 @@ function help.addTopic(name, callback)
 	help.topics[name] = callback
 end
 
+help.addTopic("options", function(hp)
+	hp:section("Options")
+	hp:body("List of options available when customizing flows using"
+		.. " command line or configuration files.")
+
+	hp:section("Units")
+	hp:subsection("Size Units '\27[4m<prefix><unit>\27[0m'\n")
+	hp:body("Prefix can be one of '\27[4m[k|M|G[i]]\27[0m'"
+		.. " with the i marking an IEC-prefix using multiples of 1024 instead of 1000.")
+	hp:body("Unit can be one of '\27[4m(B|bit|p)\27[0m',"
+		.. " meaning byte, bit and packet respectively.")
+
+	hp:subsection("Time Units")
+	hp:body("Available time units are '\27[4m(ms|s|m|h)\27[0m'"
+		.. " for millisecond, second, minute or hour.")
+
+	for i,v in pairs(require "options") do
+		hp:section(i)
+		hp:body(v.description)
+
+		for _,fmt in ipairs(v.getHelp()) do
+			if fmt[1] then
+				hp:subsection(string.format("%s = \27[4m%s\27[0m", i, fmt[1]))
+			else
+				hp:subsection(i)
+			end
+			hp:body(fmt[2])
+		end
+
+		if v.configHelp then
+			hp:subsection("Configuration\n")
+			hp:body(v.configHelp)
+		end
+	end
+end)
+
 help.addTopic("topics", function(hp)
 	local result = {}
 
@@ -121,7 +157,5 @@ help.addTopic("configuration", function(hp)
 	hp:body("Some options allow functions to be passed. Keep in mind, that each flow will typically"
 		.. " be run in its own Lua vm, so closures will not persist across flows.")
 end)
-
-help.addTopic("options", require("flow").getOptionHelpString)
 
 return help
