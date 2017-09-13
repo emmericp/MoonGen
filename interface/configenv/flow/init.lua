@@ -104,7 +104,7 @@ function Flow:getPacketLength(finalLength)
 	local size = self.results.packetLength
 	if not size then
 		size = _option_list.packetLength.parse(self,
-			self.options.packetLength or self.packetLength, errors())
+			self.options.packetLength or self.packetLength, errors()) or 0
 	end
 
 	if finalLength then
