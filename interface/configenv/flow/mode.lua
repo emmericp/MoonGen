@@ -102,7 +102,7 @@ function option.parse(self, mode, error)
 			mode, table.concat(_modelist, ", ")) then
 			mode = mode()
 		end
-	elseif t ~= "function" then
+	elseif t ~= "function" and t ~= "nil" then
 		error("Invalid argument. String or function expected, got %s.", t)
 	end
 

@@ -133,11 +133,13 @@ function Flow:getInstance(options, inst)
 	setmetatable(inst, { __index = self })
 
 	local error = inst:prepare()
+	if #error > 0 then
+		log:error("Found %d errors while preparing flow %s:", #error, self.name)
+		error:print(nil, log.warn, log)
+	end
+
 	if error.valid then
 		return inst
-	else
-		log:error("Options for flow %q are invalid:", self.name)
-		error:print(nil, log.warn, log)
 	end
 end
 
@@ -147,10 +149,11 @@ function Flow:prepare()
 
 	for name, opt in pairs(_option_list) do
 		local val = self.options[name] or self.configOpts[name]
-		error:setPrefix("Option '%s':", name)
+		error:setPrefix("Option '%s': ", name)
 		self.results[name] = opt.parse(self, val, error)
 	end
 
+	error:setPrefix()
 	self.packet:prepare(error)
 	return error
 end

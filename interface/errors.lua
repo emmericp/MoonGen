@@ -10,8 +10,12 @@ function errors:print(info, fn, ...)
 	end
 end
 
-function errors:setPrefix(...)
-	self.prefix = string.format(...)
+function errors:setPrefix(pre, ...)
+	if pre then
+		self.prefix = string.format(pre, ...)
+	else
+		self.prefix = nil
+	end
 end
 
 function errors:log(level, message, ...)
