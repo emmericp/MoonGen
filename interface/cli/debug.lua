@@ -1,4 +1,3 @@
-local packet  = require "packet"
 local ffi     = require "ffi"
 
 local crawl = require "configcrawl"
@@ -47,7 +46,7 @@ local function _print_debug(args)
 	dynvar_out[#dynvar_out] = "\n"
 	print(table.concat(dynvar_out))
 
-	local pkt =  packet["get" .. flow.packet.proto .. "Packet"](test)
+	local pkt = flow.packet.getPacket(test)
 	pkt:fill(flow.packet.fillTbl)
 
 	if flow.updatePacket then

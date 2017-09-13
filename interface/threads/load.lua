@@ -2,7 +2,6 @@ local dpdkc   = require "dpdkc"
 local limiter = require "software-ratecontrol"
 local memory  = require "memory"
 local mg      = require "moongen"
-local packet  = require "packet"
 local timer   = require "timer"
 
 
@@ -43,7 +42,7 @@ local function loadThread(flow, sendQueue)
 	flow = crawl.receiveFlow(flow)
 
 	-- TODO arp ?
-	local getPacket = packet["get" .. flow.packet.proto .. "Packet"]
+	local getPacket, hasPayload = flow.packet.getPacket, flow.packet.hasPayload
 	local mempool = memory.createMemPool(function(buf)
 		getPacket(buf):fill(flow.packet.fillTbl)
 	end)
@@ -67,10 +66,16 @@ local function loadThread(flow, sendQueue)
 		bufs:alloc(flow:getPacketLength())
 
 		if flow.updatePacket then
-			for _, buf in ipairs(bufs) do
-				local pkt = getPacket(buf)
-				flow.updatePacket(dv, pkt)
-				pkt.payload.uint32[0] = uid
+			if hasPayload then
+				for _, buf in ipairs(bufs) do
+					local pkt = getPacket(buf)
+					flow.updatePacket(dv, pkt)
+					pkt.payload.uint32[0] = uid
+				end
+			else
+				for _, buf in ipairs(bufs) do
+					flow.updatePacket(dv, getPacket(buf))
+				end
 			end
 		end
 

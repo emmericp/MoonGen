@@ -40,7 +40,9 @@ function Packet.new(proto, tbl, error)
 	end
 
 	self.getPacket = packet["get" .. proto .. "Packet"]
-	self.minSize = ffi.sizeof(self.getPacket(test_packet()):getName())
+	local pkt = self.getPacket(test_packet())
+	self.minSize = ffi.sizeof(pkt:getName())
+	self.hasPayload = pcall(function() type(pkt.payload) end)
 
 	return setmetatable(self, Packet)
 end
