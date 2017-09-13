@@ -12,6 +12,7 @@ local parse = require "flowparse"
 
 local loadThread = require "threads.load"
 local statsThread = require "threads.stats"
+local deviceStatsThread = require "threads.deviceStats"
 local countThread = require "threads.count"
 local timestampThread = require "threads.timestamp"
 
@@ -99,6 +100,7 @@ function master(args) -- luacheck: globals master
 	loadThread.prepare(flows, devices)
 	countThread.prepare(flows, devices)
 	statsThread.prepare(flows, devices)
+	deviceStatsThread.prepare(flows, devices)
 	timestampThread.prepare(flows, devices)
 
 	if #loadThread.flows == 0 and #countThread.flows == 0 then
@@ -106,27 +108,16 @@ function master(args) -- luacheck: globals master
 		return
 	end
 
-	local txStats, rxStats = {}, {}
 	for i,v in pairs(devices) do
 		local txq, rxq = v.txq, v.rxq
 		txq, rxq = (txq == 0) and 1 or txq, (rxq == 0) and 1 or rxq
-
 		v.dev = device.config{ port = i, rxQueues = rxq, txQueues = txq }
-
-		if v.txq > 0 then
-			-- table.insert(txStats, v.dev)
-		end
-		if v.rxq > 0 then
-			-- table.insert(rxStats, v.dev)
-		end
 	end
 	device.waitForLinks()
 
-	-- TODO stopping stats task
-	-- stats.startStatsTask{ txDevices = txStats, rxDevices = rxStats }
-
 	local statsPipe = pipe:newSlowPipe()
 
+	deviceStatsThread.start(devices)
 	statsThread.start(devices, statsPipe)
 	countThread.start(devices, statsPipe)
 	loadThread.start(devices)
