@@ -65,7 +65,7 @@ function Packet:size()
 	return self.fillTbl.pktLength
 end
 
-function Packet:prepare(error)
+function Packet:prepare(final, error)
 	if error:assertInvalidate(type(self.fillTbl.pktLength) == "number",
 		"Packet field pktLength has to be set to a valid number.") then
 		error:assertInvalidate(self.fillTbl.pktLength >= self.minSize,
@@ -73,9 +73,8 @@ function Packet:prepare(error)
 			self.proto, self.minSize)
 	end
 
-	if not self.prepared then
+	if final then
 		self.dynvars:finalize()
-		self.prepared = true
 	end
 end
 

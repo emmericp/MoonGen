@@ -117,7 +117,7 @@ function Flow:getInstance(options, inst)
 	end
 end
 
-function Flow:prepare()
+function Flow:prepare(final)
 	local error = errors()
 	error.defaultLevel = -1
 
@@ -128,7 +128,7 @@ function Flow:prepare()
 	end
 
 	error:setPrefix()
-	self.packet:prepare(error)
+	self.packet:prepare(final, error)
 	return error
 end
 

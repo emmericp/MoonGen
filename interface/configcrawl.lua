@@ -80,7 +80,7 @@ function crawl.receiveFlow(fdef)
 	end
 
 	local f = setmetatable(fdef, { __index = flows[fdef.name] })
-	f:prepare()
+	f:prepare(true)
 	return f
 end
 
