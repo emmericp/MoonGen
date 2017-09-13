@@ -1,8 +1,6 @@
 local errors = require "errors"
 local log = require "log"
 
-local Packet = require "configenv.packet"
-
 local Flow = {}
 Flow.__index = Flow
 
@@ -22,14 +20,15 @@ local _option_list = {
 			end
 
 			local t = type(packetLength)
+			local valid
 			if t == "number" then
-				-- TODO check minimum sizes
-			elseif t ~= "nil" then
-				error("Invalid argument. String or number expected, got %s.", t)
-				packetLength = nil
+				valid = error:assert(packetLength >= self.packet.minSize,
+					"Invalid value. Minimum size for %s is %d", self.packet.proto, self.packet.minSize)
+			else
+				valid = error:assert(t == "nil", "Invalid argument. String or number expected, got %s.", t)
 			end
 
-			return packetLength or self.packet.fillTbl.pktLength
+			return valid and packetLength or self.packet.fillTbl.pktLength
 		end,
 		description = "Redefine the actualy size of sent packets using the command line.",
 		configHelp =  "Designed for command line usage only. Use pktLength in the Packet"

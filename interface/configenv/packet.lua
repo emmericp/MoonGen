@@ -1,7 +1,21 @@
+local packet = require "packet"
+local ffi    = require "ffi"
+
 local Dynvars = require "configenv.dynvars"
 
 local Packet = {}
 Packet.__index = Packet
+
+ffi.cdef[[
+	struct test_packet_t {};
+]]
+
+local test_packet = ffi.metatype("struct test_packet_t", {
+	__index = {
+		getLength = function(self) return 0 end,
+		getData = function(self) return nil end,
+	}
+})
 
 function Packet.new(proto, tbl, error)
 	local self = {
@@ -25,6 +39,9 @@ function Packet.new(proto, tbl, error)
 		end
 	end
 
+	self.getPacket = packet["get" .. proto .. "Packet"]
+	self.minSize = ffi.sizeof(self.getPacket(test_packet()):getName())
+
 	return setmetatable(self, Packet)
 end
 
@@ -47,9 +64,12 @@ function Packet:size()
 end
 
 function Packet:prepare(error)
-	error:assertInvalidate(type(self.fillTbl.pktLength) == "number",
-		"Packet field pktLength has to be set to a valid number.")
-	-- TODO check minimum size
+	if error:assertInvalidate(type(self.fillTbl.pktLength) == "number",
+		"Packet field pktLength has to be set to a valid number.") then
+		error:assertInvalidate(self.fillTbl.pktLength >= self.minSize,
+			"Packet length is too short. Minimum size for %s is %d",
+			self.proto, self.minSize)
+	end
 
 	if not self.prepared then
 		self.dynvars:finalize()
