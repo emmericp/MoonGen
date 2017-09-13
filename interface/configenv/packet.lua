@@ -12,8 +12,8 @@ ffi.cdef[[
 
 local test_packet = ffi.metatype("struct test_packet_t", {
 	__index = {
-		getLength = function(self) return 0 end,
-		getData = function(self) return nil end,
+		getLength = function() return 0 end,
+		getData = function() return nil end,
 	}
 })
 

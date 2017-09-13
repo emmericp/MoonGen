@@ -132,6 +132,11 @@ function Flow:getInstance(options, inst)
 	setmetatable(inst, { __index = self })
 
 	local error = inst:prepare()
+
+	for i in pairs(options) do
+		error:assert(_option_list[i], "Unknown option '%s'.", i)
+	end
+
 	if #error > 0 then
 		log:error("Found %d errors while preparing flow %s:", #error, self.name)
 		error:print(nil, log.warn, log)
