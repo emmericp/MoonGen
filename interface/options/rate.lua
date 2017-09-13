@@ -1,4 +1,4 @@
-local units = require "configenv.flow.units"
+local units = require "units"
 
 local function _parse_rate(rstring, psize)
 	local num, unit, time = string.match(rstring, "^(%d+%.?%d*)(%a*)/?(%a*)$")

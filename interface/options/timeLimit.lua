@@ -1,4 +1,4 @@
-local units = require "configenv.flow.units"
+local units = require "units"
 
 local option = {}
 

@@ -1,7 +1,7 @@
 local packet = require "packet"
 local ffi    = require "ffi"
 
-local Dynvars = require "configenv.dynvars"
+local Dynvars = require "flow.dynvars"
 
 local Packet = {}
 Packet.__index = Packet

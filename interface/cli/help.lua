@@ -122,6 +122,6 @@ help.addTopic("configuration", function(hp)
 		.. " be run in its own Lua vm, so closures will not persist across flows.")
 end)
 
-help.addTopic("options", require("configenv.flow").getOptionHelpString)
+help.addTopic("options", require("flow").getOptionHelpString)
 
 return help

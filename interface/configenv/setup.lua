@@ -1,5 +1,5 @@
-local Flow = require "configenv.flow"
-local Packet = require "configenv.packet"
+local Flow = require "flow"
+local Packet = require "flow.packet"
 
 return function(env, error, flows)
 		function env.Flow(tbl)

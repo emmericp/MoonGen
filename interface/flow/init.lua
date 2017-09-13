@@ -4,40 +4,10 @@ local log = require "log"
 local Flow = {}
 Flow.__index = Flow
 
-local _option_list = {
-	rate = require "configenv.flow.rate",
-	ratePattern = require "configenv.flow.ratePattern",
-	mode = require "configenv.flow.mode",
-	dataLimit = require "configenv.flow.dataLimit",
-	timeLimit = require "configenv.flow.timeLimit",
-	timestamp = require "configenv.flow.timestamp",
-	uid = require "configenv.flow.uid",
-	packetLength = {
-		parse = function(self, packetLength, error)
-			if type(packetLength) == "string" then
-				packetLength = error:assert(tonumber(packetLength),
-					"Value needs to be a valid integer.")
-			end
-
-			local t = type(packetLength)
-			local valid
-			if t == "number" then
-				valid = error:assert(packetLength >= self.packet.minSize,
-					"Invalid value. Minimum size for %s is %d", self.packet.proto, self.packet.minSize)
-			else
-				valid = error:assert(t == "nil", "Invalid argument. String or number expected, got %s.", t)
-			end
-
-			return valid and packetLength or self.packet.fillTbl.pktLength
-		end,
-		description = "Redefine the actualy size of sent packets using the command line.",
-		configHelp =  "Designed for command line usage only. Use pktLength in the Packet"
-			.. " descriptor, when editing configuration files.",
-		getHelp = function()
-			return { { "<integer>", "New size in bytes." } }
-		end
-	},
-}
+local _option_list = {}
+for _,v in ipairs {
+	"rate", "ratePattern", "packetLength", "timestamp", "uid", "mode", "dataLimit", "timeLimit"
+} do _option_list[v] =  require("options." .. v) end
 
 function Flow.getOptionHelpString(help_printer)
 	help_printer:section("Options")
