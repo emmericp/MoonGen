@@ -89,7 +89,7 @@ function Flow:prepare(final)
 	end
 
 	error:setPrefix()
-	self.packet:prepare(final, error)
+	self.packet:prepare(final, error, self)
 	return error
 end
 

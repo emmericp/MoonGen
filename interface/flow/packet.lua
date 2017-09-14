@@ -1,6 +1,8 @@
 local packet = require "packet"
 local ffi    = require "ffi"
 
+local features = require "features"
+
 local Dynvars = require "flow.dynvars"
 
 local Packet = {}
@@ -20,7 +22,7 @@ local test_packet = ffi.metatype("struct test_packet_t", {
 function Packet.new(proto, tbl, error)
 	local self = {
 		proto = proto,
-		fillTbl = {},
+		fillTbl = {}, features = {},
 		dynvars = Dynvars.new()
 	}
 
@@ -31,6 +33,10 @@ function Packet.new(proto, tbl, error)
 			if type(v) == "function" then
 				var = string.lower(var)
 				v = self.dynvars:add(pkt, var, v).value
+			elseif type(v) == "table" then
+				local ft = error:assert(v[1] and features[v[1]], "Invalid table passed to field '%s'.", i)
+				table.insert(features, { field = i, feature = ft, tbl = v })
+				v = nil
 			end
 
 			self.fillTbl[i] = v
@@ -65,7 +71,7 @@ function Packet:size()
 	return self.fillTbl.pktLength
 end
 
-function Packet:prepare(final, error)
+function Packet:prepare(final, error, flow)
 	if error:assertInvalidate(type(self.fillTbl.pktLength) == "number",
 		"Packet field pktLength has to be set to a valid number.") then
 		error:assertInvalidate(self.fillTbl.pktLength >= self.minSize,
@@ -74,6 +80,10 @@ function Packet:prepare(final, error)
 	end
 
 	if final then
+		for _,v in ipairs(self.features) do
+			self.fillTbl[v.field] = v.feature.getValue(flow, v.tbl)
+		end
+
 		self.dynvars:finalize()
 	end
 end

@@ -13,5 +13,10 @@ return function(tbl, ...)
 	require "configenv.setup" (tbl, ...)
 	require "configenv.range" (tbl, ...)
 	require "configenv.util" (tbl, ...)
+
+	for _,v in pairs(require "features") do
+		v.env(tbl, ...)
+	end
+
 	return setmetatable(tbl, { __index = _safe_methods }), ...
 end
