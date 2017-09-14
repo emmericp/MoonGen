@@ -49,7 +49,7 @@ local function timestampThread(flows, directory)
 
 		local minLength = isUdp and 84 or 68
 		if v:getPacketLength() < minLength then
-			v.psize = minLength
+			v.results.packetLength = minLength
 		end
 	end
 
