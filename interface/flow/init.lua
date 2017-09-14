@@ -53,7 +53,7 @@ end
 function Flow:getDelay()
 	local cbr = self.results.rate
 	if cbr then
-		return _cbr_to_delay(cbr, self:getPacketLenth(true))
+		return _cbr_to_delay(cbr, self:getPacketLength(true))
 	end
 end
 
