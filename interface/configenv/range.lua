@@ -2,7 +2,7 @@ return function(env)
 
 	function env.range(start, limit, step)
 		step = step or 1
-		local v = start
+		local v = start - 1
 
 		if not limit then
 			return function()
@@ -14,7 +14,7 @@ return function(env)
 		return function()
 			v = v + step
 			if v > limit then
-				v = start
+				v = start - 1
 			end
 
 			return v
