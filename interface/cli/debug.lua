@@ -26,25 +26,39 @@ local function _print_debug(args)
 
 	local name, _, _, opts = parse(args.flow, math.huge)
 	local flow = crawl.getFlow(name, opts, { tx = {1}, rx = {1} })
-	flow:prepare(true)
+	flow:prepare("debug")
 
 	local length = flow:getPacketLength()
 	local array = ffi.new("uint8_t[?]", length)
 	local test = debug_packet(length, array)
 
-	print(string.format("Flow: \27[1m%s\27[0m", name))
+	print(string.format("Flow: \27[1m%s\27[0m\n", name))
 
 	local dv = flow.packet.dynvars
-
-	local dynvar_out = {"Dynamic: "}
-	for _,v in ipairs(dv) do
-		table.insert(dynvar_out, v.pkt)
-		table.insert(dynvar_out, string.upper(string.sub(v.var, 1, 1)))
-		table.insert(dynvar_out, string.sub(v.var, 2))
-		table.insert(dynvar_out, ", ")
+	if #dv > 0 then
+		local dynvar_out = {"Dynamic: "}
+		for _,v in ipairs(dv) do
+			table.insert(dynvar_out, v.pkt)
+			table.insert(dynvar_out, string.upper(string.sub(v.var, 1, 1)))
+			table.insert(dynvar_out, string.sub(v.var, 2))
+			table.insert(dynvar_out, ", ")
+		end
+		dynvar_out[#dynvar_out] = "\n"
+		print(table.concat(dynvar_out))
 	end
-	dynvar_out[#dynvar_out] = "\n"
-	print(table.concat(dynvar_out))
+
+	local features = flow.packet.features
+	if #features > 0 then
+		local feature_out = {"Environment dependent:\n"}
+		for _,v in ipairs(features) do
+			table.insert(feature_out, string.rep(" ", 4))
+			table.insert(feature_out, v.field)
+			table.insert(feature_out, " => ")
+			table.insert(feature_out, v.feature.debug(v.tbl))
+			table.insert(feature_out, "\n")
+		end
+		print(table.concat(feature_out))
+	end
 
 	local pkt = flow.packet.getPacket(test)
 	pkt:fill(flow.packet.fillTbl)

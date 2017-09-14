@@ -12,6 +12,10 @@ function feature.env(env)
   end
 end
 
+function feature.debug(tbl)
+  return string.format("Mac address of %s device.", tbl[2])
+end
+
 function feature.getValue(flow, tbl)
   return device.get(flow[tbl[2] .. "_dev"]):getMac(true)
 end

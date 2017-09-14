@@ -35,7 +35,7 @@ function Packet.new(proto, tbl, error)
 				v = self.dynvars:add(pkt, var, v).value
 			elseif type(v) == "table" then
 				local ft = error:assert(v[1] and features[v[1]], "Invalid table passed to field '%s'.", i)
-				table.insert(features, { field = i, feature = ft, tbl = v })
+				table.insert(self.features, { field = i, feature = ft, tbl = v })
 				v = nil
 			end
 
@@ -80,8 +80,10 @@ function Packet:prepare(final, error, flow)
 	end
 
 	if final then
-		for _,v in ipairs(self.features) do
-			self.fillTbl[v.field] = v.feature.getValue(flow, v.tbl)
+		if final ~= "debug" then
+			for _,v in ipairs(self.features) do
+				self.fillTbl[v.field] = v.feature.getValue(flow, v.tbl)
+			end
 		end
 
 		self.dynvars:finalize()
