@@ -25,8 +25,8 @@ local function _print_debug(args)
 	crawl(args.config)
 
 	local name, _, _, opts = parse(args.flow, math.huge)
-	local flow = crawl.getFlow(name, opts)
-	flow:prepare()
+	local flow = crawl.getFlow(name, opts, { tx = {1}, rx = {1} })
+	flow:prepare(true)
 
 	local length = flow:getPacketLength()
 	local array = ffi.new("uint8_t[?]", length)
