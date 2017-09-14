@@ -10,20 +10,32 @@ function option.getHelp()
 	}
 end
 
-function option.parse(_, number, error)
-	if not number then return end
+local uids = {}
+
+local function next_uid() -- simulating pure lua # operator + 1
+	local i = 1
+	while uids[i] do i = i + 1 end
+	return i
+end
+
+function option.parse(flow, number, error)
+	if flow.results.uid then return flow.results.uid end
 
 	local t = type(number)
 	if type(number) == "string" then
 		number = error:assert(tonumber(number), "Invalid string. Needs to be convertible to a number.")
-	elseif t ~= "number" then
+	elseif t ~= "number" and t ~= "nil" then
 		error("Invalid argument. String or number expected, got %s.", t)
 		number = nil
 	end
 
-	if number and assert(number > 0, "Invalid value. Needs to be a unique positive integer.") then
-		return number
+	if not number or not assert(number > 0 and not uids[number],
+		"Invalid value. Needs to be a unique positive integer.") then
+		number = next_uid()
 	end
+
+	uids[number] = true
+	return number
 end
 
 return option
