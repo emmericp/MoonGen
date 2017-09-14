@@ -13,7 +13,7 @@ local function _print_list(config)
 
 	local count = 0
 	for _,f in pairs(flows) do
-		if f:getInstance{} then
+		if f:getInstance({}, { rx = {1}, tx = {1} }) then
 			table.insert(files[f.file], f)
 			count = count + 1
 		end
