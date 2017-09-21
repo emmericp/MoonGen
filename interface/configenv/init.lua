@@ -14,7 +14,7 @@ return function(tbl, ...)
 	require "configenv.range" (tbl, ...)
 	require "configenv.util" (tbl, ...)
 
-	for _,v in pairs(require "features") do
+	for _,v in pairs(require "dependencies") do
 		v.env(tbl, ...)
 	end
 

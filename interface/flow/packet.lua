@@ -1,7 +1,7 @@
 local packet = require "packet"
 local ffi    = require "ffi"
 
-local features = require "features"
+local dependencies = require "dependencies"
 
 local Dynvars = require "flow.dynvars"
 
@@ -22,7 +22,7 @@ local test_packet = ffi.metatype("struct test_packet_t", {
 function Packet.new(proto, tbl, error)
 	local self = {
 		proto = proto,
-		fillTbl = {}, features = {},
+		fillTbl = {}, depvars = {},
 		dynvars = Dynvars.new()
 	}
 
@@ -34,8 +34,8 @@ function Packet.new(proto, tbl, error)
 				var = string.lower(var)
 				v = self.dynvars:add(pkt, var, v).value
 			elseif type(v) == "table" then
-				local ft = error:assert(v[1] and features[v[1]], "Invalid table passed to field '%s'.", i)
-				table.insert(self.features, { field = i, feature = ft, tbl = v })
+				local ft = error:assert(v[1] and dependencies[v[1]], "Invalid table passed to field '%s'.", i)
+				table.insert(self.depvars, { field = i, dep = ft, tbl = v })
 				v = nil
 			end
 
@@ -81,8 +81,8 @@ function Packet:prepare(final, error, flow)
 
 	if final then
 		if final ~= "debug" then
-			for _,v in ipairs(self.features) do
-				self.fillTbl[v.field] = v.feature.getValue(flow, v.tbl)
+			for _,v in ipairs(self.depvars) do
+				self.fillTbl[v.field] = v.dep.getValue(flow, v.tbl)
 			end
 		end
 

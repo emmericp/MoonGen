@@ -47,17 +47,17 @@ local function _print_debug(args)
 		print(table.concat(dynvar_out))
 	end
 
-	local features = flow.packet.features
-	if #features > 0 then
-		local feature_out = {"Environment dependent:\n"}
-		for _,v in ipairs(features) do
-			table.insert(feature_out, string.rep(" ", 4))
-			table.insert(feature_out, v.field)
-			table.insert(feature_out, " => ")
-			table.insert(feature_out, v.feature.debug(v.tbl))
-			table.insert(feature_out, "\n")
+	local dependencies = flow.packet.depvars
+	if #dependencies > 0 then
+		local dep_out = {"Environment dependent:\n"}
+		for _,v in ipairs(dependencies) do
+			table.insert(dep_out, string.rep(" ", 4))
+			table.insert(dep_out, v.field)
+			table.insert(dep_out, " => ")
+			table.insert(dep_out, v.dep.debug(v.tbl))
+			table.insert(dep_out, "\n")
 		end
-		print(table.concat(feature_out))
+		print(table.concat(dep_out))
 	end
 
 	local pkt = flow.packet.getPacket(test)
