@@ -63,9 +63,10 @@ function dynvars:add(pkt, var, func)
 	return dv
 end
 
-function dynvars:inherit(other)
+function dynvars:inherit(other, fillTbl)
 	for i,v in pairs(other.index) do
-		if not self.index[i] then
+		local ftIndex = v.pkt .. v.var:sub(1,1):upper() .. v.var:sub(2)
+		if not self.index[i] and not fillTbl[ftIndex] then
 			_add_dv(self, i, v)
 		end
 	end

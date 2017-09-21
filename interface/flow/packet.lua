@@ -53,15 +53,29 @@ function Packet.new(proto, tbl, error)
 	return setmetatable(self, Packet)
 end
 
+local function _inherit_depvars(self, other)
+	local depvarIndex = {}
+	for _,v in ipairs(self.depvars) do
+		depvarIndex[v.field] = v
+	end
+
+	for _,v in ipairs(other.depvars) do
+		if not depvarIndex[v.field] and not self.fillTbl[v.field] then
+			table.insert(self.depvars, v)
+		end
+	end
+end
+
 function Packet:inherit(other)
 	if other then
+		self.dynvars:inherit(other.dynvars, self.fillTbl)
+		_inherit_depvars(self, other)
+
 		for i,v in pairs(other.fillTbl) do
 			if not self.fillTbl[i] then
 				self.fillTbl[i] = v
 			end
 		end
-
-		self.dynvars:inherit(other.dynvars)
 	end
 
 	return self
