@@ -24,15 +24,16 @@ local debug_packet = ffi.metatype("debug_packet_t", {
 local function _print_debug(args)
 	crawl(args.config)
 
-	local name, _, _, opts = parse(args.flow, math.huge)
-	local flow = crawl.getFlow(name, opts, { tx = {1}, rx = {1} })
+	local fparse = parse(args.flow, math.huge)
+	-- TODO fparse.file, fparse.overwrites
+	local flow = crawl.getFlow(fparse.name, fparse.options, { tx = {1}, rx = {1} })
 	flow:prepare("debug")
 
 	local length = flow:getPacketLength()
 	local array = ffi.new("uint8_t[?]", length)
 	local test = debug_packet(length, array)
 
-	print(string.format("Flow: \27[1m%s\27[0m\n", name))
+	print(string.format("Flow: \27[1m%s\27[0m\n", fparse.name))
 
 	local dv = flow.packet.dynvars
 	if #dv > 0 then

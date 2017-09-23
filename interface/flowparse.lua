@@ -17,12 +17,17 @@ local function parse_devices(s, devnum, name)
 	return result
 end
 
+local fmt = "[<file>/]<name>:[<tx-list>]:[<rx-list>]:[<option-list>]:[<overwrites>]"
 return function(s, devnum)
-	local name, tx, rx, optstring = string.match(s, "^([^:]+):?([^:]*):?([^:]*):?(.*)$")
-	if not name then
-		log:fatal("Invalid parameter: %q. Expected format: '<name>[:{<devnum>}[:{<devnum>}[:{<option>}]]]'."
-			.. " All options are comma (',') seperated.", s)
+	local name, tx, rx, optstring, overwrites = string.match(s, "^([^:]+)" .. (":?([^:]*)"):rep(3) .. ":?(.*)$")
+	if not name or name == "" then
+		log:fatal("Invalid parameter: %q.\nExpected format: '%s'."
+			.. "\nAll lists are ',' seperated. Trailing ':' can be omitted.", s, fmt)
+		return
 	end
+
+	local file
+	file, name = string.match(name, "(.*)/([^/]+)")
 
 	local options = {}
 	for opt in string.gmatch(optstring, "([^,]+)") do
@@ -35,5 +40,10 @@ return function(s, devnum)
 		end
 	end
 
-	return name, parse_devices(tx, devnum, name), parse_devices(rx, devnum, name), options
+	return {
+		name = name, file = file,
+		tx = parse_devices(tx, devnum, name),
+		rx = parse_devices(rx, devnum, name),
+		options = options, ovewrites = overwrites
+	}
 end

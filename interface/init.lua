@@ -78,16 +78,17 @@ function master(args) -- luacheck: globals master
 	local devnum = device.numDevices()
 	local flows = {}
 	for _,arg in ipairs(args.flows) do
-		local name, tx, rx, opts = parse(arg, devnum)
+		local fparse = parse(arg, devnum)
+		-- TODO fparse.file, fparse.overwrites
 		local f
 
-		if #tx == 0 and #rx == 0 then
+		if #fparse.tx == 0 and #fparse.rx == 0 then
 			log:error("Need to pass at least one tx or rx device.")
 		else
-			f = crawl.getFlow(name, opts, {
+			f = crawl.getFlow(fparse.name, fparse.options, {
 				lock = lock:new(),
 				counter = _new_counter(),
-				tx = tx, rx = rx
+				tx = fparse.tx, rx = fparse.rx
 			})
 		end
 
