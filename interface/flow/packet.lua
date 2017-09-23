@@ -81,11 +81,7 @@ function Packet:inherit(other)
 	return self
 end
 
-function Packet:size()
-	return self.fillTbl.pktLength
-end
-
-function Packet:prepare(final, error, flow)
+function Packet:prepare(error, flow, final)
 	if error:assertInvalidate(type(self.fillTbl.pktLength) == "number",
 		"Packet field pktLength has to be set to a valid number.") then
 		error:assertInvalidate(self.fillTbl.pktLength >= self.minSize,
@@ -94,14 +90,12 @@ function Packet:prepare(final, error, flow)
 	end
 
 	if final then
-		if final ~= "debug" then
-			for _,v in ipairs(self.depvars) do
-				self.fillTbl[v.field] = v.dep.getValue(flow, v.tbl)
-			end
+		for _,v in ipairs(self.depvars) do
+			self.fillTbl[v.field] = v.dep.getValue(flow, v.tbl)
 		end
-
-		self.dynvars:finalize()
 	end
+
+	self.dynvars:finalize()
 end
 
 return Packet

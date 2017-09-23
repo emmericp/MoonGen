@@ -1,21 +1,18 @@
 local hist   = require "histogram"
 local mg     = require "moongen"
-local packet = require "packet"
 local timer  = require "timer"
 local ts     = require "timestamping"
 
-local crawl  = require "configcrawl"
+local Flow  = require "flow"
 
 local thread = { flows = {} }
 
 function thread.prepare(flows, devices)
 	for _,flow in ipairs(flows) do
-		if flow.results.timestamp then
-			local rx = flow.rx[1]
-			for _,tx in ipairs(flow.tx) do
-				table.insert(thread.flows, crawl.cloneFlow(flow, {
-					tx_dev = tx, rx_dev = rx
-				}))
+		if flow:option "timestamp" then
+			local rx = flow:property("rx")[1]
+			for _,tx in ipairs(flow:property "tx") do
+				table.insert(thread.flows, flow:clone{ tx_dev = tx, rx_dev = rx })
 				devices:reserveTx(tx)
 				devices:reserveRx(rx)
 			end
@@ -25,10 +22,10 @@ end
 
 function thread.start(devices, ...)
 	for i,flow in ipairs(thread.flows) do
-		flow.txQueue = devices:txQueue(flow.tx_dev)
-		flow.rxQueue = devices:rxQueue(flow.rx_dev)
+		flow:setProperty("txQueue", devices:txQueue(flow:property "tx_dev"))
+		flow:setProperty("rxQueue", devices:rxQueue(flow:property "rx_dev"))
 
-		thread.flows[i] = crawl.passFlow(flow)
+		thread.flows[i] = flow
 	end
 
 	if #thread.flows > 0 then
@@ -37,19 +34,22 @@ function thread.start(devices, ...)
 end
 
 local function timestampThread(flows, directory)
-	local timeStampers, getPacket, hists = {}, {}, {}
+	local timeStampers, hists = {}, {}
 
 	for i,v in ipairs(flows) do
-		flows[i] = crawl.receiveFlow(v)
+		local flow = Flow.restore(v)
+		flows[i] = flow
 
-		local isUdp = v.packet.proto == "Udp"
-		timeStampers[i] = ts:newTimestamper(v.txQueue, v.rxQueue, nil, isUdp)
-		getPacket[i] = packet["get" .. v.packet.proto .. "Packet"]
+		local isUdp = flow.packet.proto == "Udp"
+		timeStampers[i] = ts:newTimestamper(
+			flow:property "txQueue", flow:property "rxQueue",
+			nil, isUdp
+		)
 		hists[i] = hist()
 
 		local minLength = isUdp and 84 or 68
-		if v:getPacketLength() < minLength then
-			v.results.packetLength = minLength
+		if flow:packetSize() < minLength then
+			flow.packet.fillTbl.pktLength = minLength
 		end
 	end
 
@@ -57,22 +57,27 @@ local function timestampThread(flows, directory)
 	local activeFlows = 1
 	while mg.running() and activeFlows > 0 do
 		activeFlows = 0
-		for i,v in ipairs(flows) do
-			if not v.counter:isZero() then
+		for i,flow in ipairs(flows) do
+			if not flow:property("counter"):isZero() then
 				activeFlows = activeFlows + 1
-				hists[i]:update(timeStampers[i]:measureLatency(v:getPacketLength(), function(buf)
-					local pkt = getPacket[i](buf)
-					pkt:fill(v.packet.fillTbl)
-					v.updatePacket(v.packet.dynvars, pkt)
-				end))
+				hists[i]:update(timeStampers[i]:measureLatency(
+					flow:packetSize(), function(buf)
+						if flow.isDynamic then
+							flow:fillUpdateBuf(buf)
+						else
+							flow:fillBuf(buf)
+						end
+					end
+				))
 			end
 		end
 		rateLimit:wait()
 		rateLimit:reset()
 	end
 
-	for i,v in ipairs(flows) do
-		hists[i]:save(string.format("%s/%s_%d-%d_%d.csv", directory, v.name, v.results.uid, v.txQueue.id, v.rxQueue.id))
+	for i,flow in ipairs(flows) do
+		hists[i]:save(string.format("%s/%s_%d-%d_%d.csv", directory,
+			flow.proto.name, flow:option "uid", flow:property("txQueue").id, flow:property("rxQueue").id))
 	end
 end
 

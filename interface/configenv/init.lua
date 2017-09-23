@@ -1,3 +1,9 @@
+local lfs = require "lfs"
+
+local errors = require "errors"
+
+local mod = { env = {} }
+
 local _safe_methods = {}
 for v in string.gmatch([[
 	string table math
@@ -8,15 +14,50 @@ for v in string.gmatch([[
 ]], "%S+") do
 	_safe_methods[v] = _G[v]
 end
+setmetatable(mod.env, { __index = _safe_methods })
 
-return function(tbl, ...)
-	require "configenv.setup" (tbl, ...)
-	require "configenv.range" (tbl, ...)
-	require "configenv.util" (tbl, ...)
+require "configenv.range" (mod.env)
+require "configenv.util" (mod.env)
 
-	for _,v in pairs(require "dependencies") do
-		v.env(tbl, ...)
+for _,v in pairs(require "dependencies") do
+	v.env(mod.env)
+end
+
+function mod:setErrHnd(hnd)
+	self.env.error = hnd or errors()
+end
+
+function mod:error()
+	return self.env.error
+end
+
+local function run(self, file, f, msg)
+	assert(self.env.error, "No error handler set.")
+
+	if not f then
+		self.errors(0, msg)
+		return
 	end
 
-	return setmetatable(tbl, { __index = _safe_methods }), ...
+	self.env._FILE = file
+	return setfenv(f, self.env)()
 end
+
+local fileIndex = {}
+local function getIndex(path)
+	return ("%d_%d"):format(lfs.attributes(path, "dev"), lfs.attributes(path, "ino"))
+end
+
+function mod:parseFile(filename)
+	local idx = getIndex(filename)
+	if not fileIndex[idx] then
+		fileIndex[idx] = true
+		run(self, filename, loadfile(filename))
+	end
+end
+
+function mod:parseString(string, chunkname)
+	return run(self, nil, loadstring(string, chunkname or "config string"))
+end
+
+return mod

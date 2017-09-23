@@ -44,6 +44,6 @@ return function(s, devnum)
 		name = name, file = file,
 		tx = parse_devices(tx, devnum, name),
 		rx = parse_devices(rx, devnum, name),
-		options = options, ovewrites = overwrites
+		options = options, overwrites = overwrites
 	}
 end

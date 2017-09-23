@@ -34,7 +34,7 @@ function option.parse(self, bool, error)
 	end
 
 
-	if bool and not error:assert(#self.rx == 1,
+	if bool and not error:assert(#self:property("rx") == 1,
 		"Cannot timestamp flows with more than one receiving device.") then
 		return false
 	end

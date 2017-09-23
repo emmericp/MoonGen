@@ -1,7 +1,7 @@
 local ffi     = require "ffi"
 
-local crawl = require "configcrawl"
 local parse = require "flowparse"
+local Flow = require "flow"
 
 local debug = {}
 
@@ -16,20 +16,19 @@ local debug_packet = ffi.metatype("debug_packet_t", {
 	__index = {
 		getLength = function(self) return self.length end,
 		getData = function(self)
-			return voidPtrType(ffi.new("uint8_t*[1]", self.data)) -- luacheck: globals voidPtrType
+			return voidPtrType(self.data) -- luacheck: globals voidPtrType
 		end,
 	}
 })
 
 local function _print_debug(args)
-	crawl(args.config)
+	Flow.crawlDirectory(args.config)
 
 	local fparse = parse(args.flow, math.huge)
-	-- TODO fparse.file, fparse.overwrites
-	local flow = crawl.getFlow(fparse.name, fparse.options, { tx = {1}, rx = {1} })
-	flow:prepare("debug")
+	local flow = Flow.getInstance(fparse.name, fparse.file, fparse.options, fparse.overwrites,
+		{ tx = {1}, rx = {1} })
 
-	local length = flow:getPacketLength()
+	local length = flow:packetSize(true)
 	local array = ffi.new("uint8_t[?]", length)
 	local test = debug_packet(length, array)
 
@@ -61,13 +60,10 @@ local function _print_debug(args)
 		print(table.concat(dep_out))
 	end
 
-	local pkt = flow.packet.getPacket(test)
-	pkt:fill(flow.packet.fillTbl)
-
+	local pkt = flow:fillBuf(test)
 	if flow.updatePacket then
 		for _ = 1, args.count do
-			flow.updatePacket(flow.packet.dynvars, pkt)
-			pkt:dump()
+			flow:updateBuf(test):dump()
 		end
 	else
 		if args.count > 1 then

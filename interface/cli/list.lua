@@ -1,9 +1,9 @@
-local crawl = require "configcrawl"
+local Flow = require "flow"
 
 local list = {}
 
 local function _print_list(config)
-	local flows = crawl(config, true)
+	Flow.crawlDirectory(config)
 
 	local files = setmetatable({}, {
 		__index = function(tbl, key)
@@ -12,8 +12,8 @@ local function _print_list(config)
 	})
 
 	local count = 0
-	for _,f in pairs(flows) do
-		if f:getInstance({}, { rx = {1}, tx = {1} }) then
+	for _,f in pairs(Flow.flows) do
+		if Flow.getInstance(f.name, nil, {}, nil, { rx = {1}, tx = {1} }) then
 			table.insert(files[f.file], f)
 			count = count + 1
 		end

@@ -1,14 +1,12 @@
 local mg         = require "moongen"
-local memory     = require "memory"
 local device     = require "device"
 local pipe       = require "pipe"
 local log        = require "log"
-local lock       = require "lock"
-local ffi        = require "ffi"
 
 package.path = package.path .. ";interface/?.lua;interface/?/init.lua"
-local crawl = require "configcrawl"
+local Flow = require "flow"
 local parse = require "flowparse"
+local counter = require "counter"
 
 local loadThread = require "threads.load"
 local statsThread = require "threads.stats"
@@ -16,24 +14,6 @@ local deviceStatsThread = require "threads.deviceStats"
 local countThread = require "threads.count"
 local timestampThread = require "threads.timestamp"
 
-ffi.cdef[[
-	struct counter_t {
-		uint8_t active;
-		uint32_t count;
-	};
-]]
-ffi.metatype("struct counter_t", {
-	__index = {
-		isZero = function(self)
-			return self.active == 1 and self.count == 0
-		end
-	}
-})
-local function _new_counter()
-	local cnt = memory.alloc("struct counter_t*", 5)
-	cnt.active, cnt.count = 0, 0
-	return cnt
-end
 
 configure = require "cli" -- luacheck: globals configure
 
@@ -62,7 +42,7 @@ function devicesClass:rxQueue(rx)
 end
 
 function master(args) -- luacheck: globals master
-	crawl(args.config)
+	Flow.crawlDirectory(args.config)
 
 	-- auto-filling device index
 	local devices = setmetatable({}, {
@@ -85,16 +65,15 @@ function master(args) -- luacheck: globals master
 		if #fparse.tx == 0 and #fparse.rx == 0 then
 			log:error("Need to pass at least one tx or rx device.")
 		else
-			f = crawl.getFlow(fparse.name, fparse.options, {
-				lock = lock:new(),
-				counter = _new_counter(),
+			f = Flow.getInstance(fparse.name, fparse.file, fparse.options, fparse.overwrites, {
+				counter = counter.new(),
 				tx = fparse.tx, rx = fparse.rx
 			})
 		end
 
 		if f then
 			table.insert(flows, f)
-			log:info("Flow %s => %s", f.name, f.results.uid)
+			log:info("Flow %s => %s", f.proto.name, f:option "uid")
 		end
 	end
 
@@ -104,7 +83,7 @@ function master(args) -- luacheck: globals master
 	deviceStatsThread.prepare(flows, devices)
 	timestampThread.prepare(flows, devices)
 
-	if #loadThread.flows == 0 and #countThread.flows == 0 then
+	if #loadThread.flows == 0 then--and #countThread.flows == 0 then
 		log:error("No valid flows remaining.")
 		return
 	end

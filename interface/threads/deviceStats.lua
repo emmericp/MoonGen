@@ -6,7 +6,7 @@ local thread = { devices = {} }
 function thread.prepare(flows)
 	for _,flow in ipairs(flows) do
 		for _,v in ipairs{ "Tx", "Rx" } do
-			for _,id in ipairs(flow[string.lower(v)]) do
+			for _,id in ipairs(flow:property(v:lower())) do
 				table.insert(thread.devices, { v, id, flow })
 			end
 		end
@@ -34,7 +34,7 @@ end
 
 local function isActive(flows)
 	for _,flow in ipairs(flows) do
-		if not flow.counter:isZero() then
+		if not flow.properties.counter:isZero() then
 			return true
 		end
 	end

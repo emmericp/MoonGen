@@ -17,7 +17,7 @@ function dependency.debug(tbl)
 end
 
 function dependency.getValue(flow, tbl)
-  return device.get(flow[tbl[2] .. "_dev"]):getMac(true)
+  return device.get(flow:property(tbl[2] .. "_dev")):getMac(true)
 end
 
 return dependency
