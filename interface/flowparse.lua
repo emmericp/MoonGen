@@ -26,8 +26,9 @@ return function(s, devnum)
 		return
 	end
 
-	local file
-	file, name = string.match(name, "(.*)/([^/]+)")
+	local file, _name
+	file, _name = string.match(name, "(.*)/([^/]+)")
+	name = _name or name
 
 	local options = {}
 	for opt in string.gmatch(optstring, "([^,]+)") do
