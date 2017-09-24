@@ -28,6 +28,8 @@ local function _print_debug(args)
 	local flow = Flow.getInstance(fparse.name, fparse.file, fparse.options, fparse.overwrites,
 		{ tx = {1}, rx = {1} })
 
+	if not flow then return end
+
 	local length = flow:packetSize(true)
 	local array = ffi.new("uint8_t[?]", length)
 	local test = debug_packet(length, array)
