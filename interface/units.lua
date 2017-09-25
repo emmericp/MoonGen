@@ -22,13 +22,16 @@ units.bool = {
 	["false"] = false, ["true"] = true,
 	["no"] = false, ["yes"] = true,
 }
-units.boolError = "Ivalid boolean. Can be one of (0|false|no) or (1|true|yes) respectively."
+units.boolError = "Invalid boolean. Can be one of (0|false|no) or (1|true|yes) respectively."
 
 function units.parseBool(bool, default, error)
 	local t = type(bool)
 
 	if t == "string" then
-		bool = error:assert(units.boolean[bool], units.boolError)
+		bool = units.bool[bool]
+		if not error:assert(type(bool) == "boolean", units.boolError) then
+			return default
+		end
 	elseif t == "nil" then
 		return default
 	elseif t ~= "boolean" then

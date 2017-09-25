@@ -12,7 +12,7 @@ function option.getHelp()
 end
 
 function option.parse(self, bool, error)
-	bool = units.parseBoolean(bool, false, error)
+	bool = units.parseBool(bool, false, error)
 
 	if bool and not error:assert(#self:property("rx") == 1,
 		"Cannot timestamp flows with more than one receiving device.") then
