@@ -14,7 +14,7 @@ return function(env)
 		return function()
 			v = v + step
 			if v > limit then
-				v = start - 1
+				v = start
 			end
 
 			return v
