@@ -58,7 +58,7 @@ end
 function Flow:getDelay()
 	local cbr = self.results.rate
 	if cbr then
-		local psize = self:getPacketLength(true)
+		local psize = self:packetSize(true)
 		-- cbr      => mbit/s        => bit/1000ns
 		-- psize    => b/p           => 8bit/p
 		return 8000 * psize / cbr -- => ns/p

@@ -1,7 +1,7 @@
 local dependencies = {}
 
 for _,v in ipairs {
-  "queueMac"
+  "arp", "queueMac"
 } do
   dependencies[v] =  require("dependencies." .. v)
 end

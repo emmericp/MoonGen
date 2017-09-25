@@ -1,5 +1,5 @@
 return function(env)
-	env.ip = function(str)
+	function env.ip(str)
 		local t = type(str)
 		if t ~= "string" then
 			env.error("Function 'ip': string expected, got %s.", t)
@@ -12,7 +12,7 @@ return function(env)
 		return ip
 	end
 
-	env.mac = function(str)
+	function env.mac(str)
 		local t = type(str)
 		if t ~= "string" then
 			env.error("Function 'mac': string expected, got %s.", t)
