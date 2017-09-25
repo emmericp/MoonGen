@@ -31,15 +31,14 @@ function Packet.new(proto, tbl, error)
 
 		if pkt then
 			if type(v) == "function" then
-				var = string.lower(var)
-				v = self.dynvars:add(pkt, var, v).value
+				self.fillTbl[i] = self.dynvars:add(pkt, var, v).value
 			elseif type(v) == "table" then
-				local ft = error:assert(v[1] and dependencies[v[1]], "Invalid table passed to field '%s'.", i)
+				local ft = error:assert(v[1] and dependencies[v[1]],
+					"Invalid table passed to field '%s'.", i)
 				table.insert(self.depvars, { field = i, dep = ft, tbl = v })
-				v = nil
+			else
+				self.fillTbl[i] = v
 			end
-
-			self.fillTbl[i] = v
 		else
 			error("Invalid packet field %q. Format is 'layerField' (e.g. ip4Dst).", i)
 		end

@@ -1,28 +1,28 @@
 local proto = require "proto.proto"
 
 local dynvar = {}
-local _mt_dynvar = { __index = dynvar }
+dynvar.__index = dynvar
 
 local _aliases = {
-	udp_src = "setSrcPort", udp_dst = "setDstPort",
-	tcp_src = "setSrcPort", tcp_dst = "setDstPort",
+	udpSrc = "setSrcPort", udpDst = "setDstPort",
+	tcpSrc = "setSrcPort", tcpDst = "setDstPort",
 }
 local function _find_setter(pkt, var)
-	local alias = _aliases[pkt .. "_" .. var]
+	local alias = _aliases[pkt .. var]
 	if alias then
 		return proto[pkt].metatype[alias]
 	end
 
-	return proto[pkt].metatype["set" .. string.upper(string.sub(var, 1, 1)) .. string.sub(var, 2)]
+	return proto[pkt].metatype["set" .. var]
 end
 
 local function _new_dynvar(pkt, var, func)
 	local self = { pkt = pkt, var = var, func = func }
 	self.applyfn = _find_setter(pkt, var)
-	assert(self.applyfn, pkt .. "_" .. var)
-	self.value = func() -- NOTE arp will execute in master
+	assert(self.applyfn, pkt .. var)
+	self.value = func()
 
-	return setmetatable(self, _mt_dynvar)
+	return setmetatable(self, dynvar)
 end
 
 function dynvar:update()
@@ -41,14 +41,13 @@ function dynvar:updateApply(pkt)
 end
 
 local dynvars, dv_final = {}, {}
-local _mt_dynvars = { __index = dynvars }
-local _mt_dv_final = { __index = dv_final }
+dynvars.__index, dv_final.__index = dynvars, dv_final
 
 function dynvars.new()
 	local self = {
 		index = {}, count = 0
 	}
-	return setmetatable(self, _mt_dynvars)
+	return setmetatable(self, dynvars)
 end
 
 local function _add_dv(self, index, dv)
@@ -59,13 +58,13 @@ end
 
 function dynvars:add(pkt, var, func)
 	local dv = _new_dynvar(pkt, var, func)
-	_add_dv(self, pkt .. "_" .. var, dv)
+	_add_dv(self, pkt .. var, dv)
 	return dv
 end
 
 function dynvars:inherit(other, fillTbl)
 	for i,v in pairs(other.index) do
-		local ftIndex = v.pkt .. v.var:sub(1,1):upper() .. v.var:sub(2)
+		local ftIndex = v.pkt .. v.var
 		if not self.index[i] and not fillTbl[ftIndex] then
 			_add_dv(self, i, v)
 		end
@@ -73,7 +72,7 @@ function dynvars:inherit(other, fillTbl)
 end
 
 function dynvars:finalize()
-	setmetatable(self, _mt_dv_final)
+	setmetatable(self, dv_final)
 end
 
 function dv_final:updateAll()
