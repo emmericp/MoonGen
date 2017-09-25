@@ -63,6 +63,8 @@ option.configHelp = "Will also accept a function that will be called for each"
 	dynvars:applyAll(packet)
 	dynvars:updateApplyAll(packet)
 end]]
+	.. "\n\nSingle dynvars can also be accessed by name using"
+	.. " 'dynvars.index.<pktVar>' (e.g. udpSrc)."
 
 function option.getHelp()
 	return {
