@@ -2,7 +2,7 @@ local units = require "units"
 
 local option = {}
 
-option.description = "Start a second timestamped version of this flow."
+option.description = "Start a second timestamped version of this flow. (default=false)"
 option.configHelp = "Will also accept boolean values."
 function option.getHelp()
 	return {
