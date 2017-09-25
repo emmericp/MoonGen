@@ -94,7 +94,16 @@ help.addTopic("options", function(hp)
 	hp:body("Available time units are '\27[4m(ms|s|m|h)\27[0m'"
 		.. " for millisecond, second, minute or hour.")
 
-	for i,v in pairs(require "options") do
+	local options = require "options"
+	local names = {}
+
+	for i in pairs(options) do table.insert(names, i) end
+	table.sort(names)
+
+	for n = 1, #names do
+		local i = names[n]
+		local v = options[i]
+
 		hp:section(i)
 		hp:body(v.description)
 
@@ -120,13 +129,12 @@ help.addTopic("topics", function(hp)
 	for topic in pairs(help.topics) do
 		if topic ~= "topics" then
 			table.insert(result, topic)
-			table.insert(result, ", ")
 		end
 	end
-	table.remove(result) -- remove last ","
+	table.sort(result)
 
 	hp:section("Available Topics")
-	hp:body(table.concat(result))
+	hp:body(table.concat(result, ", "))
 end)
 
 local flowExample = [[
