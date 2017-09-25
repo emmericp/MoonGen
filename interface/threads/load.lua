@@ -40,9 +40,7 @@ end
 local function loadThread(flow, sendQueue)
 	flow = Flow.restore(flow)
 
-	local hasPayload = flow.packet.hasPayload -- TODO as option
 	local mempool = memory.createMemPool(function(buf) flow:fillBuf(buf) end)
-
 	local bufs = mempool:bufArray()
 
 	-- dataLimit in packets, timeLimit in seconds
@@ -54,11 +52,12 @@ local function loadThread(flow, sendQueue)
 	flow:property("counter"):inc()
 
 	local uid = flow:option "uid"
+	local payload = flow:option "uniquePayload"
 	while mg.running() and (not runtime or runtime:running()) do
 		bufs:alloc(flow:packetSize())
 
 		if flow.isDynamic then
-			if hasPayload then
+			if payload then
 				for _, buf in ipairs(bufs) do
 					local pkt = flow:updateBuf(buf)
 					pkt.payload.uint32[0] = uid

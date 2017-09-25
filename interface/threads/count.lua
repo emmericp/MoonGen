@@ -22,8 +22,10 @@ function thread.start(devices, pipe)
 			endDelay = flow:getDelay() * 70 -- 64 packets per buffer + margin
 		end
 
-		mg.startTask("__INTERFACE_COUNT", flow,
-			devices:rxQueue(flow:property "rx_dev"), pipe, endDelay)
+		if flow:option "uniquePayload" then -- TODO count as uncategorized
+			mg.startTask("__INTERFACE_COUNT", flow,
+				devices:rxQueue(flow:property "rx_dev"), pipe, endDelay)
+		end
 	end
 end
 
