@@ -35,7 +35,7 @@ local function run(self, file, f, msg)
 	assert(self.env.error, "No error handler set.")
 
 	if not f then
-		self.errors(0, msg)
+		self:error()(0, msg)
 		return
 	end
 
