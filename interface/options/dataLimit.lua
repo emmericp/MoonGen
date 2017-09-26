@@ -35,7 +35,7 @@ end
 function option.parse(self, limit, error)
 	if not limit then return end
 
-	local psize = self:getPacketLength(true)
+	local psize = self:packetSize(true)
 	local t = type(limit)
 
 	local num, unit

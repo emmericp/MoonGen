@@ -38,7 +38,7 @@ function Flow:updateBuf(buf)
 end
 
 function Flow:packetSize(checksum)
-	return self.packet.fillTbl.pktLength + (checksum and 4 or 0)
+	return (self.packet.fillTbl.pktLength or 0) + (checksum and 4 or 0)
 end
 
 function Flow:clone(properties)

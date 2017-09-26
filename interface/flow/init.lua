@@ -41,6 +41,7 @@ function env.Flow(tbl)
 			env.error:assert(parent, "Unknown parent %q of flow %q.", parent, name)
 		elseif t ~= "table" and t ~= "nil" then
 			env.error("Invalid value for parent of flow %q. String or flow expected, got %s.", name, t)
+			parent = nil
 		end
 
 		local packet = tbl[2]
@@ -186,7 +187,9 @@ function mod.getInstance(name, file, cli_options, overwrites, properties, silent
 
 	finalizeErrHnd(silent, error, "%d errors found while processing flow %q.", name)
 
-	return flow
+	if error.valid then
+		return flow
+	end
 end
 
 function mod.restore(flow)

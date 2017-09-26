@@ -52,7 +52,7 @@ function option.parse(self, rate, error)
 		cbr = rate
 	elseif t == "string" then
 		local msg
-		cbr, msg = _parse_rate(rate, self:getPacketLength(true))
+		cbr, msg = _parse_rate(rate, self:packetSize(true))
 		error:assert(cbr, msg)
 	else
 		error("Invalid argument. String or number expected, got %s.", t)
