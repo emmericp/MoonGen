@@ -29,7 +29,6 @@ end
 function thread.prepare(flows, devices)
 	for _,flow in ipairs(flows) do
 		if doesArp(flow) then
-			print(flow)
 			table.insert(thread.flows, flow)
 			local ft = flow.packet.fillTbl
 
