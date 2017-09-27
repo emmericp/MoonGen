@@ -8,6 +8,7 @@ local Flow = require "flow"
 local parse = require "flowparse"
 local counter = require "counter"
 
+local arpThread = require "threads.arp"
 local loadThread = require "threads.load"
 local statsThread = require "threads.stats"
 local deviceStatsThread = require "threads.deviceStats"
@@ -77,6 +78,7 @@ function master(args) -- luacheck: globals master
 		end
 	end
 
+	arpThread.prepare(flows, devices)
 	loadThread.prepare(flows, devices)
 	countThread.prepare(flows, devices)
 	statsThread.prepare(flows, devices)
@@ -97,6 +99,7 @@ function master(args) -- luacheck: globals master
 
 	local statsPipe = pipe:newSlowPipe()
 
+	arpThread.start(devices)
 	deviceStatsThread.start(devices)
 	statsThread.start(devices, statsPipe)
 	countThread.start(devices, statsPipe)

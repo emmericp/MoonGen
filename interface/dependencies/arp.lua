@@ -1,10 +1,11 @@
 local arp = require "proto.arp"
+local arpThread = require "threads.arp"
 
 local dependency = {}
 
 function dependency.env(env)
 	function env.arp(ip, fallback, timeout)
-		return { "arp", ip, fallback, timeout or 5 }
+		return { "arp", ip, fallback, timeout or 5, arpThread.counter }
 	end
 end
 
@@ -20,13 +21,19 @@ local function macString(addr)
 	return addr
 end
 
-function dependency.debug(tbl)
-	local addr = tbl[2]
+-- luacheck: globals ipString
+function ipString(addr)
 	if type(addr) == "number" then
 		addr = ip4ToString(addr) -- luacheck: read globals ip4ToString
 	elseif type(addr) == "cdata" then
 		addr = addr:getString(true)
 	end
+
+	return addr
+end
+
+function dependency.debug(tbl)
+	local addr = ipString(tbl[2])
 
 	if tbl[3] then
 		return string.format("Arp result for ip '%s', fallback to '%s'.", addr, macString(tbl[3]))
@@ -36,7 +43,7 @@ function dependency.debug(tbl)
 end
 
 function dependency.getValue(_, tbl)
-	return nil -- TODO arp.blockingLookup(tbl[2], tbl[4]) or tbl[3]
+	return arp.blockingLookup(tbl[2], tbl[4]) or tbl[3]
 end
 
 return dependency
