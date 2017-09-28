@@ -12,9 +12,10 @@ return function(env)
 		end
 
 		return function()
-			v = v + step
-			if v > limit then
+			if v == limit then
 				v = start
+			else
+				v = v + step
 			end
 
 			return v
