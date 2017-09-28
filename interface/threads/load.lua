@@ -3,6 +3,7 @@ local limiter = require "software-ratecontrol"
 local memory  = require "memory"
 local mg      = require "moongen"
 local timer   = require "timer"
+local stats   = require "stats"
 
 local Flow = require "flow"
 
@@ -40,6 +41,10 @@ end
 local function loadThread(flow, sendQueue)
 	flow = Flow.restore(flow)
 
+	local counter = stats:newPktTxCounter(
+		("Flow: dev=%d uid=%d"):format(flow:property "tx_dev", flow:option "uid")
+	)
+
 	local mempool = memory.createMemPool(function(buf) flow:fillBuf(buf) end)
 	local bufs = mempool:bufArray()
 
@@ -61,10 +66,12 @@ local function loadThread(flow, sendQueue)
 				for _, buf in ipairs(bufs) do
 					local pkt = flow:updateBuf(buf)
 					pkt.payload.uint32[0] = uid
+					counter:countPacket(buf)
 				end
 			else
 				for _, buf in ipairs(bufs) do
 					flow:updateBuf(buf)
+					counter:countPacket(buf)
 				end
 			end
 		end
@@ -79,6 +86,8 @@ local function loadThread(flow, sendQueue)
 
 		bufs:offloadUdpChecksums()
 		sendQueue:send(bufs)
+
+		counter:update()
 	end
 
 	flow:property("counter"):dec()
@@ -86,6 +95,8 @@ local function loadThread(flow, sendQueue)
 	if sendQueue.stop then
 		sendQueue:stop()
 	end
+
+	counter:finalize()
 end
 
 __INTERFACE_LOAD = loadThread -- luacheck: globals __INTERFACE_LOAD
