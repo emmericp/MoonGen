@@ -17,6 +17,7 @@ local function _print_list(config)
 			table.insert(files[f.file], f)
 			count = count + 1
 		end
+		table.sort(files[f.file], function(a,b) return a.name < b.name end)
 	end
 
 	if count == 0 then
