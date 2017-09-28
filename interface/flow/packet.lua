@@ -27,7 +27,7 @@ function Packet.new(proto, tbl, error)
 	}
 
 	for i,v in pairs(tbl) do
-		local pkt, var = string.match(i, "^([%l%d]+)(%u[%l%d]*)$");
+		local pkt, var = string.match(i, "^([%l%d]+)(%u.*)$");
 
 		if pkt then
 			if type(v) == "function" then
