@@ -25,13 +25,13 @@ local function _print_list(config)
 		return
 	end
 
-	local fmt = "  %-58s%-10s%-10d"
-	print(string.format("%-60s%-10s%-10s", "NAME", "PROTOCOL", "DYNVARS"))
+	local fmt = "  %-58s%-10s%-5d%-5d"
+	print(string.format("%-60s%-10s%-5s%-5s", "NAME", "PROTOCOL", "DYN", "DEP"))
 	print(string.rep("=", 80))
 	for i,v in pairs(files) do
 		print(i)
 		for _,f in ipairs(v) do
-			print(string.format(fmt, f.name, f.packet.proto, #f.packet.dynvars))
+			print(string.format(fmt, f.name, f.packet.proto, #f.packet.dynvars, #f.packet.depvars))
 		end
 	end
 end
