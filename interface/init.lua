@@ -3,7 +3,10 @@ local device     = require "device"
 local pipe       = require "pipe"
 local log        = require "log"
 
-package.path = package.path .. ";interface/?.lua;interface/?/init.lua"
+
+local base = debug.getinfo(1, "S").source:sub(2,-9) -- remove "init.lua"
+package.path = ("%s;%s?.lua;%s?/init.lua"):format(package.path, base, base)
+
 local Flow = require "flow"
 local parse = require "flowparse"
 local counter = require "counter"
