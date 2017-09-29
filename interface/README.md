@@ -18,7 +18,8 @@ Flow{"example", Packet.Udp{
   mode = "random",
   rate = 1234,
   timestamp = true
-}```
+}
+```
 
 # Command Line
 This interface supports 3 commands:
