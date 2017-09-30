@@ -10,6 +10,7 @@ package.path = ("%s;%s?.lua;%s?/init.lua"):format(package.path, base, base)
 local Flow = require "flow"
 local parse = require "flowparse"
 local counter = require "counter"
+local devmgr = require "devmgr"
 
 local arpThread = require "threads.arp"
 local loadThread = require "threads.load"
@@ -19,46 +20,21 @@ local countThread = require "threads.count"
 local timestampThread = require "threads.timestamp"
 
 
-configure = require "cli" -- luacheck: globals configure
+function configure(parser) -- luacheck: globals configure
+	parser:description("Configuration based interface for MoonGen.")
 
-local devicesClass = {}
+	local start = parser:command("start", "Send one or more flows.")
+	start:option("-c --config", "Config file directory."):default("flows")
+	start:option("-o --output", "Output directory (histograms etc.)."):default(".")
+	start:argument("flows", "List of flow names."):args "+"
 
-function devicesClass:reserveTx(tx)
-	self[tx].txq = self[tx].txq + 1
-end
-
-function devicesClass:reserveRx(rx)
-	self[rx].rxq = self[rx].rxq + 1
-end
-
-local function _inc(tbl, key)
-	local result = tbl[key]
-	tbl[key] = result + 1
-	return result
-end
-
-function devicesClass:txQueue(tx)
-	return self[tx].dev:getTxQueue(_inc(self[tx], "txqi"))
-end
-
-function devicesClass:rxQueue(rx)
-	return self[rx].dev:getRxQueue(_inc(self[rx], "rxqi"))
+	require "cli" (parser)
 end
 
 function master(args) -- luacheck: globals master
 	Flow.crawlDirectory(args.config)
 
-	-- auto-filling device index
-	local devices = setmetatable({}, {
-		__index = function(tbl, key)
-			if type(key) ~= "number" then
-				return devicesClass[key]
-			end
-			local r = { rxq = 0, txq = 0, rxqi = 0, txqi = 0 }
-			tbl[key] = r; return r
-		end
-	})
-
+	local devices = devmgr.newDevmgr()
 	local devnum = device.numDevices()
 	local flows = {}
 	for _,arg in ipairs(args.flows) do
