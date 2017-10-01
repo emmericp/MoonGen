@@ -1,5 +1,4 @@
 local mg         = require "moongen"
-local device     = require "device"
 local pipe       = require "pipe"
 local log        = require "log"
 
@@ -35,10 +34,9 @@ function master(args) -- luacheck: globals master
 	Flow.crawlDirectory(args.config)
 
 	local devices = devmgr.newDevmgr()
-	local devnum = device.numDevices()
 	local flows = {}
 	for _,arg in ipairs(args.flows) do
-		local fparse = parse(arg, devnum)
+		local fparse = parse(arg, devices.max)
 		-- TODO fparse.file, fparse.overwrites
 		local f
 
@@ -69,12 +67,7 @@ function master(args) -- luacheck: globals master
 		return
 	end
 
-	for i,v in pairs(devices) do
-		local txq, rxq = v.txq, v.rxq
-		txq, rxq = (txq == 0) and 1 or txq, (rxq == 0) and 1 or rxq
-		v.dev = device.config{ port = i, rxQueues = rxq, txQueues = txq }
-	end
-	device.waitForLinks()
+	devices:configure()
 
 	local statsPipe = pipe:newSlowPipe()
 
