@@ -4,12 +4,10 @@ local option = {}
 
 option.description = "Start a second timestamped version of this flow. (default=false)"
 option.configHelp = "Will also accept boolean values."
-function option.getHelp()
-	return {
-		{ "<boolean>", "Default use case."},
-		{ nil, "Set option to true."},
-	}
-end
+option.usage = {
+	{ "<boolean>", "Default use case."},
+	{ nil, "Set option to true."},
+}
 
 function option.parse(self, bool, error)
 	bool = units.parseBool(bool, false, error)

@@ -107,7 +107,7 @@ help.addTopic("options", function(hp)
 		hp:section(i)
 		hp:body(v.description)
 
-		for _,fmt in ipairs(v.getHelp()) do
+		for _,fmt in ipairs(v.usage) do
 			if fmt[1] then
 				hp:subsection(string.format("%s = \27[4m%s\27[0m", i, fmt[1]))
 			else

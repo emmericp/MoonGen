@@ -3,12 +3,9 @@ local option = {}
 option.description = "Overwrite uid used for this flow. Useful to receive flows"
 	.. " sent by another instance."
 option.configHelp = "Will also accept number values. Same restrictions as explained above."
-
-function option.getHelp()
-	return {
-		{ "<number>", "Set the uid of this flow to <number>. Needs to be a unique integer greater than zero."},
-	}
-end
+option.usage = {
+	{ "<number>", "Set the uid of this flow to <number>. Needs to be a unique integer greater than zero."},
+}
 
 local uids = {}
 

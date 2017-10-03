@@ -8,9 +8,7 @@ option.description = "Stop sending this flow after a certain time, starting with
 	.. " passed between first and last packet might be longer, but should never"
 	.. " be shorter than expected."
 option.configHelp = "Passing a number instead of a string will interpret the value as number of seconds."
-function option.getHelp()
-	return { { "<number><timeUnit>", "Default use case." }}
-end
+option.usage = { { "<number><timeUnit>", "Default use case." } }
 
 
 local function _parse_limit(lstring)

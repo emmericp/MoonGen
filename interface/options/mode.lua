@@ -65,17 +65,14 @@ option.configHelp = "Will also accept a function that will be called for each"
 end]]
 	.. "\n\nSingle dynvars can also be accessed by name using"
 	.. " 'dynvars.index.<pktVar>' (e.g. udpSrc)."
-
-function option.getHelp()
-	return {
-		{ "none", "Ignore all dynamic fields and send the first packet created." },
-		{ "single", "Update one field at a time, but apply every change so far." },
-		{ "alternating", "Update and apply one field at a time." },
-		{ "random", "Like single, but the order of updates is not fixed."},
-		{ "random_alt", "Like alternating, but the order of updates is not fixed."},
-		{ "all", "Update and apply all fields every time."},
-	}
-end
+option.usage = {
+	{ "none", "Ignore all dynamic fields and send the first packet created." },
+	{ "single", "Update one field at a time, but apply every change so far." },
+	{ "alternating", "Update and apply one field at a time." },
+	{ "random", "Like single, but the order of updates is not fixed."},
+	{ "random_alt", "Like alternating, but the order of updates is not fixed."},
+	{ "all", "Update and apply all fields every time."},
+}
 
 option.formatString = {}
 for _,v in ipairs(_modelist) do

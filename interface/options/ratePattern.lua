@@ -8,9 +8,9 @@ end
 local option = {}
 
 option.description = "Control how bytes are distributed over time, when a ratelimit is set."
-function option.getHelp()
-	return { { "(cbr|poisson)", "Poisson will create bursts of packets instead of a constant bitrate. (default = cbr)" } }
-end
+option.usage = {
+	{ "(cbr|poisson)", "Poisson will create bursts of packets instead of a constant bitrate. (default = cbr)" }
+}
 
 function option.parse(_, pattern, error)
 	local t = type(pattern)
