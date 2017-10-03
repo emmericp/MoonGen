@@ -19,7 +19,7 @@ local function next_uid() -- simulating pure lua # operator + 1
 end
 
 function option.parse(flow, number, error)
-	if flow.results.uid then return flow.results.uid end
+	if flow:property "uid" then return flow:property "uid" end
 
 	local t = type(number)
 	if type(number) == "string" then
@@ -35,6 +35,7 @@ function option.parse(flow, number, error)
 	end
 
 	uids[number] = true
+	flow:setProperty("uid", number)
 	return number
 end
 
