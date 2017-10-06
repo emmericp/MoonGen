@@ -1,5 +1,4 @@
 local mg         = require "moongen"
-local pipe       = require "pipe"
 local log        = require "log"
 
 
@@ -13,7 +12,6 @@ local devmgr = require "devmgr"
 
 local arpThread = require "threads.arp"
 local loadThread = require "threads.load"
-local statsThread = require "threads.stats"
 local deviceStatsThread = require "threads.deviceStats"
 local countThread = require "threads.count"
 local timestampThread = require "threads.timestamp"
@@ -58,7 +56,6 @@ function master(args) -- luacheck: globals master
 	arpThread.prepare(flows, devices)
 	loadThread.prepare(flows, devices)
 	countThread.prepare(flows, devices)
-	statsThread.prepare(flows, devices)
 	deviceStatsThread.prepare(flows, devices)
 	timestampThread.prepare(flows, devices)
 
@@ -69,12 +66,9 @@ function master(args) -- luacheck: globals master
 
 	devices:configure()
 
-	local statsPipe = pipe:newSlowPipe()
-
 	arpThread.start(devices)
 	deviceStatsThread.start(devices)
-	statsThread.start(devices, statsPipe)
-	countThread.start(devices, statsPipe)
+	countThread.start(devices)
 	loadThread.start(devices)
 	timestampThread.start(devices, args.output)
 
