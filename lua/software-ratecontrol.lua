@@ -18,7 +18,7 @@ ffi.cdef[[
 		uint8_t stop;
 	};
 
-	//void mg_rate_limiter_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue);
+	void mg_rate_limiter_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t link_speed, struct limiter_control* ctl);
 	void mg_rate_limiter_cbr_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, struct limiter_control* ctl);
 	void mg_rate_limiter_poisson_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed, struct limiter_control* ctl);
 ]]
@@ -39,7 +39,7 @@ end
 
 function rateLimiter:sendN(bufs, n)
 	repeat
-		if pipe.packetRing.sendN(self, bufs, n) then
+		if pipe:sendToPacketRing(self.ring, bufs, n) then
 			break
 		end
 	until not mg.running()
@@ -86,7 +86,7 @@ function __MG_RATE_LIMITER_MAIN(ring, devId, qid, mode, delay, speed, ctl)
 	elseif mode == "poisson" then
 		C.mg_rate_limiter_poisson_main_loop(ring, devId, qid, delay, speed, ctl)
 	else
-		log:fatal("generic IPG mode NYI, please specifiy either cbr or poisson")
+		C.mg_rate_limiter_main_loop(ring, devId, qid, speed, ctl)
 	end
 end
 

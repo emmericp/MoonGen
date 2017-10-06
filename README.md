@@ -144,9 +144,16 @@ Use `libmoon/deps/dpdk/tools/dpdk-devbind.py` to manage NICs manually.
 * gcc >= 4.8
 * make
 * cmake
+* libnuma-dev
 * kernel headers (for the DPDK igb-uio driver)
 * lspci (for `dpdk-devbind.py`)
 * [additional dependencies](https://github.com/libmoon/libmoon/blob/master/install-mlx.md) (For Mellanox NICs only)
+
+Run the following command to install these on Debian/Ubuntu:
+
+```
+sudo apt-get install -y build-essential cmake linux-headers-`uname -r` pciutils libnuma-dev
+```
 
 # Examples
 MoonGen comes with examples in the examples folder which can be used as a basis for custom scripts.
