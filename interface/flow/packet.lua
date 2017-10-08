@@ -35,7 +35,8 @@ function Packet.new(proto, tbl, error)
 			elseif type(v) == "table" then
 				local ft = error:assert(v[1] and dependencies[v[1]],
 					"Invalid table passed to field '%s'.", i)
-				table.insert(self.depvars, { field = i, dep = ft, tbl = v })
+				self.depvars[i] = { dep = ft, tbl = v }
+				self.fillTbl[i] = true -- to overwrite on inherit
 			else
 				self.fillTbl[i] = v
 			end
@@ -53,14 +54,9 @@ function Packet.new(proto, tbl, error)
 end
 
 local function _inherit_depvars(self, other)
-	local depvarIndex = {}
-	for _,v in ipairs(self.depvars) do
-		depvarIndex[v.field] = v
-	end
-
-	for _,v in ipairs(other.depvars) do
-		if not depvarIndex[v.field] and not self.fillTbl[v.field] then
-			table.insert(self.depvars, v)
+	for i,v in pairs(other.depvars) do
+		if not self.depvars[i] and not self.fillTbl[i] then
+			self.depvars[i] = v
 		end
 	end
 end
@@ -89,8 +85,8 @@ function Packet:prepare(error, flow, final)
 	end
 
 	if final then
-		for _,v in ipairs(self.depvars) do
-			self.fillTbl[v.field] = v.dep.getValue(flow, v.tbl)
+		for i,v in pairs(self.depvars) do
+			self.fillTbl[i] = v.dep.getValue(flow, v.tbl)
 		end
 	end
 
