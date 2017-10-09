@@ -65,7 +65,7 @@ local function _print_debug(args)
 	local pkt = flow:fillBuf(test)
 	if flow.updatePacket then
 		for _ = 1, args.count do
-			flow:updateBuf(test):dump()
+			flow:updateBuf(test):dump(length)
 		end
 	else
 		if args.count > 1 then
