@@ -15,6 +15,7 @@ ffi.cdef[[
 local debug_packet = ffi.metatype("debug_packet_t", {
 	__index = {
 		getLength = function(self) return self.length end,
+		getBytes = function(self) return self.data end,
 		getData = function(self)
 			return voidPtrType(self.data) -- luacheck: globals voidPtrType
 		end,
@@ -30,7 +31,7 @@ local function _print_debug(args)
 
 	if not flow then return end
 
-	local length = flow:packetSize(true)
+	local length = flow:packetSize()
 	local array = ffi.new("uint8_t[?]", length)
 	local test = debug_packet(length, array)
 

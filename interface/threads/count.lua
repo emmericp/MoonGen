@@ -2,7 +2,6 @@ local memory  = require "memory"
 local mg      = require "moongen"
 local timer   = require "timer"
 local stats   = require "stats"
-local packet  = require "packet"
 
 local Flow = require "flow"
 
@@ -53,8 +52,11 @@ function statsManager:__index(key)
 	return cnt
 end
 
-local function getPayload(pkt)
-	return pkt.payload.uint32[0]
+local function getUid(bytes, length)
+	return bytes[length - 1] * 0xffffff
+			 + bytes[length - 2] * 0xffff
+			 + bytes[length - 3] * 0xff
+			 + bytes[length - 4]
 end
 
 local function countThread(flow, rxQueue, delay)
@@ -69,9 +71,7 @@ local function countThread(flow, rxQueue, delay)
 		for i = 1, rx do
 			local buf = bufs[i]
 
-			local pkt = buf:get()
-			local status, result = pcall(getPayload, pkt)
-			local uid = status and result or 0
+			local uid = getUid(buf:getBytes(), buf:getSize())
 
 			counters[uid]:countPacket(buf)
 			counters[uid]:update()
