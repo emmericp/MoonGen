@@ -42,7 +42,7 @@ local function loadThread(flow, sendQueue)
 	flow = Flow.restore(flow)
 
 	local counter = stats:newPktTxCounter(
-		("Flow: dev=%d uid=%d"):format(flow:property "tx_dev", flow:option "uid")
+		("Flow: dev=%d uid=%#x"):format(flow:property "tx_dev", flow:option "uid")
 	)
 
 	local mempool = memory.createMemPool(function(buf) flow:fillBuf(buf) end)

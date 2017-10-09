@@ -49,7 +49,7 @@ function master(args) -- luacheck: globals master
 
 		if f then
 			table.insert(flows, f)
-			log:info("Flow %s => %s", f.proto.name, f:option "uid")
+			log:info("Flow %s => %#x", f.proto.name, f:option "uid")
 		end
 	end
 

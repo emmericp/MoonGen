@@ -31,7 +31,7 @@ local statsManager = {}
 statsManager.__index = statsManager
 
 local function getCounter(dev, uid)
-	return stats:newPktRxCounter(("Flow: dev=%s uid=%s"):format(tostring(dev), tostring(uid)))
+	return stats:newPktRxCounter(("Flow: dev=%s uid=%#x"):format(tostring(dev), uid))
 end
 
 local function finalize(self)
