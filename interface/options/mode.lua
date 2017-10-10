@@ -96,9 +96,10 @@ function option.parse(self, mode, error)
 
 	local t = type(mode)
 	if t == "string" then
-		mode = _valid_modes[string.lower(mode)]
-		if error:assert(mode, "Invalid value %q. Can be one of %s.",
-			mode, table.concat(_modelist, ", ")) then
+		mode = error:assert(_valid_modes[string.lower(mode)], "Invalid value %q. Can be one of %s.",
+			mode, table.concat(_modelist, ", "))
+
+		if mode then
 			mode = mode()
 		end
 	elseif t ~= "function" and t ~= "nil" then
