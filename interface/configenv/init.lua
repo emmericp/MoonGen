@@ -7,7 +7,7 @@ local mod = { env = {} }
 local _safe_methods = {}
 for v in string.gmatch([[
 	string table math
-	getmetatable
+	getmetatable setmetatable
 	ipairs next pairs
 	rawequal rawget rawlen
 	tonumber tostring type
