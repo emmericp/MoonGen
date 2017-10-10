@@ -2,7 +2,9 @@ local units = require "units"
 
 local option = {}
 
-option.description = "Set the payload to a unique value to allow generating per-flow stats. (default = true)"
+option.description = "Set the payload to a unique value to allow generating per-flow stats."
+	..	" (default = true if possible)\nSet to true to check error messages when a flow"
+	..  " does not use this by default."
 option.configHelp = "Will also accept boolean values."
 option.usage = {
 	{ "<boolean>", "Default use case."},
@@ -10,20 +12,20 @@ option.usage = {
 }
 
 function option.parse(self, bool, error)
-  bool = units.parseBool(bool, false, error)
-
 	local len = self.packet.fillTbl.pktLength
-  if not self.packet.hasPayload then
-    error:assert(not bool, "Set to true, but packet cannot carry payloads.")
-    return false
-	elseif len < 60 then -- Needs 60 bytes to fit uid at the end of the ethernet frame
-    error:assert(not bool, "Set to true, but packet is not large enough to carry uid information."
+
+	local hasPayload = self.packet.hasPayload
+	local fillsEthFrame = len >= 60
+	local hasSpace = len >= self.packet.minSize + 4
+
+  bool = units.parseBool(bool, hasPayload and fillsEthFrame and hasSpace, error)
+
+  if bool then
+    bool = bool and error:assert(hasPayload, "Set to true, but packet cannot carry payloads.")
+    bool = bool and error:assert(fillsEthFrame, "Set to true, but packet is not large enough to carry uid information."
 			.. " Needs at least 60 bytes.")
-		return false
-  elseif len < self.packet.minSize + 4 then
-    error:assert(not bool, "Set to true, but packet is not large enough to carry uid information."
-			.. " Needs at least 4 bytes above the minimum size.")
-		return false
+    bool = bool and error:assert(hasSpace, "Set to true, but packet is not large enough to carry uid information."
+			.. " Needs at least 4 bytes above the minimum size of %d.", self.packet.minSize)
 	end
 
 	return bool
