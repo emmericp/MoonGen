@@ -2,17 +2,17 @@ return function(env)
 
 	function env.range(start, limit, step)
 		step = step or 1
-		local v = start - 1
+		local v = start - step
 
 		if not limit then
 			return function()
-				start = start + step
+				v = v + step
 				return v
 			end
 		end
 
 		return function()
-			if v == limit then
+			if v > limit then
 				v = start
 			else
 				v = v + step
