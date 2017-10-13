@@ -34,16 +34,14 @@ function master(args) -- luacheck: globals master
 	local devices = devmgr.newDevmgr()
 	local flows = {}
 	for _,arg in ipairs(args.flows) do
-		local fparse = parse(arg, devices.max)
-		-- TODO fparse.file, fparse.overwrites
-		local f
+		local f = parse(arg, devices.max)
 
-		if #fparse.tx == 0 and #fparse.rx == 0 then
+		if #f.tx == 0 and #f.rx == 0 then
 			log:error("Need to pass at least one tx or rx device.")
 		else
-			f = Flow.getInstance(fparse.name, fparse.file, fparse.options, fparse.overwrites, {
+			f = Flow.getInstance(f.name, f.file, f.options, f.overwrites, {
 				counter = counter.new(),
-				tx = fparse.tx, rx = fparse.rx
+				tx = f.tx, rx = f.rx
 			})
 		end
 

@@ -80,7 +80,6 @@ for _,v in ipairs(_modelist) do
 end
 option.formatString = "<" .. table.concat(option.formatString, "|") .. ">"
 option.helpString = "Change how dynamic fields are updated. (default = single)"
--- TODO add value documentation
 
 function option.parse(self, mode, error)
 	if #self.packet.dynvars == 0 then
