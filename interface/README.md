@@ -4,7 +4,7 @@ This interface is supposed to be an easier to understand, use and maintain alter
 ## How to use
 `./mginterface start load-latency:0:1:rate=1000,timeLimit=10m`
 
-Similar to `examples\l3-load-latency.lua` with rate set to 1000 mbit/s but stops automatically after 10 minutes. Will send on port `0` and receive on port `1`. Packet content is defined in `flows\examples.lua`.
+Similar to `examples/l3-load-latency.lua` with rate set to 1000 mbit/s but stops automatically after 10 minutes. Will send on port `0` and receive on port `1`. Packet content is defined in `flows/examples.lua`.
 
 For quick adjustments the packet content can also be changed from the command-line using:
 
