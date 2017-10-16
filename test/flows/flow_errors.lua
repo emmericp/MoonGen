@@ -18,3 +18,9 @@ Flow{"e1", Packet.Udp{},
 Flow{"e2", Packet.Udp{},
 	rate = "1b/a",
 }
+
+Flow{"valid", Packet.Udp{
+	pktLength = 60
+}}
+
+Flow{"f1", Packet.Udp{}}
