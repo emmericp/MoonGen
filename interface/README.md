@@ -29,9 +29,9 @@ using `./mginterface help options`.
 Start all the flows supplied as arguments. All arguments besides the name can be  `,`-separated lists. Trailing `:` can be omitted.
 
 ### List
-`mginterface list [<directory>]`
+`mginterface list [<entry>] ...`
 
-Show a tabular view of all flows available in the directory (default is `flows`). Useful to remember the name of a particular flow or find the file a flow resides in.
+Show a tabular view of all flows available in the directories or files passed (default is `flows`). Useful to remember the name of a particular flow or find the file a flow resides in.
 
 ### Debug
 `mginterface debug <flow>`
