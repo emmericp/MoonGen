@@ -124,7 +124,15 @@ function mod.crawlDirectory(baseDir, silent)
 	end
 
 	finalizeErrHnd(silent, configenv:error(),
-		"%d errors found while processing config:")
+		"%d errors found while processing directory %s:", baseDir)
+end
+
+function mod.crawlFile(filename, silent)
+	configenv:setErrHnd()
+	configenv:parseFile(filename)
+
+	finalizeErrHnd(silent, configenv:error(),
+		"%d errors found while processing file %s:", filename)
 end
 
 function mod.getInstance(name, file, cli_options, overwrites, properties, silent, final)
