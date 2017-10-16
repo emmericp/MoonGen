@@ -38,6 +38,7 @@ function master(args) -- luacheck: globals master
 
 		if #f.tx == 0 and #f.rx == 0 then
 			log:error("Need to pass at least one tx or rx device.")
+			f = nil
 		else
 			f = Flow.getInstance(f.name, f.file, f.options, f.overwrites, {
 				counter = counter.new(),

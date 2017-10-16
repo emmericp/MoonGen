@@ -12,7 +12,7 @@ option.usage = {
 }
 
 function option.parse(self, bool, error)
-	local len = self.packet.fillTbl.pktLength
+	local len = self:packetSize()
 
 	local hasPayload = self.packet.hasPayload
 	local fillsEthFrame = len >= 60
