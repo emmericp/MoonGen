@@ -17,7 +17,8 @@ function dependency.debug(tbl)
 end
 
 function dependency.getValue(flow, tbl)
-  return device.get(flow:property(tbl[2] .. "_dev")):getMac(true)
+  local id = flow:property(tbl[2] .. "_dev") or flow:property(tbl[2])[1]
+  return device.get(id):getMac(true)
 end
 
 return dependency

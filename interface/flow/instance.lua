@@ -1,9 +1,32 @@
 local Flow = {}
 Flow.__index = Flow
 
+local function separateUid(uid)
+	-- luacheck: globals read bit
+	return
+		bit.band(bit.rshift(uid, 24), 0xff),
+		bit.band(bit.rshift(uid, 16), 0xff),
+		bit.band(bit.rshift(uid, 8), 0xff),
+		bit.band(bit.rshift(uid, 0), 0xff)
+end
+
 function Flow:prepare(error, final)
 	self.isDynamic = type(self.updatePacket) ~= "nil"
 	self.packet:prepare(error, self, final)
+
+	if self:option "uniquePayload" then
+		local p0, p1, p2, p3 = separateUid(self:option "uid")
+		local size = self:packetSize()
+		self.setPayload = function(pkt)
+			local bytes = pkt:getBytes()
+			bytes[size - 1] = p0
+			bytes[size - 2] = p1
+			bytes[size - 3] = p2
+			bytes[size - 4] = p3
+		end
+	else
+		self.setPayload = function() end
+	end
 end
 
 function Flow:property(name)
@@ -21,12 +44,14 @@ end
 function Flow:fillBuf(buf)
 	local pkt = self.packet.getPacket(buf)
 	pkt:fill(self.packet.fillTbl)
+	self.setPayload(buf)
 	return pkt
 end
 
 function Flow:fillUpdateBuf(buf)
 	local pkt = self.packet.getPacket(buf)
 	pkt:fill(self.packet.fillTbl)
+	self.setPayload(buf)
 	self.updatePacket(self.packet.dynvars, pkt)
 	return pkt
 end

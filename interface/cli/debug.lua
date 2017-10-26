@@ -15,6 +15,7 @@ ffi.cdef[[
 local debug_packet = ffi.metatype("debug_packet_t", {
 	__index = {
 		getLength = function(self) return self.length end,
+		getBytes = function(self) return self.data end,
 		getData = function(self)
 			return voidPtrType(self.data) -- luacheck: globals voidPtrType
 		end,
@@ -30,7 +31,7 @@ local function _print_debug(args)
 
 	if not flow then return end
 
-	local length = flow:packetSize(true)
+	local length = flow:packetSize()
 	local array = ffi.new("uint8_t[?]", length)
 	local test = debug_packet(length, array)
 
@@ -52,9 +53,9 @@ local function _print_debug(args)
 	local dependencies = flow.packet.depvars
 	if #dependencies > 0 then
 		local dep_out = {"Environment dependent:\n"}
-		for _,v in ipairs(dependencies) do
+		for i,v in pairs(dependencies) do
 			table.insert(dep_out, string.rep(" ", 4))
-			table.insert(dep_out, v.field)
+			table.insert(dep_out, i)
 			table.insert(dep_out, " => ")
 			table.insert(dep_out, v.dep.debug(v.tbl))
 			table.insert(dep_out, "\n")
@@ -65,7 +66,7 @@ local function _print_debug(args)
 	local pkt = flow:fillBuf(test)
 	if flow.updatePacket then
 		for _ = 1, args.count do
-			flow:updateBuf(test):dump()
+			flow:updateBuf(test):dump(length)
 		end
 	else
 		if args.count > 1 then

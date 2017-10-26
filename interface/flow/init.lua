@@ -124,7 +124,15 @@ function mod.crawlDirectory(baseDir, silent)
 	end
 
 	finalizeErrHnd(silent, configenv:error(),
-		"%d errors found while processing config:")
+		"%d errors found while processing directory %s:", baseDir)
+end
+
+function mod.crawlFile(filename, silent)
+	configenv:setErrHnd()
+	configenv:parseFile(filename)
+
+	finalizeErrHnd(silent, configenv:error(),
+		"%d errors found while processing file %s:", filename)
 end
 
 function mod.getInstance(name, file, cli_options, overwrites, properties, silent, final)
@@ -160,13 +168,14 @@ function mod.getInstance(name, file, cli_options, overwrites, properties, silent
 			("return Packet.%s{%s}"):format(flow.packet.proto, overwrites),
 			("Overwrites for flow %q."):format(name)
 		)
-
-		if not flow.packet then
-			return printError(silent, "Invalid overwrite for flow %q.", name)
-		end
-
-		flow.packet:inherit(flow.proto.packet)
+	else
+		flow.packet = Packet.new(flow.proto.packet.proto, {})
 	end
+
+	if not flow.packet then
+		return printError(silent, "Invalid overwrite for flow %q.", name)
+	end
+	flow.packet:inherit(flow.proto.packet)
 
 	-- warn about unknown options
 	for i in pairs(cli_options) do

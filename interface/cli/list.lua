@@ -1,9 +1,20 @@
 local Flow = require "flow"
+local lfs = require "lfs"
+local log = require "log"
 
 local list = {}
 
 local function _print_list(config)
-	Flow.crawlDirectory(config)
+	for _,v in ipairs(config) do
+		local type = lfs.attributes(v, "mode")
+		if type == "file" then
+			Flow.crawlFile(v)
+		elseif type == "directory" then
+			Flow.crawlDirectory(v)
+		else
+			log:error("Entry %s is neither file nor directory.", v)
+		end
+	end
 
 	local files = setmetatable({}, {
 		__index = function(tbl, key)
@@ -37,10 +48,10 @@ local function _print_list(config)
 end
 
 function list.configure(parser)
-	parser:argument("directory", "Change the base directory to search flows."):args("?"):default("flows")
+	parser:argument("entries", "List of files and directories to search for flows in."):args("*"):default("flows")
 
 	parser:action(function(args)
-		_print_list(args.directory)
+		_print_list(args.entries or { "flows" })
 		os.exit(0)
 	end)
 end

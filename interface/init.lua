@@ -1,5 +1,4 @@
 local mg         = require "moongen"
-local pipe       = require "pipe"
 local log        = require "log"
 
 
@@ -13,7 +12,6 @@ local devmgr = require "devmgr"
 
 local arpThread = require "threads.arp"
 local loadThread = require "threads.load"
-local statsThread = require "threads.stats"
 local deviceStatsThread = require "threads.deviceStats"
 local countThread = require "threads.count"
 local timestampThread = require "threads.timestamp"
@@ -36,29 +34,27 @@ function master(args) -- luacheck: globals master
 	local devices = devmgr.newDevmgr()
 	local flows = {}
 	for _,arg in ipairs(args.flows) do
-		local fparse = parse(arg, devices.max)
-		-- TODO fparse.file, fparse.overwrites
-		local f
+		local f = parse(arg, devices.max)
 
-		if #fparse.tx == 0 and #fparse.rx == 0 then
+		if #f.tx == 0 and #f.rx == 0 then
 			log:error("Need to pass at least one tx or rx device.")
+			f = nil
 		else
-			f = Flow.getInstance(fparse.name, fparse.file, fparse.options, fparse.overwrites, {
+			f = Flow.getInstance(f.name, f.file, f.options, f.overwrites, {
 				counter = counter.new(),
-				tx = fparse.tx, rx = fparse.rx
+				tx = f.tx, rx = f.rx
 			})
 		end
 
 		if f then
 			table.insert(flows, f)
-			log:info("Flow %s => %s", f.proto.name, f:option "uid")
+			log:info("Flow %s => %#x", f.proto.name, f:option "uid")
 		end
 	end
 
 	arpThread.prepare(flows, devices)
 	loadThread.prepare(flows, devices)
 	countThread.prepare(flows, devices)
-	statsThread.prepare(flows, devices)
 	deviceStatsThread.prepare(flows, devices)
 	timestampThread.prepare(flows, devices)
 
@@ -69,12 +65,9 @@ function master(args) -- luacheck: globals master
 
 	devices:configure()
 
-	local statsPipe = pipe:newSlowPipe()
-
 	arpThread.start(devices)
 	deviceStatsThread.start(devices)
-	statsThread.start(devices, statsPipe)
-	countThread.start(devices, statsPipe)
+	countThread.start(devices)
 	loadThread.start(devices)
 	timestampThread.start(devices, args.output)
 

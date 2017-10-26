@@ -5,6 +5,9 @@ local option = {}
 option.description = "Stop sending this flow after a certain amount of data. As"
 	.. " flows should only be cut short at a whole number of packets sent, every"
 	.. " value passed will be rounded up to the nearest whole number of packets."
+	.. "\n\nEach thread will keep its own packet counter, so the actual amount of"
+	.. " packets sent is the setting of this option multiplied by the nummer of"
+	.. " tx queues requested."
 option.configHelp = "Passing a number instead of a string will interpret the value as megabit."
 option.usage = { { "<number><sizeUnit>", "Default use case." } }
 

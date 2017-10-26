@@ -1,11 +1,10 @@
 local arp = require "proto.arp"
-local arpThread = require "threads.arp"
 
 local dependency = {}
 
 function dependency.env(env)
 	function env.arp(ip, fallback, timeout)
-		return { "arp", ip, fallback, timeout or 5, arpThread.counter }
+		return { "arp", ip, fallback, timeout or 5 }
 	end
 end
 

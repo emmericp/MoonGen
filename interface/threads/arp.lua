@@ -4,7 +4,7 @@ local arp     = require "proto.arp"
 local thread = { arpDevices = {}, flows = {} }
 
 local function doesArp(flow)
-	for _,dep in ipairs(flow.packet.depvars) do
+	for _,dep in pairs(flow.packet.depvars) do
 		if dep.tbl[1] == "arp" then
 			return true
 		end

@@ -36,7 +36,7 @@ Flow{"qos-background", Packet.Udp{
 	rate = 4000
 }
 
-Flow{"tcp-syn-flood4", Packet.Udp4{
+Flow{"tcp-syn-flood4", Packet.Tcp4{
 		ethSrc = txQueue(),
 		ethDst = mac"12:34:56:78:90:00",
 		ip4Src = range(ip"10.0.0.1", ip"10.0.0.101"),
@@ -47,7 +47,7 @@ Flow{"tcp-syn-flood4", Packet.Udp4{
 	}
 }
 
-Flow{"tcp-syn-flood6", Packet.Udp6{
+Flow{"tcp-syn-flood6", Packet.Tcp6{
 		ethSrc = txQueue(),
 		ethDst = mac"12:34:56:78:90:00",
 		ip6Src = range(ip"fe80::1", ip"fe80::101"),

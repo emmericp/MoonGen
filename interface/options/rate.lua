@@ -8,7 +8,7 @@ local function _parse_rate(rstring, psize)
 
 	num, unit, time = tonumber(num), string.lower(unit), units.time[time]
 	if not time then
-		return nil, unit.timeError
+		return nil, units.timeError
 	end
 
 	if unit == "" then
@@ -20,7 +20,7 @@ local function _parse_rate(rstring, psize)
 	elseif string.find(unit, "p$") then
 		unit = units.size[string.sub(unit, 1, -2)] * psize * 8
 	else
-		return nil, unit.sizeError
+		return nil, units.sizeError
 	end
 
 	unit = unit / 10 ^ 6 -- cbr is in mbit/s

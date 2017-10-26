@@ -80,7 +80,6 @@ for _,v in ipairs(_modelist) do
 end
 option.formatString = "<" .. table.concat(option.formatString, "|") .. ">"
 option.helpString = "Change how dynamic fields are updated. (default = single)"
--- TODO add value documentation
 
 function option.parse(self, mode, error)
 	if #self.packet.dynvars == 0 then
@@ -96,9 +95,10 @@ function option.parse(self, mode, error)
 
 	local t = type(mode)
 	if t == "string" then
-		mode = _valid_modes[string.lower(mode)]
-		if error:assert(mode, "Invalid value %q. Can be one of %s.",
-			mode, table.concat(_modelist, ", ")) then
+		mode = error:assert(_valid_modes[string.lower(mode)], "Invalid value %q. Can be one of %s.",
+			mode, table.concat(_modelist, ", "))
+
+		if mode then
 			mode = mode()
 		end
 	elseif t ~= "function" and t ~= "nil" then

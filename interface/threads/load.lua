@@ -42,7 +42,7 @@ local function loadThread(flow, sendQueue)
 	flow = Flow.restore(flow)
 
 	local counter = stats:newPktTxCounter(
-		("Flow: dev=%d uid=%d"):format(flow:property "tx_dev", flow:option "uid")
+		("Flow: dev=%d uid=%#x"):format(flow:property "tx_dev", flow:option "uid")
 	)
 
 	local mempool = memory.createMemPool(function(buf) flow:fillBuf(buf) end)
@@ -56,23 +56,13 @@ local function loadThread(flow, sendQueue)
 
 	flow:property("counter"):inc()
 
-	local uid = flow:option "uid"
-	local payload = flow:option "uniquePayload"
 	while mg.running() and (not runtime or runtime:running()) do
 		bufs:alloc(flow:packetSize())
 
 		if flow.isDynamic then
-			if payload then
-				for _, buf in ipairs(bufs) do
-					local pkt = flow:updateBuf(buf)
-					pkt.payload.uint32[0] = uid
-					counter:countPacket(buf)
-				end
-			else
-				for _, buf in ipairs(bufs) do
-					flow:updateBuf(buf)
-					counter:countPacket(buf)
-				end
+			for _, buf in ipairs(bufs) do
+				flow:updateBuf(buf)
+				counter:countPacket(buf)
 			end
 		end
 
