@@ -4,13 +4,18 @@ local dynvar = {}
 dynvar.__index = dynvar
 
 local _aliases = {
-	udpSrc = "setSrcPort", udpDst = "setDstPort",
-	tcpSrc = "setSrcPort", tcpDst = "setDstPort",
+	udpSrc = proto.udp.setSrcPort, udpDst = proto.udp.setDstPort,
+	tcpSrc = proto.tcp.setSrcPort, tcpDst = proto.tcp.setDstPort,
+	ethSrc = proto.eth.default.setSrc, ethDst = proto.eth.default.setDst,
+	ethVlan = proto.eth.vlan.setVlanTag,
+	ethinnerVlanTag = proto.eth.qinq.setInnerVlanTag,
+	ethouterVlanId = proto.eth.qinq.setOuterVlanTag,
+	ethouterVlanTag = proto.eth.qinq.setOuterVlanTag,
 }
 local function _find_setter(pkt, var)
 	local alias = _aliases[pkt .. var]
 	if alias then
-		return proto[pkt].metatype[alias]
+		return alias
 	end
 
 	return proto[pkt].metatype["set" .. var]
