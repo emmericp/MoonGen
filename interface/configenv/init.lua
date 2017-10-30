@@ -1,4 +1,4 @@
-local lfs = require "lfs"
+local lfs = require "syscall.lfs"
 
 local errors = require "errors"
 
@@ -43,9 +43,12 @@ local function run(self, file, f, msg)
 	return setfenv(f, self.env)()
 end
 
+local ffi = require "ffi"
+
 local fileIndex = {}
 local function getIndex(path)
-	return ("%d_%d"):format(lfs.attributes(path, "dev"), lfs.attributes(path, "ino"))
+	-- dev returns a struct in ljsyscall lfs with methods to parse minor/major; .device is just the raw id
+	return ("%d_%d"):format(lfs.attributes(path, "dev").device, lfs.attributes(path, "ino"))
 end
 
 function mod:parseFile(filename)

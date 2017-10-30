@@ -1,4 +1,4 @@
-local lfs = require "lfs"
+local lfs = require "syscall.lfs"
 local log = require "log"
 
 local configenv = require "configenv"
