@@ -2,7 +2,7 @@
 LuaJIT + DPDK = fast and flexible packet generator for 10 Gbit/s Ethernet and beyond.
 MoonGen uses hardware features for accurate and precise latency measurements and rate control.
 
-Skip to [Installation](#Installation) and [Usage](#Using-Moongen) if you just want to send some packets.
+Skip to [Installation](#installation) and [Usage](#using-moongen) if you just want to send some packets.
 
 Detailed evaluation: [Paper](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015.pdf) (IMC 2015, [BibTeX entry](http://www.net.in.tum.de/fileadmin/bibtex/publications/papers/MoonGen_IMC2015-BibTeX.txt))
 
