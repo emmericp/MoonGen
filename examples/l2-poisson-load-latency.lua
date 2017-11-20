@@ -2,7 +2,6 @@ local mg        = require "moongen"
 local memory    = require "memory"
 local ts        = require "timestamping"
 local device    = require "device"
-local filter    = require "filter"
 local stats     = require "stats"
 local timer     = require "timer"
 local histogram = require "histogram"
@@ -32,7 +31,6 @@ function loadSlave(dev, rxDev, queue, rate, size)
 			ethType = 0x1234
 		}
 	end)
-	rxDev:l2Filter(0x1234, filter.DROP)
 	local bufs = mem:bufArray()
 	local rxStats = stats:newDevRxCounter(rxDev, "plain")
 	local txStats = stats:newManualTxCounter(dev, "plain")

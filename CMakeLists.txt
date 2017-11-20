@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(MoonGen C CXX)
 
+#Options are defined in libmoon/CMakeLists.txt
+
 set(CMAKE_CXX_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu++11 -march=native -msse4.2")
 set(CMAKE_C_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu11 -march=native -msse4.2")
 set(CMAKE_EXE_LINKER_FLAGS "-rdynamic")
@@ -27,7 +29,8 @@ set(files
 )
 
 set(libraries
-	-Wl,--whole-archive moon -Wl,--no-whole-archive
+	-Wl,--whole-archive
+	moon
 )
 
 link_directories(
