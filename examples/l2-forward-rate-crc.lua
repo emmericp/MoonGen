@@ -28,7 +28,7 @@ function master(args)
 			rssQueues = 0,
 			rssFunctions = {},
 			rxDescs = 4096,
-			dropEnable = false,
+			dropEnable = true,
 			disableOffloads = true
 		}
 	end
