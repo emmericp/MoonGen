@@ -23,12 +23,19 @@ function master(args)
 	PKT_SIZE = math.max(60, tonumber(args.size))
 	print("using packet size "..PKT_SIZE)
 	device.waitForLinks()
+	
 	mg.startTask("loadSlave", txDev, rxDev, txDev:getTxQueue(0), args.rate, PKT_SIZE)
 	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE)
 	mg.waitForTasks()
 end
 
 function loadSlave(dev, rxDev, queue, rate, size)
+	
+	-- doing crc rate control requires us to know the link speed.
+	-- it is given in Mbps, just like the rate argument
+	local linkspeed = dev:getLinkStatus().speed
+	print("linkspeed = "..linkspeed)
+	
 	local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
 			ethType = 0x1234
@@ -42,7 +49,7 @@ function loadSlave(dev, rxDev, queue, rate, size)
 		for _, buf in ipairs(bufs) do
 			-- this script uses Mpps instead of Mbit (like the other scripts)
 			--buf:setDelay((10^10 / 8 / (rate * 10^6) - size - 24))
-			buf:setDelay((size+24) * (1000/rate - 1) )
+			buf:setDelay((size+24) * (linkspeed/rate - 1) )
 			--buf:setRate(rate*10)  -- rate in Mpps on gigabit ethernet
 			-- from crc-ratecontrol.lua:
 			--   delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)
