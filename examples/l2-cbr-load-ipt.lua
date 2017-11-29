@@ -13,20 +13,20 @@ function configure(parser)
 	parser:description("Generates traffic based on a poisson process with CRC-based rate control.")
 	parser:argument("txDev", "Device to transmit from."):args(1):convert(tonumber)
 	parser:argument("rxDev", "Device to receive from."):args(1):convert(tonumber)
-	parser:option("-r --rate", "Transmit rate in Mpps."):args(1):default(2)
-	parser:option("-s --size", "Packet size to use (min=60, max~~1500)"):args(1):default(60)
+	parser:option("-r --rate", "Transmit rate in Mpps."):args(1):default(2):convert(tonumber)
+	parser:option("-s --size", "Packet size to use (min=60, max~~1500)"):args(1):default(60):convert(tonumber)
+	parser:option("-n --numpackets", "Number of packets to sample (default = 0 = run forever)"):args(1):default(0):convert(tonumber)
 end
 
 function master(args)
 	local txDev = device.config({port = args.txDev, txQueues = 2, rxQueues = 2})
-	--local rxDev = device.config({port = args.rxDev, txQueues = 2, rxQueues = 2})
 	local rxDev = device.config({port = args.rxDev, rxDescs = 4096, dropEnable = false })
-	PKT_SIZE = math.max(60, tonumber(args.size))
+	PKT_SIZE = math.max(60, args.size)
 	print("using packet size "..PKT_SIZE)
 	device.waitForLinks()
 	
+	mg.startTask("iptSlave", rxDev:getRxQueue(0), args.numpackets)
 	mg.startTask("loadSlave", txDev, txDev:getTxQueue(0), args.rate, PKT_SIZE)
-	mg.startTask("iptSlave", rxDev:getRxQueue(0))
 	mg.waitForTasks()
 end
 
@@ -44,6 +44,7 @@ function loadSlave(dev, queue, rate, size)
 	end)
 	local bufs = mem:bufArray()
 	local txStats = stats:newManualTxCounter(dev, "plain")
+	local numsent = 0
 	while mg.running() do
 		bufs:alloc(size)
 		for _, buf in ipairs(bufs) do
@@ -58,30 +59,35 @@ function loadSlave(dev, queue, rate, size)
 			-- 	local mpps = (pkts - self.total) / elapsed / 10^6
 			-- 	local mbit = (bytes - self.totalBytes) / elapsed / 10^6 * 8
 			-- 	local wireRate = mbit + (mpps * 20 * 8)
+			
+			numsent = numsent + 1
 		end
 		txStats:updateWithSize(queue:sendWithDelay(bufs), size)
+
 	end
+	print("sent packets:     "..numsent)
 	txStats:finalize()
 end
 
-function iptSlave(queue)
+function iptSlave(queue, numpackets)
 	queue:enableTimestampsAllPackets()
 	local total = 0
 	local bufs = memory.createBufArray()
 	local times = {}
-	local timer = timer:new(waitTime)
-	while mg.running() do
+	local numrx = 0
+	while mg.running() and (numpackets == 0 or numrx < numpackets) do
 		local n = queue:recv(bufs)
 		for i = 1, n do
-			if timer:expired() then
-				local ts = bufs[i]:getTimestamp()
-				times[#times + 1] = ts
-				--print(ts)
-			end
+			local ts = bufs[i]:getTimestamp()
+			times[#times + 1] = ts
+			--print(ts)
+			numrx = numrx + 1
 		end
 		total = total + n
 		bufs:free(n)
 	end
+	mg.stop()
+	print("captured packets: "..numrx)
 	local h = histogram:create()
 	local last
 	for i, v in ipairs(times) do
@@ -96,36 +102,4 @@ function iptSlave(queue)
 	h:save("histogram.csv")
 end
 
-
-function timerSlave(txQueue, rxQueue, size)
-	rxQueue:enableTimestampsAllPackets()
-	--local timestamper = ts:newTimestamper(txQueue, rxQueue)
-	local hist = histogram:new()
-	-- wait for a second to give the other task a chance to start
-	mg.sleepMillis(1000)
-	local rateLimiter = timer:new(0.001)
-	local last  = 0
-	local bufs = memory.createBufArray()
-	local times = {}
-	local sizes = {}
-	while mg.running() do
-		local n = rxQueue:recv(bufs)
-		for i = 1, n do
-			local ts = bufs[i]:getTimestamp()
-			times[#times + 1] = ts
-			local sz = bufs[i].pkt_len
-			print(i, sz, ts, ts-last)
-			if (last > 0) then
-				sizes[#sizes + 1] = sz
-				--hsz:update(sz)
-			end
-			last = ts
-		end
-		--rateLimiter:reset()
-		--hist:update(timestamper:measureLatency(size))
-		--rateLimiter:busyWait()
-	end
-	hist:print()
-	hist:save("histogram.csv")
-end
 
