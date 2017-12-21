@@ -15,6 +15,7 @@ function configure(parser)
 	parser:argument("rxDev", "Device to receive from."):args(1):convert(tonumber)
 	parser:option("-r --rate", "Transmit rate in Mpps."):args(1):default(2)
 	parser:option("-s --size", "Packet size to use (min=60, max~~1500)"):args(1):default(60)
+	parser:option("-n --numpackets", "Number of packets to sample (default = 0 = run forever)"):args(1):default(0):convert(tonumber)
 end
 
 function master(args)
@@ -25,7 +26,7 @@ function master(args)
 	device.waitForLinks()
 	
 	mg.startTask("loadSlave", txDev, rxDev, txDev:getTxQueue(0), args.rate, PKT_SIZE)
-	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE)
+	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE, args.numpackets)
 	mg.waitForTasks()
 end
 
@@ -67,17 +68,24 @@ function loadSlave(dev, rxDev, queue, rate, size)
 	txStats:finalize()
 end
 
-function timerSlave(txQueue, rxQueue, size)
+function timerSlave(txQueue, rxQueue, size, numpackets)
+	numpackets = numpackets or 0
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
 	local hist = histogram:new()
 	-- wait for a second to give the other task a chance to start
 	mg.sleepMillis(1000)
 	local rateLimiter = timer:new(0.001)
-	while mg.running() do
+	local pktCount = 0
+	while mg.running() and (numpackets == 0 or pktCount < numpackets) do
 		rateLimiter:reset()
-		hist:update(timestamper:measureLatency(size))
+		local measurement, num = timestamper:measureLatency(size)
+		--print(measurement, num)
+		hist:update(measurement)
+		pktCount = pktCount + 1
 		rateLimiter:busyWait()
 	end
+	mg.stop()
+	print("latency measurements: "..pktCount)
 	hist:print()
 	hist:save("histogram.csv")
 end
