@@ -6,13 +6,15 @@ local hist		= require "histogram"
 local log		= require "log"
 local timer		= require "timer"
 local limiter		= require "software-ratecontrol"
+local stats     = require "stats"
 
 local ETH_DST	= "11:12:13:14:15:16"
 
 
 function master(txPort, rxPort, pattern, threads, pktSize, rate, waitTime)
 	if not rxPort or not txPort or not threads or not pktSize or not rate then
-		errorf("usage: txPort rxPort threads pktSize rate [waitTime]")
+		errorf("usage: txPort rxPort pattern threads pktSize rate [waitTime]")
+		return
 	end
 
 	--if (((pktSize+26)*8) > (1000*ipt)) then
@@ -24,9 +26,9 @@ function master(txPort, rxPort, pattern, threads, pktSize, rate, waitTime)
 	-- rxDev:wait()
 	-- txDev:wait()
 	device.waitForLinks()
-
+	
 	local queue = rxDev:getRxQueue(0)
-	-- queue:enableTimestampsAllPackets()
+	queue:enableTimestampsAllPackets()
 	local total = 0
 	local bufs = memory.createBufArray()
 	local times = {}
@@ -47,7 +49,7 @@ function master(txPort, rxPort, pattern, threads, pktSize, rate, waitTime)
 				local ts = bufs[i]:getTimestamp()
 				times[#times + 1] = ts
 				local sz = bufs[i].pkt_len
-				print(sz, ts-last)
+				-- print(i, sz, ts, ts-last)
 				last = ts
 				sizes[#sizes + 1] = sz
 				hsz:update(sz)
@@ -61,9 +63,9 @@ function master(txPort, rxPort, pattern, threads, pktSize, rate, waitTime)
 
 	hsz:print()
 	hsz:save("sizes.csv")
-	for i, v in ipairs(sizes) do
-		print(i,v)
-	end
+	--for i, v in ipairs(sizes) do
+	--	print(i,v)
+	--end
 
 	local pkts = rxDev:getRxStats(port)
 	local h = hist:create()
@@ -104,10 +106,15 @@ end
 
 
 
-function loadSlave(queue, txDev, rate, threadId, numThreads, pktSize)
+function loadSlave333(queue, txDev, rate, threadId, numThreads, pktSize)
 	local ETH_DST	= "11:12:13:14:15:16"
-	local PKT_SIZE  = 60
-
+	--local PKT_SIZE  = 60
+	
+	-- doing crc rate control requires us to know the link speed.
+	-- it is given in Mbps, just like the rate argument
+	local linkspeed = txDev:getLinkStatus().speed
+	print("linkspeed = "..linkspeed)
+	
 	local mem = memory.createMemPool{n=4096, func=function(buf)
 	--local mem = memory.createMemPool(function(buf)
 		buf:getEthernetPacket():fill{
@@ -119,12 +126,13 @@ function loadSlave(queue, txDev, rate, threadId, numThreads, pktSize)
 
 	-- larger batch size is useful when sending it through a rate limiter
 	local bufs = mem:bufArray()  --(128)
-	local dist = pattern == "poisson" and poissonDelay or function(x) return x end
+	-- local dist = pattern == "poisson" and poissonDelay or function(x) return x end
 	while mg.running() do
 		bufs:alloc(pktSize)
 		for _, buf in ipairs(bufs) do
-			buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - pktSize - 24))
+			--buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - pktSize - 24))
 		--	--buf:setDelay(1000000)
+			buf:setDelay((pktSize+24) * (linkspeed/rate - 1) )
 		end
 		-- the rate here doesn't affect the result afaict.  It's just to help decide the size of the bad pkts
 		queue:sendWithDelay(bufs, rate * numThreads)
@@ -132,6 +140,26 @@ function loadSlave(queue, txDev, rate, threadId, numThreads, pktSize)
 	end
 end
 
+function loadSlave(queue, dev, rate, threadId, numThreads, size)
+	print("using packet size "..size)
+	local linkspeed = dev:getLinkStatus().speed
+	
+	local mem = memory.createMemPool(function(buf)
+		buf:getEthernetPacket():fill{
+			ethType = 0x1234
+		}
+	end)
+	local bufs = mem:bufArray()
+	local txStats = stats:newManualTxCounter(dev, "plain")
+	while mg.running() do
+		bufs:alloc(size)
+		for _, buf in ipairs(bufs) do
+			buf:setDelay((size+24) * (linkspeed/rate - 1) )
+		end
+		txStats:updateWithSize(queue:sendWithDelay(bufs), size)
+	end
+	txStats:finalize()
+end
 
 
 
