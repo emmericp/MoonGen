@@ -21,6 +21,7 @@ ffi.cdef[[
 	void mg_rate_limiter_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t link_speed, struct limiter_control* ctl);
 	void mg_rate_limiter_cbr_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, struct limiter_control* ctl);
 	void mg_rate_limiter_poisson_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t target, uint32_t link_speed, struct limiter_control* ctl);
+	uint64_t mg_rate_limiter_get_tsc_cycles();
 ]]
 
 local mod = {}
@@ -77,6 +78,11 @@ function mod:new(queue, mode, delay)
 	}, rateLimiter)
 	mg.startTask("__MG_RATE_LIMITER_MAIN", obj.ring, queue.id, queue.qid, mode, delay, queue.dev:getLinkStatus().speed, obj.ctl)
 	return obj
+end
+
+--- get the current TSC clock
+function mod:get_tsc_cycles()
+	return C.mg_rate_limiter_get_tsc_cycles()
 end
 
 

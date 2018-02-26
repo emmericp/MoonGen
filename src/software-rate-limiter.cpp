@@ -39,6 +39,13 @@ namespace rate_limiter {
 			count.fetch_add(n, std::memory_order_relaxed);
 		};
 	};
+
+	/*
+	 * We may need to read the current rte_get_tsc_cycles() from lua
+	 */
+	static inline uint64_t get_tsc_cycles() {
+		return rte_get_tsc_cycles();
+	}
 	
 	/*
 	 * Arbitrary time software rate control main
@@ -156,6 +163,10 @@ extern "C" {
 
 	void mg_rate_limiter_main_loop(rte_ring* ring, uint8_t device, uint16_t queue, uint32_t link_speed, rate_limiter::limiter_control* ctl) {
 		rate_limiter::main_loop(ring, device, queue, link_speed, ctl);
+	}
+
+	uint64_t mg_rate_limiter_get_tsc_cycles() {
+		return rate_limiter::get_tsc_cycles();
 	}
 }
 

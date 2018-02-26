@@ -15,6 +15,8 @@ function configure(parser)
 	parser:argument("rxDev", "Device to receive from."):args(1):convert(tonumber)
 	parser:option("-r --rate", "Transmit rate in Mpps."):args(1):default(2)
 	parser:option("-s --size", "Packet size to use (min=60, max~~1500)"):args(1):default(60)
+	parser:option("-n --numpackets", "Number of packets to sample (default = 0 = run forever)"):args(1):default(0):convert(tonumber)
+	parser:option("-w --maxwait", "Max time (in ms) to wait got timer packets to come back (default=100)"):args(1):default(100):convert(tonumber)
 end
 
 function master(args)
@@ -25,15 +27,15 @@ function master(args)
 	device.waitForLinks()
 	
 	mg.startTask("loadSlave", txDev, rxDev, txDev:getTxQueue(0), args.rate, PKT_SIZE)
-	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE)
+	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE, args.numpackets, args.maxwait)
 	mg.waitForTasks()
 end
 
-function loadSlave(dev, rxDev, queue, rate, size)
+function loadSlave(txDev, rxDev, queue, rate, size)
 	
 	-- doing crc rate control requires us to know the link speed.
 	-- it is given in Mbps, just like the rate argument
-	local linkspeed = dev:getLinkStatus().speed
+	local linkspeed = txDev:getLinkStatus().speed
 	print("linkspeed = "..linkspeed)
 	
 	local mem = memory.createMemPool(function(buf)
@@ -43,7 +45,7 @@ function loadSlave(dev, rxDev, queue, rate, size)
 	end)
 	local bufs = mem:bufArray()
 	local rxStats = stats:newDevRxCounter(rxDev, "plain")
-	local txStats = stats:newManualTxCounter(dev, "plain")
+	local txStats = stats:newManualTxCounter(txDev, "plain")
 	while mg.running() do
 		bufs:alloc(size)
 		for _, buf in ipairs(bufs) do
@@ -67,17 +69,32 @@ function loadSlave(dev, rxDev, queue, rate, size)
 	txStats:finalize()
 end
 
-function timerSlave(txQueue, rxQueue, size)
+
+-- in order to pass a maxWait parameter to timestamper:measureLatency we need
+-- to also pass a packet modifying function.  This one does nothing.
+function dummyModifier(buf)
+	return false
+end
+
+
+function timerSlave(txQueue, rxQueue, size, numpackets, maxWait)
+	numpackets = numpackets or 0
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
 	local hist = histogram:new()
 	-- wait for a second to give the other task a chance to start
 	mg.sleepMillis(1000)
 	local rateLimiter = timer:new(0.001)
-	while mg.running() do
+	local pktCount = 0
+	while mg.running() and (numpackets == 0 or pktCount < numpackets) do
 		rateLimiter:reset()
-		hist:update(timestamper:measureLatency(size))
+		local measurement, num = timestamper:measureLatency(size, dummyModifier, maxWait)
+		--print(measurement, num)
+		hist:update(measurement)
+		pktCount = pktCount + 1
 		rateLimiter:busyWait()
 	end
+	mg.stop()
+	print("latency measurements: "..pktCount)
 	hist:print()
 	hist:save("histogram.csv")
 end
