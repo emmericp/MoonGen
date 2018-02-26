@@ -16,25 +16,17 @@ function configure(parser)
 	parser:option("-r --rate", "Transmit rate in Mpps."):args(1):default(2)
 	parser:option("-s --size", "Packet size to use (min=60, max~~1500)"):args(1):default(60)
 	parser:option("-n --numpackets", "Number of packets to sample (default = 0 = run forever)"):args(1):default(0):convert(tonumber)
-<<<<<<< HEAD
-	parser:option("-w --maxwait", "Max time (in ms) to wait got timer packets to come back (default=100)"):args(1):default(100):convert(tonumber)
-=======
->>>>>>> d1110772cdaf2ee21f1845884b2565922ef3bb12
 end
 
 function master(args)
-	local txDev = device.config({port = args.txDev, txQueues = 2, rxQueues = 2})
-	local rxDev = device.config({port = args.rxDev, txQueues = 2, rxQueues = 2})
+	local txDev = device.config({port = args.txDev, txQueues = 2, rxQueues = 2, txDescs = 1024, numBufs = 1024})
+	local rxDev = device.config({port = args.rxDev, txQueues = 2, rxQueues = 2, rxDescs = 1024, numBufs = 1024})
 	PKT_SIZE = math.max(60, tonumber(args.size))
 	print("using packet size "..PKT_SIZE)
 	device.waitForLinks()
 	
 	mg.startTask("loadSlave", txDev, rxDev, txDev:getTxQueue(0), args.rate, PKT_SIZE)
-<<<<<<< HEAD
-	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE, args.numpackets, args.maxwait)
-=======
 	mg.startTask("timerSlave", txDev:getTxQueue(1), rxDev:getRxQueue(1), PKT_SIZE, args.numpackets)
->>>>>>> d1110772cdaf2ee21f1845884b2565922ef3bb12
 	mg.waitForTasks()
 end
 
@@ -76,19 +68,7 @@ function loadSlave(txDev, rxDev, queue, rate, size)
 	txStats:finalize()
 end
 
-<<<<<<< HEAD
-
--- in order to pass a maxWait parameter to timestamper:measureLatency we need
--- to also pass a packet modifying function.  This one does nothing.
-function dummyModifier(buf)
-	return false
-end
-
-
-function timerSlave(txQueue, rxQueue, size, numpackets, maxWait)
-=======
 function timerSlave(txQueue, rxQueue, size, numpackets)
->>>>>>> d1110772cdaf2ee21f1845884b2565922ef3bb12
 	numpackets = numpackets or 0
 	local timestamper = ts:newTimestamper(txQueue, rxQueue)
 	local hist = histogram:new()
@@ -98,11 +78,7 @@ function timerSlave(txQueue, rxQueue, size, numpackets)
 	local pktCount = 0
 	while mg.running() and (numpackets == 0 or pktCount < numpackets) do
 		rateLimiter:reset()
-<<<<<<< HEAD
-		local measurement, num = timestamper:measureLatency(size, dummyModifier, maxWait)
-=======
 		local measurement, num = timestamper:measureLatency(size)
->>>>>>> d1110772cdaf2ee21f1845884b2565922ef3bb12
 		--print(measurement, num)
 		hist:update(measurement)
 		pktCount = pktCount + 1
@@ -111,6 +87,6 @@ function timerSlave(txQueue, rxQueue, size, numpackets)
 	mg.stop()
 	print("latency measurements: "..pktCount)
 	hist:print()
-	hist:save("histogram.csv")
+	hist:save("histogram-newconf.csv")
 end
 

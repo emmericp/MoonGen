@@ -25,7 +25,11 @@ function master(txPort, rxPort, pattern, threads, pktSize, rate, waitTime)
 	--local txDev = device.config{ port = txPort, txQueues = threads, disableOffloads = true, dropEnable = false }
 	-- rxDev:wait()
 	-- txDev:wait()
+<<<<<<< HEAD
 	--device.waitForLinks()
+=======
+	device.waitForLinks()
+>>>>>>> d1110772cdaf2ee21f1845884b2565922ef3bb12
 	
 	local queue = rxDev:getRxQueue(0)
 	queue:enableTimestampsAllPackets()
