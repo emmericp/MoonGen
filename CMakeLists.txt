@@ -26,6 +26,7 @@ set(files
 	src/software-timestamping
 	src/crc-rate-limiter
 	src/software-rate-limiter
+	src/moonsniff
 )
 
 set(libraries
