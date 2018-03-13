@@ -17,7 +17,7 @@ ffi.cdef[[
 	void ms_incrementCtr();
 ]]
 
-local RUN_TIME = 5
+local RUN_TIME = 2
 local PKT_LEN = 100
 
 function configure(parser)
@@ -67,7 +67,7 @@ function timestampPostDuT(queue)
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
 			local pkt = bufs[i]:getUdpPacket()
-			print(pkt.payload.uint8[0])
+--			print(pkt.payload.uint16[0])
 			count = count + 1
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
 			if timestamp then
@@ -105,7 +105,7 @@ function timestampPreDuT(queue)
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
 			local pkt = bufs[i]:getUdpPacket()
-			print(pkt.payload.uint8[0])
+--			print(pkt.payload.uint16[0])
 			count = count + 1
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
 			if timestamp then
@@ -130,6 +130,7 @@ end
 
 function timestampAllPacketsSender(queue)
         log:info("Trying to enable rx timestamping of all packets, this isn't supported by most nics")
+	local pkt_id = 0
         local runtime = timer:new(RUN_TIME)
         local hist = hist:new()
         local mempool = memory.createMemPool(function(buf)
@@ -149,13 +150,8 @@ function timestampAllPacketsSender(queue)
 
 		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
-			pkt.payload.uint8[0] = 12
---			pkt.payload:setPayload(1)
---			pkt[50] = 1
---			dump(pkt.payload)
---			print(pkt.payload)
---			pkt.payload = 1
---			print(pkt.payload)
+			pkt.payload.uint16[0] = pkt_id
+			pkt_id = pkt_id + 1
 		end
 
                 queue:send(bufs)
