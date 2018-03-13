@@ -24,10 +24,13 @@ namespace moonsniff {
 	uint8_t tail;
 
 	// size of the active window
-	uint8_t window
+	uint8_t window;
 
 	uint32_t hits = 0;
 	uint32_t misses = 0;
+
+	static uint32_t getHits(){ return hits; }
+	static uint32_t getMisses(){ return misses; }
 
 	static void init_buffer(uint8_t window_size){
 		tail = 0;
@@ -54,7 +57,7 @@ namespace moonsniff {
 				}
 			}
 		}else if(head < tail){
-			for(uint8_t i = tail; i < BUFFER_SIZE; ++i){
+			for(uint8_t i = tail; i < BUFFER_SIZE - 1; ++i){
 				if(ring_buffer[i] == identification){
 					ring_buffer[i] = 0;
 					++hits;
@@ -94,4 +97,8 @@ extern "C" {
 	void ms_test_for(uint16_t identification){
 		moonsniff::test_for(identification);
 	}
+
+	uint32_t ms_get_hits(){ return moonsniff::getHits(); }
+	uint32_t ms_get_misses(){ return moonsniff::getMisses(); }
+
 }

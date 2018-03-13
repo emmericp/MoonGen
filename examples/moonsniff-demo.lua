@@ -15,6 +15,12 @@ local C = ffi.C
 ffi.cdef[[
 	uint8_t ms_getCtr();
 	void ms_incrementCtr();
+
+	void ms_init_buffer(uint8_t window_size);
+	void ms_add_entry(uint16_t identification);
+	void ms_test_for(uint16_t identification);
+	static uint32_t ms_get_hits();
+        static uint32_t ms_get_misses();
 ]]
 
 local RUN_TIME = 2
@@ -34,6 +40,10 @@ function master(args)
 	local dev0rx = args.dev[1]:getRxQueue(0)
 	local dev1tx = args.dev[2]:getTxQueue(0)
 	local dev1rx = args.dev[2]:getRxQueue(0)
+
+	-- initialize the ring buffer
+	C.ms_init_buffer(64);
+
 	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
 
 	-- start the tasks to sample incoming packets
@@ -41,8 +51,11 @@ function master(args)
 	local receiver0 = lm.startTask("timestampPreDuT", dev0rx)
 	local receiver1 = lm.startTask("timestampPostDuT", dev1rx)
 
-	local sender0 = lm.startTask("timestampAllPacketsSender", dev0tx)
 	local sender1 = lm.startTask("timestampAllPacketsSender", dev1tx)
+	lm.sleepMillis(50)
+	local sender0 = lm.startTask("timestampAllPacketsSender", dev0tx)
+
+
 
 	receiver0:wait()
 	receiver1:wait()
@@ -67,6 +80,7 @@ function timestampPostDuT(queue)
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
 			local pkt = bufs[i]:getUdpPacket()
+			C.ms_test_for(pkt.payload.uint16[0])
 --			print(pkt.payload.uint16[0])
 			count = count + 1
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
@@ -105,6 +119,7 @@ function timestampPreDuT(queue)
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
 			local pkt = bufs[i]:getUdpPacket()
+			C.ms_add_entry(pkt.payload.uint16[0])
 --			print(pkt.payload.uint16[0])
 			count = count + 1
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
@@ -126,6 +141,9 @@ function timestampPreDuT(queue)
 		log:error("Received no timestamped packets.")
 	end
 	print()
+
+	print("Hits: " .. C.ms_get_hits())
+	print("Misses: " .. C.ms_get_misses())
 end
 
 function timestampAllPacketsSender(queue)
