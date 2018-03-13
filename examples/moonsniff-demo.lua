@@ -18,6 +18,7 @@ ffi.cdef[[
 ]]
 
 local RUN_TIME = 5
+local PKT_LEN = 100
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware timestamping capabilities.\nThe ideal test setup for this is a cable directly connecting the two test ports.")
@@ -65,6 +66,8 @@ function timestampPostDuT(queue)
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
+			local pkt = bufs[i]:getUdpPacket()
+			print(pkt.payload.uint8[0])
 			count = count + 1
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
 			if timestamp then
@@ -76,7 +79,7 @@ function timestampPostDuT(queue)
 			end
 		end
 		bufs:free(rx)
-		print("post " .. C.ms_getCtr())
+--		print("post " .. C.ms_getCtr())
 	end
 	log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
 	hist:print()
@@ -101,6 +104,8 @@ function timestampPreDuT(queue)
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
+			local pkt = bufs[i]:getUdpPacket()
+			print(pkt.payload.uint8[0])
 			count = count + 1
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
 			if timestamp then
@@ -113,7 +118,7 @@ function timestampPreDuT(queue)
 		end
 		bufs:free(rx)
 		C.ms_incrementCtr()
-		print("pre " .. C.ms_getCtr())
+--		print("pre " .. C.ms_getCtr())
 	end
 	log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
 	hist:print()
@@ -128,7 +133,9 @@ function timestampAllPacketsSender(queue)
         local runtime = timer:new(RUN_TIME)
         local hist = hist:new()
         local mempool = memory.createMemPool(function(buf)
-                buf:getUdpPacket():fill{}
+                buf:getUdpPacket():fill{
+			pktLength = PKT_LEN;
+		}
         end)
         local bufs = mempool:bufArray()
         if lm.running() then
@@ -138,7 +145,32 @@ function timestampAllPacketsSender(queue)
         queue:setRate(1000)
         local runtime = timer:new(RUN_TIME)
         while lm.running() and runtime:running() do
-                bufs:alloc(60)
+                bufs:alloc(PKT_LEN)
+
+		for i, buf in ipairs(bufs) do
+			local pkt = buf:getUdpPacket()
+			pkt.payload.uint8[0] = 12
+--			pkt.payload:setPayload(1)
+--			pkt[50] = 1
+--			dump(pkt.payload)
+--			print(pkt.payload)
+--			pkt.payload = 1
+--			print(pkt.payload)
+		end
+
                 queue:send(bufs)
         end
+end
+
+function dump(o)
+   if type(o) == 'table' then
+      local s = '{ '
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. '['..k..'] = ' .. dump(v) .. ','
+      end
+      return s .. '} '
+   else
+      return tostring(o)
+   end
 end
