@@ -45,7 +45,7 @@ function master(args)
 	local dev1rx = args.dev[2]:getRxQueue(0)
 
 	-- initialize the ring buffer
-	C.ms_init_buffer(2);
+	--C.ms_init_buffer(2);
 
 	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
 
@@ -96,7 +96,7 @@ function timestampPreDuT(queue)
 			end
 		end
 		bufs:free(rx)
-		C.ms_incrementCtr()
+--		C.ms_incrementCtr()
 --		print("pre " .. C.ms_getCtr())
 	end
 	log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
@@ -146,9 +146,9 @@ function timestampPostDuT(queue)
 	print()
 
 	print("Hits: " .. C.ms_get_hits())
-	print("Hits Forward: " .. C.ms_get_forward_hits())
+--	print("Hits Forward: " .. C.ms_get_forward_hits())
 	print("Misses: " .. C.ms_get_misses())
-	print("Misses caused by wrap-around: " .. C.ms_get_wrap_misses())
+--	print("Misses caused by wrap-around: " .. C.ms_get_wrap_misses())
 end
 
 function timestampAllPacketsSender(queue)
