@@ -19,7 +19,6 @@ namespace moonsniff {
 	// buffer holds the idetification values of packets
 	// value 0 is reserved as unused/invalid
 	uint16_t ring_buffer[BUFFER_SIZE] = {0};
-	bool hit_list[UINT16_MAX] = { false };
 
 	// next free entry in ring_buffer
 	uint8_t head;
@@ -52,59 +51,52 @@ namespace moonsniff {
 	}
 
 	static void add_entry(uint16_t identification){
-//		rte_rwlock_write_lock(&mutex);
-//		ring_buffer[head] = identification;
-//		advance_window();
-//		rte_rwlock_write_unlock(&mutex);
-		hit_list[identification] = true;
+		rte_rwlock_write_lock(&mutex);
+		ring_buffer[head] = identification;
+		advance_window();
+		rte_rwlock_write_unlock(&mutex);
 	}
 
 	static void test_for(uint16_t identification){
-		if( hit_list[identification] == true ){
-			++hits;
-			hit_list[identification] = false;
-		} else {
-			++misses;
+		rte_rwlock_read_lock(&mutex);
+		uint8_t _tail = tail;
+		uint8_t _head = head;
+		//rte_rwlock_read_unlock(&mutex);
+
+		if(_tail < _head){
+			// running variable must allow for higher values as uint8_t
+			// otherwise wrap around could cause the condition to always hold
+			for(uint16_t i = _tail; i < _head; ++i){
+				if(ring_buffer[i] == identification){
+					ring_buffer[i] = 0;
+					++hits;	
+					++forwardhits;
+					rte_rwlock_read_unlock(&mutex);
+					return;
+				}
+			}
+		}else if(_head < _tail){
+			for(uint16_t i = _tail; i < BUFFER_SIZE; ++i){
+				if(ring_buffer[i] == identification){
+					ring_buffer[i] = 0;
+					++hits;
+					rte_rwlock_read_unlock(&mutex);
+					return;
+				}
+			}
+			for(uint16_t i = 0; i < _head; ++i){
+				if(ring_buffer[i] == identification){
+					ring_buffer[i] = 0;
+					++hits;
+					rte_rwlock_read_unlock(&mutex);
+					return;
+				}
+			}
+			++wrap_misses;
 		}
-//		rte_rwlock_read_lock(&mutex);
-//		uint8_t _tail = tail;
-//		uint8_t _head = head;
-//		//rte_rwlock_read_unlock(&mutex);
-//
-//		if(_tail < _head){
-//			// running variable must allow for higher values as uint8_t
-//			// otherwise wrap around could cause the condition to always hold
-//			for(uint16_t i = _tail; i < _head; ++i){
-//				if(ring_buffer[i] == identification){
-//					ring_buffer[i] = 0;
-//					++hits;	
-//					++forwardhits;
-//					rte_rwlock_read_unlock(&mutex);
-//					return;
-//				}
-//			}
-//		}else if(_head < _tail){
-//			for(uint16_t i = _tail; i < BUFFER_SIZE; ++i){
-//				if(ring_buffer[i] == identification){
-//					ring_buffer[i] = 0;
-//					++hits;
-//					rte_rwlock_read_unlock(&mutex);
-//					return;
-//				}
-//			}
-//			for(uint16_t i = 0; i < _head; ++i){
-//				if(ring_buffer[i] == identification){
-//					ring_buffer[i] = 0;
-//					++hits;
-//					rte_rwlock_read_unlock(&mutex);
-//					return;
-//				}
-//			}
-//			++wrap_misses;
-//		}
-//		// the identification is not part of the current window
-//		++misses;
-//		rte_rwlock_read_unlock(&mutex);
+		// the identification is not part of the current window
+		++misses;
+		rte_rwlock_read_unlock(&mutex);
 	}
 }
 
