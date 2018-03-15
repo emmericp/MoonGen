@@ -17,15 +17,16 @@ ffi.cdef[[
 	void ms_incrementCtr();
 
 	void ms_init_buffer(uint8_t window_size);
-	void ms_add_entry(uint16_t identification);
-	void ms_test_for(uint16_t identification);
+	void ms_add_entry(uint16_t identification, uint64_t timestamp);
+	void ms_test_for(uint16_t identification, uint64_t timestamp);
 	uint32_t ms_get_hits();
         uint32_t ms_get_misses();
 	uint32_t ms_get_wrap_misses();
 	uint32_t ms_get_forward_hits();
+	uint64_t ms_average_latency();
 ]]
 
-local RUN_TIME = 5		-- in seconds
+local RUN_TIME = 10		-- in seconds
 local SEND_RATE = 1000		-- in mbit/s
 local PKT_LEN = 100		-- in byte
 
@@ -55,7 +56,7 @@ function master(args)
 	local receiver1 = lm.startTask("timestampPostDuT", dev1rx)
 
 	local sender1 = lm.startTask("timestampAllPacketsSender", dev1tx)
-	lm.sleepMillis(1)
+	lm.sleepMillis(5)
 	local sender0 = lm.startTask("timestampAllPacketsSender", dev0tx)
 
 
@@ -82,10 +83,6 @@ function timestampPreDuT(queue)
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
-			local pkt = bufs[i]:getUdpPacket()
-			C.ms_add_entry(pkt.payload.uint16[0])
---			print(pkt.payload.uint16[0])
-			count = count + 1
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
 			if timestamp then
 				-- timestamp sometimes jumps by ~3 seconds on ixgbe (in less than a few milliseconds wall-clock time)
@@ -94,6 +91,11 @@ function timestampPreDuT(queue)
 				end
 				lastTimestamp = timestamp
 			end
+			local pkt = bufs[i]:getUdpPacket()
+			C.ms_add_entry(pkt.payload.uint16[0], timestamp)
+--			print(pkt.payload.uint16[0])
+			count = count + 1
+
 		end
 		bufs:free(rx)
 --		C.ms_incrementCtr()
@@ -122,10 +124,6 @@ function timestampPostDuT(queue)
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
-			local pkt = bufs[i]:getUdpPacket()
-			C.ms_test_for(pkt.payload.uint16[0])
---			print(pkt.payload.uint16[0])
-			count = count + 1
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
 			if timestamp then
 				-- timestamp sometimes jumps by ~3 seconds on ixgbe (in less than a few milliseconds wall-clock time)
@@ -134,6 +132,10 @@ function timestampPostDuT(queue)
 				end
 				lastTimestamp = timestamp
 			end
+			local pkt = bufs[i]:getUdpPacket()
+			C.ms_test_for(pkt.payload.uint16[0], timestamp)
+--			print(pkt.payload.uint16[0])
+			count = count + 1
 		end
 		bufs:free(rx)
 --		print("post " .. C.ms_getCtr())
@@ -145,10 +147,15 @@ function timestampPostDuT(queue)
 	end
 	print()
 
-	print("Hits: " .. C.ms_get_hits())
+
+	local hits = C.ms_get_hits()
+	local misses = C.ms_get_misses()
+	print("Hits: " .. hits)
 --	print("Hits Forward: " .. C.ms_get_forward_hits())
-	print("Misses: " .. C.ms_get_misses())
+	print("Misses: " .. misses)
 --	print("Misses caused by wrap-around: " .. C.ms_get_wrap_misses())
+	print("Loss: " .. (misses/(misses + hits)) * 100 .. "%")
+	print("Average Latency: " .. tostring(C.ms_average_latency()))
 end
 
 function timestampAllPacketsSender(queue)
