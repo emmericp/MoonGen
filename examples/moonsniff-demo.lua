@@ -27,7 +27,7 @@ ffi.cdef[[
 ]]
 
 local RUN_TIME = 10		-- in seconds
-local SEND_RATE = 1000		-- in mbit/s
+local SEND_RATE = 500		-- in mbit/s
 local PKT_LEN = 100		-- in byte
 
 function configure(parser)
@@ -55,8 +55,10 @@ function master(args)
 	local receiver0 = lm.startTask("timestampPreDuT", dev0rx)
 	local receiver1 = lm.startTask("timestampPostDuT", dev1rx)
 
+--	local sender0 = lm.startTask("timestampAllPacketsSender", dev0tx)
+--	lm.sleepMillis(100)
 	local sender1 = lm.startTask("timestampAllPacketsSender", dev1tx)
-	lm.sleepMillis(5)
+	lm.sleepMillis(10)
 	local sender0 = lm.startTask("timestampAllPacketsSender", dev0tx)
 
 
@@ -128,6 +130,7 @@ function timestampPostDuT(queue)
 			if timestamp then
 				-- timestamp sometimes jumps by ~3 seconds on ixgbe (in less than a few milliseconds wall-clock time)
 				if lastTimestamp and timestamp - lastTimestamp < 10^9 then
+--					print(timestamp - lastTimestamp)
 					hist:update(timestamp - lastTimestamp)
 				end
 				lastTimestamp = timestamp
@@ -150,11 +153,12 @@ function timestampPostDuT(queue)
 
 	local hits = C.ms_get_hits()
 	local misses = C.ms_get_misses()
-	print("Hits: " .. hits)
+	print("Recieved: " .. hits + misses)
+	print("\tHits: " .. hits)
 --	print("Hits Forward: " .. C.ms_get_forward_hits())
-	print("Misses: " .. misses)
+	print("\tMisses: " .. misses)
 --	print("Misses caused by wrap-around: " .. C.ms_get_wrap_misses())
-	print("Loss: " .. (misses/(misses + hits)) * 100 .. "%")
+	print("\tLoss: " .. (misses/(misses + hits)) * 100 .. "%")
 	print("Average Latency: " .. tostring(C.ms_average_latency()))
 end
 

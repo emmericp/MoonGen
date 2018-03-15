@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <deque>
+#include <iostream>
 #include <rte_rwlock.h>
 
 #define BUFFER_SIZE 256
@@ -31,6 +32,9 @@ namespace moonsniff {
 		if( hit_list[identification].valid == true ){
 			++hits;
 			latencies.push_back(timestamp - hit_list[identification].timestamp);
+			std::cout << "new: " << timestamp << "\n";
+			std::cout << "old: " << hit_list[identification].timestamp << "\n";
+			std::cout << timestamp - hit_list[identification].timestamp << "\n";
 			hit_list[identification].valid = false;
 		} else {
 			++misses;
@@ -44,6 +48,7 @@ namespace moonsniff {
 			sum += *it;
 			++size;
 		}
+		std::cout << "sum: " << sum << ", length: " << latencies.size() << ", size: " << size << "\n";
 		return sum/size;
 	}
 }
