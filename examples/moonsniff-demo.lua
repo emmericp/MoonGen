@@ -19,6 +19,7 @@ ffi.cdef[[
 	void ms_init_buffer(uint8_t window_size);
 	void ms_add_entry(uint16_t identification, uint64_t timestamp);
 	void ms_test_for(uint16_t identification, uint64_t timestamp);
+	void ms_init();
 	uint32_t ms_get_hits();
         uint32_t ms_get_misses();
 	uint32_t ms_get_wrap_misses();
@@ -46,7 +47,8 @@ function master(args)
 	local dev1rx = args.dev[2]:getRxQueue(0)
 
 	-- initialize the ring buffer
-	--C.ms_init_buffer(2);
+	--C.ms_init_buffer(2)
+	C.ms_init()
 
 	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
 
@@ -93,6 +95,7 @@ function timestampPreDuT(queue)
 				end
 				lastTimestamp = timestamp
 			end
+			print("Pre: " .. timestamp)
 			local pkt = bufs[i]:getUdpPacket()
 			C.ms_add_entry(pkt.payload.uint16[0], timestamp)
 --			print(pkt.payload.uint16[0])
@@ -136,6 +139,7 @@ function timestampPostDuT(queue)
 				lastTimestamp = timestamp
 			end
 			local pkt = bufs[i]:getUdpPacket()
+			print(timestamp)
 			C.ms_test_for(pkt.payload.uint16[0], timestamp)
 --			print(pkt.payload.uint16[0])
 			count = count + 1
@@ -145,6 +149,7 @@ function timestampPostDuT(queue)
 	end
 	log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
 	hist:print()
+	hist:save("hist.csv")
 	if hist.numSamples == 0 then
 		log:error("Received no timestamped packets.")
 	end
@@ -153,7 +158,7 @@ function timestampPostDuT(queue)
 
 	local hits = C.ms_get_hits()
 	local misses = C.ms_get_misses()
-	print("Recieved: " .. hits + misses)
+	print("Received: " .. hits + misses)
 	print("\tHits: " .. hits)
 --	print("Hits Forward: " .. C.ms_get_forward_hits())
 	print("\tMisses: " .. misses)
