@@ -27,7 +27,7 @@ ffi.cdef[[
 	uint64_t ms_average_latency();
 ]]
 
-local RUN_TIME = 10		-- in seconds
+local RUN_TIME = 2		-- in seconds
 local SEND_RATE = 500		-- in mbit/s
 local PKT_LEN = 100		-- in byte
 
@@ -49,6 +49,9 @@ function master(args)
 	-- initialize the ring buffer
 	--C.ms_init_buffer(2)
 	C.ms_init()
+	ts.syncClocks(args.dev[1], args.dev[2])
+	args.dev[1]:clearTimestamps()
+	args.dev[2]:clearTimestamps()
 
 	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
 
@@ -62,6 +65,9 @@ function master(args)
 	local sender1 = lm.startTask("timestampAllPacketsSender", dev1tx)
 	lm.sleepMillis(10)
 	local sender0 = lm.startTask("timestampAllPacketsSender", dev0tx)
+	ts.syncClocks(args.dev[1], args.dev[2])
+	args.dev[1]:clearTimestamps()
+	args.dev[2]:clearTimestamps()
 
 
 
@@ -95,7 +101,7 @@ function timestampPreDuT(queue)
 				end
 				lastTimestamp = timestamp
 			end
-			print("Pre: " .. timestamp)
+--			print("Pre: " .. timestamp)
 			local pkt = bufs[i]:getUdpPacket()
 			C.ms_add_entry(pkt.payload.uint16[0], timestamp)
 --			print(pkt.payload.uint16[0])
@@ -139,7 +145,7 @@ function timestampPostDuT(queue)
 				lastTimestamp = timestamp
 			end
 			local pkt = bufs[i]:getUdpPacket()
-			print(timestamp)
+--			print(timestamp)
 			C.ms_test_for(pkt.payload.uint16[0], timestamp)
 --			print(pkt.payload.uint16[0])
 			count = count + 1
@@ -164,12 +170,12 @@ function timestampPostDuT(queue)
 	print("\tMisses: " .. misses)
 --	print("Misses caused by wrap-around: " .. C.ms_get_wrap_misses())
 	print("\tLoss: " .. (misses/(misses + hits)) * 100 .. "%")
-	print("Average Latency: " .. tostring(C.ms_average_latency()))
+	print("Average Latency: " .. tostring(tonumber(C.ms_average_latency())) .. " ms")
 end
 
 function timestampAllPacketsSender(queue)
         log:info("Trying to enable rx timestamping of all packets, this isn't supported by most nics")
-	local pkt_id = 0
+	local pkt_id = 10
         local runtime = timer:new(RUN_TIME)
         local hist = hist:new()
         local mempool = memory.createMemPool(function(buf)
@@ -182,18 +188,20 @@ function timestampAllPacketsSender(queue)
                 lm.sleepMillis(500)
         end
         log:info("Trying to generate ~" .. SEND_RATE .. " mbit/s")
-        queue:setRate(SEND_RATE)
+--        queue:setRate(SEND_RATE)
         local runtime = timer:new(RUN_TIME)
-        while lm.running() and runtime:running() do
+--        while lm.running() and runtime:running() do
+	for i=1,1 do
                 bufs:alloc(PKT_LEN)
 
-		for i, buf in ipairs(bufs) do
+		buf = bufs[1]
+--		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
 			pkt.payload.uint16[0] = pkt_id
 			pkt_id = pkt_id + 1
-		end
-
-                queue:send(bufs)
+--		end
+		
+               queue:send(bufs)
         end
 end
 

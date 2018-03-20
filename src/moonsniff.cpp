@@ -32,10 +32,10 @@ namespace moonsniff {
 
 	static void add_entry(uint16_t identification, uint64_t timestamp){
 		rte_rwlock_write_lock(&mutex[identification]);
-		std::cout << "add/timestamp: " << timestamp << "\n";
+		std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
 		hit_list[identification].valid = true;
 		hit_list[identification].timestamp = timestamp;
-		std::cout << "finished adding" << "\n";
+		//std::cout << "finished adding" << "\n";
 		rte_rwlock_write_unlock(&mutex[identification]);
 	}
 
@@ -46,7 +46,7 @@ namespace moonsniff {
 			latencies.push_back(timestamp - hit_list[identification].timestamp);
 			std::cout << "new: " << timestamp << "\n";
 			std::cout << "old: " << hit_list[identification].timestamp << "\n";
-		//	std::cout << timestamp - hit_list[identification].timestamp << "\n";
+			std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/100/100 << " ms\n";
 			hit_list[identification].valid = false;
 		} else {
 			++misses;
