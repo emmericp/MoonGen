@@ -57,8 +57,8 @@ function master(args)
 
 	-- start the tasks to sample incoming packets
 	-- correct mesurement requires a packet to arrive at Pre before Post
-	local receiver0 = lm.startTask("timestampPreDuT", dev0rx)
-	local receiver1 = lm.startTask("timestampPostDuT", dev1rx)
+	local receiver0 = lm.startTask("timestampPreDuT", dev0rx, args.dev[2])
+	local receiver1 = lm.startTask("timestampPostDuT", dev1rx, args.dev[1])
 
 --	local sender0 = lm.startTask("timestampAllPacketsSender", dev0tx)
 --	lm.sleepMillis(100)
@@ -78,7 +78,7 @@ function master(args)
 	sender1:wait()
 end
 
-function timestampPreDuT(queue)
+function timestampPreDuT(queue, otherdev)
 	queue.dev:enableRxTimestampsAllPackets(queue)
 	local bufs = memory.bufArray()
 	local drainQueue = timer:new(0.5)
@@ -90,6 +90,9 @@ function timestampPreDuT(queue)
 	local hist = hist:new()
 	local lastTimestamp
 	local count = 0
+	ts.syncClocks(queue.dev, otherdev)
+	queue.dev:clearTimestamps()
+	otherdev:clearTimestamps()
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
@@ -120,7 +123,7 @@ function timestampPreDuT(queue)
 	print()
 end
 
-function timestampPostDuT(queue)
+function timestampPostDuT(queue, otherdev)
 	queue.dev:enableRxTimestampsAllPackets(queue)
 	local bufs = memory.bufArray()
 	local drainQueue = timer:new(0.5)
@@ -132,6 +135,10 @@ function timestampPostDuT(queue)
 	local hist = hist:new()
 	local lastTimestamp
 	local count = 0
+	ts.syncClocks(queue.dev, otherdev)
+	queue.dev:clearTimestamps()
+	otherdev:clearTimestamps()
+
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
@@ -170,7 +177,7 @@ function timestampPostDuT(queue)
 	print("\tMisses: " .. misses)
 --	print("Misses caused by wrap-around: " .. C.ms_get_wrap_misses())
 	print("\tLoss: " .. (misses/(misses + hits)) * 100 .. "%")
-	print("Average Latency: " .. tostring(tonumber(C.ms_average_latency())) .. " ms")
+	print("Average Latency: " .. tostring(tonumber(C.ms_average_latency())/10^6) .. " ms")
 end
 
 function timestampAllPacketsSender(queue)

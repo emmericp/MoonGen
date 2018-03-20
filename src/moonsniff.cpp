@@ -8,8 +8,8 @@
 namespace moonsniff {
 	
 	struct ms_entry {
-		bool valid = false;
 		uint64_t timestamp;
+		bool valid = false;
 	};
 
 	std::deque<uint64_t> latencies;
@@ -46,7 +46,7 @@ namespace moonsniff {
 			latencies.push_back(timestamp - hit_list[identification].timestamp);
 			std::cout << "new: " << timestamp << "\n";
 			std::cout << "old: " << hit_list[identification].timestamp << "\n";
-			std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/100/100 << " ms\n";
+			std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
 			hit_list[identification].valid = false;
 		} else {
 			++misses;
