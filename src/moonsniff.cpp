@@ -20,9 +20,11 @@ namespace moonsniff {
 
 	uint32_t hits = 0;
 	uint32_t misses = 0;
+	uint32_t inval_ts = 0; // computed latency is invalid, e.g. negative
 
 	static uint32_t getHits(){ return hits; }
 	static uint32_t getMisses(){ return misses; }
+	static uint32_t getInvalidTS(){ return inval_ts; }
 	
 	static void init(){
 		for(uint32_t i = 0; i < UINT16_MAX; ++i){
@@ -32,7 +34,7 @@ namespace moonsniff {
 
 	static void add_entry(uint16_t identification, uint64_t timestamp){
 		rte_rwlock_write_lock(&mutex[identification]);
-		std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
+		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
 		hit_list[identification].valid = true;
 		hit_list[identification].timestamp = timestamp;
 		//std::cout << "finished adding" << "\n";
@@ -43,10 +45,21 @@ namespace moonsniff {
 		rte_rwlock_write_lock(&mutex[identification]);
 		if( hit_list[identification].valid == true ){
 			++hits;
-			latencies.push_back(timestamp - hit_list[identification].timestamp);
-			std::cout << "new: " << timestamp << "\n";
-			std::cout << "old: " << hit_list[identification].timestamp << "\n";
-			std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
+			//latencies.push_back(timestamp - hit_list[identification].timestamp);
+			if( timestamp > hit_list[identification].timestamp){
+				uint64_t difference = timestamp - hit_list[identification].timestamp;
+				if( difference < 1e9){
+					latencies.push_back(difference);
+				}else{
+					++inval_ts;
+				}
+			}else{
+				++inval_ts;
+			}
+
+			//std::cout << "new: " << timestamp << "\n";
+			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
+			//std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
 			hit_list[identification].valid = false;
 		} else {
 			++misses;
@@ -82,5 +95,6 @@ extern "C" {
 	void ms_init(){ moonsniff::init(); }
 	uint32_t ms_get_hits(){ return moonsniff::getHits(); }
 	uint32_t ms_get_misses(){ return moonsniff::getMisses(); }
+	uint32_t ms_get_invalid_timestamps(){ return moonsniff::getInvalidTS();}
 
 }

@@ -22,13 +22,14 @@ ffi.cdef[[
 	void ms_init();
 	uint32_t ms_get_hits();
         uint32_t ms_get_misses();
+	uint32_t ms_get_invalid_timestamps();
 	uint32_t ms_get_wrap_misses();
 	uint32_t ms_get_forward_hits();
 	uint64_t ms_average_latency();
 ]]
 
-local RUN_TIME = 2		-- in seconds
-local SEND_RATE = 500		-- in mbit/s
+local RUN_TIME = 10		-- in seconds
+local SEND_RATE = 1000		-- in mbit/s
 local PKT_LEN = 100		-- in byte
 
 function configure(parser)
@@ -49,9 +50,9 @@ function master(args)
 	-- initialize the ring buffer
 	--C.ms_init_buffer(2)
 	C.ms_init()
-	ts.syncClocks(args.dev[1], args.dev[2])
-	args.dev[1]:clearTimestamps()
-	args.dev[2]:clearTimestamps()
+--	ts.syncClocks(args.dev[1], args.dev[2])
+--	args.dev[1]:clearTimestamps()
+--	args.dev[2]:clearTimestamps()
 
 	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
 
@@ -65,9 +66,9 @@ function master(args)
 	local sender1 = lm.startTask("timestampAllPacketsSender", dev1tx)
 	lm.sleepMillis(10)
 	local sender0 = lm.startTask("timestampAllPacketsSender", dev0tx)
-	ts.syncClocks(args.dev[1], args.dev[2])
-	args.dev[1]:clearTimestamps()
-	args.dev[2]:clearTimestamps()
+--	ts.syncClocks(args.dev[1], args.dev[2])
+--	args.dev[1]:clearTimestamps()
+--	args.dev[2]:clearTimestamps()
 
 
 
@@ -90,9 +91,9 @@ function timestampPreDuT(queue, otherdev)
 	local hist = hist:new()
 	local lastTimestamp
 	local count = 0
-	ts.syncClocks(queue.dev, otherdev)
-	queue.dev:clearTimestamps()
-	otherdev:clearTimestamps()
+--	ts.syncClocks(queue.dev, otherdev)
+--	queue.dev:clearTimestamps()
+--	otherdev:clearTimestamps()
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
@@ -169,20 +170,23 @@ function timestampPostDuT(queue, otherdev)
 	print()
 
 
+	lm.sleepMillis(500)
 	local hits = C.ms_get_hits()
 	local misses = C.ms_get_misses()
+	local invalidTS = C.ms_get_invalid_timestamps()
 	print("Received: " .. hits + misses)
 	print("\tHits: " .. hits)
---	print("Hits Forward: " .. C.ms_get_forward_hits())
+	print("\tHits with invalid timestamps: " .. invalidTS)
 	print("\tMisses: " .. misses)
 --	print("Misses caused by wrap-around: " .. C.ms_get_wrap_misses())
-	print("\tLoss: " .. (misses/(misses + hits)) * 100 .. "%")
+	print("\tLoss by misses: " .. (misses/(misses + hits)) * 100 .. "%")
+	print("\tTotal loss: " .. ((misses + invalidTS)/(misses + hits)) * 100 .. "%")
 	print("Average Latency: " .. tostring(tonumber(C.ms_average_latency())/10^6) .. " ms")
 end
 
 function timestampAllPacketsSender(queue)
         log:info("Trying to enable rx timestamping of all packets, this isn't supported by most nics")
-	local pkt_id = 10
+	local pkt_id = 0
         local runtime = timer:new(RUN_TIME)
         local hist = hist:new()
         local mempool = memory.createMemPool(function(buf)
@@ -195,18 +199,18 @@ function timestampAllPacketsSender(queue)
                 lm.sleepMillis(500)
         end
         log:info("Trying to generate ~" .. SEND_RATE .. " mbit/s")
---        queue:setRate(SEND_RATE)
+	queue:setRate(SEND_RATE)
         local runtime = timer:new(RUN_TIME)
---        while lm.running() and runtime:running() do
-	for i=1,1 do
+        while lm.running() and runtime:running() do
+--	for i=1,1 do
                 bufs:alloc(PKT_LEN)
 
-		buf = bufs[1]
---		for i, buf in ipairs(bufs) do
+--		buf = bufs[1]
+		for i, buf in ipairs(bufs) do
 			local pkt = buf:getUdpPacket()
 			pkt.payload.uint16[0] = pkt_id
 			pkt_id = pkt_id + 1
---		end
+		end
 		
                queue:send(bufs)
         end
