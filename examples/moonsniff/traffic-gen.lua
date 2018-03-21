@@ -28,14 +28,13 @@ ffi.cdef[[
         uint64_t ms_average_latency();
 ]]
 
-local RUN_TIME = 10             -- in seconds
+local RUN_TIME = 100            -- in seconds
 local SEND_RATE = 1000          -- in mbit/s
 local PKT_LEN = 100             -- in byte
 
 function configure(parser)
-        parser:description("Demonstrate and test hardware timestamping capabilities.\nThe ideal test setup for this i
-s a cable directly connecting the two test ports.")
-        parser:argument("dev", "Devices to use."):args(1):convert(tonumber)
+        parser:description("Demonstrate and test hardware timestamping capabilities.\nThe ideal test setup for this is a cable directly connecting the two test ports.")
+        parser:argument("dev", "Devices to use."):args(2):convert(tonumber)
         return parser:parse()
 end
 
