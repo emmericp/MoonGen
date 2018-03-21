@@ -54,7 +54,8 @@ function master(args)
 --	args.dev[1]:clearTimestamps()
 --	args.dev[2]:clearTimestamps()
 
-	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
+--	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
+	stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
 
 	-- start the tasks to sample incoming packets
 	-- correct mesurement requires a packet to arrive at Pre before Post
@@ -70,8 +71,8 @@ function master(args)
 	receiver0:wait()
 	receiver1:wait()
 
-	sender0:wait()
-	sender1:wait()
+--	sender0:wait()
+--	sender1:wait()
 end
 
 function timestampPreDuT(queue, otherdev)
@@ -86,9 +87,9 @@ function timestampPreDuT(queue, otherdev)
 	local hist = hist:new()
 	local lastTimestamp
 	local count = 0
---	ts.syncClocks(queue.dev, otherdev)
---	queue.dev:clearTimestamps()
---	otherdev:clearTimestamps()
+	ts.syncClocks(queue.dev, otherdev)
+	queue.dev:clearTimestamps()
+	otherdev:clearTimestamps()
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
