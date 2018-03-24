@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <deque>
 #include <iostream>
+#include <fstream>
 #include <rte_rwlock.h>
 
 #define BUFFER_SIZE 256
@@ -13,6 +14,7 @@ namespace moonsniff {
 	};
 
 	std::deque<uint64_t> latencies;
+	std::ofstream file;
 	
 	ms_entry hit_list[UINT16_MAX];
 	rte_rwlock_t mutex[UINT16_MAX];
@@ -30,6 +32,8 @@ namespace moonsniff {
 		for(uint32_t i = 0; i < UINT16_MAX; ++i){
 			rte_rwlock_init(&mutex[i]);
 		}
+		file.open("latencies.csv");
+		file << "timestamp pre, timestamp post\n";
 	}
 
 	static void add_entry(uint16_t identification, uint64_t timestamp){
@@ -46,16 +50,17 @@ namespace moonsniff {
 		if( hit_list[identification].valid == true ){
 			++hits;
 			//latencies.push_back(timestamp - hit_list[identification].timestamp);
-			if( timestamp > hit_list[identification].timestamp){
-				uint64_t difference = timestamp - hit_list[identification].timestamp;
-				if( difference < 1e9){
-					latencies.push_back(difference);
-				}else{
-					++inval_ts;
-				}
-			}else{
-				++inval_ts;
-			}
+//			if( timestamp > hit_list[identification].timestamp){
+//				uint64_t difference = timestamp - hit_list[identification].timestamp;
+//				if( difference < 1e9){
+//					latencies.push_back(difference);
+//				}else{
+//					++inval_ts;
+//				}
+//			}else{
+//				++inval_ts;
+//			}
+			file << hit_list[identification].timestamp << ", " << timestamp << "\n";
 
 			//std::cout << "new: " << timestamp << "\n";
 			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
@@ -68,6 +73,7 @@ namespace moonsniff {
 	}
 
 	static uint64_t average_latency(){
+		file.close();
 		uint64_t size = 0;
 		uint64_t sum = 0;
 		for(auto it = latencies.cbegin(); it != latencies.cend(); ++it){
