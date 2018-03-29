@@ -21,6 +21,7 @@ ffi.cdef[[
 	void ms_add_entry(uint16_t identification, uint64_t timestamp);
 	void ms_test_for(uint16_t identification, uint64_t timestamp);
 	void ms_init();
+	void ms_finish();
 	uint32_t ms_get_hits();
         uint32_t ms_get_misses();
 	uint32_t ms_get_invalid_timestamps();
@@ -48,41 +49,28 @@ function master(args)
 	local dev1tx = args.dev[2]:getTxQueue(0)
 	local dev1rx = args.dev[2]:getRxQueue(0)
 
-	-- initialize the ring buffer
-	--C.ms_init_buffer(2)
 	C.ms_init()
---	ts.syncClocks(args.dev[1], args.dev[2])
---	args.dev[1]:clearTimestamps()
---	args.dev[2]:clearTimestamps()
 
---	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
 	stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
 	
 	args.dev[1]:enableRxTimestampsAllPackets(dev0rx)
 	args.dev[2]:enableRxTimestampsAllPackets(dev1rx)
 
 	local bar = barrier:new(2)
---	lm.sleepMillis(200)
---	ts.syncClocks(args.dev[1], args.dev[2])
---	args.dev[1]:clearTimestamps()
---	args.dev[2]:clearTimestamps()
 
 	-- start the tasks to sample incoming packets
 	-- correct mesurement requires a packet to arrive at Pre before Post
 	local receiver0 = lm.startTask("timestampPreDuT", dev0rx, args.dev[2], bar)
 	local receiver1 = lm.startTask("timestampPostDuT", dev1rx, args.dev[1], bar)
 
---	ts.syncClocks(args.dev[1], args.dev[2])
---	args.dev[1]:clearTimestamps()
---	args.dev[2]:clearTimestamps()
-
-
 
 	receiver0:wait()
 	receiver1:wait()
+	lm.stop()
 
---	sender0:wait()
---	sender1:wait()
+	C.ms_finish()
+
+	printStats()
 end
 
 function timestampPreDuT(queue, otherdev, bar)
@@ -93,14 +81,11 @@ function timestampPreDuT(queue, otherdev, bar)
 		local rx = queue:tryRecv(bufs, 1000)
 		bufs:free(rx)
 	end
-	bar:wait()
+	--bar:wait()
 	local runtime = timer:new(RUN_TIME + 0.5)
 	local hist = hist:new()
 	local lastTimestamp
 	local count = 0
---	ts.syncClocks(queue.dev, otherdev)
---	queue.dev:clearTimestamps()
---	otherdev:clearTimestamps()
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
@@ -142,7 +127,7 @@ function timestampPostDuT(queue, otherdev, bar)
 	ts.syncClocks(queue.dev, otherdev)
 	queue.dev:clearTimestamps()
 	otherdev:clearTimestamps()
-	bar:wait()
+	--bar:wait()
 	local runtime = timer:new(RUN_TIME + 0.5)
 	local hist = hist:new()
 	local lastTimestamp
@@ -178,6 +163,9 @@ function timestampPostDuT(queue, otherdev, bar)
 	print()
 
 
+end
+
+function printStats()
 	lm.sleepMillis(500)
 	local hits = C.ms_get_hits()
 	local misses = C.ms_get_misses()
