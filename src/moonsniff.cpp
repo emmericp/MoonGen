@@ -4,8 +4,6 @@
 #include <fstream>
 #include <rte_rwlock.h>
 
-#define BUFFER_SIZE 256
-
 namespace moonsniff {
 	
 	struct ms_entry {
@@ -28,15 +26,6 @@ namespace moonsniff {
 	ms_entry hit_list[UINT16_MAX];
 	rte_rwlock_t mutex[UINT16_MAX];
 
-
-	uint32_t hits = 0;
-	uint32_t misses = 0;
-	uint32_t inval_ts = 0; // computed latency is invalid, e.g. negative
-
-	static uint32_t getHits(){ return hits; }
-	static uint32_t getMisses(){ return misses; }
-	static uint32_t getInvalidTS(){ return inval_ts; }
-	
 	static void init(){
 		for(uint32_t i = 0; i < UINT16_MAX; ++i){
 			rte_rwlock_init(&mutex[i]);
@@ -74,11 +63,12 @@ namespace moonsniff {
 	}
 
 	static ms_stats post_process(const char* fileName){
-		std::ifstream file(fileName);
+		std::ifstream ifile;
+		ifile.open(fileName);
 		uint64_t pre, post;
 		uint64_t size = 0, sum = 0;
 
-		while( file >> pre >> post ){
+		while( ifile >> pre >> post ){
 			if( pre < post && post - pre < 1e9 ){
 				sum += post - pre;
 				++size;
@@ -107,8 +97,5 @@ extern "C" {
 	
 	void ms_init(){ moonsniff::init(); }
 	void ms_finish(){ moonsniff::finish(); }
-	uint32_t ms_get_hits(){ return moonsniff::getHits(); }
-	uint32_t ms_get_misses(){ return moonsniff::getMisses(); }
-	uint32_t ms_get_invalid_timestamps(){ return moonsniff::getInvalidTS();}
 
 }
