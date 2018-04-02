@@ -23,14 +23,15 @@ ffi.cdef[[
 
 	void ms_add_entry(uint16_t identification, uint64_t timestamp);
 	void ms_test_for(uint16_t identification, uint64_t timestamp);
-	void ms_init();
+	void ms_init(const char* fileName);
 	void ms_finish();
 	struct ms_stats ms_post_process(const char* fileName);
 ]]
 
-local RUN_TIME = 10		-- in seconds
+local RUN_TIME = 20		-- in seconds
 local SEND_RATE = 1000		-- in mbit/s
 local PKT_LEN = 100		-- in byte
+local OUTPUT_PATH = "latencies.csv"
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware timestamping capabilities.\nThe ideal test setup for this is a cable directly connecting the two test ports.")
@@ -47,7 +48,7 @@ function master(args)
 	local dev1tx = args.dev[2]:getTxQueue(0)
 	local dev1rx = args.dev[2]:getRxQueue(0)
 
-	C.ms_init()
+	C.ms_init(OUTPUT_PATH)
 
 	stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
 	
@@ -79,7 +80,7 @@ function timestampPreDuT(queue, otherdev, bar)
 		local rx = queue:tryRecv(bufs, 1000)
 		bufs:free(rx)
 	end
-	--bar:wait()
+	bar:wait()
 	local runtime = timer:new(RUN_TIME + 0.5)
 	local hist = hist:new()
 	local lastTimestamp
@@ -123,7 +124,7 @@ function timestampPostDuT(queue, otherdev, bar)
 	ts.syncClocks(queue.dev, otherdev)
 	queue.dev:clearTimestamps()
 	otherdev:clearTimestamps()
-	--bar:wait()
+	bar:wait()
 	local runtime = timer:new(RUN_TIME + 0.5)
 	local hist = hist:new()
 	local lastTimestamp
@@ -165,7 +166,7 @@ function printStats()
 	lm.sleepMillis(500)
 	print()
 
-	stats = C.ms_post_process("latencies.csv")
+	stats = C.ms_post_process(OUTPUT_PATH)
 	hits = stats.hits
 	misses = stats.misses
 	invalidTS = stats.inval_ts

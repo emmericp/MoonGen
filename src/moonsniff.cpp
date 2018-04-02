@@ -2,15 +2,11 @@
 #include <deque>
 #include <iostream>
 #include <fstream>
-#include <rte_rwlock.h>
+#include <mutex>
+#include <thread>
 
 namespace moonsniff {
 	
-	struct ms_entry {
-		uint64_t timestamp;
-		bool valid = false;
-	};
-
 	struct ms_stats {
 		uint64_t average_latency = 0;
 		uint32_t hits = 0;
@@ -20,17 +16,12 @@ namespace moonsniff {
 
 	ms_stats stats;
 
-	std::deque<uint64_t> latencies;
 	std::ofstream file;
 	
-	ms_entry hit_list[UINT16_MAX];
-	rte_rwlock_t mutex[UINT16_MAX];
+	uint64_t hit_list[UINT16_MAX] = { 0 };
 
-	static void init(){
-		for(uint32_t i = 0; i < UINT16_MAX; ++i){
-			rte_rwlock_init(&mutex[i]);
-		}
-		file.open("latencies.csv");
+	static void init(const char* fileName){
+		file.open(fileName);
 	}
 
 	static void finish(){
@@ -38,28 +29,24 @@ namespace moonsniff {
 	}
 
 	static void add_entry(uint16_t identification, uint64_t timestamp){
-		rte_rwlock_write_lock(&mutex[identification]);
 		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
-		hit_list[identification].valid = true;
-		hit_list[identification].timestamp = timestamp;
+		hit_list[identification] = timestamp;
 		//std::cout << "finished adding" << "\n";
-		rte_rwlock_write_unlock(&mutex[identification]);
 	}
 
 	static void test_for(uint16_t identification, uint64_t timestamp){
-		rte_rwlock_write_lock(&mutex[identification]);
-		if( hit_list[identification].valid == true ){
+		uint64_t old_ts = hit_list[identification];
+		hit_list[identification] = 0;
+		if( old_ts != 0 ){
 			++stats.hits;
-			file << hit_list[identification].timestamp << " " << timestamp << "\n";
+			file << old_ts << " " << timestamp << "\n";
 
 			//std::cout << "new: " << timestamp << "\n";
 			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
 			//std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
-			hit_list[identification].valid = false;
 		} else {
 			++stats.misses;
 		}
-		rte_rwlock_write_unlock(&mutex[identification]);
 	}
 
 	static ms_stats post_process(const char* fileName){
@@ -95,7 +82,7 @@ extern "C" {
 		return moonsniff::post_process(fileName);
 	}
 	
-	void ms_init(){ moonsniff::init(); }
+	void ms_init(const char* fileName){ moonsniff::init(fileName); }
 	void ms_finish(){ moonsniff::finish(); }
 
 }
