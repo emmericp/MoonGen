@@ -13,6 +13,15 @@ namespace moonsniff {
 		bool valid = false;
 	};
 
+	struct ms_stats {
+		uint64_t average_latency = 0;
+		uint32_t hits = 0;
+		uint32_t misses = 0;
+		uint32_t inval_ts = 0;
+	};
+
+	ms_stats stats;
+
 	std::deque<uint64_t> latencies;
 	std::ofstream file;
 	
@@ -51,7 +60,7 @@ namespace moonsniff {
 	static void test_for(uint16_t identification, uint64_t timestamp){
 		rte_rwlock_write_lock(&mutex[identification]);
 		if( hit_list[identification].valid == true ){
-			++hits;
+			++stats.hits;
 			file << hit_list[identification].timestamp << " " << timestamp << "\n";
 
 			//std::cout << "new: " << timestamp << "\n";
@@ -59,13 +68,13 @@ namespace moonsniff {
 			//std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
 			hit_list[identification].valid = false;
 		} else {
-			++misses;
+			++stats.misses;
 		}
 		rte_rwlock_write_unlock(&mutex[identification]);
 	}
 
-	static uint64_t average_latency(){
-		std::ifstream file("latencies.csv");
+	static ms_stats post_process(const char* fileName){
+		std::ifstream file(fileName);
 		uint64_t pre, post;
 		uint64_t size = 0, sum = 0;
 
@@ -74,11 +83,12 @@ namespace moonsniff {
 				sum += post - pre;
 				++size;
 			} else {
-				++inval_ts;
+				++stats.inval_ts;
 			}
 		}
 		std::cout << size << ", " << sum << "\n";
-		return sum/size;
+		stats.average_latency = size != 0 ? sum/size : 0;
+		return stats;
 	}
 }
 
@@ -91,8 +101,8 @@ extern "C" {
 		moonsniff::test_for(identification, timestamp);
 	}
 
-	uint64_t ms_average_latency(){
-		return moonsniff::average_latency();
+	moonsniff::ms_stats ms_post_process(const char* fileName){
+		return moonsniff::post_process(fileName);
 	}
 	
 	void ms_init(){ moonsniff::init(); }

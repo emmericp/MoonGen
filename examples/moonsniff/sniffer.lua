@@ -17,6 +17,13 @@ ffi.cdef[[
 	uint8_t ms_getCtr();
 	void ms_incrementCtr();
 
+	struct ms_stats {
+                uint64_t average_latency;
+                uint32_t hits;
+                uint32_t misses;
+                uint32_t inval_ts;
+        };
+
 	void ms_init_buffer(uint8_t window_size);
 	void ms_add_entry(uint16_t identification, uint64_t timestamp);
 	void ms_test_for(uint16_t identification, uint64_t timestamp);
@@ -27,7 +34,7 @@ ffi.cdef[[
 	uint32_t ms_get_invalid_timestamps();
 	uint32_t ms_get_wrap_misses();
 	uint32_t ms_get_forward_hits();
-	uint64_t ms_average_latency();
+	struct ms_stats* ms_post_process(const char* fileName);
 ]]
 
 local RUN_TIME = 10		-- in seconds
@@ -167,9 +174,14 @@ end
 
 function printStats()
 	lm.sleepMillis(500)
-	local hits = C.ms_get_hits()
-	local misses = C.ms_get_misses()
-	local invalidTS = C.ms_get_invalid_timestamps()
+--	stats = C.ms_average_latency()
+	stats = C.ms_post_process("latencies.csv")
+	hits = stats.hits
+	misses = stats.misses
+	invalidTS = stats.inval_ts
+--	local hits = C.ms_get_hits()
+--	local misses = C.ms_get_misses()
+--	local invalidTS = C.ms_get_invalid_timestamps()
 	print("Received: " .. hits + misses)
 	print("\tHits: " .. hits)
 	print("\tHits with invalid timestamps: " .. invalidTS)
@@ -177,5 +189,7 @@ function printStats()
 --	print("Misses caused by wrap-around: " .. C.ms_get_wrap_misses())
 	print("\tLoss by misses: " .. (misses/(misses + hits)) * 100 .. "%")
 	print("\tTotal loss: " .. ((misses + invalidTS)/(misses + hits)) * 100 .. "%")
-	print("Average Latency: " .. tostring(tonumber(C.ms_average_latency())/10^6) .. " ms")
+--	print("Average Latency: " .. tostring(tonumber(C.ms_average_latency())/10^6) .. " ms")
+	print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^6) .. " ms")
+
 end
