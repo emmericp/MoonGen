@@ -61,8 +61,8 @@ function master(args)
 
 	-- start the tasks to sample incoming packets
 	-- correct mesurement requires a packet to arrive at Pre before Post
-	local receiver0 = lm.startTask("timestamp", dev0rx, args.dev[2], bar, true)
-	local receiver1 = lm.startTask("timestamp", dev1rx, args.dev[1], bar, false)
+	local receiver0 = lm.startTask("timestamp", dev0rx, args.dev[2], bar, true, args)
+	local receiver1 = lm.startTask("timestamp", dev1rx, args.dev[1], bar, false, args)
 
 
 	receiver0:wait()
@@ -74,7 +74,7 @@ function master(args)
 	printStats()
 end
 
-function timestamp(queue, otherdev, bar, pre)
+function timestamp(queue, otherdev, bar, pre, args)
 --	queue.dev:enableRxTimestampsAllPackets(queue)
 	local bufs = memory.bufArray()
 	local drainQueue = timer:new(0.5)
@@ -90,14 +90,14 @@ function timestamp(queue, otherdev, bar, pre)
 
 	bar:wait()
 	local runtime = timer:new(RUN_TIME + 0.5)
-	local hist = hist:new()
+	local hist = not args.fast and hist:new()
 	local lastTimestamp
 	local count = 0
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
-			if timestamp then
+			if not args.fast and timestamp then
 				-- timestamp sometimes jumps by ~3 seconds on ixgbe (in less than a few milliseconds wall-clock time)
 				if lastTimestamp and timestamp - lastTimestamp < 10^9 then
 					hist:update(timestamp - lastTimestamp)
@@ -117,10 +117,13 @@ function timestamp(queue, otherdev, bar, pre)
 		end
 		bufs:free(rx)
 	end
-	log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
-	hist:print()
-	if hist.numSamples == 0 then
-		log:error("Received no timestamped packets.")
+
+	if not args.fast then
+		log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
+		hist:print()
+		if hist.numSamples == 0 then
+			log:error("Received no timestamped packets.")
+		end
 	end
 	print()
 end
