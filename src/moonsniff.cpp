@@ -18,7 +18,7 @@ namespace moonsniff {
 
 	std::ofstream file;
 	
-	uint64_t hit_list[UINT16_MAX] = { 0 };
+	uint64_t hit_list[UINT16_MAX + 1] = { 0 };
 
 	static void init(const char* fileName){
 		file.open(fileName);
