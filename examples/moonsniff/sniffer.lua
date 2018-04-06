@@ -36,6 +36,8 @@ local OUTPUT_PATH = "latencies.csv"
 function configure(parser)
 	parser:description("Demonstrate and test hardware timestamping capabilities.\nThe ideal test setup for this is a cable directly connecting the two test ports.")
 	parser:argument("dev", "Devices to use."):args(2):convert(tonumber)
+	parser:flag("-f --fast", "set fast flag to omit all live processing for highest performance")
+	parser:flag("-c --capture", "if set, all incoming packets are captured as a whole")
 	return parser:parse()
 end
 
@@ -59,8 +61,8 @@ function master(args)
 
 	-- start the tasks to sample incoming packets
 	-- correct mesurement requires a packet to arrive at Pre before Post
-	local receiver0 = lm.startTask("timestampPreDuT", dev0rx, args.dev[2], bar)
-	local receiver1 = lm.startTask("timestampPostDuT", dev1rx, args.dev[1], bar)
+	local receiver0 = lm.startTask("timestamp", dev0rx, args.dev[2], bar, true)
+	local receiver1 = lm.startTask("timestamp", dev1rx, args.dev[1], bar, false)
 
 
 	receiver0:wait()
@@ -72,7 +74,7 @@ function master(args)
 	printStats()
 end
 
-function timestampPreDuT(queue, otherdev, bar)
+function timestamp(queue, otherdev, bar, pre)
 --	queue.dev:enableRxTimestampsAllPackets(queue)
 	local bufs = memory.bufArray()
 	local drainQueue = timer:new(0.5)
@@ -80,6 +82,12 @@ function timestampPreDuT(queue, otherdev, bar)
 		local rx = queue:tryRecv(bufs, 1000)
 		bufs:free(rx)
 	end
+	if not pre then
+		ts.syncClocks(queue.dev, otherdev)
+		queue.dev:clearTimestamps()
+		otherdev:clearTimestamps()
+	end
+
 	bar:wait()
 	local runtime = timer:new(RUN_TIME + 0.5)
 	local hist = hist:new()
@@ -98,68 +106,23 @@ function timestampPreDuT(queue, otherdev, bar)
 			end
 --			print("Pre: " .. timestamp)
 			local pkt = bufs[i]:getUdpPacket()
-			C.ms_add_entry(pkt.payload.uint16[0], timestamp)
---			print(pkt.payload.uint16[0])
-			count = count + 1
 
-		end
-		bufs:free(rx)
-	end
-	log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
-	hist:print()
-	if hist.numSamples == 0 then
-		log:error("Received no timestamped packets.")
-	end
-	print()
-end
-
-function timestampPostDuT(queue, otherdev, bar)
---	queue.dev:enableRxTimestampsAllPackets(queue)
-	local bufs = memory.bufArray()
-	local drainQueue = timer:new(0.5)
-	while lm.running and drainQueue:running() do
-		local rx = queue:tryRecv(bufs, 1000)
-		bufs:free(rx)
-	end
-	ts.syncClocks(queue.dev, otherdev)
-	queue.dev:clearTimestamps()
-	otherdev:clearTimestamps()
-	bar:wait()
-	local runtime = timer:new(RUN_TIME + 0.5)
-	local hist = hist:new()
-	local lastTimestamp
-	local count = 0
-
-	while lm.running() and runtime:running() do
-		local rx = queue:tryRecv(bufs, 1000)
-		for i = 1, rx do
-			local timestamp = bufs[i]:getTimestamp(queue.dev)
-			if timestamp then
-				-- timestamp sometimes jumps by ~3 seconds on ixgbe (in less than a few milliseconds wall-clock time)
-				if lastTimestamp and timestamp - lastTimestamp < 10^9 then
---					print(timestamp - lastTimestamp)
-					hist:update(timestamp - lastTimestamp)
-				end
-				lastTimestamp = timestamp
+			if pre then
+				C.ms_add_entry(pkt.payload.uint16[0], timestamp)
+			else
+				C.ms_test_for(pkt.payload.uint16[0], timestamp)
 			end
-			local pkt = bufs[i]:getUdpPacket()
---			print(timestamp)
-			C.ms_test_for(pkt.payload.uint16[0], timestamp)
---			print(pkt.payload.uint16[0])
 			count = count + 1
+
 		end
 		bufs:free(rx)
---		print("post " .. C.ms_getCtr())
 	end
 	log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
 	hist:print()
-	hist:save("hist.csv")
 	if hist.numSamples == 0 then
 		log:error("Received no timestamped packets.")
 	end
 	print()
-
-
 end
 
 function printStats()
