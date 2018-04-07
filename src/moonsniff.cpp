@@ -5,6 +5,8 @@
 #include <mutex>
 #include <thread>
 
+#define UINT24_MAX 16777215
+
 namespace moonsniff {
 	
 	struct ms_stats {
@@ -18,7 +20,7 @@ namespace moonsniff {
 
 	std::ofstream file;
 	
-	uint64_t hit_list[UINT16_MAX + 1] = { 0 };
+	uint64_t hit_list[UINT24_MAX + 1] = { 0 };
 
 	static void init(const char* fileName){
 		file.open(fileName);
@@ -28,15 +30,15 @@ namespace moonsniff {
 		file.close();
 	}
 
-	static void add_entry(uint16_t identification, uint64_t timestamp){
+	static void add_entry(uint32_t identification, uint64_t timestamp){
 		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
-		hit_list[identification] = timestamp;
+		hit_list[identification & 0x00ffffff] = timestamp;
 		//std::cout << "finished adding" << "\n";
 	}
 
-	static void test_for(uint16_t identification, uint64_t timestamp){
-		uint64_t old_ts = hit_list[identification];
-		hit_list[identification] = 0;
+	static void test_for(uint32_t identification, uint64_t timestamp){
+		uint64_t old_ts = hit_list[identification & 0x00ffffff];
+		hit_list[identification & 0x00ffffff] = 0;
 		if( old_ts != 0 ){
 			++stats.hits;
 			file << old_ts << " " << timestamp << "\n";
@@ -70,11 +72,11 @@ namespace moonsniff {
 }
 
 extern "C" {
-	void ms_add_entry(uint16_t identification, uint64_t timestamp){
+	void ms_add_entry(uint32_t identification, uint64_t timestamp){
 		moonsniff::add_entry(identification, timestamp);
 	}
 
-	void ms_test_for(uint16_t identification, uint64_t timestamp){
+	void ms_test_for(uint32_t identification, uint64_t timestamp){
 		moonsniff::test_for(identification, timestamp);
 	}
 

@@ -21,8 +21,8 @@ ffi.cdef[[
                 uint32_t inval_ts;
         };
 
-	void ms_add_entry(uint16_t identification, uint64_t timestamp);
-	void ms_test_for(uint16_t identification, uint64_t timestamp);
+	void ms_add_entry(uint32_t identification, uint64_t timestamp);
+	void ms_test_for(uint32_t identification, uint64_t timestamp);
 	void ms_init(const char* fileName);
 	void ms_finish();
 	struct ms_stats ms_post_process(const char* fileName);
