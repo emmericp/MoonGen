@@ -19,6 +19,9 @@ namespace moonsniff {
 			std::ofstream file;
 		public:
 			virtual void write_to_file(uint64_t old_ts, uint64_t new_ts) = 0;
+			void finish(){
+				file.close();
+			}
 	};
 
 	class Text_Writer: public Writer {
@@ -53,6 +56,9 @@ namespace moonsniff {
 		public:
 			virtual ms_timestamps read_from_file() = 0;
 			virtual bool has_next() = 0;
+			void finish(){
+				file.close();
+			}
 	};
 
 	class Text_Reader: public Reader {
@@ -108,6 +114,7 @@ namespace moonsniff {
 	
 	uint64_t hit_list[UINT24_MAX + 1] = { 0 };
 
+	Writer* writer;
 
 //	void write_textfile(uint64_t old_ts, uint64_t new_ts){
 //		file << old_ts << " " << new_ts << "\n";
@@ -121,12 +128,13 @@ namespace moonsniff {
 //	void (*write_to_file)(uint64_t, uint64_t);
 
 	static void init(const char* fileName){
-		file.open(fileName);
+//		file.open(fileName);
 //		write_to_file = &write_textfile;
+		writer = new Text_Writer(fileName);
 	}
 
 	static void finish(){
-		file.close();
+		writer -> finish();
 	}
 
 	static void add_entry(uint32_t identification, uint64_t timestamp){
@@ -140,8 +148,8 @@ namespace moonsniff {
 		hit_list[identification & 0x00ffffff] = 0;
 		if( old_ts != 0 ){
 			++stats.hits;
-			write_to_file(old_ts, timestamp);
-
+//			write_to_file(old_ts, timestamp);
+			writer -> write_to_file(old_ts, timestamp);
 			//std::cout << "new: " << timestamp << "\n";
 			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
 			//std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
@@ -151,12 +159,17 @@ namespace moonsniff {
 	}
 
 	static ms_stats post_process(const char* fileName){
-		std::ifstream ifile;
-		ifile.open(fileName);
+//		std::ifstream ifile;
+//		ifile.open(fileName);
 		uint64_t pre, post;
+		Reader* reader = new Text_Reader(fileName);
 		uint64_t size = 0, sum = 0;
 
-		while( ifile >> pre >> post ){
+//		while( ifile >> pre >> post ){
+		while( reader -> has_next() ){
+			ms_timestamps ts = reader -> read_from_file();
+			pre = ts.pre;
+			post = ts.post;
 			if( pre < post && post - pre < 1e9 ){
 				sum += post - pre;
 				++size;
@@ -166,6 +179,7 @@ namespace moonsniff {
 		}
 		std::cout << size << ", " << sum << "\n";
 		stats.average_latency = size != 0 ? sum/size : 0;
+		reader -> finish();
 		return stats;
 	}
 }
