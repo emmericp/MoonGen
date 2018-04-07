@@ -8,7 +8,93 @@
 #define UINT24_MAX 16777215
 
 namespace moonsniff {
-	
+
+	struct ms_timestamps {
+		uint64_t pre;
+		uint64_t post;
+	};
+
+	class Writer {
+		protected:
+			std::ofstream file;
+		public:
+			virtual void write_to_file(uint64_t old_ts, uint64_t new_ts) = 0;
+	};
+
+	class Text_Writer: public Writer {
+		public:
+			void write_to_file(uint64_t old_ts, uint64_t new_ts){
+				file << old_ts << " " << new_ts << "\n";
+			}
+			
+			Text_Writer(const char* fileName){
+				file.open(fileName);
+			}
+	};
+
+	class Binary_Writer: public Writer {
+		public:
+			void write_to_file(uint64_t old_ts, uint64_t new_ts){
+				file.write(reinterpret_cast<const char*>(&old_ts), sizeof(uint64_t));
+				file.seekp( 8, std::ios::cur );
+				file.write(reinterpret_cast<const char*>(&new_ts), sizeof(uint64_t));
+				file.seekp( 8, std::ios::cur );
+			}
+
+			Binary_Writer(const char* fileName){
+				file.open(fileName, std::ios::binary);
+			}
+	};
+
+	class Reader {
+		protected:
+			std::ifstream file;
+			ms_timestamps ts;
+		public:
+			virtual ms_timestamps read_from_file() = 0;
+			virtual bool has_next() = 0;
+	};
+
+	class Text_Reader: public Reader {
+		public:
+			bool has_next(){
+				return file >> ts.pre >> ts.post ? true : false;
+			}
+			
+			ms_timestamps read_from_file(){
+				return ts;
+			}
+
+			Text_Reader(const char* fileName){
+				file.open(fileName);
+			}
+	};
+
+	class Binary_Reader: public Reader {
+		private:
+			std::streampos end;
+		public:
+			bool has_next(){
+				return file.tellg() >= end ? false : true;
+			}
+
+			ms_timestamps read_from_file(){
+				file.read(reinterpret_cast<char*>(&ts.pre), sizeof(uint64_t));
+				file.seekg( 8, std::ios::cur );
+				file.read(reinterpret_cast<char*>(&ts.post), sizeof(uint64_t));
+				file.seekg( 8, std::ios::cur );
+
+				return ts;
+			}
+
+			Binary_Reader(const char* fileName){
+				file.open(fileName, std::ios::binary | std::ios::ate);
+				end = file.tellg();
+				file.seekg(0, std::ios::beg);
+			}
+	};
+				
+		
 	struct ms_stats {
 		uint64_t average_latency = 0;
 		uint32_t hits = 0;
@@ -22,8 +108,21 @@ namespace moonsniff {
 	
 	uint64_t hit_list[UINT24_MAX + 1] = { 0 };
 
+
+//	void write_textfile(uint64_t old_ts, uint64_t new_ts){
+//		file << old_ts << " " << new_ts << "\n";
+//	}
+//
+//	void write_binaryfile(uint64_t old_ts, uint64_t new_ts){
+//		file.write(reinterpret_cast<const char*>(&old_ts), sizeof(uint64_t));
+//		file.write(reinterpret_cast<const char*>(&new_ts), sizeof(uint64_t));
+//	}
+//
+//	void (*write_to_file)(uint64_t, uint64_t);
+
 	static void init(const char* fileName){
 		file.open(fileName);
+//		write_to_file = &write_textfile;
 	}
 
 	static void finish(){
@@ -41,7 +140,7 @@ namespace moonsniff {
 		hit_list[identification & 0x00ffffff] = 0;
 		if( old_ts != 0 ){
 			++stats.hits;
-			file << old_ts << " " << timestamp << "\n";
+			write_to_file(old_ts, timestamp);
 
 			//std::cout << "new: " << timestamp << "\n";
 			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
