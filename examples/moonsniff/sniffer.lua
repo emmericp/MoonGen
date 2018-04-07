@@ -1,4 +1,4 @@
---- Demonstrates and tests hardware timestamping capabilities
+--- Demonstrates the basic usage of moonsniff in order to determine device induced latencies
 
 local lm     	= require "libmoon"
 local device 	= require "device"
@@ -29,13 +29,11 @@ ffi.cdef[[
 ]]
 
 local RUN_TIME = 20		-- in seconds
-local SEND_RATE = 1000		-- in mbit/s
-local PKT_LEN = 100		-- in byte
 local OUTPUT_PATH = "latencies.csv"
 
 function configure(parser)
-	parser:description("Demonstrate and test hardware timestamping capabilities.\nThe ideal test setup for this is a cable directly connecting the two test ports.")
-	parser:argument("dev", "Devices to use."):args(2):convert(tonumber)
+	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
+	parser:argument("dev", "devices to use."):args(2):convert(tonumber)
 	parser:flag("-f --fast", "set fast flag to omit all live processing for highest performance")
 	parser:flag("-c --capture", "if set, all incoming packets are captured as a whole")
 	return parser:parse()
