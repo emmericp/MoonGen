@@ -101,6 +101,7 @@ namespace moonsniff {
 		uint64_t average_latency = 0;
 		uint32_t hits = 0;
 		uint32_t misses = 0;
+		uint32_t cold_misses = 0;
 		uint32_t inval_ts = 0;
 	};
 
@@ -114,6 +115,7 @@ namespace moonsniff {
 
 	Writer* writer;
 
+	bool has_hit = false;
 
 	static void init(const char* fileName, Mode mode){
 		if( mode == binary ){
@@ -138,12 +140,16 @@ namespace moonsniff {
 		hit_list[identification & 0x00ffffff] = 0;
 		if( old_ts != 0 ){
 			++stats.hits;
+			has_hit = true;
 			writer -> write_to_file(old_ts, timestamp);
 			//std::cout << "new: " << timestamp << "\n";
 			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
 			//std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
 		} else {
 			++stats.misses;
+			if( !has_hit ){
+				++stats.cold_misses;
+			}
 		}
 	}
 

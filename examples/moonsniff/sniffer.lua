@@ -18,6 +18,7 @@ ffi.cdef[[
                 uint64_t average_latency;
                 uint32_t hits;
                 uint32_t misses;
+		uint32_t cold_misses;
                 uint32_t inval_ts;
         };
 
@@ -136,11 +137,13 @@ function printStats()
 	stats = C.ms_post_process(OUTPUT_PATH, OUTPUT_MODE)
 	hits = stats.hits
 	misses = stats.misses
+	cold = stats.cold_misses
 	invalidTS = stats.inval_ts
 	print("Received: " .. hits + misses)
 	print("\tHits: " .. hits)
 	print("\tHits with invalid timestamps: " .. invalidTS)
 	print("\tMisses: " .. misses)
+	print("\tCold Misses: " .. cold)
 	print("\tLoss by misses: " .. (misses/(misses + hits)) * 100 .. "%")
 	print("\tTotal loss: " .. ((misses + invalidTS)/(misses + hits)) * 100 .. "%")
 	print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^6) .. " ms")
