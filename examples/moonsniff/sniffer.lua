@@ -14,22 +14,25 @@ local ffi    = require "ffi"
 local C = ffi.C
 
 ffi.cdef[[
-	struct ms_stats {
+        struct ms_stats {
                 uint64_t average_latency;
                 uint32_t hits;
                 uint32_t misses;
                 uint32_t inval_ts;
         };
 
-	void ms_add_entry(uint32_t identification, uint64_t timestamp);
-	void ms_test_for(uint32_t identification, uint64_t timestamp);
-	void ms_init(const char* fileName);
-	void ms_finish();
-	struct ms_stats ms_post_process(const char* fileName);
+        enum Mode { text, binary };
+
+        void ms_add_entry(uint32_t identification, uint64_t timestamp);
+        void ms_test_for(uint32_t identification, uint64_t timestamp);
+        void ms_init(const char* fileName, enum Mode mode);
+        void ms_finish();
+        struct ms_stats ms_post_process(const char* fileName, enum Mode mode);
 ]]
 
 local RUN_TIME = 20		-- in seconds
 local OUTPUT_PATH = "latencies.csv"
+local OUTPUT_MODE = C.text
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
@@ -48,7 +51,7 @@ function master(args)
 	local dev1tx = args.dev[2]:getTxQueue(0)
 	local dev1rx = args.dev[2]:getRxQueue(0)
 
-	C.ms_init(OUTPUT_PATH)
+	C.ms_init(OUTPUT_PATH, OUTPUT_MODE)
 
 	stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
 	
@@ -130,7 +133,7 @@ function printStats()
 	lm.sleepMillis(500)
 	print()
 
-	stats = C.ms_post_process(OUTPUT_PATH)
+	stats = C.ms_post_process(OUTPUT_PATH, OUTPUT_MODE)
 	hits = stats.hits
 	misses = stats.misses
 	invalidTS = stats.inval_ts

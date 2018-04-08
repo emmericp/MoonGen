@@ -39,9 +39,7 @@ namespace moonsniff {
 		public:
 			void write_to_file(uint64_t old_ts, uint64_t new_ts){
 				file.write(reinterpret_cast<const char*>(&old_ts), sizeof(uint64_t));
-				file.seekp( 8, std::ios::cur );
 				file.write(reinterpret_cast<const char*>(&new_ts), sizeof(uint64_t));
-				file.seekp( 8, std::ios::cur );
 			}
 
 			Binary_Writer(const char* fileName){
@@ -86,9 +84,7 @@ namespace moonsniff {
 
 			ms_timestamps read_from_file(){
 				file.read(reinterpret_cast<char*>(&ts.pre), sizeof(uint64_t));
-				file.seekg( 8, std::ios::cur );
 				file.read(reinterpret_cast<char*>(&ts.post), sizeof(uint64_t));
-				file.seekg( 8, std::ios::cur );
 
 				return ts;
 			}
@@ -110,27 +106,21 @@ namespace moonsniff {
 
 	ms_stats stats;
 
+	enum Mode { text, binary };
+
 	std::ofstream file;
 	
 	uint64_t hit_list[UINT24_MAX + 1] = { 0 };
 
 	Writer* writer;
 
-//	void write_textfile(uint64_t old_ts, uint64_t new_ts){
-//		file << old_ts << " " << new_ts << "\n";
-//	}
-//
-//	void write_binaryfile(uint64_t old_ts, uint64_t new_ts){
-//		file.write(reinterpret_cast<const char*>(&old_ts), sizeof(uint64_t));
-//		file.write(reinterpret_cast<const char*>(&new_ts), sizeof(uint64_t));
-//	}
-//
-//	void (*write_to_file)(uint64_t, uint64_t);
 
-	static void init(const char* fileName){
-//		file.open(fileName);
-//		write_to_file = &write_textfile;
-		writer = new Text_Writer(fileName);
+	static void init(const char* fileName, Mode mode){
+		if( mode == binary ){
+			writer = new Binary_Writer(fileName);
+		} else {
+			writer = new Text_Writer(fileName);
+		}
 	}
 
 	static void finish(){
@@ -148,7 +138,6 @@ namespace moonsniff {
 		hit_list[identification & 0x00ffffff] = 0;
 		if( old_ts != 0 ){
 			++stats.hits;
-//			write_to_file(old_ts, timestamp);
 			writer -> write_to_file(old_ts, timestamp);
 			//std::cout << "new: " << timestamp << "\n";
 			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
@@ -158,20 +147,19 @@ namespace moonsniff {
 		}
 	}
 
-	static ms_stats post_process(const char* fileName){
-//		std::ifstream ifile;
-//		ifile.open(fileName);
-		uint64_t pre, post;
-		Reader* reader = new Text_Reader(fileName);
+	static ms_stats post_process(const char* fileName, Mode mode){
+		Reader* reader;
+		if( mode == binary ){
+			reader = new Binary_Reader(fileName);
+		} else {
+			reader = new Text_Reader(fileName);
+		}
 		uint64_t size = 0, sum = 0;
 
-//		while( ifile >> pre >> post ){
 		while( reader -> has_next() ){
 			ms_timestamps ts = reader -> read_from_file();
-			pre = ts.pre;
-			post = ts.post;
-			if( pre < post && post - pre < 1e9 ){
-				sum += post - pre;
+			if( ts.pre < ts.post && ts.post - ts.pre < 1e9 ){
+				sum += ts.post - ts.pre;
 				++size;
 			} else {
 				++stats.inval_ts;
@@ -193,11 +181,11 @@ extern "C" {
 		moonsniff::test_for(identification, timestamp);
 	}
 
-	moonsniff::ms_stats ms_post_process(const char* fileName){
-		return moonsniff::post_process(fileName);
+	moonsniff::ms_stats ms_post_process(const char* fileName, moonsniff::Mode mode){
+		return moonsniff::post_process(fileName, mode);
 	}
 	
-	void ms_init(const char* fileName){ moonsniff::init(fileName); }
+	void ms_init(const char* fileName, moonsniff::Mode mode){ moonsniff::init(fileName, mode); }
 	void ms_finish(){ moonsniff::finish(); }
 
 }
