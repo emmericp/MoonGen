@@ -22,6 +22,13 @@ namespace moonsniff {
 			void finish(){
 				file.close();
 			}
+			void check_stream(const char* fileName){
+				if( file.fail() ){
+					std::cerr << "Failed to open file < " << fileName << " >\nMake sure this file exists.\n\n";
+					exit(EXIT_FAILURE);
+				}
+			}
+
 	};
 
 	class Text_Writer: public Writer {
@@ -32,6 +39,7 @@ namespace moonsniff {
 			
 			Text_Writer(const char* fileName){
 				file.open(fileName);
+				check_stream(fileName);
 			}
 	};
 
@@ -44,6 +52,7 @@ namespace moonsniff {
 
 			Binary_Writer(const char* fileName){
 				file.open(fileName, std::ios::binary);
+				check_stream(fileName);
 			}
 	};
 
@@ -56,6 +65,12 @@ namespace moonsniff {
 			virtual bool has_next() = 0;
 			void finish(){
 				file.close();
+			}
+			void check_stream(const char* fileName){
+				if( file.fail() ){
+					std::cerr << "Failed to open file < " << fileName << " >\nMake sure this file exists.\n\n";
+					exit(EXIT_FAILURE);
+				}
 			}
 	};
 
@@ -71,6 +86,7 @@ namespace moonsniff {
 
 			Text_Reader(const char* fileName){
 				file.open(fileName);
+				check_stream(fileName);
 			}
 	};
 
@@ -79,7 +95,7 @@ namespace moonsniff {
 			std::streampos end;
 		public:
 			bool has_next(){
-				return file.tellg() >= end ? false : true;
+				return end > file.tellg() ? true : false;
 			}
 
 			ms_timestamps read_from_file(){
@@ -91,8 +107,14 @@ namespace moonsniff {
 
 			Binary_Reader(const char* fileName){
 				file.open(fileName, std::ios::binary | std::ios::ate);
+				check_stream(fileName);
 				end = file.tellg();
 				file.seekg(0, std::ios::beg);
+
+				if ( (end - file.tellg()) % 16 != 0 ){
+					std::cerr << "Invalid binary file detected. Are you sure it was created in ms_binary mode?" << "\n";
+					exit(EXIT_FAILURE);
+				}
 			}
 	};
 				
