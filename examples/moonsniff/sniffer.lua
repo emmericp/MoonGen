@@ -22,18 +22,18 @@ ffi.cdef[[
                 uint32_t inval_ts;
         };
 
-        enum Mode { text, binary };
+        enum ms_mode { ms_text, ms_binary };
 
         void ms_add_entry(uint32_t identification, uint64_t timestamp);
         void ms_test_for(uint32_t identification, uint64_t timestamp);
-        void ms_init(const char* fileName, enum Mode mode);
+        void ms_init(const char* fileName, enum ms_mode mode);
         void ms_finish();
-        struct ms_stats ms_post_process(const char* fileName, enum Mode mode);
+        struct ms_stats ms_post_process(const char* fileName, enum ms_mode mode);
 ]]
 
 local RUN_TIME = 20		-- in seconds
 local OUTPUT_PATH = "latencies.csv"
-local OUTPUT_MODE = C.text
+local OUTPUT_MODE = C.ms_text
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")

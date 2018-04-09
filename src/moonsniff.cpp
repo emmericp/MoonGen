@@ -107,7 +107,7 @@ namespace moonsniff {
 
 	ms_stats stats;
 
-	enum Mode { text, binary };
+	enum ms_mode { ms_text, ms_binary };
 
 	std::ofstream file;
 	
@@ -117,8 +117,8 @@ namespace moonsniff {
 
 	bool has_hit = false;
 
-	static void init(const char* fileName, Mode mode){
-		if( mode == binary ){
+	static void init(const char* fileName, ms_mode mode){
+		if( mode == ms_binary ){
 			writer = new Binary_Writer(fileName);
 		} else {
 			writer = new Text_Writer(fileName);
@@ -153,9 +153,9 @@ namespace moonsniff {
 		}
 	}
 
-	static ms_stats post_process(const char* fileName, Mode mode){
+	static ms_stats post_process(const char* fileName, ms_mode mode){
 		Reader* reader;
-		if( mode == binary ){
+		if( mode == ms_binary ){
 			reader = new Binary_Reader(fileName);
 		} else {
 			reader = new Text_Reader(fileName);
@@ -187,11 +187,11 @@ extern "C" {
 		moonsniff::test_for(identification, timestamp);
 	}
 
-	moonsniff::ms_stats ms_post_process(const char* fileName, moonsniff::Mode mode){
+	moonsniff::ms_stats ms_post_process(const char* fileName, moonsniff::ms_mode mode){
 		return moonsniff::post_process(fileName, mode);
 	}
 	
-	void ms_init(const char* fileName, moonsniff::Mode mode){ moonsniff::init(fileName, mode); }
+	void ms_init(const char* fileName, moonsniff::ms_mode mode){ moonsniff::init(fileName, mode); }
 	void ms_finish(){ moonsniff::finish(); }
 
 }
