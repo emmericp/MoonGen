@@ -38,12 +38,17 @@ local OUTPUT_MODE = C.ms_text
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
 	parser:argument("dev", "devices to use."):args(2):convert(tonumber)
-	parser:flag("-f --fast", "set fast flag to omit all live processing for highest performance")
-	parser:flag("-c --capture", "if set, all incoming packets are captured as a whole")
+	parser:option("-o --output", "Path to output file.")
+        parser:flag("-b --binary", "Write file in binary mode (instead of human readable). For long test series this will reduce the size of the output file.")
+	parser:flag("-f --fast", "Set fast flag to omit all live processing for highest performance.")
+	parser:flag("-c --capture", "If set, all incoming packets are captured as a whole.")
 	return parser:parse()
 end
 
 function master(args)
+	if args.output then OUTPUT_PATH = args.output end
+        if args.binary then OUTPUT_MODE = C.ms_binary end
+
 	args.dev[1] = device.config{port = args.dev[1], txQueues = 2, rxQueues = 2}
 	args.dev[2] = device.config{port = args.dev[2], txQueues = 2, rxQueues = 2}
 	device.waitForLinks()
