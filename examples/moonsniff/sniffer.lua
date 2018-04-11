@@ -20,6 +20,8 @@ ffi.cdef[[
                 uint32_t misses;
 		uint32_t cold_misses;
                 uint32_t inval_ts;
+		uint32_t overwrites;
+		uint32_t cold_overwrites;
         };
 
         enum ms_mode { ms_text, ms_binary };
@@ -144,11 +146,14 @@ function printStats()
 	misses = stats.misses
 	cold = stats.cold_misses
 	invalidTS = stats.inval_ts
+	overwrites = stats.overwrites
 	print("Received: " .. hits + misses)
 	print("\tHits: " .. hits)
 	print("\tHits with invalid timestamps: " .. invalidTS)
 	print("\tMisses: " .. misses)
 	print("\tCold Misses: " .. cold)
+	print("\tOverwrites: " .. overwrites)
+	print("\tCold Overwrites: " .. stats.cold_overwrites)
 	print("\tLoss by misses: " .. (misses/(misses + hits)) * 100 .. "%")
 	print("\tTotal loss: " .. ((misses + invalidTS)/(misses + hits)) * 100 .. "%")
 	print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^6) .. " ms")

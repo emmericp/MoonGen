@@ -6,6 +6,7 @@
 #include <thread>
 
 #define UINT24_MAX 16777215
+#define INDEX_MASK 0x00FFFFFF
 
 namespace moonsniff {
 
@@ -36,7 +37,7 @@ namespace moonsniff {
 			void write_to_file(uint64_t old_ts, uint64_t new_ts){
 				file << old_ts << " " << new_ts << "\n";
 			}
-			
+
 			Text_Writer(const char* fileName){
 				file.open(fileName);
 				check_stream(fileName);
@@ -125,9 +126,9 @@ namespace moonsniff {
 		uint32_t misses = 0;
 		uint32_t cold_misses = 0;
 		uint32_t inval_ts = 0;
-	};
-
-	ms_stats stats;
+		uint32_t overwrites = 0;
+		uint32_t cold_overwrites = 0;
+	} stats;
 
 	enum ms_mode { ms_text, ms_binary };
 
@@ -152,14 +153,21 @@ namespace moonsniff {
 	}
 
 	static void add_entry(uint32_t identification, uint64_t timestamp){
+		uint64_t old_ts = hit_list[identification & INDEX_MASK];
 		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
-		hit_list[identification & 0x00ffffff] = timestamp;
+		if( old_ts != 0 ){
+			++stats.overwrites;
+			if( !has_hit ){
+				++stats.cold_overwrites;
+			}
+		}
+		hit_list[identification & INDEX_MASK] = timestamp;
 		//std::cout << "finished adding" << "\n";
 	}
 
 	static void test_for(uint32_t identification, uint64_t timestamp){
-		uint64_t old_ts = hit_list[identification & 0x00ffffff];
-		hit_list[identification & 0x00ffffff] = 0;
+		uint64_t old_ts = hit_list[identification & INDEX_MASK];
+		hit_list[identification & INDEX_MASK] = 0;
 		if( old_ts != 0 ){
 			++stats.hits;
 			has_hit = true;
