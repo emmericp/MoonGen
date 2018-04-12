@@ -55,7 +55,7 @@ function generateTraffic(queue)
 
                 for i, buf in ipairs(bufs) do
                         local pkt = buf:getUdpPacket()
-                        pkt.payload.uint16[0] = pkt_id
+                        pkt.payload.uint32[0] = pkt_id
                         pkt_id = pkt_id + 1
                 end
 

@@ -33,7 +33,7 @@ ffi.cdef[[
         struct ms_stats ms_post_process(const char* fileName, enum ms_mode mode);
 ]]
 
-local RUN_TIME = 20		-- in seconds
+local RUN_TIME = 40		-- in seconds
 local OUTPUT_PATH = "latencies.csv"
 local OUTPUT_MODE = C.ms_text
 
@@ -117,9 +117,9 @@ function timestamp(queue, otherdev, bar, pre, args)
 			local pkt = bufs[i]:getUdpPacket()
 
 			if pre then
-				C.ms_add_entry(pkt.payload.uint16[0], timestamp)
+				C.ms_add_entry(pkt.payload.uint32[0], timestamp)
 			else
-				C.ms_test_for(pkt.payload.uint16[0], timestamp)
+				C.ms_test_for(pkt.payload.uint32[0], timestamp)
 			end
 			count = count + 1
 

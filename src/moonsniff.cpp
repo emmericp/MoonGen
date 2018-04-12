@@ -137,6 +137,7 @@ namespace moonsniff {
 	uint64_t hit_list[UINT24_MAX + 1] = { 0 };
 
 	Writer* writer;
+//	Text_Writer* ovr;
 
 	bool has_hit = false;
 
@@ -146,22 +147,26 @@ namespace moonsniff {
 		} else {
 			writer = new Text_Writer(fileName);
 		}
+//		ovr = new Text_Writer("overwrites.csv");
 	}
 
 	static void finish(){
 		writer -> finish();
+//		ovr -> finish();
 	}
 
 	static void add_entry(uint32_t identification, uint64_t timestamp){
-		uint64_t old_ts = hit_list[identification & INDEX_MASK];
-		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
-		if( old_ts != 0 ){
-			++stats.overwrites;
-			if( !has_hit ){
-				++stats.cold_overwrites;
-			}
-		}
+		//uint64_t old_ts = hit_list[identification & INDEX_MASK];
 		hit_list[identification & INDEX_MASK] = timestamp;
+		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
+		//if( old_ts != 0 ){
+		//	++stats.overwrites;
+		//	if( !has_hit ){
+		//		++stats.cold_overwrites;
+		//	} else {
+		//		ovr -> write_to_file(identification, timestamp);
+		//	}
+		//}
 		//std::cout << "finished adding" << "\n";
 	}
 
@@ -170,16 +175,16 @@ namespace moonsniff {
 		hit_list[identification & INDEX_MASK] = 0;
 		if( old_ts != 0 ){
 			++stats.hits;
-			has_hit = true;
+//			has_hit = true;
 			writer -> write_to_file(old_ts, timestamp);
 			//std::cout << "new: " << timestamp << "\n";
 			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
-			//std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
+			////std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
 		} else {
 			++stats.misses;
-			if( !has_hit ){
-				++stats.cold_misses;
-			}
+//			if( !has_hit ){
+//				++stats.cold_misses;
+//			}
 		}
 	}
 
