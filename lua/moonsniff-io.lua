@@ -13,6 +13,7 @@ local C = ffi.C
 
 
 local INITIAL_FILE_SIZE = 512 * 1024 * 1024
+local MSCAP_SIZE = 12 -- technically 16 bytes, but the last 4 are padding
 
 --- Set the file size for new pcap writers
 --- @param newSizeInBytes new file size in bytes
@@ -76,8 +77,8 @@ end
 
 ffi.cdef[[
 	struct mscap {
-                uint32_t identification;   /* identifies a received packet */
                 uint64_t timestamp;  /* timestamp in nanoseconds */
+                uint32_t identification;   /* identifies a received packet */
         };
 
 	void libmoon_write_mscap(void* dst, uint32_t identification, uint64_t timestamp);
@@ -86,11 +87,11 @@ ffi.cdef[[
 --- Write a packet to the pcap file
 --- @param timestamp relative to the timestamp specified when creating the file
 function writer:write(identification, timestamp)
-    if self.offset + 12 >= self.size then
+    if self.offset + MSCAP_SIZE >= self.size then
         self:resize(self.size * 2)
     end
     C.libmoon_write_mscap(self.ptr + self.offset, identification, timestamp)
-    self.offset = self.offset + 12
+    self.offset = self.offset + MSCAP_SIZE
 end
 
 local reader = {}
@@ -118,12 +119,12 @@ end
 --- The buffer's packet size corresponds to the original packet size, cut off bytes are zero-filled.
 function reader:readSingle()
     local fileRemaining = self.size - self.offset
-    if fileRemaining < 12 then -- header size
+    if fileRemaining < MSCAP_SIZE then -- header size
         return nil
     end
 
     local mscap = cast(ffi.typeof("struct mscap*"), self.ptr + self.offset)
-    self.offset = self.offset + 12
+    self.offset = self.offset + MSCAP_SIZE
     return mscap
 end
 

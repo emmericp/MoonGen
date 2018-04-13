@@ -1,10 +1,9 @@
 #include <cstdint>
 
-#define MSCAP_SIZE 12
-
 struct mscap {
-	uint32_t identification;   /* identifies a received packet */
 	uint64_t timestamp;  /* timestamp in nanoseconds */
+	uint32_t identification;   /* identifies a received packet */
+	// padding of 4 bytes
 };
 
 extern "C" {
