@@ -159,14 +159,14 @@ namespace moonsniff {
 		//uint64_t old_ts = hit_list[identification & INDEX_MASK];
 		hit_list[identification & INDEX_MASK] = timestamp;
 		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
-		//if( old_ts != 0 ){
-		//	++stats.overwrites;
-		//	if( !has_hit ){
-		//		++stats.cold_overwrites;
-		//	} else {
-		//		ovr -> write_to_file(identification, timestamp);
-		//	}
-		//}
+//		if( old_ts != 0 ){
+//			++stats.overwrites;
+//			if( !has_hit ){
+//				++stats.cold_overwrites;
+//			} else {
+//				ovr -> write_to_file(identification, timestamp);
+//			}
+//		}
 		//std::cout << "finished adding" << "\n";
 	}
 
