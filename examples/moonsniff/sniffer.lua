@@ -35,16 +35,18 @@ ffi.cdef[[
 ]]
 
 local RUN_TIME = 10		-- in seconds
-local OUTPUT_PATH = "latencies.csv"
+local OUTPUT_PATH = "latencies"
 local OUTPUT_MODE = C.ms_text
-local DEBUG = true
+local LIVE = false
+local DEBUG = false
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
 	parser:argument("dev", "devices to use."):args(2):convert(tonumber)
 	parser:option("-o --output", "Path to output file.")
 	parser:flag("-b --binary", "Write file in binary mode (instead of human readable). For long test series this will reduce the size of the output file.")
-	parser:flag("-f --fast", "Set fast flag to omit all live processing for highest performance.")
+	parser:flag("-l --live", "Do some live processing during packet capture. Lower performance than standard mode.")
+	parser:flag("-f --fast", "Set fast flag to omit some live processing for highert performance. Only has effect if live flag is also set")
 	parser:flag("-c --capture", "If set, all incoming packets are captured as a whole.")
 	return parser:parse()
 end
@@ -52,44 +54,11 @@ end
 function master(args)
 	if args.output then OUTPUT_PATH = args.output end
 	if args.binary then OUTPUT_MODE = C.ms_binary end
+	LIVE = args.live
 
 	if DEBUG then
-
-		local writer_pre = ms:newWriter(OUTPUT_PATH)
-		
-		writer_pre:write(10, 1000002)
-		writer_pre:write(10, 2000004)
-		writer_pre:write(10, 4000008)
-
-		writer_pre:close()
-
-		local reader = ms:newReader(OUTPUT_PATH)
-		
-		mscap = reader:readSingle()
-		print(mscap.identification)
-		print(mscap.timestamp)
-
-		mscap = reader:readSingle()
-		print(mscap.identification)
-		print(mscap.timestamp)
-
-		mscap = reader:readSingle()
-		print(mscap.identification)
-		print(mscap.timestamp)
-
-		reader:close()
-
-
---		C.ms_init(OUTPUT_PATH, OUTPUT_MODE)
---
---		C.ms_add_entry(10, 10000000)
---		C.ms_add_entry(11, 20000000)
---		C.ms_test_for(10, 20000000)
---		C.ms_test_for(11, 30000000)
---
---
---        	C.ms_finish()
-
+		-- used mainly to test functionality of io
+		iodebug()
 	else
 
 		args.dev[1] = device.config{port = args.dev[1], txQueues = 2, rxQueues = 2}
@@ -100,7 +69,7 @@ function master(args)
 		local dev1tx = args.dev[2]:getTxQueue(0)
 		local dev1rx = args.dev[2]:getRxQueue(0)
 
-		C.ms_init(OUTPUT_PATH, OUTPUT_MODE)
+		if LIVE then C.ms_init(OUTPUT_PATH, OUTPUT_MODE) end
 
 		stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
 		
@@ -119,7 +88,9 @@ function master(args)
 		receiver1:wait()
 		lm.stop()
 
-		C.ms_finish()
+		if LIVE then C.ms_finish() end
+
+		log:info("Finished all capturing/writing operations")
 
 		printStats()
 	end
@@ -140,10 +111,37 @@ function timestamp(queue, otherdev, bar, pre, args)
 	end
 
 	bar:wait()
+	
+	if LIVE then
+		core_online(queue, bufs, pre)
+
+		if not args.fast then
+			log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
+			hist:print()
+			if hist.numSamples == 0 then
+				log:error("Received no timestamped packets.")
+			end
+		end
+		print()
+
+	else
+		local writer
+		if pre then 
+			writer = ms:newWriter(OUTPUT_PATH .. "-pre.mscap")
+		else
+			writer = ms:newWriter(OUTPUT_PATH .. "-post.mscap")
+		end
+
+		core_offline(queue, bufs, writer)
+		writer:close()
+	end
+end
+
+function core_online(queue, bufs, pre)
 	local runtime = timer:new(RUN_TIME + 0.5)
 	local hist = not args.fast and hist:new()
 	local lastTimestamp
-	local count = 0
+
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
@@ -163,20 +161,26 @@ function timestamp(queue, otherdev, bar, pre, args)
 			else
 				C.ms_test_for(pkt.payload.uint32[0], timestamp)
 			end
-			count = count + 1
-
 		end
 		bufs:free(rx)
 	end
 
-	if not args.fast then
-		log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
-		hist:print()
-		if hist.numSamples == 0 then
-			log:error("Received no timestamped packets.")
+end
+
+function core_offline(queue, bufs, writer)
+	local runtime = timer:new(RUN_TIME + 0.5)
+
+	while lm.running() and runtime:running() do
+		local rx = queue:tryRecv(bufs, 1000)
+		for i = 1, rx do
+			local timestamp = bufs[i]:getTimestamp(queue.dev)
+			if timestamp then
+				local pkt = bufs[i]:getUdpPacket()
+				writer:write(pkt.payload.uint32[0], timestamp)
+			end
 		end
+		bufs:free(rx)
 	end
-	print()
 end
 
 function printStats()
@@ -199,5 +203,44 @@ function printStats()
 	print("\tLoss by misses: " .. (misses/(misses + hits)) * 100 .. "%")
 	print("\tTotal loss: " .. ((misses + invalidTS)/(misses + hits)) * 100 .. "%")
 	print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^6) .. " ms")
+
+end
+
+function iodebug()
+	local writer_pre = ms:newWriter(OUTPUT_PATH .. "-pre.mscap")
+	local writer_post = ms:newWriter(OUTPUT_PATH .. "-post.mscap")
+	
+	writer_pre:write(10, 1000002)
+	writer_post:write(10, 2000002)
+	writer_pre:write(11, 2000004)
+	writer_post:write(11, 4000004)
+	writer_pre:write(12, 4000008)
+	writer_post:write(12, 8000008)
+
+	writer_pre:close()
+	writer_post:close()
+
+	local reader = ms:newReader(OUTPUT_PATH .. "-pre.mscap")
+	
+	local mscap = reader:readSingle()
+
+	while mscap do
+		print(mscap.identification)
+		print(mscap.timestamp)
+
+		mscap = reader:readSingle()
+	end
+	reader:close()
+
+
+--		C.ms_init(OUTPUT_PATH, OUTPUT_MODE)
+--
+--		C.ms_add_entry(10, 10000000)
+--		C.ms_add_entry(11, 20000000)
+--		C.ms_test_for(10, 20000000)
+--		C.ms_test_for(11, 30000000)
+--
+--
+--        	C.ms_finish()
 
 end
