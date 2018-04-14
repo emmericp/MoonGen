@@ -14,36 +14,14 @@ local ms	= require "moonsniff-io"
 local ffi    = require "ffi"
 local C = ffi.C
 
-ffi.cdef[[
-        struct ms_stats {
-                uint64_t average_latency;
-                uint32_t hits;
-                uint32_t misses;
-		uint32_t cold_misses;
-                uint32_t inval_ts;
-		uint32_t overwrites;
-		uint32_t cold_overwrites;
-        };
-
-        enum ms_mode { ms_text, ms_binary };
-
-        void ms_add_entry(uint32_t identification, uint64_t timestamp);
-        void ms_test_for(uint32_t identification, uint64_t timestamp);
-        void ms_init(const char* fileName, enum ms_mode mode);
-        void ms_finish();
-        struct ms_stats ms_post_process(const char* fileName, enum ms_mode mode);
-]]
 
 local RUN_TIME = 10		-- in seconds
-local OUTPUT_PATH = "latencies"
-local OUTPUT_MODE = C.ms_text
-local LIVE = false
 local DEBUG = false
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
 	parser:argument("dev", "devices to use."):args(2):convert(tonumber)
-	parser:option("-o --output", "Path to output file.")
+	parser:option("-o --output", "Path to output file."):args(1):default("latencies")
 	parser:flag("-b --binary", "Write file in binary mode (instead of human readable). For long test series this will reduce the size of the output file.")
 	parser:flag("-l --live", "Do some live processing during packet capture. Lower performance than standard mode.")
 	parser:flag("-f --fast", "Set fast flag to reduce the amount of live processing for higher performance. Only has effect if live flag is also set")
@@ -52,10 +30,7 @@ function configure(parser)
 end
 
 function master(args)
-	if args.output then OUTPUT_PATH = args.output end
-	if args.binary then OUTPUT_MODE = C.ms_binary end
-	LIVE = args.live
-
+	args.binary = C.ms_text and C.ms_text or C.ms_binary
 	if DEBUG then
 		-- used mainly to test functionality of io
 		iodebug()
@@ -69,7 +44,7 @@ function master(args)
 		local dev1tx = args.dev[2]:getTxQueue(0)
 		local dev1rx = args.dev[2]:getRxQueue(0)
 
-		if LIVE then C.ms_init(OUTPUT_PATH, OUTPUT_MODE) end
+		if args.live then C.ms_init(args.output .. ".csv", args.binary) end
 
 		stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
 		
@@ -88,11 +63,11 @@ function master(args)
 		receiver1:wait()
 		lm.stop()
 
-		if LIVE then C.ms_finish() end
+		if args.live then C.ms_finish() end
 
 		log:info("Finished all capturing/writing operations")
 
-		printStats()
+		printStats(args)
 	end
 end
 
@@ -112,8 +87,9 @@ function timestamp(queue, otherdev, bar, pre, args)
 
 	bar:wait()
 	
-	if LIVE then
-		core_online(queue, bufs, pre)
+	if args.live then
+		local hist = not args.fast and hist:new()
+		core_online(queue, bufs, pre, hist, args)
 
 		if not args.fast then
 			log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
@@ -127,9 +103,9 @@ function timestamp(queue, otherdev, bar, pre, args)
 	else
 		local writer
 		if pre then 
-			writer = ms:newWriter(OUTPUT_PATH .. "-pre.mscap")
+			writer = ms:newWriter(args.output .. "-pre.mscap")
 		else
-			writer = ms:newWriter(OUTPUT_PATH .. "-post.mscap")
+			writer = ms:newWriter(args.output .. "-post.mscap")
 		end
 
 		core_offline(queue, bufs, writer)
@@ -137,9 +113,8 @@ function timestamp(queue, otherdev, bar, pre, args)
 	end
 end
 
-function core_online(queue, bufs, pre)
+function core_online(queue, bufs, pre, hist, args)
 	local runtime = timer:new(RUN_TIME + 0.5)
-	local hist = not args.fast and hist:new()
 	local lastTimestamp
 
 	while lm.running() and runtime:running() do
@@ -183,11 +158,11 @@ function core_offline(queue, bufs, writer)
 	end
 end
 
-function printStats()
+function printStats(args)
 	lm.sleepMillis(500)
 	print()
 
-	stats = C.ms_post_process(OUTPUT_PATH, OUTPUT_MODE)
+	stats = C.ms_post_process(args.output .. ".csv", args.binary)
 	hits = stats.hits
 	misses = stats.misses
 	cold = stats.cold_misses
@@ -206,9 +181,9 @@ function printStats()
 
 end
 
-function iodebug()
-	local writer_pre = ms:newWriter(OUTPUT_PATH .. "-pre.mscap")
-	local writer_post = ms:newWriter(OUTPUT_PATH .. "-post.mscap")
+function iodebug(args)
+	local writer_pre = ms:newWriter(args.output .. "-pre.mscap")
+	local writer_post = ms:newWriter(args.output .. "-post.mscap")
 	
 	writer_pre:write(10, 1000002)
 	writer_post:write(10, 2000002)
@@ -220,7 +195,7 @@ function iodebug()
 	writer_pre:close()
 	writer_post:close()
 
-	local reader = ms:newReader(OUTPUT_PATH .. "-pre.mscap")
+	local reader = ms:newReader(args.output .. "-pre.mscap")
 	
 	local mscap = reader:readSingle()
 

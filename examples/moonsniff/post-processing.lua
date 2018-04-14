@@ -9,27 +9,10 @@ local timer     = require "timer"
 local log       = require "log"
 local stats     = require "stats"
 local barrier   = require "barrier"
+local ms	= require "moonsniff-io"
 
 local ffi    = require "ffi"
 local C = ffi.C
-
-ffi.cdef[[
-        struct ms_stats {
-                uint64_t average_latency;
-                uint32_t hits;
-                uint32_t misses;
-                uint32_t cold_misses;
-                uint32_t inval_ts;
-        };
-
-        enum ms_mode { ms_text, ms_binary };
-
-        void ms_add_entry(uint32_t identification, uint64_t timestamp);
-        void ms_test_for(uint32_t identification, uint64_t timestamp);
-        void ms_init(const char* fileName, enum ms_mode mode);
-        void ms_finish();
-        struct ms_stats ms_post_process(const char* fileName, enum ms_mode mode);
-]]
 
 -- default values when no cli options are specified
 local INPUT_PATH = "latencies.csv"

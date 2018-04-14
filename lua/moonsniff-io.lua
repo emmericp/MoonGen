@@ -11,6 +11,34 @@ local libmoon = require "libmoon"
 local cast = ffi.cast
 local C = ffi.C
 
+ffi.cdef[[
+	//----------------Moonsniff Live IO------------------------
+        struct ms_stats {
+                uint64_t average_latency;
+                uint32_t hits;
+                uint32_t misses;
+                uint32_t cold_misses;
+                uint32_t inval_ts;
+                uint32_t overwrites;
+                uint32_t cold_overwrites;
+        };
+
+        enum ms_mode { ms_text, ms_binary };
+
+        void ms_add_entry(uint32_t identification, uint64_t timestamp);
+        void ms_test_for(uint32_t identification, uint64_t timestamp);
+        void ms_init(const char* fileName, enum ms_mode mode);
+        void ms_finish();
+        struct ms_stats ms_post_process(const char* fileName, enum ms_mode mode);
+
+	//---------------MSCAP Writer/Reader-------------------------
+        struct mscap {
+                uint64_t timestamp;  /* timestamp in nanoseconds */
+                uint32_t identification;   /* identifies a received packet */
+        };
+
+        void libmoon_write_mscap(void* dst, uint32_t identification, uint64_t timestamp);
+]]
 
 local INITIAL_FILE_SIZE = 512 * 1024 * 1024
 local MSCAP_SIZE = 12 -- technically 16 bytes, but the last 4 are padding
@@ -74,15 +102,6 @@ function writer:close()
     self.fd = nil
     self.ptr = nil
 end
-
-ffi.cdef[[
-	struct mscap {
-                uint64_t timestamp;  /* timestamp in nanoseconds */
-                uint32_t identification;   /* identifies a received packet */
-        };
-
-	void libmoon_write_mscap(void* dst, uint32_t identification, uint64_t timestamp);
-]]
 
 --- Write a packet to the pcap file
 --- @param timestamp relative to the timestamp specified when creating the file
