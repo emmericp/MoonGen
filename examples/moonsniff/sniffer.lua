@@ -46,7 +46,7 @@ function configure(parser)
 	parser:option("-o --output", "Path to output file.")
 	parser:flag("-b --binary", "Write file in binary mode (instead of human readable). For long test series this will reduce the size of the output file.")
 	parser:flag("-l --live", "Do some live processing during packet capture. Lower performance than standard mode.")
-	parser:flag("-f --fast", "Set fast flag to omit some live processing for highert performance. Only has effect if live flag is also set")
+	parser:flag("-f --fast", "Set fast flag to reduce the amount of live processing for higher performance. Only has effect if live flag is also set")
 	parser:flag("-c --capture", "If set, all incoming packets are captured as a whole.")
 	return parser:parse()
 end
