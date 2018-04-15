@@ -10,6 +10,7 @@ local log       = require "log"
 local stats     = require "stats"
 local barrier   = require "barrier"
 local ms	= require "moonsniff-io"
+local bit	= require "bit"
 
 local ffi    = require "ffi"
 local C = ffi.C
@@ -17,6 +18,7 @@ local C = ffi.C
 -- default values when no cli options are specified
 local INPUT_PATH = "latencies.csv"
 local INPUT_MODE = C.ms_text
+local BITMASK = 0x00FFFFFF
 
 function configure(parser)
         parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
@@ -47,16 +49,52 @@ function master(args)
 		else
 			log:fatal("Could not decide which file is pre and which post. Pre should end with -pre.mscap and post with -post.mscap.")
 		end
-	
+
+		ffi.cdef[[
+			void* malloc(size_t);
+			void free(void*);
+		]]
+
+		local uint64_t = ffi.typeof("uint64_t")
+		local uint64_p = ffi.typeof("uint64_t*")
+
+		local map = C.malloc(ffi.sizeof(uint64_t) * BITMASK)
+		map = ffi.cast(uint64_p, map)
+		
+		local hist = hist:new()
 		local prereader = ms:newReader(args.input)
+		local postreader = ms:newReader(args.second)
 
-		hit_list = {}
-		local mscap = prereader:readSingle()
+		local premscap = prereader:readSingle()
+		local postmscap = postreader:readSingle()
 
-		while mscap do
-			hit_list[mscap.identification] = mscap.timestamp
-			mscap = prereader:readSingle()
+		-- precache used bit operation
+		local band = bit.band
+
+		log:info("Entering loop")
+		while premscap and postmscap do
+			map[band(premscap.identification, BITMASK)] = premscap.timestamp
+			premscap = prereader:readSingle()
+			
+			local ts = map[band(postmscap.identification, BITMASK)]
+			--if ts then hist:update(postmscap.timestamp - ts) end
+			postmscap = postreader:readSingle()
 		end
+
+		while postmscap do
+			local ts = map[band(postmscap.identification, BITMASK)]
+			--if ts then hist:update(postmscap.timestamp - ts) end
+			postmscap = postreader:readSingle()
+		end
+
+		log:info("before closing")
+
+		prereader:close()
+		postreader:close()
+		C.free(map)
+
+		log:info("Finished processing. Writing histogram ...")
+		hist:save("hist.csv") 
 
 	else
         	printStats()

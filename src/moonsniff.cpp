@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <cstdint>
 #include <deque>
 #include <iostream>
 #include <fstream>
