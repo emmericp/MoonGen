@@ -11,7 +11,7 @@ private:
 	double m2 = 0;
 	double mean = 0;
 	double variance = 0;
-	std::map<uint64_t, uint32_t> storage;
+	std::map<int64_t, uint32_t> storage;
 
 public:
 	uint64_t getCount() const {
@@ -26,15 +26,17 @@ public:
 		return variance;
 	}
 
-	void update(uint64_t new_val) {
+	void update(int64_t new_val) {
 		++count;
 		double delta = new_val - mean;
 		mean = mean + delta / count;
 		double delta2 = new_val - mean;
 		m2 = m2 + delta * delta2;
 
+		std::cout << "New val: " << new_val << "\n";
 		// if not already in map, it should be inserted and zero initialized
 		++storage[new_val];
+		std::cout << "storage: " << storage[new_val] << "\n";
 	}
 
 	void finalize() {
@@ -56,6 +58,7 @@ public:
 		auto it = storage.begin();
 		while (it != storage.end()) {
 			file << it->first << "," << it->second << "\n";
+			++it;
 		}
 		file.close();
 	}
@@ -76,7 +79,7 @@ void hs_destroy() {
 	delete (hist);
 }
 
-void hs_update(uint64_t new_val) {
+void hs_update(int64_t new_val) {
 	hist->update(new_val);
 }
 

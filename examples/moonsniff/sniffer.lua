@@ -15,8 +15,7 @@ local ffi    = require "ffi"
 local C = ffi.C
 
 
-local RUN_TIME = 10		-- in seconds
-local DEBUG = false
+local RUN_TIME = 5		-- in seconds
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
@@ -26,14 +25,15 @@ function configure(parser)
 	parser:flag("-l --live", "Do some live processing during packet capture. Lower performance than standard mode.")
 	parser:flag("-f --fast", "Set fast flag to reduce the amount of live processing for higher performance. Only has effect if live flag is also set")
 	parser:flag("-c --capture", "If set, all incoming packets are captured as a whole.")
+	parser:flag("-d --debug", "Insted of reading real input, some fake input is generated and written to the output files.")
 	return parser:parse()
 end
 
 function master(args)
 	args.binary = C.ms_text and C.ms_text or C.ms_binary
-	if DEBUG then
+	if args.debug then
 		-- used mainly to test functionality of io
-		iodebug()
+		iodebug(args)
 	else
 
 		args.dev[1] = device.config{port = args.dev[1], txQueues = 2, rxQueues = 2}
@@ -186,11 +186,11 @@ function iodebug(args)
 	local writer_post = ms:newWriter(args.output .. "-post.mscap")
 	
 	writer_pre:write(10, 1000002)
-	writer_post:write(10, 2000002)
+	writer_post:write(10, 0000002)
 	writer_pre:write(11, 2000004)
-	writer_post:write(11, 4000004)
+	writer_post:write(11, 3000004)
 	writer_pre:write(12, 4000008)
-	writer_post:write(12, 8000008)
+	writer_post:write(12, 5000008)
 
 	writer_pre:close()
 	writer_post:close()

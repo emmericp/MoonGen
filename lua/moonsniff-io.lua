@@ -45,7 +45,7 @@ ffi.cdef[[
 	void hs_update(uint64_t new_val);
 	void hs_finalize();
 	void hs_write(const char* filename);
-	uint64_t hs_getCount();
+	int64_t hs_getCount();
 	double hs_getMean();
 	double hs_getVariance();
 ]]
