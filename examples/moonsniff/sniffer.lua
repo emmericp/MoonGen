@@ -35,7 +35,6 @@ function master(args)
 		-- used mainly to test functionality of io
 		iodebug(args)
 	else
-
 		args.dev[1] = device.config{port = args.dev[1], txQueues = 2, rxQueues = 2}
 		args.dev[2] = device.config{port = args.dev[2], txQueues = 2, rxQueues = 2}
 		device.waitForLinks()
@@ -52,6 +51,11 @@ function master(args)
 		args.dev[2]:enableRxTimestampsAllPackets(dev1rx)
 
 		local bar = barrier:new(2)
+
+		ts.syncClocks(args.dev[1], args.dev[2])
+		args.dev[1]:clearTimestamps()
+		args.dev[2]:clearTimestamps()
+
 
 		-- start the tasks to sample incoming packets
 		-- correct mesurement requires a packet to arrive at Pre before Post
@@ -79,13 +83,8 @@ function timestamp(queue, otherdev, bar, pre, args)
 		local rx = queue:tryRecv(bufs, 1000)
 		bufs:free(rx)
 	end
-	if not pre then
-		ts.syncClocks(queue.dev, otherdev)
-		queue.dev:clearTimestamps()
-		otherdev:clearTimestamps()
-	end
 
-	bar:wait()
+--	bar:wait()
 	
 	if args.live then
 		local hist = not args.fast and hist:new()
@@ -107,7 +106,8 @@ function timestamp(queue, otherdev, bar, pre, args)
 		else
 			writer = ms:newWriter(args.output .. "-post.mscap")
 		end
-
+		
+		bar:wait()
 		core_offline(queue, bufs, writer)
 		writer:close()
 	end
