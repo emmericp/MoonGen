@@ -33,10 +33,8 @@ public:
 		double delta2 = new_val - mean;
 		m2 = m2 + delta * delta2;
 
-		std::cout << "New val: " << new_val << "\n";
 		// if not already in map, it should be inserted and zero initialized
 		++storage[new_val];
-		std::cout << "storage: " << storage[new_val] << "\n";
 	}
 
 	void finalize() {

@@ -15,7 +15,7 @@ local ffi    = require "ffi"
 local C = ffi.C
 
 
-local RUN_TIME = 5		-- in seconds
+local RUN_TIME = 2		-- in seconds
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")

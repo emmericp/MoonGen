@@ -18,7 +18,7 @@ local C = ffi.C
 -- default values when no cli options are specified
 local INPUT_PATH = "latencies.csv"
 local INPUT_MODE = C.ms_text
-local BITMASK = 0x00FFFFFF
+local BITMASK = 0x0FFFFFFF
 
 function configure(parser)
         parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
@@ -67,27 +67,40 @@ function master(args)
 
 		local premscap = prereader:readSingle()
 		local postmscap = postreader:readSingle()
+		log:info("Pre identifier: " .. premscap.identification .. ", Post identifier: " .. postmscap.identification)
 
 		-- precache used bit operation
 		local band = bit.band
 
-		log:info("Entering loop")
+		local count = 0
+		log:info("Prefilling Map")
+	
+		while premscap and count < (BITMASK - 100) do
+			map[band(premscap.identification, BITMASK)] = premscap.timestamp
+			premscap = prereader:readSingle()
+			count = count + 1
+		end
+
+		log:info("Map is now hot")
+
 		while premscap and postmscap do
 			map[band(premscap.identification, BITMASK)] = premscap.timestamp
 			premscap = prereader:readSingle()
 			
 			local ts = map[band(postmscap.identification, BITMASK)]
-			if ts then C.hs_update(postmscap.timestamp - ts) end
+			if ts ~= 0 then
+				 C.hs_update(postmscap.timestamp - ts) 
+			end
 			postmscap = postreader:readSingle()
 		end
 
 		while postmscap do
 			local ts = map[band(postmscap.identification, BITMASK)]
-			if ts then C.hs_update(postmscap.timestamp - ts) end
+			if ts ~= 0 then C.hs_update(postmscap.timestamp - ts) end
 			postmscap = postreader:readSingle()
 		end
 
-		log:info("before closing")
+		log:info("Finished timestamp matching")
 
 		prereader:close()
 		postreader:close()
