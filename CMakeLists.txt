@@ -28,6 +28,7 @@ set(files
 	src/software-rate-limiter
 	src/moonsniff
 	src/moonsniff-io
+	src/histogram
 )
 
 set(libraries

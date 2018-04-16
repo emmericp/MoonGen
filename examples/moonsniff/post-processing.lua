@@ -61,7 +61,7 @@ function master(args)
 		local map = C.malloc(ffi.sizeof(uint64_t) * BITMASK)
 		map = ffi.cast(uint64_p, map)
 		
-		local hist = hist:new()
+		C.hs_initialize()
 		local prereader = ms:newReader(args.input)
 		local postreader = ms:newReader(args.second)
 
@@ -77,13 +77,13 @@ function master(args)
 			premscap = prereader:readSingle()
 			
 			local ts = map[band(postmscap.identification, BITMASK)]
-			--if ts then hist:update(postmscap.timestamp - ts) end
+			if ts then C.hs_update(postmscap.timestamp - ts) end
 			postmscap = postreader:readSingle()
 		end
 
 		while postmscap do
 			local ts = map[band(postmscap.identification, BITMASK)]
-			--if ts then hist:update(postmscap.timestamp - ts) end
+			if ts then C.hs_update(postmscap.timestamp - ts) end
 			postmscap = postreader:readSingle()
 		end
 
@@ -93,8 +93,13 @@ function master(args)
 		postreader:close()
 		C.free(map)
 
+		C.hs_finalize()
+
+		log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+
 		log:info("Finished processing. Writing histogram ...")
-		hist:save("hist.csv") 
+		C.hs_write("new_hist.csv")
+		C.hs_destroy()
 
 	else
         	printStats()

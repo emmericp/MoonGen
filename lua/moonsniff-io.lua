@@ -38,6 +38,16 @@ ffi.cdef[[
         };
 
         void libmoon_write_mscap(void* dst, uint32_t identification, uint64_t timestamp);
+
+	//--------------CPP Histogram--------------------------------
+	void hs_initialize();
+	void hs_destroy();
+	void hs_update(uint64_t new_val);
+	void hs_finalize();
+	void hs_write(const char* filename);
+	uint64_t hs_getCount();
+	double hs_getMean();
+	double hs_getVariance();
 ]]
 
 local INITIAL_FILE_SIZE = 512 * 1024 * 1024
