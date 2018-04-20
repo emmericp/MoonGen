@@ -37,8 +37,6 @@ ffi.cdef[[
                 uint32_t identification;   /* identifies a received packet */
         };
 
-        void libmoon_write_mscap(void* dst, uint32_t identification, uint64_t timestamp);
-
 	//--------------CPP Histogram--------------------------------
 	void hs_initialize();
 	void hs_destroy();
@@ -52,6 +50,7 @@ ffi.cdef[[
 
 local INITIAL_FILE_SIZE = 512 * 1024 * 1024
 local MSCAP_SIZE = 12 -- technically 16 bytes, but the last 4 are padding
+local mscap_p = ffi.typeof("struct mscap*")
 
 --- Set the file size for new pcap writers
 --- @param newSizeInBytes new file size in bytes
@@ -119,7 +118,9 @@ function writer:write(identification, timestamp)
     if self.offset + MSCAP_SIZE >= self.size then
         self:resize(self.size * 2)
     end
-    C.libmoon_write_mscap(self.ptr + self.offset, identification, timestamp)
+    local dst = cast(mscap_p, self.ptr + self.offset)
+    dst.identification = identification
+    dst.timestamp = timestamp
     self.offset = self.offset + MSCAP_SIZE
 end
 
@@ -152,7 +153,7 @@ function reader:readSingle()
         return nil
     end
 
-    local mscap = cast(ffi.typeof("struct mscap*"), self.ptr + self.offset)
+    local mscap = cast(mscap_p, self.ptr + self.offset)
     self.offset = self.offset + MSCAP_SIZE
     return mscap
 end
@@ -163,11 +164,6 @@ function reader:close()
     self.fd = nil
     self.ptr = nil
 end
-
-function reader:reset()
-    self.offset = ffi.sizeof(headerType)
-end
-
 
 return mod
 

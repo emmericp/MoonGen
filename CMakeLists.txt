@@ -27,7 +27,6 @@ set(files
 	src/crc-rate-limiter
 	src/software-rate-limiter
 	src/moonsniff
-	src/moonsniff-io
 	src/histogram
 )
 
