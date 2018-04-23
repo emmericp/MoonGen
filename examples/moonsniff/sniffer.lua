@@ -15,12 +15,11 @@ local ffi    = require "ffi"
 local C = ffi.C
 
 
-local RUN_TIME = 2		-- in seconds
-
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
 	parser:argument("dev", "devices to use."):args(2):convert(tonumber)
 	parser:option("-o --output", "Path to output file."):args(1):default("latencies")
+	parser:option("-r --runtime", "Sets the length of the measurement period in seconds."):args(1):convert(tonumber):default(10)
 	parser:flag("-b --binary", "Write file in binary mode (instead of human readable). For long test series this will reduce the size of the output file.")
 	parser:flag("-l --live", "Do some live processing during packet capture. Lower performance than standard mode.")
 	parser:flag("-f --fast", "Set fast flag to reduce the amount of live processing for higher performance. Only has effect if live flag is also set")
@@ -114,7 +113,7 @@ function timestamp(queue, otherdev, bar, pre, args)
 end
 
 function core_online(queue, bufs, pre, hist, args)
-	local runtime = timer:new(RUN_TIME + 0.5)
+	local runtime = timer:new(args.runtime + 0.5)
 	local lastTimestamp
 
 	while lm.running() and runtime:running() do
@@ -143,7 +142,7 @@ function core_online(queue, bufs, pre, hist, args)
 end
 
 function core_offline(queue, bufs, writer)
-	local runtime = timer:new(RUN_TIME + 0.5)
+	local runtime = timer:new(args.runtime + 0.5)
 
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
@@ -177,7 +176,7 @@ function printStats(args)
 	print("\tCold Overwrites: " .. stats.cold_overwrites)
 	print("\tLoss by misses: " .. (misses/(misses + hits)) * 100 .. "%")
 	print("\tTotal loss: " .. ((misses + invalidTS)/(misses + hits)) * 100 .. "%")
-	print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^6) .. " ms")
+	print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^3) .. " us")
 
 end
 

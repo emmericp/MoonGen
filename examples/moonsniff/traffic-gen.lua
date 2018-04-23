@@ -9,13 +9,13 @@ local timer  = require "timer"
 local log    = require "log"
 local stats  = require "stats"
 
-local RUN_TIME = 100            -- in seconds
-local SEND_RATE = 1000          -- in mbit/s
 local PKT_LEN = 100             -- in byte
 
 function configure(parser)
         parser:description("Generate traffic which can be used by moonsniff to establish latencies induced by a device under test.")
         parser:argument("dev", "Devices to use."):args(2):convert(tonumber)
+	parser:option("-r --runtime", "Determines how long packets will be send in seconds."):args(1):convert(tonumber):default(10)
+	parser:option("-s --sendrate", "Approximate send rate in mbit/s. Due to IFG etc. rate on the wire may be higher."):args(1):convert(tonumber):default(1000)
         return parser:parse()
 end
 
@@ -28,15 +28,15 @@ function master(args)
 
         stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
 
-        local sender0 = lm.startTask("generateTraffic", dev0tx)
+        local sender0 = lm.startTask("generateTraffic", dev0tx, args)
 
         sender0:wait()
 end
 
-function generateTraffic(queue)
+function generateTraffic(queue, args)
         log:info("Trying to enable rx timestamping of all packets, this isn't supported by most nics")
         local pkt_id = 0
-        local runtime = timer:new(RUN_TIME)
+        local runtime = timer:new(args.runtime)
         local hist = hist:new()
         local mempool = memory.createMemPool(function(buf)
                 buf:getUdpPacket():fill{
@@ -47,9 +47,9 @@ function generateTraffic(queue)
         if lm.running() then
                 lm.sleepMillis(500)
         end
-        log:info("Trying to generate ~" .. SEND_RATE .. " mbit/s")
-        queue:setRate(SEND_RATE)
-        local runtime = timer:new(RUN_TIME)
+        log:info("Trying to generate ~" .. args.sendrate .. " mbit/s")
+        queue:setRate(args.sendrate)
+        local runtime = timer:new(args.runtime)
         while lm.running() and runtime:running() do
                 bufs:alloc(PKT_LEN)
 

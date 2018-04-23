@@ -135,6 +135,6 @@ function printStats()
         print("\tCold Misses: " .. cold)
         print("\tLoss by misses: " .. (misses/(misses + hits)) * 100 .. "%")
         print("\tTotal loss: " .. ((misses + invalidTS)/(misses + hits)) * 100 .. "%")
-        print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^6) .. " ms")
+        print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^3) .. " us")
 
 end
