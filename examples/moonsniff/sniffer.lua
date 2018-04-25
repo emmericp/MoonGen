@@ -107,7 +107,7 @@ function timestamp(queue, otherdev, bar, pre, args)
 		end
 		
 		bar:wait()
-		core_offline(queue, bufs, writer)
+		core_offline(queue, bufs, writer, args)
 		writer:close()
 	end
 end
@@ -141,7 +141,7 @@ function core_online(queue, bufs, pre, hist, args)
 
 end
 
-function core_offline(queue, bufs, writer)
+function core_offline(queue, bufs, writer, args)
 	local runtime = timer:new(args.runtime + 0.5)
 
 	while lm.running() and runtime:running() do
