@@ -44,7 +44,7 @@ function master(args)
 
 		if args.live then C.ms_init(args.output .. ".csv", args.binary) end
 
-		stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
+		stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}, file = args.output .. "-stats.csv", format = "csv"}
 		
 		args.dev[1]:enableRxTimestampsAllPackets(dev0rx)
 		args.dev[2]:enableRxTimestampsAllPackets(dev1rx)
@@ -70,7 +70,7 @@ function master(args)
 
 		log:info("Finished all capturing/writing operations")
 
-		printStats(args)
+		if args.live then printStats(args) end
 	end
 end
 

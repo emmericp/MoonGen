@@ -11,6 +11,7 @@ local stats     = require "stats"
 local barrier   = require "barrier"
 local ms	= require "moonsniff-io"
 local bit	= require "bit"
+local dpdk	= require "dpdk"
 
 local ffi    = require "ffi"
 local C = ffi.C
@@ -19,6 +20,9 @@ local C = ffi.C
 local INPUT_PATH = "latencies.csv"
 local INPUT_MODE = C.ms_text
 local BITMASK = 0x0FFFFFFF
+
+-- skip the initialization of DPDK, as it is not needed for this script
+dpdk.skipInit()
 
 function configure(parser)
         parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
@@ -29,7 +33,7 @@ function configure(parser)
         return parser:parse()
 end
 
-function master(args)
+function master(args)	
 	if args.input then INPUT_PATH = args.input end
 	if args.binary then INPUT_MODE = C.ms_binary end
 
