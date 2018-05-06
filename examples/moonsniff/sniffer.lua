@@ -42,10 +42,14 @@ function master(args)
 		local dev1tx = args.dev[2]:getTxQueue(0)
 		local dev1rx = args.dev[2]:getRxQueue(0)
 
-		if args.live then C.ms_init(args.output .. ".csv", args.binary) end
-
-		stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}, file = args.output .. "-stats.csv", format = "csv"}
-		
+		if args.live then
+			C.ms_init(args.output .. ".csv", args.binary)
+			stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
+		else
+			-- if we are not live we want to print the stats to a seperate file so they are easily
+			-- available for post-processing
+			stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}, file = args.output .. "-stats.csv", format = "csv"}
+		end
 		args.dev[1]:enableRxTimestampsAllPackets(dev0rx)
 		args.dev[2]:enableRxTimestampsAllPackets(dev1rx)
 

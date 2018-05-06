@@ -6,7 +6,7 @@
 #include <thread>
 
 #define UINT24_MAX 16777215
-#define INDEX_MASK 0x00FFFFFF
+#define INDEX_MASK (uint32_t) 0x00FFFFFF
 
 namespace moonsniff {
 
@@ -135,6 +135,7 @@ namespace moonsniff {
 	std::ofstream file;
 	
 	uint64_t hit_list[UINT24_MAX + 1] = { 0 };
+	std::mutex mtx[UINT24_MAX + 1];
 
 	Writer* writer;
 //	Text_Writer* ovr;
@@ -157,7 +158,10 @@ namespace moonsniff {
 
 	static void add_entry(uint32_t identification, uint64_t timestamp){
 		//uint64_t old_ts = hit_list[identification & INDEX_MASK];
-		hit_list[identification & INDEX_MASK] = timestamp;
+		uint32_t index = identification & INDEX_MASK;
+		while(!mtx[index].try_lock());
+		hit_list[index] = timestamp;
+		mtx[index].unlock();
 		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
 //		if( old_ts != 0 ){
 //			++stats.overwrites;
@@ -171,8 +175,11 @@ namespace moonsniff {
 	}
 
 	static void test_for(uint32_t identification, uint64_t timestamp){
-		uint64_t old_ts = hit_list[identification & INDEX_MASK];
-		hit_list[identification & INDEX_MASK] = 0;
+		uint32_t index = identification & INDEX_MASK;
+		while(!mtx[index].try_lock());
+		uint64_t old_ts = hit_list[index];
+		hit_list[index] = 0;
+		mtx[index].unlock();
 		if( old_ts != 0 ){
 			++stats.hits;
 //			has_hit = true;
