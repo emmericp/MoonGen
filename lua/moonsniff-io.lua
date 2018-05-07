@@ -38,7 +38,7 @@ ffi.cdef[[
         };
 
 	//--------------CPP Histogram--------------------------------
-	void hs_initialize();
+	void hs_initialize(uint32_t bucket_size);
 	void hs_destroy();
 	void hs_update(uint64_t new_val);
 	void hs_finalize();

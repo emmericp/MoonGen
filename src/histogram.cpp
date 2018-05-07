@@ -11,6 +11,8 @@ private:
 	double m2 = 0;
 	double mean = 0;
 	double variance = 0;
+	int64_t bucket_size;
+	int64_t bucket_half;
 	std::map<int64_t, uint32_t> storage;
 
 public:
@@ -33,6 +35,15 @@ public:
 		double delta2 = new_val - mean;
 		m2 = m2 + delta * delta2;
 
+		// compute the bucket to put this value in
+		if(new_val > 0){
+			new_val += bucket_half;
+		}
+		else if(new_val < 0){
+			new_val -= bucket_half;
+		}
+
+		new_val = (new_val / bucket_size) * bucket_size;
 		// if not already in map, it should be inserted and zero initialized
 		++storage[new_val];
 	}
@@ -61,7 +72,19 @@ public:
 		file.close();
 	}
 
-	Histogram() = default;
+	// If bucket_size is even the bucket for 0 will be slightly smaller then the rest,
+	// also the bucket value will not represent exactly the median of the bucket
+	Histogram(uint32_t bucket_size){
+		if (bucket_size <= 0){
+			std::cerr << "Invalid bucket size\n";
+			exit(EXIT_FAILURE);
+		}
+
+		// to avoid casting all the time during the bucket computation
+		// we directly store values as signed
+		this->bucket_size = (int64_t) bucket_size;
+		bucket_half = this->bucket_size/2;
+	}
 
 	virtual ~Histogram() = default;
 };
@@ -69,8 +92,8 @@ public:
 Histogram *hist;
 
 extern "C" {
-void hs_initialize() {
-	hist = new Histogram();
+void hs_initialize(uint32_t bucket_size) {
+	hist = new Histogram(bucket_size);
 }
 
 void hs_destroy() {
@@ -89,7 +112,7 @@ void hs_write(const char* filename){
 	hist->write_to_file(filename);
 }
 
-uint64_t hs_getCount() { 
+uint64_t hs_getCount() {
 	return hist->getCount();
 }
 
