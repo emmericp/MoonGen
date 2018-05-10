@@ -9,6 +9,7 @@ local timer  	= require "timer"
 local log    	= require "log"
 local stats  	= require "stats"
 local barrier 	= require "barrier"
+local pcap	= require "pcap"
 local ms	= require "moonsniff-io"
 
 local ffi    = require "ffi"
@@ -88,7 +89,7 @@ function timestamp(queue, otherdev, bar, pre, args)
 	end
 
 --	bar:wait()
-	
+
 	if args.live then
 		local hist = not args.fast and hist:new()
 		core_online(queue, bufs, pre, hist, args)
@@ -102,14 +103,26 @@ function timestamp(queue, otherdev, bar, pre, args)
 		end
 		print()
 
+	elseif args.capture then
+		local writer
+		if pre then
+			writer = pcap:newWriter(args.output .. "-pre.pcap")
+		else
+			writer = pcap:newWriter(args.output .. "-post.pcap")
+		end
+
+		bar:wait()
+		core_capture(queue, bufs, writer, args)
+		writer:close()
+
 	else
 		local writer
-		if pre then 
+		if pre then
 			writer = ms:newWriter(args.output .. "-pre.mscap")
 		else
 			writer = ms:newWriter(args.output .. "-post.mscap")
 		end
-		
+
 		bar:wait()
 		core_offline(queue, bufs, writer, args)
 		writer:close()
@@ -161,6 +174,21 @@ function core_offline(queue, bufs, writer, args)
 	end
 end
 
+function core_capture(queue, bufs, writer, args)
+	local runtime = timer:new(args.runtime + 0.5)
+
+	while lm.running() and runtime:running() do
+		local rx = queue:tryRecv(bufs, 1000)
+		for i = 1, rx do
+			local timestamp = bufs[i]:getTimestamp(queue.dev)
+			if timestamp then
+				writer:writeBuf(timestamp, bufs[i], 100)
+			end
+		end
+		bufs:free(rx)
+	end
+end
+
 function printStats(args)
 	lm.sleepMillis(500)
 	print()
@@ -187,7 +215,7 @@ end
 function iodebug(args)
 	local writer_pre = ms:newWriter(args.output .. "-pre.mscap")
 	local writer_post = ms:newWriter(args.output .. "-post.mscap")
-	
+
 	writer_pre:write(10, 1000002)
 	writer_post:write(10, 0000002)
 	writer_pre:write(11, 2000004)
@@ -199,7 +227,7 @@ function iodebug(args)
 	writer_post:close()
 
 	local reader = ms:newReader(args.output .. "-pre.mscap")
-	
+
 	local mscap = reader:readSingle()
 
 	while mscap do
