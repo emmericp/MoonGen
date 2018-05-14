@@ -12,6 +12,7 @@ local barrier   = require "barrier"
 local ms	= require "moonsniff-io"
 local bit	= require "bit"
 local dpdk	= require "dpdk"
+local pcap	= require "pcap"
 
 local ffi    = require "ffi"
 local C = ffi.C
@@ -20,6 +21,8 @@ local C = ffi.C
 local INPUT_PATH = "latencies.csv"
 local INPUT_MODE = C.ms_text
 local BITMASK = 0x0FFFFFFF
+
+local CHAR_P = ffi.typeof("char *")
 
 -- skip the initialization of DPDK, as it is not needed for this script
 dpdk.skipInit()
@@ -34,11 +37,21 @@ function configure(parser)
         return parser:parse()
 end
 
+ffi.cdef[[
+	void* malloc(size_t);
+	void free(void*);
+
+	uint32_t ms_hash(const char*);
+]]
+
 function master(args)
 	if args.input then INPUT_PATH = args.input end
 	if args.binary then INPUT_MODE = C.ms_binary end
 
-	if string.match(args.input, ".*%.mscap") then
+	if string.match(args.input, ".*%.pcap") then
+		matchPCAP(args)
+
+	elseif string.match(args.input, ".*%.mscap") then
 		local PRE
 		local POST
 
@@ -55,11 +68,6 @@ function master(args)
 			log:fatal("Could not decide which file is pre and which post. Pre should end with -pre.mscap and post with -post.mscap.")
 		end
 
-		ffi.cdef[[
-			void* malloc(size_t);
-			void free(void*);
-		]]
-
 		local uint64_t = ffi.typeof("uint64_t")
 		local uint64_p = ffi.typeof("uint64_t*")
 
@@ -67,8 +75,8 @@ function master(args)
 		map = ffi.cast(uint64_p, map)
 
 		C.hs_initialize(args.nrbuckets)
-		local prereader = ms:newReader(args.input)
-		local postreader = ms:newReader(args.second)
+		local prereader = ms:newReader(PRE)
+		local postreader = ms:newReader(POST)
 
 		local premscap = prereader:readSingle()
 		local postmscap = postreader:readSingle()
@@ -123,6 +131,120 @@ function master(args)
         	printStats()
 	end
 end
+
+function matchPCAP(args)
+	-- in case of pcap files we need DPDK functions
+	dpdk.init()
+
+	print("correct function")
+	local PRE
+	local POST
+
+	if not args.second then log:fatal("Detected .pcap file but there was no second file. Single .pcap files cannot be processed.") end
+
+	if string.match(args.input, ".*%-pre%.pcap") and string.match(args.second, ".*%-post%.pcap") then
+		PRE = args.input
+		POST = args.second
+
+	elseif string.match(args.second, ".*%-pre%.pcap") and string.match(args.input, ".*%-post%.pcap") then
+		POST = args.input
+		PRE = args.second
+	else
+		log:fatal("Could not decide which file is pre and which post. Pre should end with -pre.mscap and post with -post.mscap.")
+	end
+
+	local uint64_t = ffi.typeof("uint64_t")
+	local uint64_p = ffi.typeof("uint64_t*")
+
+	local map = C.malloc(ffi.sizeof(uint64_t) * BITMASK)
+	map = ffi.cast(uint64_p, map)
+
+	C.hs_initialize(args.nrbuckets)
+
+	print("initializing readers")
+	local prereader = pcap:newReader(PRE)
+	local postreader = pcap:newReader(POST)
+
+	print("reading the first values")
+
+	local mempool = memory.createMemPool()
+
+while true do
+
+	local prepcap = prereader:readSingle(mempool)
+
+	print("reading worked")
+--	log:info("Pre identifier: " .. prepcap.identification .. ", Post identifier: " .. postpcap.identification)
+
+	print("Got until here")
+
+	local hash = getIdent(prepcap)
+
+	print("The timestamp is: " .. tostring(prepcap.udata64) .. " us")
+
+	print("The computed hash was: " .. hash)
+
+
+	-- rte_pktmbuf_free is available with the postfix _export
+	C.rte_pktmbuf_free_export(prepcap)
+
+end
+
+
+	return 0
+	-- precache used bit operation
+--	local band = bit.band
+--
+--	local count = 0
+--	log:info("Prefilling Map")
+--
+--	while premscap and count < (BITMASK - 100) do
+--		map[band(premscap.identification, BITMASK)] = premscap.timestamp
+--		premscap = prereader:readSingle()
+--		count = count + 1
+--	end
+--
+--	log:info("Map is now hot")
+--
+--	while premscap and postmscap do
+--		map[band(premscap.identification, BITMASK)] = premscap.timestamp
+--		premscap = prereader:readSingle()
+--
+--		local ts = map[band(postmscap.identification, BITMASK)]
+--		if ts ~= 0 then
+--			 C.hs_update(postmscap.timestamp - ts)
+--		end
+--		postmscap = postreader:readSingle()
+--	end
+--
+--	while postmscap do
+--		local ts = map[band(postmscap.identification, BITMASK)]
+--		if ts ~= 0 then C.hs_update(postmscap.timestamp - ts) end
+--		postmscap = postreader:readSingle()
+--	end
+--
+--	log:info("Finished timestamp matching")
+--
+--	prereader:close()
+--	postreader:close()
+--	C.free(map)
+--
+--	C.hs_finalize()
+--
+--	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+--
+--	log:info("Finished processing. Writing histogram ...")
+--	C.hs_write(args.output .. ".csv")
+--	C.hs_destroy()
+end
+
+function getIdent(pcap)
+	local pkt_ptr = ffi.cast(CHAR_P, pcap.buf_addr)
+	pkt_ptr = pkt_ptr + pcap.data_off + 14 + 20
+	print(tostring(pkt_ptr))
+	return C.ms_hash(pkt_ptr)
+end
+
 
 function printStats()
         print()

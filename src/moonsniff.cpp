@@ -1,9 +1,11 @@
 #include <cstdint>
+#include <string>
 #include <deque>
 #include <iostream>
 #include <fstream>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 
 #define UINT24_MAX 16777215
 #define INDEX_MASK (uint32_t) 0x00FFFFFF
@@ -218,6 +220,15 @@ namespace moonsniff {
 		reader -> finish();
 		return stats;
 	}
+
+	//----------------------Hashing-----------------------------//
+
+	// this is not cryptographic hashing!
+	std::hash<std::string> hasher;
+
+	static uint32_t hash(const char* input){
+		return hasher(input);
+	}
 }
 
 extern "C" {
@@ -232,8 +243,11 @@ extern "C" {
 	moonsniff::ms_stats ms_post_process(const char* fileName, moonsniff::ms_mode mode){
 		return moonsniff::post_process(fileName, mode);
 	}
-	
+
 	void ms_init(const char* fileName, moonsniff::ms_mode mode){ moonsniff::init(fileName, mode); }
 	void ms_finish(){ moonsniff::finish(); }
 
+	uint32_t ms_hash(const char* input){
+		return moonsniff::hash(input);
+	}
 }

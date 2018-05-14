@@ -106,9 +106,10 @@ function timestamp(queue, otherdev, bar, pre, args)
 	elseif args.capture then
 		local writer
 		if pre then
-			writer = pcap:newWriter(args.output .. "-pre.pcap")
+			-- set the relative starting timestamp to 0
+			writer = pcap:newWriter(args.output .. "-pre.pcap", 0)
 		else
-			writer = pcap:newWriter(args.output .. "-post.pcap")
+			writer = pcap:newWriter(args.output .. "-post.pcap", 0)
 		end
 
 		bar:wait()
@@ -181,7 +182,11 @@ function core_capture(queue, bufs, writer, args)
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
+			-- timestamps here are given in ns
+			-- the pcap module assumes floats based on seconds
 			if timestamp then
+				-- convert to seconds
+				timestamp = timestamp / 1e9
 				writer:writeBuf(timestamp, bufs[i], 100)
 			end
 		end
