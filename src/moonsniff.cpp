@@ -4,8 +4,14 @@
 #include <iostream>
 #include <fstream>
 #include <mutex>
+#include <cstring>
 #include <thread>
 #include <unordered_map>
+#include <rte_mbuf.h>
+#include <rte_mempool.h>
+#include <rte_ether.h>
+#include <rte_ip.h>
+#include <rte_byteorder.h>
 
 #define UINT24_MAX 16777215
 #define INDEX_MASK (uint32_t) 0x00FFFFFF
@@ -226,8 +232,33 @@ namespace moonsniff {
 	// this is not cryptographic hashing!
 	std::hash<std::string> hasher;
 
-	static uint32_t hash(const char* input){
-		return hasher(input);
+	static uint32_t hash(rte_mbuf* input){
+		char* ptr = rte_pktmbuf_mtod(input, char*);
+
+		
+
+		return hasher(ptr);
+
+//		char* ptr = (char*) malloc(100);
+//		std::strncpy(ptr, input, 60);
+//		ptr[99] = '\0';
+//		return hasher(ptr);
+	}
+
+	static uint32_t get_identifier(rte_mbuf* buf){
+		std::cout << "Entered function \n";
+		struct ether_hdr* eth = rte_pktmbuf_mtod(buf, struct ether_hdr*);
+		if( rte_be_to_cpu_16(eth->ether_type) == 0x0800) {
+			std::cout << "Found an ipv4 packet\n";
+			struct ipv4_hdr* ip = rte_pktmbuf_mtod_offset(buf, struct ipv4_hdr*, 14);
+			uint32_t packet_id = (uint32_t) ip->packet_id;
+			std::cout << "id: " + ip->packet_id << "\n";
+			uint32_t hdr_checksum = (uint32_t) ip->hdr_checksum;
+			std::cout << "chksm: " + ip->hdr_checksum << "\n";
+			return (packet_id << 16) + hdr_checksum;
+		}
+		std::cerr << "Identifiers for non ipv4 packets are currently not supported.\n";
+		return 0;
 	}
 }
 
@@ -247,7 +278,11 @@ extern "C" {
 	void ms_init(const char* fileName, moonsniff::ms_mode mode){ moonsniff::init(fileName, mode); }
 	void ms_finish(){ moonsniff::finish(); }
 
-	uint32_t ms_hash(const char* input){
+	uint32_t ms_hash(rte_mbuf* input){
 		return moonsniff::hash(input);
+	}
+
+	uint32_t ms_get_identifier(rte_mbuf* packet){
+		return moonsniff::get_identifier(packet);
 	}
 }

@@ -41,7 +41,8 @@ ffi.cdef[[
 	void* malloc(size_t);
 	void free(void*);
 
-	uint32_t ms_hash(const char*);
+	uint32_t ms_hash(void*);
+	uint32_t ms_get_identifier(void*);
 ]]
 
 function master(args)
@@ -239,10 +240,12 @@ end
 end
 
 function getIdent(pcap)
-	local pkt_ptr = ffi.cast(CHAR_P, pcap.buf_addr)
-	pkt_ptr = pkt_ptr + pcap.data_off + 14 + 20
-	print(tostring(pkt_ptr))
-	return C.ms_hash(pkt_ptr)
+--	local pkt_ptr = ffi.cast(CHAR_P, pcap.buf_addr)
+--	pkt_ptr = pkt_ptr + pcap.data_off + 10
+--	print(tostring(pkt_ptr))
+--	return C.ms_hash(pkt_ptr)
+--	return C.ms_hash(pcap)
+	return C.ms_get_identifier(pcap)
 end
 
 
