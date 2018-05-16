@@ -181,9 +181,14 @@ while true do
 
 	local hash = getIdent(prepcap)
 
+	pkt = prepcap:getUdpPacket()
+	print("Transported payload: " .. pkt.payload.uint32[0])
+	print("ID field: " .. pkt.ip4:getID())
+
 	print("The timestamp is: " .. tostring(prepcap.udata64) .. " us")
 
 	print("The computed hash was: " .. hash)
+	print("----------------------END OF PACKET--------------")
 
 
 	-- rte_pktmbuf_free is available with the postfix _export

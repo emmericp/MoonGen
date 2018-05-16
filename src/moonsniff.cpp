@@ -252,9 +252,9 @@ namespace moonsniff {
 			std::cout << "Found an ipv4 packet\n";
 			struct ipv4_hdr* ip = rte_pktmbuf_mtod_offset(buf, struct ipv4_hdr*, 14);
 			uint32_t packet_id = (uint32_t) ip->packet_id;
-			std::cout << "id: " + ip->packet_id << "\n";
+			std::cout << "id: " << rte_be_to_cpu_16(ip->packet_id) << "\n";
 			uint32_t hdr_checksum = (uint32_t) ip->hdr_checksum;
-			std::cout << "chksm: " + ip->hdr_checksum << "\n";
+			std::cout << "chksm: " << rte_be_to_cpu_16(ip->hdr_checksum) << "\n";
 			return (packet_id << 16) + hdr_checksum;
 		}
 		std::cerr << "Identifiers for non ipv4 packets are currently not supported.\n";
