@@ -23,6 +23,8 @@ local INPUT_MODE = C.ms_text
 local BITMASK = 0x0FFFFFFF
 
 local CHAR_P = ffi.typeof("char *")
+local free = C.rte_pktmbuf_free_export
+
 
 -- skip the initialization of DPDK, as it is not needed for this script
 dpdk.skipInit()
@@ -170,78 +172,108 @@ function matchPCAP(args)
 
 	local mempool = memory.createMemPool()
 
-while true do
+--while true do
+--
+--	local prepcap = prereader:readSingle(mempool)
+--	local postcap = postreader:readSingle(mempool)
+--
+--	print("reading worked")
+----	log:info("Pre identifier: " .. prepcap.identification .. ", Post identifier: " .. postpcap.identification)
+--
+--	print("Got until here")
+--
+--	local hash = getIdent(prepcap)
+--	local hash2 = getIdent(postcap)
+--
+--	pkt = prepcap:getUdpPacket()
+--	pkt2 = postcap:getUdpPacket()
+--	print("Transported payload: " .. pkt.payload.uint32[0])
+--	print("ID field: " .. pkt.ip4:getID())
+--
+--	print("The timestamp is: " .. tostring(prepcap.udata64) .. " us")
+--
+--	print("The computed hash was: " .. hash)
+--	print("----------------------END OF PACKET--------------")
+--
+--
+--	-- rte_pktmbuf_free is available with the postfix _export
+--	C.rte_pktmbuf_free_export(prepcap)
+--	C.rte_pktmbuf_free_export(postcap)
+--
+--end
+--
+--
+--	return 0
 
 	local prepcap = prereader:readSingle(mempool)
+	local postpcap = postreader:readSingle(mempool)
 
-	print("reading worked")
---	log:info("Pre identifier: " .. prepcap.identification .. ", Post identifier: " .. postpcap.identification)
-
-	print("Got until here")
-
-	local hash = getIdent(prepcap)
-
-	pkt = prepcap:getUdpPacket()
-	print("Transported payload: " .. pkt.payload.uint32[0])
-	print("ID field: " .. pkt.ip4:getID())
-
-	print("The timestamp is: " .. tostring(prepcap.udata64) .. " us")
-
-	print("The computed hash was: " .. hash)
-	print("----------------------END OF PACKET--------------")
-
-
-	-- rte_pktmbuf_free is available with the postfix _export
-	C.rte_pktmbuf_free_export(prepcap)
-
-end
-
-
-	return 0
 	-- precache used bit operation
---	local band = bit.band
---
---	local count = 0
---	log:info("Prefilling Map")
---
---	while premscap and count < (BITMASK - 100) do
---		map[band(premscap.identification, BITMASK)] = premscap.timestamp
---		premscap = prereader:readSingle()
---		count = count + 1
---	end
---
---	log:info("Map is now hot")
---
---	while premscap and postmscap do
---		map[band(premscap.identification, BITMASK)] = premscap.timestamp
---		premscap = prereader:readSingle()
---
---		local ts = map[band(postmscap.identification, BITMASK)]
---		if ts ~= 0 then
---			 C.hs_update(postmscap.timestamp - ts)
---		end
---		postmscap = postreader:readSingle()
---	end
---
---	while postmscap do
---		local ts = map[band(postmscap.identification, BITMASK)]
---		if ts ~= 0 then C.hs_update(postmscap.timestamp - ts) end
---		postmscap = postreader:readSingle()
---	end
---
---	log:info("Finished timestamp matching")
---
---	prereader:close()
---	postreader:close()
---	C.free(map)
---
---	C.hs_finalize()
---
---	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
---
---	log:info("Finished processing. Writing histogram ...")
---	C.hs_write(args.output .. ".csv")
---	C.hs_destroy()
+	local band = bit.band
+
+	local count = 0
+	log:info("Prefilling Map")
+
+	while prepcap and count < (BITMASK - 100) do
+		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
+
+		-- print("Checksum in lua: " .. tostring(getIdent(prepcap)))
+
+		-- always free buffers if they are not used any longer
+		free(prepcap)
+
+		prepcap = prereader:readSingle(mempool)
+		count = count + 1
+	end
+
+	print("Iterations: " .. count)
+
+	log:info("Map is now hot")
+	count = 0
+
+	while prepcap and postpcap do
+		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
+		free(prepcap)
+		prepcap = prereader:readSingle(mempool)
+
+		local ts = map[band(getIdent(postpcap), BITMASK)]
+		if ts ~= 0 then
+			-- TODO: set ts to zero if successful? Could avoid false double hits
+			-- mutltiply with 1000 to get results in ns
+			C.hs_update((postpcap.udata64 - ts) * 1000)
+		end
+		free(postpcap)
+		postpcap = postreader:readSingle(mempool)
+
+		count = count + 1
+	end
+
+	print("Iterations: " .. count)
+	count = 0
+
+	while postpcap do
+		local ts = map[band(getIdent(postpcap), BITMASK)]
+		if ts ~= 0 then C.hs_update((postpcap.udata64 - ts) * 1000) end
+		free(postpcap)
+		postpcap = postreader:readSingle(mempool)
+
+		count = count + 1
+	end
+
+	log:info("Finished timestamp matching")
+	print("Iterations: " .. count)
+
+	prereader:close()
+	postreader:close()
+	C.free(map)
+
+	C.hs_finalize()
+
+	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+
+	log:info("Finished processing. Writing histogram ...")
+	C.hs_write(args.output .. ".csv")
+	C.hs_destroy()
 end
 
 function getIdent(pcap)

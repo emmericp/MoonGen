@@ -231,11 +231,10 @@ namespace moonsniff {
 
 	// this is not cryptographic hashing!
 	std::hash<std::string> hasher;
+	std::hash<uint64_t> uhash;
 
 	static uint32_t hash(rte_mbuf* input){
 		char* ptr = rte_pktmbuf_mtod(input, char*);
-
-		
 
 		return hasher(ptr);
 
@@ -246,16 +245,23 @@ namespace moonsniff {
 	}
 
 	static uint32_t get_identifier(rte_mbuf* buf){
-		std::cout << "Entered function \n";
+		//std::cout << "Entered function \n";
 		struct ether_hdr* eth = rte_pktmbuf_mtod(buf, struct ether_hdr*);
 		if( rte_be_to_cpu_16(eth->ether_type) == 0x0800) {
-			std::cout << "Found an ipv4 packet\n";
+			//std::cout << "Found an ipv4 packet\n";
 			struct ipv4_hdr* ip = rte_pktmbuf_mtod_offset(buf, struct ipv4_hdr*, 14);
+
+			// just for getting an identifier it is not neccessary to use the correct byteorder
 			uint32_t packet_id = (uint32_t) ip->packet_id;
-			std::cout << "id: " << rte_be_to_cpu_16(ip->packet_id) << "\n";
+			//std::cout << "id: " << rte_be_to_cpu_16(ip->packet_id) << "\n";
 			uint32_t hdr_checksum = (uint32_t) ip->hdr_checksum;
-			std::cout << "chksm: " << rte_be_to_cpu_16(ip->hdr_checksum) << "\n";
-			return (packet_id << 16) + hdr_checksum;
+			//std::cout << "chksm: " << rte_be_to_cpu_16(ip->hdr_checksum) << "\n";
+
+			uint64_t srcdst =(((uint64_t) ip->src_addr) << 32) + ip->dst_addr;
+			uint32_t hash_val = uhash(srcdst);
+
+			// hash of src and dst is added to hash of id (higher 16 bit) and checksum (lower 16 bit)
+			return hash_val + uhash((packet_id << 16) + hdr_checksum);
 		}
 		std::cerr << "Identifiers for non ipv4 packets are currently not supported.\n";
 		return 0;
