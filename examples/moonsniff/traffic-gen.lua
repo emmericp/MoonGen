@@ -8,8 +8,10 @@ local hist   = require "histogram"
 local timer  = require "timer"
 local log    = require "log"
 local stats  = require "stats"
+local bit    = require "bit"
 
 local PKT_LEN = 100             -- in byte
+local band = bit.band
 
 function configure(parser)
         parser:description("Generate traffic which can be used by moonsniff to establish latencies induced by a device under test.")
@@ -55,6 +57,8 @@ function generateTraffic(queue, args)
 
                 for i, buf in ipairs(bufs) do
                         local pkt = buf:getUdpPacket()
+			-- for setters to work correctly, the number is not allowed to exceed 16 bit
+			pkt.ip4:setID(band(pkt_id, 0xFFFF))
                         pkt.payload.uint32[0] = pkt_id
                         pkt_id = pkt_id + 1
                 end
