@@ -19,6 +19,7 @@ function configure(parser)
 	parser:option("-r --rate", "Forwarding rates in Mbps (two values for two links)"):args(2):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per forwarding direction using RSS."):args(1):convert(tonumber):default(1)
 	parser:option("-l --latency", "Fixed emulated latency (in ms) on the link."):args(2):convert(tonumber):default(0)
+	parser:option("-x --xlatency", "Extra exponentially distributed latency, in addition to the fixed latency (in ms)."):args(2):convert(tonumber):default(0)
 	parser:option("-q --queuedepth", "Maximum number of packets to hold in the delay line"):args(2):convert(tonumber):default(0)
 	parser:option("-o --loss", "Rate of packet drops"):args(2):convert(tonumber):default(0)
 	return parser:parse()
@@ -59,9 +60,9 @@ function master(args)
 
 	-- start the forwarding tasks
 	for i = 1, args.threads do
-		mg.startTask("forward", ring1, args.dev[1]:getTxQueue(i - 1), args.dev[1], args.rate[1], args.latency[1], args.loss[1])
+		mg.startTask("forward", ring1, args.dev[1]:getTxQueue(i - 1), args.dev[1], args.rate[1], args.latency[1], args.xlatency[1], args.loss[1])
 		if args.dev[1] ~= args.dev[2] then
-			mg.startTask("forward", ring2, args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[2], args.latency[2], args.loss[2])
+			mg.startTask("forward", ring2, args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[2], args.latency[2], args.xlatency[2], args.loss[2])
 		end
 	end
 
@@ -106,7 +107,7 @@ function receive(ring, rxQueue, rxDev)
 end
 
 
-function forward(ring, txQueue, txDev, rate, latency, lossrate)
+function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate)
 	print("forward with rate "..rate.." and latency "..latency.." and loss rate "..lossrate)
 	local numThreads = 1
 	
@@ -137,7 +138,11 @@ function forward(ring, txQueue, txDev, rate, latency, lossrate)
 				-- get the buf's arrival timestamp and compare to current time
 				--local arrival_timestamp = buf:getTimestamp()
 				local arrival_timestamp = buf.udata64
-				local send_time = arrival_timestamp + (latency * tsc_hz_ms)
+				local extraDelay = 0.0
+				if (xlatency > 0) then
+					extraDelay = -math.log(math.random())*xlatency
+				end
+				local send_time = arrival_timestamp + ((latency+extraDelay) * tsc_hz_ms)
 				local cur_time = limiter:get_tsc_cycles()
 				--print("timestamps", arrival_timestamp, send_time, cur_time)
 				-- spin/wait until it is time to send this frame
@@ -149,7 +154,7 @@ function forward(ring, txQueue, txDev, rate, latency, lossrate)
 				end
 				
 				local pktSize = buf.pkt_len + 24
-				buf:setDelay((pktSize) * (linkspeed/rate - 1) )
+				buf:setDelay((pktSize) * (linkspeed/rate - 1))
 			end
 		end
 		--print("count="..tostring(count))
