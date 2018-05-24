@@ -9,7 +9,6 @@ local limiter = require "software-ratecontrol"
 local pipe    = require "pipe"
 local ffi     = require "ffi"
 local libmoon = require "libmoon"
-local histogram = require "histogram"
 
 local PKT_SIZE	= 60
 
@@ -20,7 +19,8 @@ function configure(parser)
 	parser:option("-r --rate", "Forwarding rates in Mbps (two values for two links)"):args(2):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per forwarding direction using RSS."):args(1):convert(tonumber):default(1)
 	parser:option("-l --latency", "Fixed emulated latency (in ms) on the link."):args(2):convert(tonumber):default(0)
-	parser:option("-q --queuedepth", "Maximum number of packets to hold in the delay line"):args(2):convert(tonumber):default({0,0})
+	parser:option("-q --queuedepth", "Maximum number of packets to hold in the delay line"):args(2):convert(tonumber):default(0)
+	parser:option("-o --loss", "Rate of packet drops"):args(2):convert(tonumber):default(0)
 	return parser:parse()
 end
 
@@ -34,9 +34,7 @@ function master(args)
 			rxQueues = args.threads,
 			rssQueues = 0,
 			rssFunctions = {},
-			--rxDescs = 4096,
-			--rxDescs = 128,
-			--txDescs = 128,
+			rxDescs = 4096,
 			dropEnable = true,
 			disableOffloads = true
 		}
@@ -50,20 +48,20 @@ function master(args)
 	-- should set the size here, based on the line speed and latency, and maybe desired queue depth
 	local qdepth1 = args.queuedepth[1]
 	if qdepth1 < 1 then
-		qdepth1 = math.floor((args.latency[1] * args.rate[1] * 1000)/8)
+		qdepth1 = math.floor((args.latency[1] * args.rate[1] * 1000)/672)
 	end
 	local qdepth2 = args.queuedepth[2]
 	if qdepth2 < 1 then
-		qdepth2 = math.floor((args.latency[2] * args.rate[2] * 1000)/8)
+		qdepth2 = math.floor((args.latency[2] * args.rate[2] * 1000)/672)
 	end
-	local ring1 = pipe:newBytesizedRing(qdepth1)
-	local ring2 = pipe:newBytesizedRing(qdepth2)
+	local ring1 = pipe:newPacketRing(qdepth1)
+	local ring2 = pipe:newPacketRing(qdepth2)
 
 	-- start the forwarding tasks
 	for i = 1, args.threads do
-		mg.startTask("forward", ring1, args.dev[1]:getTxQueue(i - 1), args.dev[1], args.rate[1], args.latency[1])
+		mg.startTask("forward", ring1, args.dev[1]:getTxQueue(i - 1), args.dev[1], args.rate[1], args.latency[1], args.loss[1])
 		if args.dev[1] ~= args.dev[2] then
-			mg.startTask("forward", ring2, args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[2], args.latency[2])
+			mg.startTask("forward", ring2, args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[2], args.latency[2], args.loss[2])
 		end
 	end
 
@@ -101,15 +99,15 @@ function receive(ring, rxQueue, rxDev)
 			end
 		end
 		if count > 0 then
-			pipe:sendToBytesizedRing(ring.ring, bufs, count)
-			--print("ring count/usage: ",pipe:countBytesizedRing(ring.ring),pipe:bytesusedBytesizedRing(ring.ring))
+			pipe:sendToPacketRing(ring.ring, bufs, count)
+			--print("ring count: ",pipe:countPacketRing(ring.ring))
 		end
 	end
 end
 
 
-function forward(ring, txQueue, txDev, rate, latency)
-	print("forward with rate "..rate.." and latency "..latency)
+function forward(ring, txQueue, txDev, rate, latency, lossrate)
+	print("forward with rate "..rate.." and latency "..latency.." and loss rate "..lossrate)
 	local numThreads = 1
 	
 	local linkspeed = txDev:getLinkStatus().speed
@@ -117,19 +115,17 @@ function forward(ring, txQueue, txDev, rate, latency)
 
 	local tsc_hz = libmoon:getCyclesFrequency()
 	local tsc_hz_ms = tsc_hz / 1000
-	local tsc_hz_us = tsc_hz / 1000000
 	print("tsc_hz = "..tsc_hz)
 
 	-- larger batch size is useful when sending it through a rate limiter
 	local bufs = memory.createBufArray()  --memory:bufArray()  --(128)
 	local count = 0
-	local hist = histogram:new()
 
 	while mg.running() do
 		-- receive one or more packets from the queue
 		--local count = rxQueue:recv(bufs)
-		--print("calling pipe:recvFromBytesizedRing(ring.ring, bufs)")
-		count = pipe:recvFromBytesizedRing(ring.ring, bufs, 1)
+		--print("calling pipe:recvFromPacketRing(ring.ring, bufs)")
+		count = pipe:recvFromPacketRing(ring.ring, bufs, 1)
 		--print("call returned.")
 		if count > 0 then
 		--print("count=", count)
@@ -146,18 +142,12 @@ function forward(ring, txQueue, txDev, rate, latency)
 				--print("timestamps", arrival_timestamp, send_time, cur_time)
 				-- spin/wait until it is time to send this frame
 				-- this assumes frame order is preserved
-				while cur_time < send_time do
+				while limiter:get_tsc_cycles() < send_time do
 					if not mg.running() then
 						return
 					end
-					cur_time = limiter:get_tsc_cycles()
 				end
 				
-				--if (cur_time - send_time) > tsc_hz_ms then
-				--	print("target latecy exceeded by: ",cur_time, send_time, (cur_time-send_time), (cur_time-send_time)/tsc_hz_us)
-				--end
-				hist:update(tonumber(cur_time - send_time))
-
 				local pktSize = buf.pkt_len + 24
 				buf:setDelay((pktSize) * (linkspeed/rate - 1) )
 			end
@@ -167,12 +157,10 @@ function forward(ring, txQueue, txDev, rate, latency)
 		--if count > 0 then
 		--if count > 0 then
 			-- the rate here doesn't affect the result afaict.  It's just to help decide the size of the bad pkts
-			txQueue:sendWithDelay(bufs, rate * numThreads, count)
+			txQueue:sendWithDelayLoss(bufs, rate * numThreads, lossrate, count)
 			--print("sendWithDelay() returned")
 		end
 	end
-	hist:print()
-	hist:save("latencyq-histogram.csv")
 end
 
 
