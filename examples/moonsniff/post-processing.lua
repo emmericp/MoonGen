@@ -105,14 +105,29 @@ function master(args)
 
 			local ts = map[band(postmscap.identification, BITMASK)]
 			if ts ~= 0 then
-				 C.hs_update(postmscap.timestamp - ts)
+				print("pre: " .. tostring(ts) .. ", post: " .. tostring(postmscap.timestamp))
+				local diff = postmscap.timestamp - ts
+				if diff < 0 then
+					log:warn("Got negative timestamp")
+					log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp) .. "; result: " .. tostring(diff))
+				end
+				C.hs_update(postmscap.timestamp - ts)
 			end
 			postmscap = postreader:readSingle()
 		end
 
 		while postmscap do
 			local ts = map[band(postmscap.identification, BITMASK)]
-			if ts ~= 0 then C.hs_update(postmscap.timestamp - ts) end
+			if ts ~= 0 then
+				print("pre: " .. tostring(ts) .. ", post: " .. tostring(postmscap.timestamp))
+				local diff = postmscap.timestamp - ts
+				if diff < 0 then
+					log:warn("Got negative timestamp")
+					log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp) .. "; result: " .. tostring(diff))
+				end
+
+				C.hs_update(postmscap.timestamp - ts)
+			end
 			postmscap = postreader:readSingle()
 		end
 
