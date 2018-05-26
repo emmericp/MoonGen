@@ -89,10 +89,20 @@ function master(args)
 		local band = bit.band
 
 		local count = 0
+
+		local overwrites = 0
+		local misses = 0
+		local pre_count = 0
+		local post_count = 0
 		log:info("Prefilling Map")
 
 		while premscap and count < (BITMASK - 100) do
-			map[band(premscap.identification, BITMASK)] = premscap.timestamp
+			pre_count = pre_count + 1
+			local ident = band(premscap.identification, BITMASK)
+
+			if map[ident] ~= 0 then overwrites = overwrites + 1 end
+
+			map[ident] = premscap.timestamp
 			premscap = prereader:readSingle()
 			count = count + 1
 		end
@@ -100,33 +110,55 @@ function master(args)
 		log:info("Map is now hot")
 
 		while premscap and postmscap do
-			map[band(premscap.identification, BITMASK)] = premscap.timestamp
+			pre_count = pre_count + 1
+			post_count = post_count + 1
+
+			local ident = band(premscap.identification, BITMASK)
+
+			if map[ident] ~= 0 then overwrites = overwrites + 1 end
+
+			map[ident] = premscap.timestamp
 			premscap = prereader:readSingle()
 
 			local ts = map[band(postmscap.identification, BITMASK)]
 			if ts ~= 0 then
-				print("pre: " .. tostring(ts) .. ", post: " .. tostring(postmscap.timestamp))
+				local ret = C.hs_update(postmscap.timestamp - ts)
+
 				local diff = postmscap.timestamp - ts
-				if diff < 0 then
+				if not ret then
 					log:warn("Got negative timestamp")
+					log:warn("Postcount: " .. post_count)
 					log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp) .. "; result: " .. tostring(diff))
+					return
 				end
-				C.hs_update(postmscap.timestamp - ts)
+
+				-- reset the ts field to avoid matching it again
+				map[ident] = 0
+			else
+				misses = misses + 1
 			end
 			postmscap = postreader:readSingle()
 		end
 
 		while postmscap do
-			local ts = map[band(postmscap.identification, BITMASK)]
+			post_count = post_count + 1
+
+			local ident = band(postmscap.identification, BITMASK)
+			local ts = map[ident]
 			if ts ~= 0 then
-				print("pre: " .. tostring(ts) .. ", post: " .. tostring(postmscap.timestamp))
+
+				local ret = C.hs_update(postmscap.timestamp - ts)
+
 				local diff = postmscap.timestamp - ts
-				if diff < 0 then
+				if not ret then
 					log:warn("Got negative timestamp")
 					log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp) .. "; result: " .. tostring(diff))
 				end
 
-				C.hs_update(postmscap.timestamp - ts)
+				-- reset the ts field to avoid matching it again
+				map[ident] = 0
+			else
+				misses = misses + 1
 			end
 			postmscap = postreader:readSingle()
 		end
@@ -139,6 +171,14 @@ function master(args)
 
 		C.hs_finalize()
 
+		log:info("")
+		log:info("# of identifications possible: " .. BITMASK)
+		log:info("Overwrites: " .. overwrites .. " from " .. pre_count)
+		log:info("\tPercentage: " .. (overwrites/pre_count))
+		log:info("")
+		log:info("Misses: " .. misses .. " from " .. post_count)
+		log:info("\tPercentage: " .. (misses/post_count))
+		log:info("")
 		log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
 
 		log:info("Finished processing. Writing histogram ...")

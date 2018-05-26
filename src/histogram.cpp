@@ -28,7 +28,11 @@ public:
 		return variance;
 	}
 
-	void update(int64_t new_val) {
+	bool update(int64_t new_val) {
+		bool ret = true;
+		if (new_val < 0){
+			ret = false;
+		}
 		++count;
 		double delta = new_val - mean;
 		mean = mean + delta / count;
@@ -46,6 +50,8 @@ public:
 		new_val = (new_val / bucket_size) * bucket_size;
 		// if not already in map, it should be inserted and zero initialized
 		++storage[new_val];
+
+		return ret;
 	}
 
 	void finalize() {
@@ -100,8 +106,8 @@ void hs_destroy() {
 	delete (hist);
 }
 
-void hs_update(int64_t new_val) {
-	hist->update(new_val);
+bool hs_update(int64_t new_val) {
+	return hist->update(new_val);
 }
 
 void hs_finalize(){
