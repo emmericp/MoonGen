@@ -21,8 +21,11 @@ local C = ffi.C
 local INPUT_PATH = "latencies.csv"
 local INPUT_MODE = C.ms_text
 local BITMASK = 0x0FFFFFFF
+local TIME_THRESH = -50 	-- negative timevalues smaller than this value are not allowed
+
 
 local CHAR_P = ffi.typeof("char *")
+local INT64_T = ffi.typeof("int64_t")
 local free = C.rte_pktmbuf_free_export
 
 
@@ -88,23 +91,35 @@ function master(args)
 		-- precache used bit operation
 		local band = bit.band
 
-		local count = 0
-
+		-- debug and information values
 		local overwrites = 0
 		local misses = 0
 		local pre_count = 0
 		local post_count = 0
+
 		log:info("Prefilling Map")
 
-		while premscap and count < (BITMASK - 100) do
+		if premscap == nil or postmscap == nil then
+			log:err("Detected either no pre or post timestamps. Aborting ..")
+		end
+
+		ident = band(premscap.identification, BITMASK)
+		post_ident = band(postmscap.identification, BITMASK)
+
+		-- do only fill up till post_ident - 100
+		-- this prevents an early wrap around which causes negative time values
+
+		-- TODO: fix the fill up when post and pre are equal, maybe use full identification?
+		while premscap and ident > post_ident or tonumber(ident) < tonumber(post_ident) - 100 do
 			pre_count = pre_count + 1
-			local ident = band(premscap.identification, BITMASK)
 
 			if map[ident] ~= 0 then overwrites = overwrites + 1 end
 
 			map[ident] = premscap.timestamp
 			premscap = prereader:readSingle()
-			count = count + 1
+			if premscap then
+				ident = band(premscap.identification, BITMASK)
+			end
 		end
 
 		log:info("Map is now hot")
@@ -120,24 +135,32 @@ function master(args)
 			map[ident] = premscap.timestamp
 			premscap = prereader:readSingle()
 
-			local ts = map[band(postmscap.identification, BITMASK)]
-			if ts ~= 0 then
-				local ret = C.hs_update(postmscap.timestamp - ts)
+			post_ident = band(postmscap.identification, BITMASK)
 
-				local diff = postmscap.timestamp - ts
-				if not ret then
-					log:warn("Got negative timestamp")
-					log:warn("Postcount: " .. post_count)
-					log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp) .. "; result: " .. tostring(diff))
-					return
-				end
+			local ts = map[band(post_ident)]
 
-				-- reset the ts field to avoid matching it again
-				map[ident] = 0
+			local diff = ffi.cast(INT64_T, postmscap.timestamp - ts)
+
+			-- check for time measurements which violate the given threshold
+			if ts ~= 0 and diff < TIME_THRESH then
+				log:warn("Got negative timestamp")
+				log:warn("Identification " .. ident)
+				log:warn("Postcount: " .. post_count)
+				log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp))
+				log:warn("Difference: " .. tostring(diff))
+				return
+
 			else
-				misses = misses + 1
+				if ts ~= 0 then
+					C.hs_update(diff)
+
+					-- reset the ts field to avoid matching it again
+					map[ident] = 0
+				else
+					misses = misses + 1
+				end
+				postmscap = postreader:readSingle()
 			end
-			postmscap = postreader:readSingle()
 		end
 
 		while postmscap do
@@ -145,15 +168,20 @@ function master(args)
 
 			local ident = band(postmscap.identification, BITMASK)
 			local ts = map[ident]
-			if ts ~= 0 then
 
-				local ret = C.hs_update(postmscap.timestamp - ts)
+			local diff = ffi.cast(INT64_T, postmscap.timestamp - ts)
 
-				local diff = postmscap.timestamp - ts
-				if not ret then
-					log:warn("Got negative timestamp")
-					log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp) .. "; result: " .. tostring(diff))
-				end
+			if ts ~= 0 and diff < TIME_THRESH then
+				log:warn("Got negative timestamp")
+				log:warn("Identification " .. ident)
+				log:warn("Postcount: " .. post_count)
+				log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp))
+				log:warn("Difference: " .. tostring(diff))
+				return
+
+			elseif ts ~= 0 then
+
+				C.hs_update(diff)
 
 				-- reset the ts field to avoid matching it again
 				map[ident] = 0
@@ -171,13 +199,17 @@ function master(args)
 
 		C.hs_finalize()
 
+
+		print()
+		log:info("# pkts pre: " .. pre_count .. ", # pkts post " .. post_count)
+		log:info("Packet loss: " .. (1 - (post_count/pre_count)) * 100 .. " %%")
 		log:info("")
 		log:info("# of identifications possible: " .. BITMASK)
 		log:info("Overwrites: " .. overwrites .. " from " .. pre_count)
-		log:info("\tPercentage: " .. (overwrites/pre_count))
+		log:info("\tPercentage: " .. (overwrites/pre_count) * 100 .. " %%")
 		log:info("")
 		log:info("Misses: " .. misses .. " from " .. post_count)
-		log:info("\tPercentage: " .. (misses/post_count))
+		log:info("\tPercentage: " .. (misses/post_count) * 100 .. " %%")
 		log:info("")
 		log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
 
