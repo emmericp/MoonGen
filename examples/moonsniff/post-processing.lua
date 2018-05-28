@@ -77,8 +77,12 @@ function master(args)
 		local uint64_t = ffi.typeof("uint64_t")
 		local uint64_p = ffi.typeof("uint64_t*")
 
-		local map = C.malloc(ffi.sizeof(uint64_t) * BITMASK)
+		-- increase the size of map by one to make BITMASK a valid identifier
+		local map = C.malloc(ffi.sizeof(uint64_t) * (BITMASK + 1))
 		map = ffi.cast(uint64_p, map)
+
+		-- make sure the complete map is zero initialized
+		zeroInit(map)
 
 		C.hs_initialize(args.nrbuckets)
 		local prereader = ms:newReader(PRE)
@@ -220,6 +224,34 @@ function master(args)
 	else
         	printStats()
 	end
+end
+
+function zeroInit(map)
+	for i = 0, BITMASK do
+		map[i] = 0
+	end
+end
+
+function initialFill(premscap, prereader, map)
+        pre_ident = band(premscap.identification, BITMASK)
+        initial_id = pre_ident
+
+        local pre_count = 0
+
+        log:info("end : " .. BITMASK - 100)
+
+        while premscap and pre_ident >= initial_id and pre_ident < BITMASK - 100 do
+                pre_count = pre_count + 1
+
+                if map[pre_ident] ~= 0 then overwrites = overwrites + 1 end
+                map[pre_ident] = premscap.timestamp
+
+                premscap = prereader:readSingle()
+                if premscap then
+                        pre_ident = band(premscap.identification, BITMASK)
+                end
+        end
+	return pre_count
 end
 
 function matchPCAP(args)
