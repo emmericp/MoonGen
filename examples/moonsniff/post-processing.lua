@@ -107,24 +107,7 @@ function master(args)
 			log:err("Detected either no pre or post timestamps. Aborting ..")
 		end
 
-		ident = band(premscap.identification, BITMASK)
-		post_ident = band(postmscap.identification, BITMASK)
-
-		-- do only fill up till post_ident - 100
-		-- this prevents an early wrap around which causes negative time values
-
-		-- TODO: fix the fill up when post and pre are equal, maybe use full identification?
-		while premscap and ident > post_ident or tonumber(ident) < tonumber(post_ident) - 100 do
-			pre_count = pre_count + 1
-
-			if map[ident] ~= 0 then overwrites = overwrites + 1 end
-
-			map[ident] = premscap.timestamp
-			premscap = prereader:readSingle()
-			if premscap then
-				ident = band(premscap.identification, BITMASK)
-			end
-		end
+		pre_count = initialFill(premscap, prereader, map)
 
 		log:info("Map is now hot")
 
@@ -252,6 +235,20 @@ function initialFill(premscap, prereader, map)
                 end
         end
 	return pre_count
+end
+
+function writeMSCAPasText(infile, outfile)
+	local reader = ms:newReader(infile)
+	mscap = reader:readSingle(outfile)
+
+	textf = io.open(outfile, "w")
+
+	while mscap do
+		textf:write(tostring(mscap.identification), ", ", tostring(mscap.timestamp), "\n")
+	end
+
+	reader:close()
+	io.close(outfile)
 end
 
 function matchPCAP(args)
