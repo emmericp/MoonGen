@@ -190,7 +190,7 @@ function core_capture(queue, bufs, writer, args)
 			if timestamp then
 				-- convert to seconds
 				timestamp = timestamp / 1e9
-				writer:writeBuf(timestamp, bufs[i], 100)
+				writer:writeBuf(timestamp, bufs[i])
 			end
 		end
 		bufs:free(rx)

@@ -23,6 +23,8 @@ local INPUT_MODE = C.ms_text
 local BITMASK = 0x0FFFFFFF
 local TIME_THRESH = -50 	-- negative timevalues smaller than this value are not allowed
 
+local MODE_MSCAP, MODE_PCAP = 0, 1
+local MODE = MODE_MSCAP
 
 local CHAR_P = ffi.typeof("char *")
 local INT64_T = ffi.typeof("int64_t")
@@ -56,9 +58,12 @@ function master(args)
 	if args.binary then INPUT_MODE = C.ms_binary end
 
 	if string.match(args.input, ".*%.pcap") then
+		MODE = MODE_PCAP
 		matchPCAP(args)
 
 	elseif string.match(args.input, ".*%.mscap") then
+		MODE = MODE_MSCAP
+
 		local PRE
 		local POST
 
@@ -338,6 +343,7 @@ function matchPCAP(args)
 	log:info("Prefilling Map")
 
 	while prepcap and count < (BITMASK - 100) do
+		setTs(prepcap)
 		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
 
 		-- print("Checksum in lua: " .. tostring(getIdent(prepcap)))
@@ -406,6 +412,18 @@ function getIdent(pcap)
 --	return C.ms_hash(pkt_ptr)
 --	return C.ms_hash(pcap)
 	return C.ms_get_identifier(pcap)
+end
+
+--- Extract timestamp and set it on the pcap table
+--- Has no effect on mscap files
+function setTs(cap)
+	if MODE == MODE_PCAP then
+		-- get X552 timestamps
+		local timestamp = ffi.cast("uint32_t*", ffi.cast("uint8_t*", cap:getData()) + cap:getSize() - 8)
+		local low = timestamp[0]
+		local high = timestamp[1]
+		cap.timestamp = high * 10^9 + low
+	end
 end
 
 
