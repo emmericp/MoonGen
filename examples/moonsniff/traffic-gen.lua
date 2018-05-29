@@ -11,6 +11,7 @@ local stats  = require "stats"
 local bit    = require "bit"
 
 local PKT_LEN = 100             -- in byte
+local MS_TYPE = 0b01010101
 local band = bit.band
 
 function configure(parser)
@@ -60,6 +61,7 @@ function generateTraffic(queue, args)
 			-- for setters to work correctly, the number is not allowed to exceed 16 bit
 			pkt.ip4:setID(band(pkt_id, 0xFFFF))
                         pkt.payload.uint32[0] = pkt_id
+			pkt.payload.uint8[4] = MS_TYPE
                         pkt_id = pkt_id + 1
                 end
 
