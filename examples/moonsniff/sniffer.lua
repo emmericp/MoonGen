@@ -15,6 +15,7 @@ local ms	= require "moonsniff-io"
 local ffi    = require "ffi"
 local C = ffi.C
 
+local MS_TYPE = 0b01010101
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
@@ -168,7 +169,9 @@ function core_offline(queue, bufs, writer, args)
 			local timestamp = bufs[i]:getTimestamp(queue.dev)
 			if timestamp then
 				local pkt = bufs[i]:getUdpPacket()
-				writer:write(pkt.payload.uint32[0], timestamp)
+				if pkt.payload.uint8[4] == MS_TYPE then
+					writer:write(pkt.payload.uint32[0], timestamp)
+				end
 			end
 		end
 		bufs:free(rx)
