@@ -30,7 +30,7 @@ local MODE = MODE_MSCAP
 local CHAR_P = ffi.typeof("char *")
 local INT64_T = ffi.typeof("int64_t")
 local UINT8_T = ffi.typeof("uint8_t")
-local UINT8_p = ffi.typeof("uint8_t*")
+local UINT8_P = ffi.typeof("uint8_t*")
 
 local free = C.rte_pktmbuf_free_export
 local band = bit.band
@@ -350,67 +350,72 @@ function matchPCAP(args)
 	local count = 0
 	log:info("Prefilling Map")
 
-	while prepcap and count < (BITMASK - 100) do
-		setTs(prepcap)
-		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
+	setUp()
 
-		-- print("Checksum in lua: " .. tostring(getIdent(prepcap)))
+	log:info("ts ns: " .. tostring(getTs(prepcap)) .. "ts us: " .. tostring(prepcap.udata64))
+	log:info("ident: " .. tostring(getId(prepcap)))
 
-		-- always free buffers if they are not used any longer
-		free(prepcap)
-
-		prepcap = prereader:readSingle(mempool)
-		count = count + 1
-	end
-
-	print("Iterations: " .. count)
-
-	log:info("Map is now hot")
-	count = 0
-
-	while prepcap and postpcap do
-		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
-		free(prepcap)
-		prepcap = prereader:readSingle(mempool)
-
-		local ts = map[band(getIdent(postpcap), BITMASK)]
-		if ts ~= 0 then
-			-- TODO: set ts to zero if successful? Could avoid false double hits
-			-- mutltiply with 1000 to get results in ns
-			C.hs_update((postpcap.udata64 - ts) * 1000)
-		end
-		free(postpcap)
-		postpcap = postreader:readSingle(mempool)
-
-		count = count + 1
-	end
-
-	print("Iterations: " .. count)
-	count = 0
-
-	while postpcap do
-		local ts = map[band(getIdent(postpcap), BITMASK)]
-		if ts ~= 0 then C.hs_update((postpcap.udata64 - ts) * 1000) end
-		free(postpcap)
-		postpcap = postreader:readSingle(mempool)
-
-		count = count + 1
-	end
-
-	log:info("Finished timestamp matching")
-	print("Iterations: " .. count)
-
-	prereader:close()
-	postreader:close()
-	C.free(map)
-
-	C.hs_finalize()
-
-	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
-
-	log:info("Finished processing. Writing histogram ...")
-	C.hs_write(args.output .. ".csv")
-	C.hs_destroy()
+--	while prepcap and count < (BITMASK - 100) do
+--		setTs(prepcap)
+--		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
+--
+--		-- print("Checksum in lua: " .. tostring(getIdent(prepcap)))
+--
+--		-- always free buffers if they are not used any longer
+--		free(prepcap)
+--
+--		prepcap = prereader:readSingle(mempool)
+--		count = count + 1
+--	end
+--
+--	print("Iterations: " .. count)
+--
+--	log:info("Map is now hot")
+--	count = 0
+--
+--	while prepcap and postpcap do
+--		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
+--		free(prepcap)
+--		prepcap = prereader:readSingle(mempool)
+--
+--		local ts = map[band(getIdent(postpcap), BITMASK)]
+--		if ts ~= 0 then
+--			-- TODO: set ts to zero if successful? Could avoid false double hits
+--			-- mutltiply with 1000 to get results in ns
+--			C.hs_update((postpcap.udata64 - ts) * 1000)
+--		end
+--		free(postpcap)
+--		postpcap = postreader:readSingle(mempool)
+--
+--		count = count + 1
+--	end
+--
+--	print("Iterations: " .. count)
+--	count = 0
+--
+--	while postpcap do
+--		local ts = map[band(getIdent(postpcap), BITMASK)]
+--		if ts ~= 0 then C.hs_update((postpcap.udata64 - ts) * 1000) end
+--		free(postpcap)
+--		postpcap = postreader:readSingle(mempool)
+--
+--		count = count + 1
+--	end
+--
+--	log:info("Finished timestamp matching")
+--	print("Iterations: " .. count)
+--
+--	prereader:close()
+--	postreader:close()
+--	C.free(map)
+--
+--	C.hs_finalize()
+--
+--	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+--
+--	log:info("Finished processing. Writing histogram ...")
+--	C.hs_write(args.output .. ".csv")
+--	C.hs_destroy()
 end
 
 function getIdent(pcap)
@@ -424,36 +429,40 @@ end
 
 --- Setup by loading user defined function and initializing the scratchpad
 --- Has no effect if in MODE_MSCAP
-function setUP()
+function setUp()
 	if MODE == MODE_PCAP then
-
 		-- fetch user defined function
-		loaded_chunk = assert(loadfile("pkt-matcher.lua"))
+		loaded_chunk = assert(loadfile("examples/moonsniff/pkt-matcher.lua"))
 		pktmatch = loaded_chunk()
 
 		-- initialize scratchpad
 		scratchpad = C.malloc(ffi.sizeof(UINT8_T) * SCR_SIZE)
+		scratchpad = ffi.cast(UINT8_P, scratchpad)
 	end
 end
 
 --- Compute an identification of pcap files
 --- Has no effect on mscap files
-function setIdent(cap)
+function getId(cap)
 	if MODE == MODE_PCAP then
 		local filled = pktmatch(cap, scratchpad, SCR_SIZE)
 		log:info("Filled: " .. filled)
+		return 5
+	else
+		return cap.identification
 	end
 end
 
---- Extract timestamp and set it on the pcap table
---- Has no effect on mscap files
-function setTs(cap)
+--- Extract timestamp from pcap and mscaps
+function getTs(cap)
 	if MODE == MODE_PCAP then
 		-- get X552 timestamps
 		local timestamp = ffi.cast("uint32_t*", ffi.cast("uint8_t*", cap:getData()) + cap:getSize() - 8)
 		local low = timestamp[0]
 		local high = timestamp[1]
-		cap.timestamp = high * 10^9 + low
+		return high * 10^9 + low
+	else
+		return cap.timestamp
 	end
 end
 

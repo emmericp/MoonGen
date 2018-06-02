@@ -1,8 +1,12 @@
 --- This file holds a function which should be customized to serve your needs for packet matching
 
-local lm 	= require "libmoon"
-local ffi	= require "ffi"
-local log	= require "log"
+local lm        = require "libmoon"
+local memory    = require "memory"
+local log       = require "log"
+local dpdk      = require "dpdk"
+local pcap      = require "pcap"
+
+local ffi    = require "ffi"
 local C = ffi.C
 
 local MS_TYPE = 0b01010101
@@ -13,8 +17,8 @@ return function(mbuf, scratchpad, size)
 	pkt = mbuf:getUdpPacket()
 
 	if pkt.payload.uint8[4] == MS_TYPE then
-		scratchpad[0] = pkt.payload.uint32[0]
-		local filled = 4
+		ffi.copy(scratchpad, pkt.payload.uint8, 4)
+		filled = 4
 	end
 
 	-- make sure we did not overfill the scratchpad
