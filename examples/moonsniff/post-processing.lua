@@ -26,10 +26,18 @@ local TIME_THRESH = -50 	-- negative timevalues smaller than this value are not 
 local MODE_MSCAP, MODE_PCAP = 0, 1
 local MODE = MODE_MSCAP
 
+-- pointers and ctypes
 local CHAR_P = ffi.typeof("char *")
 local INT64_T = ffi.typeof("int64_t")
+local UINT8_T = ffi.typeof("uint8_t")
+local UINT8_p = ffi.typeof("uint8_t*")
+
 local free = C.rte_pktmbuf_free_export
 local band = bit.band
+
+local pktmatch = nil
+local scratchpad = nil
+local SCR_SIZE = 16 -- size of the scratchpad in bytes
 
 -- skip the initialization of DPDK, as it is not needed for this script
 dpdk.skipInit()
@@ -412,6 +420,29 @@ function getIdent(pcap)
 --	return C.ms_hash(pkt_ptr)
 --	return C.ms_hash(pcap)
 	return C.ms_get_identifier(pcap)
+end
+
+--- Setup by loading user defined function and initializing the scratchpad
+--- Has no effect if in MODE_MSCAP
+function setUP()
+	if MODE == MODE_PCAP then
+
+		-- fetch user defined function
+		loaded_chunk = assert(loadfile("pkt-matcher.lua"))
+		pktmatch = loaded_chunk()
+
+		-- initialize scratchpad
+		scratchpad = C.malloc(ffi.sizeof(UINT8_T) * SCR_SIZE)
+	end
+end
+
+--- Compute an identification of pcap files
+--- Has no effect on mscap files
+function setIdent(cap)
+	if MODE == MODE_PCAP then
+		local filled = pktmatch(cap, scratchpad, SCR_SIZE)
+		log:info("Filled: " .. filled)
+	end
 end
 
 --- Extract timestamp and set it on the pcap table
