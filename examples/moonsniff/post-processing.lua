@@ -38,6 +38,7 @@ local band = bit.band
 local pktmatch = nil
 local scratchpad = nil
 local SCR_SIZE = 16 -- size of the scratchpad in bytes
+local mempool = nil
 
 -- skip the initialization of DPDK, as it is not needed for this script
 dpdk.skipInit()
@@ -67,14 +68,17 @@ function master(args)
 
 	if string.match(args.input, ".*%.pcap") then
 		MODE = MODE_PCAP
-		matchPCAP(args)
+	--	matchPCAP(args)
 
 	elseif string.match(args.input, ".*%.mscap") then
 		MODE = MODE_MSCAP
+	end
 
-		local PRE
-		local POST
+	print(MODE)
+	local PRE
+	local POST
 
+	if MODE == MODE_MSCAP then
 		if not args.second then log:fatal("Detected .mscap file but there was no second file. Single .mscap files cannot be processed.") end
 
 		if string.match(args.input, ".*%-pre%.mscap") and string.match(args.second, ".*%-post%.mscap") then
@@ -87,7 +91,28 @@ function master(args)
 		else
 			log:fatal("Could not decide which file is pre and which post. Pre should end with -pre.mscap and post with -post.mscap.")
 		end
+	end
 
+	if MODE == MODE_PCAP then
+
+		if not args.second then log:fatal("Detected .pcap file but there was no second file. Single .pcap files cannot be processed.") end
+
+		if string.match(args.input, ".*%-pre%.pcap") and string.match(args.second, ".*%-post%.pcap") then
+			PRE = args.input
+			POST = args.second
+
+		elseif string.match(args.second, ".*%-pre%.pcap") and string.match(args.input, ".*%-post%.pcap") then
+			POST = args.input
+			PRE = args.second
+		else
+			log:fatal("Could not decide which file is pre and which post. Pre should end with -pre.mscap and post with -post.mscap.")
+		end
+	end
+
+	if MODE == MODE_PCAP or MODE == MODE_MSCAP then
+
+		print(PRE)
+		print(POST)
 		if args.debug then
 			log:info("Debug mode")
 			writeMSCAPasText(PRE, "pre-ts.csv", 1000)
@@ -104,13 +129,25 @@ function master(args)
 		-- make sure the complete map is zero initialized
 		zeroInit(map)
 
-		C.hs_initialize(args.nrbuckets)
-		local prereader = ms:newReader(PRE)
-		local postreader = ms:newReader(POST)
+		-- initialize pcap stuff if needed
+		setUp()
 
-		local premscap = prereader:readSingle()
-		local postmscap = postreader:readSingle()
-		log:info("Pre identifier: " .. premscap.identification .. ", Post identifier: " .. postmscap.identification)
+		C.hs_initialize(args.nrbuckets)
+
+		local prereader = nil
+		local postreader = nil
+
+		if MODE == MODE_MSCAP then
+			prereader = ms:newReader(PRE)
+			postreader = ms:newReader(POST)
+		else
+			prereader = pcap:newReader(PRE)
+			postreader = pcap:newReader(POST)
+		end
+
+		local precap = readSingle(prereader)
+		local postcap = readSingle(postreader)
+		log:info("Pre identifier: " .. getId(precap) .. ", Post identifier: " .. getId(postcap))
 
 		-- debug and information values
 		local overwrites = 0
@@ -120,37 +157,39 @@ function master(args)
 
 		log:info("Prefilling Map")
 
-		if premscap == nil or postmscap == nil then
+		if precap == nil or postcap == nil then
 			log:err("Detected either no pre or post timestamps. Aborting ..")
 		end
 
-		pre_count = initialFill(premscap, prereader, map)
+		pre_count, overwrites = initialFill(precap, prereader, map)
 
 		log:info("Map is now hot")
 
-		while premscap and postmscap do
+		while precap and postcap do
 			pre_count = pre_count + 1
 			post_count = post_count + 1
 
-			local ident = band(premscap.identification, BITMASK)
+			local ident = band(getId(precap), BITMASK)
 
 			if map[ident] ~= 0 then overwrites = overwrites + 1 end
 
-			map[ident] = premscap.timestamp
-			premscap = prereader:readSingle()
+			map[ident] = getTs(precap)
 
-			post_ident = band(postmscap.identification, BITMASK)
+			sfree(precap)
+			precap = readSingle(prereader)
+
+			post_ident = band(getId(postcap), BITMASK)
 
 			local ts = map[band(post_ident)]
 
-			local diff = ffi.cast(INT64_T, postmscap.timestamp - ts)
+			local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
 
 			-- check for time measurements which violate the given threshold
 			if ts ~= 0 and diff < TIME_THRESH then
 				log:warn("Got negative timestamp")
 				log:warn("Identification " .. ident)
 				log:warn("Postcount: " .. post_count)
-				log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp))
+				log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
 				log:warn("Difference: " .. tostring(diff))
 				return
 
@@ -163,23 +202,24 @@ function master(args)
 				else
 					misses = misses + 1
 				end
-				postmscap = postreader:readSingle()
+				sfree(postcap)
+				postcap = readSingle(postreader)
 			end
 		end
 
-		while postmscap do
+		while postcap do
 			post_count = post_count + 1
 
-			local ident = band(postmscap.identification, BITMASK)
+			local ident = band(getId(postcap), BITMASK)
 			local ts = map[ident]
 
-			local diff = ffi.cast(INT64_T, postmscap.timestamp - ts)
+			local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
 
 			if ts ~= 0 and diff < TIME_THRESH then
 				log:warn("Got negative timestamp")
 				log:warn("Identification " .. ident)
 				log:warn("Postcount: " .. post_count)
-				log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(postmscap.timestamp))
+				log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
 				log:warn("Difference: " .. tostring(diff))
 				return
 
@@ -192,7 +232,8 @@ function master(args)
 			else
 				misses = misses + 1
 			end
-			postmscap = postreader:readSingle()
+			sfree(postcap)
+			postcap = readSingle(postreader)
 		end
 
 		log:info("Finished timestamp matching")
@@ -200,6 +241,8 @@ function master(args)
 		prereader:close()
 		postreader:close()
 		C.free(map)
+
+		tearDown()
 
 		C.hs_finalize()
 
@@ -232,26 +275,30 @@ function zeroInit(map)
 	end
 end
 
-function initialFill(premscap, prereader, map)
-        pre_ident = band(premscap.identification, BITMASK)
+function initialFill(precap, prereader, map)
+        pre_ident = band(getId(precap), BITMASK)
         initial_id = pre_ident
+
+	local overwrites = 0
 
         local pre_count = 0
 
         log:info("end : " .. BITMASK - 100)
 
-        while premscap and pre_ident >= initial_id and pre_ident < BITMASK - 100 do
+        while precap and pre_ident >= initial_id and pre_ident < BITMASK - 100 do
                 pre_count = pre_count + 1
 
                 if map[pre_ident] ~= 0 then overwrites = overwrites + 1 end
-                map[pre_ident] = premscap.timestamp
+                map[pre_ident] = getTs(precap)
 
-                premscap = prereader:readSingle()
-                if premscap then
-                        pre_ident = band(premscap.identification, BITMASK)
+		-- save free in case of pcaps
+		sfree(precap)
+                precap = readSingle(prereader)
+                if precap then
+                        pre_ident = band(getId(precap), BITMASK)
                 end
         end
-	return pre_count
+	return pre_count, overwrites
 end
 
 function writeMSCAPasText(infile, outfile, range)
@@ -271,153 +318,6 @@ function writeMSCAPasText(infile, outfile, range)
 	io.close(textf)
 end
 
-function matchPCAP(args)
-	-- in case of pcap files we need DPDK functions
-	dpdk.init()
-
-	print("correct function")
-	local PRE
-	local POST
-
-	if not args.second then log:fatal("Detected .pcap file but there was no second file. Single .pcap files cannot be processed.") end
-
-	if string.match(args.input, ".*%-pre%.pcap") and string.match(args.second, ".*%-post%.pcap") then
-		PRE = args.input
-		POST = args.second
-
-	elseif string.match(args.second, ".*%-pre%.pcap") and string.match(args.input, ".*%-post%.pcap") then
-		POST = args.input
-		PRE = args.second
-	else
-		log:fatal("Could not decide which file is pre and which post. Pre should end with -pre.mscap and post with -post.mscap.")
-	end
-
-	local uint64_t = ffi.typeof("uint64_t")
-	local uint64_p = ffi.typeof("uint64_t*")
-
-	local map = C.malloc(ffi.sizeof(uint64_t) * BITMASK)
-	map = ffi.cast(uint64_p, map)
-
-	C.hs_initialize(args.nrbuckets)
-
-	print("initializing readers")
-	local prereader = pcap:newReader(PRE)
-	local postreader = pcap:newReader(POST)
-
-	print("reading the first values")
-
-	local mempool = memory.createMemPool()
-
---while true do
---
---	local prepcap = prereader:readSingle(mempool)
---	local postcap = postreader:readSingle(mempool)
---
---	print("reading worked")
-----	log:info("Pre identifier: " .. prepcap.identification .. ", Post identifier: " .. postpcap.identification)
---
---	print("Got until here")
---
---	local hash = getIdent(prepcap)
---	local hash2 = getIdent(postcap)
---
---	pkt = prepcap:getUdpPacket()
---	pkt2 = postcap:getUdpPacket()
---	print("Transported payload: " .. pkt.payload.uint32[0])
---	print("ID field: " .. pkt.ip4:getID())
---
---	print("The timestamp is: " .. tostring(prepcap.udata64) .. " us")
---
---	print("The computed hash was: " .. hash)
---	print("----------------------END OF PACKET--------------")
---
---
---	-- rte_pktmbuf_free is available with the postfix _export
---	C.rte_pktmbuf_free_export(prepcap)
---	C.rte_pktmbuf_free_export(postcap)
---
---end
---
---
---	return 0
-
-	local prepcap = prereader:readSingle(mempool)
-	local postpcap = postreader:readSingle(mempool)
-
-	-- precache used bit operation
-	local band = bit.band
-
-	local count = 0
-	log:info("Prefilling Map")
-
-	setUp()
-
-	log:info("ts ns: " .. tostring(getTs(prepcap)) .. "ts us: " .. tostring(prepcap.udata64))
-	log:info("ident: " .. tostring(getId(prepcap)))
-
---	while prepcap and count < (BITMASK - 100) do
---		setTs(prepcap)
---		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
---
---		-- print("Checksum in lua: " .. tostring(getIdent(prepcap)))
---
---		-- always free buffers if they are not used any longer
---		free(prepcap)
---
---		prepcap = prereader:readSingle(mempool)
---		count = count + 1
---	end
---
---	print("Iterations: " .. count)
---
---	log:info("Map is now hot")
---	count = 0
---
---	while prepcap and postpcap do
---		map[band(getIdent(prepcap), BITMASK)] = prepcap.udata64
---		free(prepcap)
---		prepcap = prereader:readSingle(mempool)
---
---		local ts = map[band(getIdent(postpcap), BITMASK)]
---		if ts ~= 0 then
---			-- TODO: set ts to zero if successful? Could avoid false double hits
---			-- mutltiply with 1000 to get results in ns
---			C.hs_update((postpcap.udata64 - ts) * 1000)
---		end
---		free(postpcap)
---		postpcap = postreader:readSingle(mempool)
---
---		count = count + 1
---	end
---
---	print("Iterations: " .. count)
---	count = 0
---
---	while postpcap do
---		local ts = map[band(getIdent(postpcap), BITMASK)]
---		if ts ~= 0 then C.hs_update((postpcap.udata64 - ts) * 1000) end
---		free(postpcap)
---		postpcap = postreader:readSingle(mempool)
---
---		count = count + 1
---	end
---
---	log:info("Finished timestamp matching")
---	print("Iterations: " .. count)
---
---	prereader:close()
---	postreader:close()
---	C.free(map)
---
---	C.hs_finalize()
---
---	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
---
---	log:info("Finished processing. Writing histogram ...")
---	C.hs_write(args.output .. ".csv")
---	C.hs_destroy()
-end
-
 function getIdent(pcap)
 --	local pkt_ptr = ffi.cast(CHAR_P, pcap.buf_addr)
 --	pkt_ptr = pkt_ptr + pcap.data_off + 10
@@ -431,6 +331,9 @@ end
 --- Has no effect if in MODE_MSCAP
 function setUp()
 	if MODE == MODE_PCAP then
+		-- in case of pcap files we need DPDK functions
+		dpdk.init()
+
 		-- fetch user defined function
 		loaded_chunk = assert(loadfile("examples/moonsniff/pkt-matcher.lua"))
 		pktmatch = loaded_chunk()
@@ -438,6 +341,29 @@ function setUp()
 		-- initialize scratchpad
 		scratchpad = C.malloc(ffi.sizeof(UINT8_T) * SCR_SIZE)
 		scratchpad = ffi.cast(UINT8_P, scratchpad)
+
+		-- setup the mempool
+		mempool = memory.createMemPool()
+	end
+end
+
+function tearDown()
+	free(scratchpad)
+end
+
+--- Abstract different readers from each other
+function readSingle(reader)
+	if MODE == MODE_PCAP then
+		return reader:readSingle(mempool)
+	else
+		return reader:readSingle()
+	end
+end
+
+--- Save free, will free mbufs
+function sfree(cap)
+	if MODE == MODE_PCAP then
+		free(cap)
 	end
 end
 
@@ -446,7 +372,6 @@ end
 function getId(cap)
 	if MODE == MODE_PCAP then
 		local filled = pktmatch(cap, scratchpad, SCR_SIZE)
-		log:info("Filled: " .. filled)
 		return 5
 	else
 		return cap.identification
