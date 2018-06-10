@@ -118,8 +118,14 @@ function master(args)
 		print(POST)
 		if args.debug then
 			log:info("Debug mode")
-			writeMSCAPasText(PRE, "pre-ts.csv", 1000)
-			writeMSCAPasText(POST, "post-ts.csv", 1000)
+			if MODE == MODE_MSCAP then
+				writeMSCAPasText(PRE, "pre-ts.csv", 1000)
+				writeMSCAPasText(POST, "post-ts.csv", 1000)
+			else
+				writePCAPasText(PRE, "pre-ts.csv", 1000)
+				writePCAPasText(POST, "post-ts.csv", 1000)
+			end
+			return
 		end
 
 		local uint64_t = ffi.typeof("uint64_t")
@@ -323,6 +329,31 @@ function writeMSCAPasText(infile, outfile, range)
 	io.close(textf)
 end
 
+
+function writePCAPasText(infile, outfile, range)
+	setUp()
+	local reader = pcap:newReader(infile)
+	cap = readSingle(reader)
+
+	textf = io.open(outfile, "w")
+
+	for i = 0, range do
+		local ident = band(getId(cap), BITMASK)
+
+		pkt = cap:getUdpPacket()
+
+		textf:write(tostring(pkt.payload.uint32[0]) .. ", " .. tostring(ident), ", ", tostring(getTs(cap)), "\n")
+		sfree(cap)
+		cap = readSingle(reader)
+	end
+
+	reader:close()
+	io.close(textf)
+
+	tearDown()
+end
+
+
 --- Setup by loading user defined function and initializing the scratchpad
 --- Has no effect if in MODE_MSCAP
 function setUp()
@@ -373,6 +404,7 @@ function getId(cap)
 		end
 
 		local filled = pktmatch(cap, scratchpad, SCR_SIZE)
+		print(scratchpad[0] .. ", " .. scratchpad[1] .. ", " .. scratchpad[2] .. ", " .. scratchpad[3])
 		-- log:info("Sip hash of the scratchpad")
 		local hash64 = C.SipHashC(SIP_KEY, scratchpad, filled)
 		-- log:info("hash: " .. tostring(hash64))
