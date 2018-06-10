@@ -19,6 +19,8 @@ return function(mbuf, scratchpad, size)
 	if pkt.payload.uint8[4] == MS_TYPE then
 		ffi.copy(scratchpad, pkt.payload.uint8, 4)
 		filled = 4
+	else
+		print("Non moonsniff packet detected")
 	end
 
 	-- make sure we did not overfill the scratchpad

@@ -37,8 +37,9 @@ local band = bit.band
 
 local pktmatch = nil
 local scratchpad = nil
-local SCR_SIZE = 16 -- size of the scratchpad in bytes
+local SCR_SIZE = 16 -- size of the scratchpad in bytes, must always be multiple of 8 for hash to work
 local mempool = nil
+local SIP_KEY = ffi.new("uint64_t[2]", {1, 2})
 
 -- skip the initialization of DPDK, as it is not needed for this script
 dpdk.skipInit()
@@ -60,6 +61,8 @@ ffi.cdef[[
 
 	uint32_t ms_hash(void*);
 	uint32_t ms_get_identifier(void*);
+
+	uint64_t SipHashC(const uint64_t* key, const char* bytes, const uint64_t size);
 ]]
 
 function master(args)
@@ -147,7 +150,7 @@ function master(args)
 
 		local precap = readSingle(prereader)
 		local postcap = readSingle(postreader)
-		log:info("Pre identifier: " .. getId(precap) .. ", Post identifier: " .. getId(postcap))
+		log:info("Pre identifier: " .. tostring(getId(precap)) .. ", Post identifier: " .. tostring(getId(postcap)))
 
 		-- debug and information values
 		local overwrites = 0
@@ -171,7 +174,9 @@ function master(args)
 
 			local ident = band(getId(precap), BITMASK)
 
-			if map[ident] ~= 0 then overwrites = overwrites + 1 end
+			if map[ident] ~= 0 then
+				overwrites = overwrites + 1
+			end
 
 			map[ident] = getTs(precap)
 
@@ -180,7 +185,7 @@ function master(args)
 
 			post_ident = band(getId(postcap), BITMASK)
 
-			local ts = map[band(post_ident)]
+			local ts = map[post_ident]
 
 			local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
 
@@ -318,15 +323,6 @@ function writeMSCAPasText(infile, outfile, range)
 	io.close(textf)
 end
 
-function getIdent(pcap)
---	local pkt_ptr = ffi.cast(CHAR_P, pcap.buf_addr)
---	pkt_ptr = pkt_ptr + pcap.data_off + 10
---	print(tostring(pkt_ptr))
---	return C.ms_hash(pkt_ptr)
---	return C.ms_hash(pcap)
-	return C.ms_get_identifier(pcap)
-end
-
 --- Setup by loading user defined function and initializing the scratchpad
 --- Has no effect if in MODE_MSCAP
 function setUp()
@@ -348,7 +344,7 @@ function setUp()
 end
 
 function tearDown()
-	free(scratchpad)
+	C.free(scratchpad)
 end
 
 --- Abstract different readers from each other
@@ -371,8 +367,17 @@ end
 --- Has no effect on mscap files
 function getId(cap)
 	if MODE == MODE_PCAP then
+		-- zero fill scratchpad again
+		for i = 0, SCR_SIZE do
+			scratchpad[i] = 0
+		end
+
 		local filled = pktmatch(cap, scratchpad, SCR_SIZE)
-		return 5
+		-- log:info("Sip hash of the scratchpad")
+		local hash64 = C.SipHashC(SIP_KEY, scratchpad, filled)
+		-- log:info("hash: " .. tostring(hash64))
+
+		return hash64
 	else
 		return cap.identification
 	end
