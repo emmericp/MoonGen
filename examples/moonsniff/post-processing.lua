@@ -122,8 +122,8 @@ function master(args)
 				writeMSCAPasText(PRE, "pre-ts.csv", 1000)
 				writeMSCAPasText(POST, "post-ts.csv", 1000)
 			else
-				writePCAPasText(PRE, "pre-ts.csv", 1000)
-				writePCAPasText(POST, "post-ts.csv", 1000)
+				writePCAPasText(PRE, "pre-ts.csv", 1000000)
+				writePCAPasText(POST, "post-ts.csv", 1000000)
 			end
 			return
 		end
@@ -404,7 +404,7 @@ function getId(cap)
 		end
 
 		local filled = pktmatch(cap, scratchpad, SCR_SIZE)
-		print(scratchpad[0] .. ", " .. scratchpad[1] .. ", " .. scratchpad[2] .. ", " .. scratchpad[3])
+	--	print(scratchpad[0] .. ", " .. scratchpad[1] .. ", " .. scratchpad[2] .. ", " .. scratchpad[3])
 		-- log:info("Sip hash of the scratchpad")
 		local hash64 = C.SipHashC(SIP_KEY, scratchpad, filled)
 		-- log:info("hash: " .. tostring(hash64))
@@ -425,6 +425,17 @@ function getTs(cap)
 		return high * 10^9 + low
 	else
 		return cap.timestamp
+	end
+end
+
+-- Get the payload identification from pcap file
+-- Undefined behavior for packets without identification in the payload
+function getPayloadId(cap)
+	if MODE == MODE_PCAP then
+		pkt = cap:getUdpPacket()
+		return pkt.payload.uint32[0]
+	else
+		return cap.identification
 	end
 end
 
