@@ -18,6 +18,7 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/dpdk/x86_64-native-linuxapp-gcc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/luajit/src
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/highwayhash/highwayhash
+	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/tbb/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/src
 )
