@@ -165,6 +165,7 @@ function master(args)
 			postreader = pcap:newReader(POST)
 		end
 
+		-- TODO: check if there are problems with the shared mempool
 		local precap = readSingle(prereader)
 		local postcap = readSingle(postreader)
 		log:info("Pre identifier: " .. tostring(getId(precap)) .. ", Post identifier: " .. tostring(getId(postcap)))
@@ -389,6 +390,15 @@ function tearDown()
 	C.free(scratchpad)
 end
 
+function initReader(PRE, POST)
+	if MODE == MODE_MSCAP then
+		return ms:newReader(PRE), ms:newReader(POST)
+	else
+		return pcap:newReader(PRE), pcap:newReader(POST)
+	end
+end
+
+
 --- Abstract different readers from each other
 function readSingle(reader)
 	if MODE == MODE_PCAP then
@@ -512,10 +522,60 @@ function getKeyVal(cap, misses)
 		-- delete associated data
 		map:erase(acc)
 
-		-- TODO: check the deque
+		-- TODO: check the deque and actually remove the items
 	else
 		misses = misses + 1
 	end
+end
+
+function tbbCore(args, PRE, POST)
+	-- for compatability with the other matching options
+	MODE = MODE_PCAP
+
+	-- initialize scratchpad and mbufs
+	setUp()
+	C.hs_initialize(args.nrbuckets)
+
+	local prereader, postreader = initReader(PRE, POST)
+	local precap = readSingle(prereader)
+
+	-- prefilling
+	local ctr = 10000
+	while precap and ctr > 0 do
+		addKeyVal(precap)
+		sfree(precap)
+		precap = readSingle(prereader)
+	end
+
+	local postcap = readSingle(postreader)
+	local misses = 0
+	-- map is now hot
+	while precap and postcap do
+		addKeyVal(precap)
+		sfree(precap)
+		precap = readSingle(prereader)
+
+		-- now try match
+		misses = getKeyVal(postcap, misses)
+		sfree(postcap)
+		postcap = readSingle(postreader)
+	end
+
+	-- process leftovers
+	while postcap do
+		misses = getKeyVal(postcap, misses)
+		sfree(postcap)
+		postcap = readSingle(postreader)
+	end
+
+
+	prereader:close()
+	postreader:close()
+
+	-- free scratchpad
+	tearDown()
+
+	C.hs_finalize()
 end
 
 
