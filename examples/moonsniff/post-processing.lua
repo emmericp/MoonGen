@@ -63,6 +63,17 @@ ffi.cdef[[
 	uint32_t ms_get_identifier(void*);
 
 	uint64_t SipHashC(const uint64_t* key, const char* bytes, const uint64_t size);
+
+	// deque definitions
+	struct deque_entry{
+                uint8_t *key;
+                uint8_t *timestamp;
+        };
+
+        void *deque_create();
+        struct deque_entry deque_peek_back(void *queue);
+        void deque_remove_back(void *queue);
+        void deque_push_front(void *queue, struct deque_entry entry);
 ]]
 
 function master(args)
@@ -436,6 +447,74 @@ function getPayloadId(cap)
 		return pkt.payload.uint32[0]
 	else
 		return cap.identification
+	end
+end
+
+function initHashMap()
+	-- we need the values everywhere, therefore, global
+	map = hmap.createHashmap(16, 8)
+	acc = map.newAccessor()
+	deque = C.deque_create();
+end
+
+-- Create a non garbage collected zero initialized byte array
+function createBytes(length)
+	local bytes = C.malloc(ffi.sizeof(UINT8_T) * length)
+        bytes = ffi.cast(UINT8_P, bytes)
+
+	ffi.fill(bytes, length)
+end
+
+function extractData(cap)
+	-- zero fill scratchpad again
+	ffi.fill(scratchpad, SCR_SIZE)
+
+	-- TODO: think again what purpose filled should have ...
+	local filled = pktmatch(cap, scratchpad, SCR_SIZE)
+
+	-- copy all data to non gc managed memory
+	local key = createBytes(16)
+	ffi.copy(key, scratchpad, 16)
+
+	local ts = createBytes(8)
+	ffi.copy(ts, ffi.cast("uint8_t*", getTs(cap)), 8)
+
+	return key, ts
+end
+
+
+function addKeyVal(cap)
+	local key, ts = extractData(cap)
+
+	-- add the data to the hashmap
+	map:access(acc, key)
+	acc:get() = ts
+	acc:release()
+
+	-- add data to the deque
+	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
+	entry = ffi.cast(ffi.typeof("struct deque_entry"))
+	entry.key = key
+	entry.timestamp = ts
+
+	C.deque_push_front(deque, entry)
+end
+
+function getKeyVal(cap, misses)
+	local key, post_ts = extractData(cap)
+
+	local found = map:find(acc, key)
+	if found then
+		local pre_ts = acc:get()
+		local diff = post_ts - pre_ts
+		C.hs_update(diff)
+
+		-- delete associated data
+		map:erase(acc)
+
+		-- TODO: check the deque
+	else
+		misses = misses + 1
 	end
 end
 
