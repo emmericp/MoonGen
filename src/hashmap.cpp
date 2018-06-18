@@ -9,7 +9,7 @@
 #include <array>
 #include <cstring>
 #include <tbb/concurrent_hash_map.h>
-#include <cstring>
+#include <cstdint>
 #include <iostream>
 #include <c_bindings.h>
 
