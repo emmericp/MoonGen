@@ -1,3 +1,11 @@
+/*
+ * This file is mostly based on pudelkoMs FlowScope project, specifically of this file:
+ * https://github.com/pudelkoM/FlowScope/blob/7beb980e2cb64284666ba2d62dda5727c7bfd499/src/var_hashmap.cpp
+ *
+ * Most important distinction is the use of a different hash function which is more relaxed about
+ * different digest sizes.
+ */
+
 #include <array>
 #include <cstring>
 #include <tbb/concurrent_hash_map.h>
@@ -23,7 +31,7 @@ namespace hash_map {
         // Safety check
         static_assert(sizeof(K) == K::size, "sizeof(K) != K::size");
 
-        /* Specialized hash functions for known key_buf sizes */
+        /* Hash function to be used by TBB */
         inline size_t hash(const K &k) const noexcept {
             return SipHashC(sip_secret, reinterpret_cast<const char *>(k.data + 0), k.size);
         }
