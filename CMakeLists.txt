@@ -30,6 +30,7 @@ set(files
 	src/software-rate-limiter
 	src/moonsniff
 	src/histogram
+	src/hashmap
 )
 
 set(libraries
