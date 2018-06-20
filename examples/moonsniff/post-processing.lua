@@ -139,6 +139,12 @@ function master(args)
 			return
 		end
 
+		-- use new tbb matching mode
+		if MODE == MODE_PCAP then
+			tbbCore(args, PRE, POST)
+			return
+		end
+
 		local uint64_t = ffi.typeof("uint64_t")
 		local uint64_p = ffi.typeof("uint64_t*")
 
@@ -498,7 +504,7 @@ function addKeyVal(cap)
 
 	-- add the data to the hashmap
 	map:access(acc, key)
-	acc:get() = ts
+	ffi.copy(acc:get(), ts, 8)
 	acc:release()
 
 	-- add data to the deque
