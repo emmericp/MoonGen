@@ -13,6 +13,7 @@ local ms	= require "moonsniff-io"
 local bit	= require "bit"
 local dpdk	= require "dpdk"
 local pcap	= require "pcap"
+local hmap	= require "hmap"
 
 local ffi    = require "ffi"
 local C = ffi.C
@@ -141,6 +142,7 @@ function master(args)
 
 		-- use new tbb matching mode
 		if MODE == MODE_PCAP then
+			log:info("Using TBB")
 			tbbCore(args, PRE, POST)
 			return
 		end
@@ -468,8 +470,9 @@ end
 
 function initHashMap()
 	-- we need the values everywhere, therefore, global
-	map = hmap.createHashmap(16, 8)
-	acc = map.newAccessor()
+	tbbmap = hmap.createHashmap(16, 8)
+	tbbmap:clear()
+	acc = tbbmap.newAccessor()
 	deque = C.deque_create();
 end
 
@@ -479,6 +482,7 @@ function createBytes(length)
         bytes = ffi.cast(UINT8_P, bytes)
 
 	ffi.fill(bytes, length)
+	return bytes
 end
 
 function extractData(cap)
@@ -488,45 +492,61 @@ function extractData(cap)
 	-- TODO: think again what purpose filled should have ...
 	local filled = pktmatch(cap, scratchpad, SCR_SIZE)
 
+--	log:info("filled")
+
 	-- copy all data to non gc managed memory
 	local key = createBytes(16)
+
+--	log:info("created bytes")
 	ffi.copy(key, scratchpad, 16)
 
+--	log:info("Got key")
+--	log:info("TS: " .. tostring(getTs(cap)))
+
 	local ts = createBytes(8)
-	ffi.copy(ts, ffi.cast("uint8_t*", getTs(cap)), 8)
+--	ffi.copy(ts, ffi.cast(UINT8_P, getTs(cap)), 8)
+	tmp = ffi.cast(ffi.typeof("uint64_t *"), ts)
+	tmp[0] = getTs(cap)
+--	log:info("TS after copy: " .. tostring(tmp[0]))
+--	log:info("finished copying the timestamp")
 
 	return key, ts
 end
 
 
 function addKeyVal(cap)
+--	log:info("start of addKeyVal")
 	local key, ts = extractData(cap)
 
+--	log:info("try adding")
+
 	-- add the data to the hashmap
-	map:access(acc, key)
+	tbbmap:access(acc, key)
 	ffi.copy(acc:get(), ts, 8)
 	acc:release()
 
-	-- add data to the deque
-	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
-	entry = ffi.cast(ffi.typeof("struct deque_entry"))
-	entry.key = key
-	entry.timestamp = ts
+--	log:info("deque")
 
-	C.deque_push_front(deque, entry)
+	-- add data to the deque
+--	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
+--	entry = ffi.cast(ffi.typeof("struct deque_entry *"), entry)
+--	entry.key = key
+--	entry.timestamp = ts
+
+--	C.deque_push_front(deque, entry)
 end
 
 function getKeyVal(cap, misses)
 	local key, post_ts = extractData(cap)
 
-	local found = map:find(acc, key)
+	local found = tbbmap:find(acc, key)
 	if found then
 		local pre_ts = acc:get()
 		local diff = post_ts - pre_ts
 		C.hs_update(diff)
 
 		-- delete associated data
-		map:erase(acc)
+		tbbmap:erase(acc)
 
 		-- TODO: check the deque and actually remove the items
 	else
@@ -541,17 +561,25 @@ function tbbCore(args, PRE, POST)
 	-- initialize scratchpad and mbufs
 	setUp()
 	C.hs_initialize(args.nrbuckets)
+	initHashMap()
+
+	log:info("finished init")
 
 	local prereader, postreader = initReader(PRE, POST)
 	local precap = readSingle(prereader)
+	log:info("initialized reader")
 
 	-- prefilling
 	local ctr = 10000
 	while precap and ctr > 0 do
 		addKeyVal(precap)
+--		log:info("added key")
 		sfree(precap)
+--		log:info("freeing")
 		precap = readSingle(prereader)
 	end
+
+	log:info("done prefilling")
 
 	local postcap = readSingle(postreader)
 	local misses = 0
