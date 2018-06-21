@@ -40,6 +40,8 @@ local pktmatch = nil
 local scratchpad = nil
 local SCR_SIZE = 16 -- size of the scratchpad in bytes, must always be multiple of 8 for hash to work
 local mempool = nil
+local mempool2 = nil
+local next_mem = 0
 local SIP_KEY = ffi.new("uint64_t[2]", {1, 2})
 
 -- skip the initialization of DPDK, as it is not needed for this script
@@ -391,6 +393,7 @@ function setUp()
 
 		-- setup the mempool
 		mempool = memory.createMemPool()
+		mempool2 = memory.createMemPool()
 	end
 end
 
@@ -410,7 +413,13 @@ end
 --- Abstract different readers from each other
 function readSingle(reader)
 	if MODE == MODE_PCAP then
-		return reader:readSingle(mempool)
+		if next_mem == 0 then
+			next_mem = 1
+			return reader:readSingle(mempool)
+		else
+			next_mem = 0
+			return reader:readSingle(mempool2)
+		end
 	else
 		return reader:readSingle()
 	end
@@ -523,6 +532,7 @@ function addKeyVal(cap)
 	-- add the data to the hashmap
 	tbbmap:access(acc, key)
 	ffi.copy(acc:get(), ts, 8)
+
 	acc:release()
 
 --	log:info("deque")
@@ -545,13 +555,17 @@ function getKeyVal(cap, misses)
 		local diff = post_ts - pre_ts
 		C.hs_update(diff)
 
+		log:info("Diff: " .. diff)
+
 		-- delete associated data
 		tbbmap:erase(acc)
+		acc:release()
 
 		-- TODO: check the deque and actually remove the items
 	else
 		misses = misses + 1
 	end
+	return misses
 end
 
 function tbbCore(args, PRE, POST)
@@ -610,6 +624,11 @@ function tbbCore(args, PRE, POST)
 	tearDown()
 
 	C.hs_finalize()
+
+	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+
+	log:info("Misses: " .. misses)
+	C.hs_destroy()
 end
 
 
