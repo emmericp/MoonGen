@@ -470,7 +470,7 @@ end
 -- Undefined behavior for packets without identification in the payload
 function getPayloadId(cap)
 	if MODE == MODE_PCAP then
-		pkt = cap:getUdpPacket()
+		local pkt = cap:getUdpPacket()
 		return pkt.payload.uint32[0]
 	else
 		return cap.identification
@@ -514,7 +514,7 @@ function extractData(cap)
 
 	local ts = createBytes(8)
 --	ffi.copy(ts, ffi.cast(UINT8_P, getTs(cap)), 8)
-	tmp = ffi.cast(ffi.typeof("uint64_t *"), ts)
+	local tmp = ffi.cast(ffi.typeof("uint64_t *"), ts)
 	tmp[0] = getTs(cap)
 --	log:info("TS after copy: " .. tostring(tmp[0]))
 --	log:info("finished copying the timestamp")
