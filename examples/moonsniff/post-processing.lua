@@ -69,14 +69,15 @@ ffi.cdef[[
 
 	// deque definitions
 	struct deque_entry{
-                uint8_t *key;
-                uint8_t *timestamp;
+                uint8_t key[16];
+                uint8_t timestamp[8];
         };
 
         void *deque_create();
         struct deque_entry deque_peek_back(void *queue);
         void deque_remove_back(void *queue);
         void deque_push_front(void *queue, struct deque_entry entry);
+	bool deque_empty(void *queue);
 ]]
 
 function master(args)
@@ -549,15 +550,14 @@ function addKeyVal(cap, keyBuf, tsBuf)
 --	log:info("deque")
 
 	-- add data to the deque
---	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
---	entry = ffi.cast(ffi.typeof("struct deque_entry *"), entry)
---	entry.key = key
---	entry.timestamp = ts
-
---	C.deque_push_front(deque, entry)
+	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
+	local entry = ffi.new("struct deque_entry", {});
+	ffi.copy(entry.key, keyBuf, 16)
+	ffi.copy(entry.timestamp, tsBuf, 8)
+	C.deque_push_front(deque, entry)
 end
 
-function getKeyVal(cap, misses, keyBuf, tsBuf)
+function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit)
 	extractData(cap, keyBuf, tsBuf)
 
 	local found = tbbmap:find(acc, keyBuf)
@@ -567,22 +567,52 @@ function getKeyVal(cap, misses, keyBuf, tsBuf)
 
 		pre_ts = ffi.cast(ffi.typeof("uint64_t *"), pre_ts)
 
-		log:info("Pre: " .. tostring(pre_ts[0]) .. " Post: " .. tostring(post_ts[0]))
+--		log:info("Pre: " .. tostring(pre_ts[0]) .. " Post: " .. tostring(post_ts[0]))
 		local diff = post_ts[0] - pre_ts[0]
 		C.hs_update(diff)
 
-		log:info("Diff: " .. tostring(diff))
+		lastHit = post_ts[0]
+
+--		log:info("Diff: " .. tostring(diff))
 
 		-- delete associated data
 		tbbmap:erase(acc)
 
 		acc:release()
-
-		-- TODO: coud still be in the deque ...
 	else
 		misses = misses + 1
 	end
-	return misses
+
+	releaseOld(lastHit)
+	return misses, lastHit
+end
+
+function releaseOld(lastHit)
+	while not C.deque_empty(deque) do
+		local entry = C.deque_peek_back(deque)
+		local key = entry.key
+		local ts = ffi.cast(ffi.typeof("uint64_t *"), entry.timestamp)[0]
+--		log:info("TS from queue: " .. tonumber(ts))
+
+		-- check if the current timestamp is old enough
+		if ts + 10e6 < lastHit then
+			local found = tbbmap:find(acc, key)
+			if found then
+				local map_ts = ffi.cast(ffi.typeof("uint64_t *"), acc:get())[0]
+				if map_ts == ts then
+					-- found corrsponding value -> erase it
+					tbbmap:erase(acc)
+				end
+			end
+
+			acc:release()
+
+			-- remove from deque
+			C.deque_remove_back(deque)
+		else
+			break
+		end
+	end
 end
 
 function tbbCore(args, PRE, POST)
@@ -593,6 +623,7 @@ function tbbCore(args, PRE, POST)
 	setUp()
 	C.hs_initialize(args.nrbuckets)
 	local keyBuf, tsBuf = initHashMap()
+	local lastHit = 0
 
 	log:info("finished init")
 
@@ -621,14 +652,14 @@ function tbbCore(args, PRE, POST)
 		precap = readSingle(prereader)
 
 		-- now try match
-		misses = getKeyVal(postcap, misses, keyBuf, tsBuf)
+		misses, lastHit = getKeyVal(postcap, misses, keyBuf, tsBuf, lastHit)
 		sfree(postcap)
 		postcap = readSingle(postreader)
 	end
 
 	-- process leftovers
 	while postcap do
-		misses = getKeyVal(postcap, misses, keyBuf, tsBuf)
+		misses, lastHit = getKeyVal(postcap, misses, keyBuf, tsBuf, lastHit)
 		sfree(postcap)
 		postcap = readSingle(postreader)
 	end

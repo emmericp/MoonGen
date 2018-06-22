@@ -4,8 +4,8 @@
 extern "C" {
 
 struct deque_entry {
-    uint8_t *key;
-    uint8_t *timestamp;
+    uint8_t key[16];
+    uint8_t timestamp[8];
 };
 
 std::deque<deque_entry> *deque_create() {
@@ -23,4 +23,9 @@ void deque_remove_back(std::deque<deque_entry> *queue) {
 void deque_push_front(std::deque<deque_entry> *queue, struct deque_entry entry) {
     queue->push_front(entry);
 }
+
+bool deque_empty(std::deque<deque_entry> *queue){
+    return queue->empty();
+}
+
 }
