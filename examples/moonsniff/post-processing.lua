@@ -345,6 +345,8 @@ function writeMSCAPasText(infile, outfile, range)
 
 		textf:write(tostring(mscap.identification), ", ", tostring(ident), ", ", tostring(mscap.timestamp), "\n")
 		mscap = reader:readSingle()
+
+		if mscap == nil then break end
 	end
 
 	reader:close()
@@ -367,6 +369,8 @@ function writePCAPasText(infile, outfile, range)
 		textf:write(tostring(pkt.payload.uint32[0]) .. ", " .. tostring(ident), ", ", tostring(getTs(cap)), "\n")
 		sfree(cap)
 		cap = readSingle(reader)
+
+		if cap == nil then break end
 	end
 
 	reader:close()
