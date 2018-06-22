@@ -487,6 +487,12 @@ function initHashMap()
 	tbbmap:clear()
 	acc = tbbmap.newAccessor()
 	deque = C.deque_create();
+	local keyBuf = createBytes(16)
+
+	-- 8 byte timestamps
+	local tsBuf = createBytes(8)
+	tsBuf = ffi.cast(ffi.typeof("uint64_t *"), tsBuf)
+	return keyBuf, tsBuf
 end
 
 -- Create a non garbage collected zero initialized byte array
@@ -498,7 +504,16 @@ function createBytes(length)
 	return bytes
 end
 
-function extractData(cap)
+--- Extract data from an pcap file
+--- This is done by an external userdefined function pktmatch which selects some
+--- values of the pcap file and copies them into the given buffer
+--- Additionally hardware timestamps which are located at the end of the pcap file
+--- will be extracted into a seperate buffer
+--
+-- @param cap the pcap file to extract the data from
+-- @param keyBuf a buffer into which the data selcetd by the udf is copied
+-- @param tsBuf a buffer into which the timestamp is copied
+function extractData(cap, keyBuf, tsBuf)
 	-- zero fill scratchpad again
 	ffi.fill(scratchpad, SCR_SIZE)
 
@@ -507,35 +522,27 @@ function extractData(cap)
 
 --	log:info("filled")
 
-	-- copy all data to non gc managed memory
-	local key = createBytes(16)
-
 --	log:info("created bytes")
-	ffi.copy(key, scratchpad, 16)
+	ffi.copy(keyBuf, scratchpad, 16)
 
 --	log:info("Got key")
 --	log:info("TS: " .. tostring(getTs(cap)))
 
-	local ts = createBytes(8)
---	ffi.copy(ts, ffi.cast(UINT8_P, getTs(cap)), 8)
-	local tmp = ffi.cast(ffi.typeof("uint64_t *"), ts)
-	tmp[0] = getTs(cap)
+	tsBuf[0] = getTs(cap)
 --	log:info("TS after copy: " .. tostring(tmp[0]))
 --	log:info("finished copying the timestamp")
-
-	return key, ts
 end
 
 
-function addKeyVal(cap)
+function addKeyVal(cap, keyBuf, tsBuf)
 --	log:info("start of addKeyVal")
-	local key, ts = extractData(cap)
+	extractData(cap, keyBuf, tsBuf)
 
 --	log:info("try adding")
 
 	-- add the data to the hashmap
-	tbbmap:access(acc, key)
-	ffi.copy(acc:get(), ts, 8)
+	tbbmap:access(acc, keyBuf)
+	ffi.copy(acc:get(), tsBuf, 8)
 
 	acc:release()
 
@@ -550,22 +557,28 @@ function addKeyVal(cap)
 --	C.deque_push_front(deque, entry)
 end
 
-function getKeyVal(cap, misses)
-	local key, post_ts = extractData(cap)
+function getKeyVal(cap, misses, keyBuf, tsBuf)
+	extractData(cap, keyBuf, tsBuf)
 
-	local found = tbbmap:find(acc, key)
+	local found = tbbmap:find(acc, keyBuf)
 	if found then
 		local pre_ts = acc:get()
-		local diff = post_ts - pre_ts
+		local post_ts = tsBuf
+
+		pre_ts = ffi.cast(ffi.typeof("uint64_t *"), pre_ts)
+
+		log:info("Pre: " .. tostring(pre_ts[0]) .. " Post: " .. tostring(post_ts[0]))
+		local diff = post_ts[0] - pre_ts[0]
 		C.hs_update(diff)
 
-		log:info("Diff: " .. diff)
+		log:info("Diff: " .. tostring(diff))
 
 		-- delete associated data
 		tbbmap:erase(acc)
+
 		acc:release()
 
-		-- TODO: check the deque and actually remove the items
+		-- TODO: coud still be in the deque ...
 	else
 		misses = misses + 1
 	end
@@ -579,7 +592,7 @@ function tbbCore(args, PRE, POST)
 	-- initialize scratchpad and mbufs
 	setUp()
 	C.hs_initialize(args.nrbuckets)
-	initHashMap()
+	local keyBuf, tsBuf = initHashMap()
 
 	log:info("finished init")
 
@@ -590,7 +603,7 @@ function tbbCore(args, PRE, POST)
 	-- prefilling
 	local ctr = 10000
 	while precap and ctr > 0 do
-		addKeyVal(precap)
+		addKeyVal(precap, keyBuf, tsBuf)
 --		log:info("added key")
 		sfree(precap)
 --		log:info("freeing")
@@ -603,19 +616,19 @@ function tbbCore(args, PRE, POST)
 	local misses = 0
 	-- map is now hot
 	while precap and postcap do
-		addKeyVal(precap)
+		addKeyVal(precap, keyBuf, tsBuf)
 		sfree(precap)
 		precap = readSingle(prereader)
 
 		-- now try match
-		misses = getKeyVal(postcap, misses)
+		misses = getKeyVal(postcap, misses, keyBuf, tsBuf)
 		sfree(postcap)
 		postcap = readSingle(postreader)
 	end
 
 	-- process leftovers
 	while postcap do
-		misses = getKeyVal(postcap, misses)
+		misses = getKeyVal(postcap, misses, keyBuf, tsBuf)
 		sfree(postcap)
 		postcap = readSingle(postreader)
 	end
