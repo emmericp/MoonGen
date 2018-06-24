@@ -14,6 +14,7 @@ local bit	= require "bit"
 local dpdk	= require "dpdk"
 local pcap	= require "pcap"
 local hmap	= require "hmap"
+local profile 	= require "jit.p"
 
 local ffi    = require "ffi"
 local C = ffi.C
@@ -30,6 +31,7 @@ local MODE = MODE_MSCAP
 -- pointers and ctypes
 local CHAR_P = ffi.typeof("char *")
 local INT64_T = ffi.typeof("int64_t")
+local UINT64_P = ffi.typeof("uint64_t *")
 local UINT8_T = ffi.typeof("uint8_t")
 local UINT8_P = ffi.typeof("uint8_t*")
 
@@ -145,8 +147,22 @@ function master(args)
 
 		-- use new tbb matching mode
 		if MODE == MODE_PCAP then
+			local file = assert(io.open(PRE, "r"))
+			local size = fsize(file)
+			file:close()
+			file = assert(io.open(POST, "r"))
+			size = size + fsize(file)
+			file:close()
+			log:info("File size: " .. size / 1e9 .. " [GB]")
+			local nClock = os.clock()
+			profile.start("-fl", "somefile.txt")
 			log:info("Using TBB")
 			tbbCore(args, PRE, POST)
+			profile.stop()
+
+			local elapsed = os.clock() - nClock
+			log:info("Elapsed time core: " .. elapsed .. " [sec]")
+			log:info("Processing speed: " .. (size / 1e6) / elapsed .. " [MB/s]")
 			return
 		end
 
@@ -535,7 +551,7 @@ function extractData(cap, keyBuf, tsBuf)
 end
 
 
-function addKeyVal(cap, keyBuf, tsBuf)
+function addKeyVal(cap, keyBuf, tsBuf, entryBuf)
 --	log:info("start of addKeyVal")
 	extractData(cap, keyBuf, tsBuf)
 
@@ -550,11 +566,11 @@ function addKeyVal(cap, keyBuf, tsBuf)
 --	log:info("deque")
 
 	-- add data to the deque
-	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
-	local entry = ffi.new("struct deque_entry", {});
-	ffi.copy(entry.key, keyBuf, 16)
-	ffi.copy(entry.timestamp, tsBuf, 8)
-	C.deque_push_front(deque, entry)
+--	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
+--	local entry = ffi.new("struct deque_entry", {});
+	ffi.copy(entryBuf.key, keyBuf, 16)
+	ffi.copy(entryBuf.timestamp, tsBuf, 8)
+	C.deque_push_front(deque, entryBuf)
 end
 
 function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit)
@@ -565,7 +581,7 @@ function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit)
 		local pre_ts = acc:get()
 		local post_ts = tsBuf
 
-		pre_ts = ffi.cast(ffi.typeof("uint64_t *"), pre_ts)
+		pre_ts = ffi.cast(UINT64_P, pre_ts)
 
 --		log:info("Pre: " .. tostring(pre_ts[0]) .. " Post: " .. tostring(post_ts[0]))
 		local diff = post_ts[0] - pre_ts[0]
@@ -591,14 +607,14 @@ function releaseOld(lastHit)
 	while not C.deque_empty(deque) do
 		local entry = C.deque_peek_back(deque)
 		local key = entry.key
-		local ts = ffi.cast(ffi.typeof("uint64_t *"), entry.timestamp)[0]
+		local ts = ffi.cast(UINT64_P, entry.timestamp)[0]
 --		log:info("TS from queue: " .. tonumber(ts))
 
 		-- check if the current timestamp is old enough
 		if ts + 10e6 < lastHit then
 			local found = tbbmap:find(acc, key)
 			if found then
-				local map_ts = ffi.cast(ffi.typeof("uint64_t *"), acc:get())[0]
+				local map_ts = ffi.cast(UINT64_P, acc:get())[0]
 				if map_ts == ts then
 					-- found corrsponding value -> erase it
 					tbbmap:erase(acc)
@@ -623,6 +639,8 @@ function tbbCore(args, PRE, POST)
 	setUp()
 	C.hs_initialize(args.nrbuckets)
 	local keyBuf, tsBuf = initHashMap()
+	local entryBuf = ffi.new("struct deque_entry", {});
+
 	local lastHit = 0
 
 	log:info("finished init")
@@ -634,7 +652,7 @@ function tbbCore(args, PRE, POST)
 	-- prefilling
 	local ctr = 10000
 	while precap and ctr > 0 do
-		addKeyVal(precap, keyBuf, tsBuf)
+		addKeyVal(precap, keyBuf, tsBuf, entryBuf)
 --		log:info("added key")
 		sfree(precap)
 --		log:info("freeing")
@@ -647,7 +665,7 @@ function tbbCore(args, PRE, POST)
 	local misses = 0
 	-- map is now hot
 	while precap and postcap do
-		addKeyVal(precap, keyBuf, tsBuf)
+		addKeyVal(precap, keyBuf, tsBuf, entryBuf)
 		sfree(precap)
 		precap = readSingle(prereader)
 
@@ -677,6 +695,13 @@ function tbbCore(args, PRE, POST)
 
 	log:info("Misses: " .. misses)
 	C.hs_destroy()
+end
+
+function fsize(file)
+	local current = file:seek()
+	local size = file:seek("end")
+	file:seek("set", current)
+	return size
 end
 
 
