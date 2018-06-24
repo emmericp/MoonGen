@@ -68,18 +68,6 @@ ffi.cdef[[
 	uint32_t ms_get_identifier(void*);
 
 	uint64_t SipHashC(const uint64_t* key, const char* bytes, const uint64_t size);
-
-	// deque definitions
-	struct deque_entry{
-                uint8_t key[16];
-                uint8_t timestamp[8];
-        };
-
-        void *deque_create();
-        struct deque_entry deque_peek_back(void *queue);
-        void deque_remove_back(void *queue);
-        void deque_push_front(void *queue, struct deque_entry entry);
-	bool deque_empty(void *queue);
 ]]
 
 function master(args)
@@ -147,22 +135,8 @@ function master(args)
 
 		-- use new tbb matching mode
 		if MODE == MODE_PCAP then
-			local file = assert(io.open(PRE, "r"))
-			local size = fsize(file)
-			file:close()
-			file = assert(io.open(POST, "r"))
-			size = size + fsize(file)
-			file:close()
-			log:info("File size: " .. size / 1e9 .. " [GB]")
-			local nClock = os.clock()
-			profile.start("-fl", "somefile.txt")
-			log:info("Using TBB")
-			tbbCore(args, PRE, POST)
-			profile.stop()
-
-			local elapsed = os.clock() - nClock
-			log:info("Elapsed time core: " .. elapsed .. " [sec]")
-			log:info("Processing speed: " .. (size / 1e6) / elapsed .. " [MB/s]")
+			local tbb = require "tbbmatch"
+			tbb.match(PRE, POST, args)
 			return
 		end
 
