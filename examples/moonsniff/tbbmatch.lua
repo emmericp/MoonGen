@@ -57,6 +57,16 @@ ffi.cdef[[
 
 
 function mod.match(PRE, POST, args)
+	-- in case of pcap files we need DPDK functions
+	dpdk.init()
+
+	if args.debug then
+		log:info("Debug mode PCAP")
+		writePCAPasText(PRE, "pre-ts.csv", 1000)
+		writePCAPasText(POST, "post-ts.csv", 1000)
+		return
+	end
+
 	-- use new tbb matching mode
 	local file = assert(io.open(PRE, "r"))
 	local size = fsize(file)
@@ -77,38 +87,10 @@ function mod.match(PRE, POST, args)
 	return
 end
 
-function writePCAPasText(infile, outfile, range)
-	setUp()
-	local reader = pcap:newReader(infile)
-	cap = readSingle(reader)
-
-	textf = io.open(outfile, "w")
-
-	for i = 0, range do
-		local ident = band(getId(cap), BITMASK)
-
-		pkt = cap:getUdpPacket()
-
-		textf:write(tostring(pkt.payload.uint32[0]) .. ", " .. tostring(ident), ", ", tostring(getTs(cap)), "\n")
-		sfree(cap)
-		cap = readSingle(reader)
-
-		if cap == nil then break end
-	end
-
-	reader:close()
-	io.close(textf)
-
-	tearDown()
-end
-
 
 --- Setup by loading user defined function and initializing the scratchpad
 --- Has no effect if in MODE_MSCAP
 function setUp()
-	-- in case of pcap files we need DPDK functions
-	dpdk.init()
-
 	-- fetch user defined function
 	loaded_chunk = assert(loadfile("examples/moonsniff/pkt-matcher.lua"))
 	pktmatch = loaded_chunk()
@@ -366,6 +348,37 @@ function fsize(file)
 	local size = file:seek("end")
 	file:seek("set", current)
 	return size
+end
+
+function writePCAPasText(infile, outfile, range)
+        setUp()
+        local reader = pcap:newReader(infile)
+        cap = readSingle(reader)
+
+	local keyBuf = createBytes(16)
+
+        -- 8 byte timestamps
+        local tsBuf = createBytes(8)
+        tsBuf = ffi.cast(ffi.typeof("uint64_t *"), tsBuf)
+
+
+        textf = io.open(outfile, "w")
+
+        for i = 0, range do
+                pkt = cap:getUdpPacket()
+		extractData(cap, keyBuf, tsBuf)
+
+                textf:write(tostring(pkt.payload.uint32[0]) .. ", " .. tostring(tsBuf[0]), "\n")
+                sfree(cap)
+                cap = readSingle(reader)
+
+                if cap == nil then break end
+        end
+
+        reader:close()
+        io.close(textf)
+
+        tearDown()
 end
 
 return mod
