@@ -243,44 +243,14 @@ function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit)
 --		log:info("Diff: " .. tostring(diff))
 
 		-- delete associated data
---		tbbmap:erase(acc)
+		tbbmap:erase(acc)
 
 		acc:release()
 	else
 		misses = misses + 1
 	end
 
---	releaseOld(lastHit)
---	tbbmap:clean(100000000000)
 	return misses, lastHit
-end
-
-function releaseOld(lastHit)
-	while not C.deque_empty(deque) do
-		local entry = C.deque_peek_back(deque)
-		local key = entry.key
-		local ts = ffi.cast(UINT64_P, entry.timestamp)[0]
---		log:info("TS from queue: " .. tonumber(ts))
-
-		-- check if the current timestamp is old enough
-		if ts + 10e6 < lastHit then
-			local found = tbbmap:find(acc, key)
-			if found then
-				local map_ts = ffi.cast(UINT64_P, acc:get())[0]
-				if map_ts == ts then
-					-- found corrsponding value -> erase it
-					tbbmap:erase(acc)
-				end
-			end
-
-			acc:release()
-
-			-- remove from deque
-			C.deque_remove_back(deque)
-		else
-			break
-		end
-	end
 end
 
 function tbbCore(args, PRE, POST)
@@ -315,6 +285,7 @@ function tbbCore(args, PRE, POST)
 
 	local postcap = readSingle(postreader)
 	local misses = 0
+	local trash = 0
 	-- map is now hot
 	while precap and postcap do
 		addKeyVal(precap, keyBuf, tsBuf, entryBuf)

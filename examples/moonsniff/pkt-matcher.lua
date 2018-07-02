@@ -23,7 +23,7 @@ return function(mbuf, scratchpad, size)
 		print("Non moonsniff packet detected")
 	end
 
-	print(scratchpad[0] .. ", " .. scratchpad[1] .. ", " .. scratchpad[2] .. ", " .. scratchpad[3])
+	-- print(scratchpad[0] .. ", " .. scratchpad[1] .. ", " .. scratchpad[2] .. ", " .. scratchpad[3])
 
 	-- make sure we did not overfill the scratchpad
 	if filled > size then log:err("UDF exceeded scratchpad size!") end
