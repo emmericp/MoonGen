@@ -212,14 +212,16 @@ function addKeyVal(cap, keyBuf, tsBuf, entryBuf)
 
 	acc:release()
 
+--	tbbmap:clean(100000000000)
+
 --	log:info("deque")
 
 	-- add data to the deque
 --	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
 --	local entry = ffi.new("struct deque_entry", {});
-	ffi.copy(entryBuf.key, keyBuf, 16)
-	ffi.copy(entryBuf.timestamp, tsBuf, 8)
-	C.deque_push_front(deque, entryBuf)
+--	ffi.copy(entryBuf.key, keyBuf, 16)
+--	ffi.copy(entryBuf.timestamp, tsBuf, 8)
+--	C.deque_push_front(deque, entryBuf)
 end
 
 function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit)
@@ -236,19 +238,20 @@ function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit)
 		local diff = post_ts[0] - pre_ts[0]
 		C.hs_update(diff)
 
-		lastHit = post_ts[0]
+--		lastHit = post_ts[0]
 
 --		log:info("Diff: " .. tostring(diff))
 
 		-- delete associated data
-		tbbmap:erase(acc)
+--		tbbmap:erase(acc)
 
 		acc:release()
 	else
 		misses = misses + 1
 	end
 
-	releaseOld(lastHit)
+--	releaseOld(lastHit)
+--	tbbmap:clean(100000000000)
 	return misses, lastHit
 end
 
@@ -303,9 +306,12 @@ function tbbCore(args, PRE, POST)
 		sfree(precap)
 --		log:info("freeing")
 		precap = readSingle(prereader)
+		ctr = ctr - 1
 	end
 
-	log:info("done prefilling")
+	tbbmap:clean(1000000000000)
+
+	log:info("clean")
 
 	local postcap = readSingle(postreader)
 	local misses = 0

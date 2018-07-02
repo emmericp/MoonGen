@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <iostream>
 #include <c_bindings.h>
+#include <deque>
 
 namespace hash_map {
     /* Secret hash cookie */
@@ -90,6 +91,22 @@ using namespace hash_map;
     } \
     bool hmapk##key_size##v##value_size##_find(hmapk##key_size##v##value_size* map, hmapk##key_size##v##value_size::accessor* a, const void* key) { \
         return map->find(*a, *static_cast<const K<key_size>*>(key)); \
+    } \
+    void hmapk##key_size##v##value_size##_clean(hmapk##key_size##v##value_size* map, uint64_t thresh) { \
+	int ctr = 0; \
+        std::deque<hash_map::key_buf<key_size>> deque; \
+        for (hmapk##key_size##v##value_size::iterator it = map->begin(); it != map->end();) { \
+            std::cout << ++ctr << "\n"; \
+            uint64_t ts = *reinterpret_cast<uint64_t *>( &(*it).second); \
+            if(ts  < thresh) { \
+                deque.push_front(it->first); \
+            } \
+            it++; \
+            for(auto it = deque.begin(); it != deque.end(); it++) { \
+                map->erase(*it); \
+            } \
+        } \
+        deque.clear(); \
     }
 
 #define MAP_VALUES(value_size) \

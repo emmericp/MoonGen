@@ -18,6 +18,7 @@ bool hmapk{key_size}v{value_size}_access(hmapk{key_size}v{value_size}* map, hmap
 bool hmapk{key_size}v{value_size}_find(hmapk{key_size}v{value_size}* map, hmapk{key_size}v{value_size}_accessor* a, const void* key);
 bool hmapk{key_size}v{value_size}_erase(hmapk{key_size}v{value_size}* map, hmapk{key_size}v{value_size}_accessor* a);
 uint8_t* hmapk{key_size}v{value_size}_accessor_get_value(hmapk{key_size}v{value_size}_accessor* a);
+void hmapk{key_size}v{value_size}_clean(hmapk{key_size}v{value_size}* map, uint64_t threash);
 ]]
 
 local module = {}
@@ -75,6 +76,9 @@ function makeHashmapFor(keySize, valueSize)
     end
     function map.valueSize()
         return valueSize
+    end
+    function map:clean(threash)
+        return C["hmapk" .. keySize .. "v" .. valueSize .. "_clean"](self, threash)
     end
     local accessor = {}
     function accessor:get()
