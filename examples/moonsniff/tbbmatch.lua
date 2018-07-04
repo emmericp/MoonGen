@@ -31,6 +31,10 @@ local mempool = nil
 local mempool2 = nil
 local next_mem = 0
 
+local TABLE_TARGET_SIZE = 10000
+local TABLE_THRESH_SIZE = 1000
+local DELETION_THRESH = 1e9
+
 ffi.cdef[[
 	void* malloc(size_t);
 	void free(void*);
@@ -190,7 +194,7 @@ function addKeyVal(cap, keyBuf, tsBuf)
 --	C.deque_push_front(deque, entryBuf)
 end
 
-function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit)
+function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit, tableSize)
 	extractData(cap, keyBuf, tsBuf)
 
 	local found = tbbmap:find(acc, keyBuf)
@@ -212,11 +216,12 @@ function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit)
 		tbbmap:erase(acc)
 
 		acc:release()
+		tableSize = tableSize - 1
 	else
 		misses = misses + 1
 	end
 
-	return misses, lastHit
+	return misses, lastHit, tableSize
 end
 
 function tbbCore(args, PRE, POST)
@@ -226,6 +231,7 @@ function tbbCore(args, PRE, POST)
 	local keyBuf, tsBuf = initHashMap()
 
 	local lastHit = 0
+	local tableSize = 0
 
 	log:info("finished init")
 
@@ -234,9 +240,10 @@ function tbbCore(args, PRE, POST)
 	log:info("initialized reader")
 
 	-- prefilling
-	local ctr = 10000
+	local ctr = TABLE_TARGET_SIZE
 	while precap and ctr > 0 do
 		addKeyVal(precap, keyBuf, tsBuf)
+		tableSize = tableSize + 1
 --		log:info("added key")
 		sfree(precap)
 --		log:info("freeing")
@@ -244,9 +251,6 @@ function tbbCore(args, PRE, POST)
 		ctr = ctr - 1
 	end
 
-	tbbmap:clean(1000000000000)
-
-	log:info("clean")
 
 	local postcap = readSingle(postreader)
 	local misses = 0
@@ -254,18 +258,22 @@ function tbbCore(args, PRE, POST)
 	-- map is now hot
 	while precap and postcap do
 		addKeyVal(precap, keyBuf, tsBuf)
+		tableSize = tableSize + 1
 		sfree(precap)
 		precap = readSingle(prereader)
 
 		-- now try match
-		misses, lastHit = getKeyVal(postcap, misses, keyBuf, tsBuf, lastHit)
+		misses, lastHit, tableSize = getKeyVal(postcap, misses, keyBuf, tsBuf, lastHit, tableSize)
 		sfree(postcap)
 		postcap = readSingle(postreader)
+
+		-- remove old values if table is too big
+		tableSize = checkClean(lastHit, tableSize)
 	end
 
 	-- process leftovers
 	while postcap do
-		misses, lastHit = getKeyVal(postcap, misses, keyBuf, tsBuf, lastHit)
+		misses, lastHit, tableSize = getKeyVal(postcap, misses, keyBuf, tsBuf, lastHit, tableSize)
 		sfree(postcap)
 		postcap = readSingle(postreader)
 	end
@@ -283,6 +291,19 @@ function tbbCore(args, PRE, POST)
 
 	log:info("Misses: " .. misses)
 	C.hs_destroy()
+end
+
+function checkClean(lastHit, tableSize)
+	if tableSize > TABLE_TARGET_SIZE + TABLE_THRESH_SIZE then
+		log:info("Cleaning: ")
+		local cleaned = tbbmap:clean(math.max(lastHit - DELETION_THRESH, 0))
+		tableSize = tableSize - cleaned
+		log:info("Finished cleaning")
+		if cleaned == 0 then
+			TABLE_THRESH_SIZE = TABLE_TARGET_SIZE * 2
+		end
+	end
+	return tableSize
 end
 
 

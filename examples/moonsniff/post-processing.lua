@@ -94,7 +94,7 @@ function master(args)
         file:close()
         log:info("File size: " .. size / 1e9 .. " [GB]")
         local nClock = os.clock()
-        profile.start("-fl", "somefile.txt")
+        if args.profile then profile.start("-fl", "profile.log") end
 
 	-- run correct matching
 	if MODE == MODE_PCAP then
@@ -106,7 +106,7 @@ function master(args)
 	end
 
 	-- finish operations
-	profile.stop()
+	if args.profile then profile.stop() end
 
         local elapsed = os.clock() - nClock
         log:info("Elapsed time core: " .. elapsed .. " [sec]")
