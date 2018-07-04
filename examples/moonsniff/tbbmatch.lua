@@ -2,21 +2,14 @@ local mod = {}
 
 --- Demonstrates the basic usage of moonsniff in order to determine device induced latencies
 
-local lm        = require "libmoon"
-local device    = require "device"
 local memory    = require "memory"
 local ts        = require "timestamping"
 local hist      = require "histogram"
-local timer     = require "timer"
 local log       = require "log"
-local stats     = require "stats"
-local barrier   = require "barrier"
 local ms	= require "moonsniff-io"
-local bit	= require "bit"
 local dpdk	= require "dpdk"
 local pcap	= require "pcap"
 local hmap	= require "hmap"
-local profile 	= require "jit.p"
 
 local ffi    = require "ffi"
 local C = ffi.C
@@ -41,18 +34,6 @@ local next_mem = 0
 ffi.cdef[[
 	void* malloc(size_t);
 	void free(void*);
-
-	// deque definitions
-	struct deque_entry{
-                uint8_t key[16];
-                uint8_t timestamp[8];
-        };
-
-        void *deque_create();
-        struct deque_entry deque_peek_back(void *queue);
-        void deque_remove_back(void *queue);
-        void deque_push_front(void *queue, struct deque_entry entry);
-	bool deque_empty(void *queue);
 ]]
 
 
@@ -68,22 +49,8 @@ function mod.match(PRE, POST, args)
 	end
 
 	-- use new tbb matching mode
-	local file = assert(io.open(PRE, "r"))
-	local size = fsize(file)
-	file:close()
-	file = assert(io.open(POST, "r"))
-	size = size + fsize(file)
-	file:close()
-	log:info("File size: " .. size / 1e9 .. " [GB]")
-	local nClock = os.clock()
-	profile.start("-fl", "somefile.txt")
 	log:info("Using TBB")
 	tbbCore(args, PRE, POST)
-	profile.stop()
-
-	local elapsed = os.clock() - nClock
-	log:info("Elapsed time core: " .. elapsed .. " [sec]")
-	log:info("Processing speed: " .. (size / 1e6) / elapsed .. " [MB/s]")
 	return
 end
 
@@ -152,7 +119,6 @@ function initHashMap()
 	tbbmap = hmap.createHashmap(16, 8)
 	tbbmap:clear()
 	acc = tbbmap.newAccessor()
-	deque = C.deque_create();
 	local keyBuf = createBytes(16)
 
 	-- 8 byte timestamps
@@ -200,7 +166,7 @@ function extractData(cap, keyBuf, tsBuf)
 end
 
 
-function addKeyVal(cap, keyBuf, tsBuf, entryBuf)
+function addKeyVal(cap, keyBuf, tsBuf)
 --	log:info("start of addKeyVal")
 	extractData(cap, keyBuf, tsBuf)
 
@@ -258,7 +224,6 @@ function tbbCore(args, PRE, POST)
 	setUp()
 	C.hs_initialize(args.nrbuckets)
 	local keyBuf, tsBuf = initHashMap()
-	local entryBuf = ffi.new("struct deque_entry", {});
 
 	local lastHit = 0
 
@@ -271,7 +236,7 @@ function tbbCore(args, PRE, POST)
 	-- prefilling
 	local ctr = 10000
 	while precap and ctr > 0 do
-		addKeyVal(precap, keyBuf, tsBuf, entryBuf)
+		addKeyVal(precap, keyBuf, tsBuf)
 --		log:info("added key")
 		sfree(precap)
 --		log:info("freeing")
@@ -288,7 +253,7 @@ function tbbCore(args, PRE, POST)
 	local trash = 0
 	-- map is now hot
 	while precap and postcap do
-		addKeyVal(precap, keyBuf, tsBuf, entryBuf)
+		addKeyVal(precap, keyBuf, tsBuf)
 		sfree(precap)
 		precap = readSingle(prereader)
 
@@ -320,12 +285,6 @@ function tbbCore(args, PRE, POST)
 	C.hs_destroy()
 end
 
-function fsize(file)
-	local current = file:seek()
-	local size = file:seek("end")
-	file:seek("set", current)
-	return size
-end
 
 function writePCAPasText(infile, outfile, range)
         setUp()

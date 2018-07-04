@@ -3,20 +3,11 @@ local mod = {}
 --- Demonstrates the basic usage of moonsniff in order to determine device induced latencies
 
 local lm        = require "libmoon"
-local device    = require "device"
 local memory    = require "memory"
-local ts        = require "timestamping"
 local hist      = require "histogram"
-local timer     = require "timer"
 local log       = require "log"
-local stats     = require "stats"
-local barrier   = require "barrier"
 local ms	= require "moonsniff-io"
 local bit	= require "bit"
-local dpdk	= require "dpdk"
-local pcap	= require "pcap"
-local hmap	= require "hmap"
-local profile 	= require "jit.p"
 
 local ffi    = require "ffi"
 local C = ffi.C
@@ -40,22 +31,9 @@ local UINT8_P = ffi.typeof("uint8_t*")
 local free = C.rte_pktmbuf_free_export
 local band = bit.band
 
-local pktmatch = nil
-local scratchpad = nil
-local SCR_SIZE = 16 -- size of the scratchpad in bytes, must always be multiple of 8 for hash to work
-local mempool = nil
-local mempool2 = nil
-local next_mem = 0
-local SIP_KEY = ffi.new("uint64_t[2]", {1, 2})
-
 ffi.cdef[[
 	void* malloc(size_t);
 	void free(void*);
-
-	uint32_t ms_hash(void*);
-	uint32_t ms_get_identifier(void*);
-
-	uint64_t SipHashC(const uint64_t* key, const char* bytes, const uint64_t size);
 ]]
 
 function mod.match(PRE, POST, args)
@@ -79,21 +57,10 @@ function mod.match(PRE, POST, args)
 	-- make sure the complete map is zero initialized
 	zeroInit(map)
 
-	-- initialize pcap stuff if needed
-	setUp()
-
 	C.hs_initialize(args.nrbuckets)
 
-	local prereader = nil
-	local postreader = nil
-
-	if MODE == MODE_MSCAP then
-		prereader = ms:newReader(PRE)
-		postreader = ms:newReader(POST)
-	else
-		prereader = pcap:newReader(PRE)
-		postreader = pcap:newReader(POST)
-	end
+	prereader = ms:newReader(PRE)
+	postreader = ms:newReader(POST)
 
 	-- TODO: check if there are problems with the shared mempool
 	local precap = readSingle(prereader)
@@ -128,7 +95,6 @@ function mod.match(PRE, POST, args)
 
 		map[ident] = getTs(precap)
 
-		sfree(precap)
 		precap = readSingle(prereader)
 
 		post_ident = band(getId(postcap), BITMASK)
@@ -155,7 +121,6 @@ function mod.match(PRE, POST, args)
 			else
 				misses = misses + 1
 			end
-			sfree(postcap)
 			postcap = readSingle(postreader)
 		end
 	end
@@ -185,7 +150,6 @@ function mod.match(PRE, POST, args)
 		else
 			misses = misses + 1
 		end
-		sfree(postcap)
 		postcap = readSingle(postreader)
 	end
 
@@ -194,8 +158,6 @@ function mod.match(PRE, POST, args)
 	prereader:close()
 	postreader:close()
 	C.free(map)
-
-	tearDown()
 
 	C.hs_finalize()
 
@@ -240,8 +202,6 @@ function initialFill(precap, prereader, map)
                 if map[pre_ident] ~= 0 then overwrites = overwrites + 1 end
                 map[pre_ident] = getTs(precap)
 
-		-- save free in case of pcaps
-		sfree(precap)
                 precap = readSingle(prereader)
                 if precap then
                         pre_ident = band(getId(precap), BITMASK)
@@ -270,105 +230,32 @@ function writeMSCAPasText(infile, outfile, range)
 end
 
 
---- Setup by loading user defined function and initializing the scratchpad
---- Has no effect if in MODE_MSCAP
-function setUp()
-	if MODE == MODE_PCAP then
-		-- in case of pcap files we need DPDK functions
-		dpdk.init()
-
-		-- fetch user defined function
-		loaded_chunk = assert(loadfile("examples/moonsniff/pkt-matcher.lua"))
-		pktmatch = loaded_chunk()
-
-		-- initialize scratchpad
-		scratchpad = C.malloc(ffi.sizeof(UINT8_T) * SCR_SIZE)
-		scratchpad = ffi.cast(UINT8_P, scratchpad)
-
-		-- setup the mempool
-		mempool = memory.createMemPool()
-		mempool2 = memory.createMemPool()
-	end
-end
-
-function tearDown()
-	C.free(scratchpad)
-end
-
 function initReader(PRE, POST)
-	if MODE == MODE_MSCAP then
-		return ms:newReader(PRE), ms:newReader(POST)
-	else
-		return pcap:newReader(PRE), pcap:newReader(POST)
-	end
+	return ms:newReader(PRE), ms:newReader(POST)
 end
 
 
 --- Abstract different readers from each other
 function readSingle(reader)
-	if MODE == MODE_PCAP then
-		if next_mem == 0 then
-			next_mem = 1
-			return reader:readSingle(mempool)
-		else
-			next_mem = 0
-			return reader:readSingle(mempool2)
-		end
-	else
-		return reader:readSingle()
-	end
+	return reader:readSingle()
 end
 
---- Save free, will free mbufs
-function sfree(cap)
-	if MODE == MODE_PCAP then
-		free(cap)
-	end
-end
 
 --- Compute an identification of pcap files
 --- Has no effect on mscap files
 function getId(cap)
-	if MODE == MODE_PCAP then
-		-- zero fill scratchpad again
-		for i = 0, SCR_SIZE do
-			scratchpad[i] = 0
-		end
-
-		local filled = pktmatch(cap, scratchpad, SCR_SIZE)
-	--	print(scratchpad[0] .. ", " .. scratchpad[1] .. ", " .. scratchpad[2] .. ", " .. scratchpad[3])
-		-- log:info("Sip hash of the scratchpad")
-		local hash64 = C.SipHashC(SIP_KEY, scratchpad, filled)
-		-- log:info("hash: " .. tostring(hash64))
-
-		return hash64
-	else
-		return cap.identification
-	end
+	return cap.identification
 end
 
 --- Extract timestamp from pcap and mscaps
 function getTs(cap)
-	if MODE == MODE_PCAP then
-		-- get X552 timestamps
-		local timestamp = ffi.cast("uint32_t*", ffi.cast("uint8_t*", cap:getData()) + cap:getSize() - 8)
-		local low = timestamp[0]
-		local high = timestamp[1]
-		return high * 10^9 + low
-	else
-		return cap.timestamp
-	end
+	return cap.timestamp
 end
 
 -- Get the payload identification from pcap file
 -- Undefined behavior for packets without identification in the payload
 function getPayloadId(cap)
-	if MODE == MODE_PCAP then
-		local pkt = cap:getUdpPacket()
-		return pkt.payload.uint32[0]
-	else
-		return cap.identification
-	end
+	return cap.identification
 end
 
 return mod
