@@ -268,6 +268,7 @@ function tbbCore(args, PRE, POST)
 	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
 
 	log:info("Misses: " .. misses)
+	C.hs_write(args.output .. ".csv")
 	C.hs_destroy()
 
 	return packets
