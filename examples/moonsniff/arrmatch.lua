@@ -178,6 +178,8 @@ function mod.match(PRE, POST, args)
 	log:info("Finished processing. Writing histogram ...")
 	C.hs_write(args.output .. ".csv")
 	C.hs_destroy()
+
+	return pre_count + post_count
 end
 
 function zeroInit(map)

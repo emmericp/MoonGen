@@ -54,8 +54,7 @@ function mod.match(PRE, POST, args)
 
 	-- use new tbb matching mode
 	log:info("Using TBB")
-	tbbCore(args, PRE, POST)
-	return
+	return tbbCore(args, PRE, POST)
 end
 
 
@@ -156,42 +155,20 @@ function extractData(cap, keyBuf, tsBuf)
 	-- TODO: think again what purpose filled should have ...
 	local filled = pktmatch(cap, scratchpad, SCR_SIZE)
 
---	log:info("filled")
-
---	log:info("created bytes")
 	ffi.copy(keyBuf, scratchpad, 16)
 
---	log:info("Got key")
---	log:info("TS: " .. tostring(getTs(cap)))
-
 	tsBuf[0] = getTs(cap)
---	log:info("TS after copy: " .. tostring(tmp[0]))
---	log:info("finished copying the timestamp")
 end
 
 
 function addKeyVal(cap, keyBuf, tsBuf)
---	log:info("start of addKeyVal")
 	extractData(cap, keyBuf, tsBuf)
-
---	log:info("try adding")
 
 	-- add the data to the hashmap
 	tbbmap:access(acc, keyBuf)
 	ffi.copy(acc:get(), tsBuf, 8)
 
 	acc:release()
-
---	tbbmap:clean(100000000000)
-
---	log:info("deque")
-
-	-- add data to the deque
---	local entry = C.malloc(ffi.sizeof(ffi.typeof("struct deque_entry")))
---	local entry = ffi.new("struct deque_entry", {});
---	ffi.copy(entryBuf.key, keyBuf, 16)
---	ffi.copy(entryBuf.timestamp, tsBuf, 8)
---	C.deque_push_front(deque, entryBuf)
 end
 
 function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit, tableSize)
@@ -204,13 +181,8 @@ function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit, tableSize)
 
 		pre_ts = ffi.cast(UINT64_P, pre_ts)
 
---		log:info("Pre: " .. tostring(pre_ts[0]) .. " Post: " .. tostring(post_ts[0]))
 		local diff = post_ts[0] - pre_ts[0]
 		C.hs_update(diff)
-
---		lastHit = post_ts[0]
-
---		log:info("Diff: " .. tostring(diff))
 
 		-- delete associated data
 		tbbmap:erase(acc)
@@ -232,6 +204,7 @@ function tbbCore(args, PRE, POST)
 
 	local lastHit = 0
 	local tableSize = 0
+	local packets = 0
 
 	log:info("finished init")
 
@@ -249,6 +222,7 @@ function tbbCore(args, PRE, POST)
 --		log:info("freeing")
 		precap = readSingle(prereader)
 		ctr = ctr - 1
+		packets = packets + 1
 	end
 
 
@@ -269,6 +243,8 @@ function tbbCore(args, PRE, POST)
 
 		-- remove old values if table is too big
 		tableSize = checkClean(lastHit, tableSize)
+
+		packets = packets + 2
 	end
 
 	-- process leftovers
@@ -276,6 +252,8 @@ function tbbCore(args, PRE, POST)
 		misses, lastHit, tableSize = getKeyVal(postcap, misses, keyBuf, tsBuf, lastHit, tableSize)
 		sfree(postcap)
 		postcap = readSingle(postreader)
+
+		packets = packets + 1
 	end
 
 
@@ -291,6 +269,8 @@ function tbbCore(args, PRE, POST)
 
 	log:info("Misses: " .. misses)
 	C.hs_destroy()
+
+	return packets
 end
 
 function checkClean(lastHit, tableSize)
@@ -300,7 +280,7 @@ function checkClean(lastHit, tableSize)
 		tableSize = tableSize - cleaned
 		log:info("Finished cleaning")
 		if cleaned == 0 then
-			TABLE_THRESH_SIZE = TABLE_TARGET_SIZE * 2
+			TABLE_THRESH_SIZE = TABLE_THRESH_SIZE * 1.4
 		end
 	end
 	return tableSize

@@ -96,13 +96,15 @@ function master(args)
         local nClock = os.clock()
         if args.profile then profile.start("-fl", "profile.log") end
 
+	local packets = 0
+
 	-- run correct matching
 	if MODE == MODE_PCAP then
 		local tbb = require "tbbmatch"
-		tbb.match(PRE, POST, args)
+		packets = tbb.match(PRE, POST, args)
 	elseif MODE == MODE_MSCAP then
 		local arr = require "arrmatch"
-		arr.match(PRE, POST, args)
+		packets = arr.match(PRE, POST, args)
 	end
 
 	-- finish operations
@@ -110,7 +112,7 @@ function master(args)
 
         local elapsed = os.clock() - nClock
         log:info("Elapsed time core: " .. elapsed .. " [sec]")
-        log:info("Processing speed: " .. (size / 1e6) / elapsed .. " [MB/s]")
+        log:info("Processing speed:\n\t" .. (size / 1e6) / elapsed .. " [MB/s]\n\t" .. (packets / 1e6) / elapsed .. " [mpps]")
 end
 
 --- Compute the size of a file
