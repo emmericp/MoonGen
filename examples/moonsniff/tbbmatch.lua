@@ -57,12 +57,18 @@ function mod.match(PRE, POST, args)
 	return tbbCore(args, PRE, POST)
 end
 
+--- Determine the absolute path of this script
+--- Needed because relative paths do not work, depending on the working directory
+function script_path()
+   local str = debug.getinfo(2, "S").source:sub(2)
+   return str:match("(.*/)")
+end
 
 --- Setup by loading user defined function and initializing the scratchpad
 --- Has no effect if in MODE_MSCAP
 function setUp()
 	-- fetch user defined function
-	loaded_chunk = assert(loadfile("examples/moonsniff/pkt-matcher.lua"))
+	loaded_chunk = assert(loadfile(script_path() .. "pkt-matcher.lua"))
 	pktmatch = loaded_chunk()
 
 	-- initialize scratchpad
