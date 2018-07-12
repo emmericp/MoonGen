@@ -139,7 +139,6 @@ function replySlave(synack, dev, qin)
 				txBufs[tx] = buf
 			end
 		end
-		rxBufs:freeAfter(rx)
 		if tx > 0 then
 			txBufs:resize(tx)
 			--offload checksums to NIC
@@ -288,7 +287,7 @@ function rxCount(dev, qid)
 	local rxBufs = memory.bufArray(128)
 	while mg.running() do
 		local rx = rxQ:recv(rxBufs)
-		rxBufs:freeAll()
+		rxBufs:free(rx)
 		rxCtr:update()
 	end
 	rxCtr:finalize()
