@@ -57,14 +57,16 @@ function master(args)
 
 		for i = 0, args.ackq-1 do
 			local txQ = dev:getTxQueue(i)
+			local rxQ = dev:getRxQueue(i)
 			txQ:setRate(args.rate)
-			mg.startTask("replySlave", false, dev, i)
+			mg.startTask("replySlave", false, txQ, rxQ)
 		end
 
 		for i = args.ackq, args.ackq+args.synackq-1 do
 			local txQ = dev:getTxQueue(i)
+			local rxQ = dev:getRxQueue(i)
 			txQ:setRate(args.rate)
-			mg.startTask("replySlave", true, dev, i)
+			mg.startTask("replySlave", true, txQ, rxQ)
 		end
 
 		for i = args.ackq+args.synackq, args.ackq+args.synackq+args.synq-1 do
@@ -74,7 +76,7 @@ function master(args)
 		end
 
 		if args.c then
-			mg.startTask("rxCount", dev, rxQueues-1)
+			mg.startTask("rxCount", dev:getRxQueue(rxQueues-1))
 		end
 	end
 	mg.waitForTasks()
@@ -82,14 +84,12 @@ end
 
 local zero16 = hton16(0)
 
-function replySlave(synack, dev, qin)
+function replySlave(synack, txQ, rxQ)
 	if synack then
 		print("replySlave synack")
 	else
 		print("replySlave -")
 	end
-	local txQ = dev:getTxQueue(qin)
-	local rxQ = dev:getRxQueue(qin)
 	local txBufs = memory.bufArray(128)
 	local rxBufs = memory.bufArray(128)
 	local txStats = stats:newDevTxCounter(txQ, "plain")
@@ -255,34 +255,8 @@ function synSlave(queue, minA, numIPs, dest, ethDst_str, ipg)
 	txStats:finalize()
 end
 
-function pcap_replay(queue, file, loop)
-	if not file then
-		log:fatal("pcap_replay: source PCAP file must be set via --file")
-	end
-	local txStats = stats:newDevTxCounter(queue, "plain")
-	local mempool = memory:createMemPool()
-	local bufs = mempool:bufArray(256)
-	local pcapFile = pcap:newReader(file)
-	while mg.running() do
-		local n = pcapFile:read(bufs)
-		if n == 0 then
-			if loop then
-				pcapFile:reset()
-			else
-				break
-			end
-		end
-		bufs:resize(n)
-		bufs:offloadTcpChecksums(ipv4)
-		queue:send(bufs)
-		txStats:update()
-	end
-	txStats:finalize()
-end
-
-function rxCount(dev, qid)
+function rxCount(rxQ)
 	print("rxCount")
-	local rxQ = dev:getRxQueue(qid)
 	local rxCtr = stats:newDevRxCounter(rxQ)
 	local rxBufs = memory.bufArray(128)
 	while mg.running() do
