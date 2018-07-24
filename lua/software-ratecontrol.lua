@@ -15,7 +15,7 @@ ffi.cdef[[
 
 	struct limiter_control {
 		uint64_t count;
-		uint8_t stop;
+		uint64_t stop;
 	};
 
 	void mg_rate_limiter_main_loop(struct rte_ring* ring, uint8_t device, uint16_t queue, uint32_t link_speed, struct limiter_control* ctl);
@@ -75,6 +75,7 @@ function mod:new(queue, mode, delay)
 		queue = queue,
 		ctl = memory.alloc("struct limiter_control*", ffi.sizeof("struct limiter_control"))
 	}, rateLimiter)
+	ffi.fill(obj.ctl, ffi.sizeof("struct limiter_control"))
 	mg.startTask("__MG_RATE_LIMITER_MAIN", obj.ring, queue.id, queue.qid, mode, delay, queue.dev:getLinkStatus().speed, obj.ctl)
 	return obj
 end
