@@ -1,6 +1,6 @@
-local mod = {}
+--- Matching for mscap files
 
---- Demonstrates the basic usage of moonsniff in order to determine device induced latencies
+local mod = {}
 
 local lm        = require "libmoon"
 local memory    = require "memory"
@@ -14,12 +14,9 @@ local C = ffi.C
 
 -- default values when no cli options are specified
 local INPUT_PATH = "latencies.csv"
-local INPUT_MODE = C.ms_text
 local BITMASK = 0x0FFFFFFF
 local TIME_THRESH = -50 	-- negative timevalues smaller than this value are not allowed
 
-local MODE_MSCAP, MODE_PCAP = 0, 1
-local MODE = MODE_MSCAP
 
 -- pointers and ctypes
 local CHAR_P = ffi.typeof("char *")
@@ -36,6 +33,13 @@ ffi.cdef[[
 	void free(void*);
 ]]
 
+--- Main matching function
+--- Tries to match timestamps and identifications from two mscap files
+--- Call this function from the outside
+--
+-- @param PRE, filename of the mscap file containing pre-DuT measurements
+-- @param POST, filename of the mscap file containing post-DuT measurements
+-- @param args, arguments. See post-processing.lua for a list of supported arguments
 function mod.match(PRE, POST, args)
 	if args.debug then
                 log:info("Debug mode MSCAP")
@@ -45,7 +49,6 @@ function mod.match(PRE, POST, args)
         end
 
 	log:info("Using array matching")
-	MODE = MODE_MSCAP
 
 	local uint64_t = ffi.typeof("uint64_t")
 	local uint64_p = ffi.typeof("uint64_t*")
@@ -62,7 +65,6 @@ function mod.match(PRE, POST, args)
 	prereader = ms:newReader(PRE)
 	postreader = ms:newReader(POST)
 
-	-- TODO: check if there are problems with the shared mempool
 	local precap = readSingle(prereader)
 	local postcap = readSingle(postreader)
 	log:info("Pre identifier: " .. tostring(getId(precap)) .. ", Post identifier: " .. tostring(getId(postcap)))
@@ -81,8 +83,10 @@ function mod.match(PRE, POST, args)
 
 	pre_count, overwrites = initialFill(precap, prereader, map)
 
+	-- map is successfully prefilled
 	log:info("Map is now hot")
 
+	-- begin actual matching
 	while precap and postcap do
 		pre_count = pre_count + 1
 		post_count = post_count + 1
@@ -125,6 +129,8 @@ function mod.match(PRE, POST, args)
 		end
 	end
 
+	-- all pre-DuT values are already included in the map
+	-- process leftover post-DuT values
 	while postcap do
 		post_count = post_count + 1
 
@@ -133,6 +139,7 @@ function mod.match(PRE, POST, args)
 
 		local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
 
+		-- check for time measurements which violate the given threshold
 		if ts ~= 0 and diff < TIME_THRESH then
 			log:warn("Got negative timestamp")
 			log:warn("Identification " .. ident)
@@ -155,13 +162,14 @@ function mod.match(PRE, POST, args)
 
 	log:info("Finished timestamp matching")
 
+	-- clean up
 	prereader:close()
 	postreader:close()
 	C.free(map)
 
 	C.hs_finalize()
 
-
+	-- print statistics and analysis
 	print()
 	log:info("# pkts pre: " .. pre_count .. ", # pkts post " .. post_count)
 	log:info("Packet loss: " .. (1 - (post_count/pre_count)) * 100 .. " %%")
@@ -182,12 +190,20 @@ function mod.match(PRE, POST, args)
 	return pre_count + post_count
 end
 
+--- Zero initialize the array on which the mapping will be performed
+--
+-- @param map, pointer to the matching-array
 function zeroInit(map)
 	for i = 0, BITMASK do
 		map[i] = 0
 	end
 end
 
+--- Fill the array on which is matched with pre-DuT values
+--
+-- @param precap, the first pre-DuT mscap file
+-- @param prereader, the reader for all subsequent mscaps
+-- @param map, pointer to the array on which the matching is performed
 function initialFill(precap, prereader, map)
         pre_ident = band(getId(precap), BITMASK)
         initial_id = pre_ident
@@ -212,6 +228,13 @@ function initialFill(precap, prereader, map)
 	return pre_count, overwrites
 end
 
+--- Used for debug mode only
+--- Prints up to range entries from specified .mscap file as csv
+--- Columns: full identification, effective identification, timestamp
+--
+-- @param infile, the mscap file to read from
+-- @param outfile, the name of the file to write to
+-- @param range, print up to range entries if there are enough entries
 function writeMSCAPasText(infile, outfile, range)
 	local reader = ms:newReader(infile)
 	mscap = reader:readSingle()
@@ -231,7 +254,7 @@ function writeMSCAPasText(infile, outfile, range)
 	io.close(textf)
 end
 
-
+--- Read the first pre-DuT and post-DuT values
 function initReader(PRE, POST)
 	return ms:newReader(PRE), ms:newReader(POST)
 end
@@ -254,7 +277,7 @@ function getTs(cap)
 	return cap.timestamp
 end
 
--- Get the payload identification from pcap file
+-- Get the payload identification from mscap file
 -- Undefined behavior for packets without identification in the payload
 function getPayloadId(cap)
 	return cap.identification
