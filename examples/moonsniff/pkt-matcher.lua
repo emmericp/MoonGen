@@ -11,8 +11,19 @@ local C = ffi.C
 
 local MS_TYPE = 0b01010101
 
-return function(mbuf, scratchpad, size)
+--- Extracts data from an mbuf into a scratchpad
+--- Depending on if the packet is a pre-DuT or post-DuT packet this function may need to behave differently
+--- This may be useful when the DuT changes packets in a deterministic way
+--
+-- @param mbuf, the mbuf containing the packet
+-- @param scratchpad, array to copy the slected data to
+-- @param size, the size of the scratchpad in bytes
+-- @param pre, true if pre-DuT packet, false otherwise
+return function(mbuf, scratchpad, size, pre)
 	local filled = 0 -- the number of bytes filled in the scratchpad
+
+	----------------------------
+	-- customize below here
 
 	pkt = mbuf:getUdpPacket()
 
@@ -23,7 +34,8 @@ return function(mbuf, scratchpad, size)
 		print("Non moonsniff packet detected")
 	end
 
-	-- print(scratchpad[0] .. ", " .. scratchpad[1] .. ", " .. scratchpad[2] .. ", " .. scratchpad[3])
+	-- customize above here
+	----------------------------
 
 	-- make sure we did not overfill the scratchpad
 	if filled > size then log:err("UDF exceeded scratchpad size!") end

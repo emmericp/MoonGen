@@ -1,6 +1,6 @@
-local mod = {}
+--- Matching for pcap files
 
---- Demonstrates the basic usage of moonsniff in order to determine device induced latencies
+local mod = {}
 
 local memory    = require "memory"
 local ts        = require "timestamping"
@@ -26,14 +26,17 @@ local band = bit.band
 
 local pktmatch = nil
 local scratchpad = nil
-local SCR_SIZE = 16 -- size of the scratchpad in bytes, must always be multiple of 8 for hash to work
+local SCR_SIZE = 16 		-- size of the scratchpad in bytes, must always be multiple of 8 for hash to work
 local mempool = nil
 local mempool2 = nil
 local next_mem = 0
 
-local TABLE_TARGET_SIZE = 10000
-local TABLE_THRESH_SIZE = 1000
-local DELETION_THRESH = 1e9
+local TABLE_TARGET_SIZE = 10000 -- approximate size for the used table
+local TABLE_THRESH_SIZE = 1000 	-- if table size exceeds target size + thresh size the table will be searched for
+				-- leftover entries which can be deleted
+				-- this value is dynamically increased during runtime
+local DELETION_THRESH = 1e9	-- delete entries only if their timestamp is this value of nanoseconds older
+				-- than the latest entry which was successfully matched
 
 ffi.cdef[[
 	void* malloc(size_t);
@@ -41,6 +44,13 @@ ffi.cdef[[
 ]]
 
 
+--- Main matching function
+--- Matches timestamps and identifications from pcap files
+--- Call this function from the outside
+--
+-- @param PRE, filename of the pcap file containing the pre-DuT measurements
+-- @param POST, filename fo the pcap file containing the post-DuT measurements
+-- @param args, arguments. See post-processing.lua for a list of supported arguments
 function mod.match(PRE, POST, args)
 	-- in case of pcap files we need DPDK functions
 	dpdk.init()
@@ -65,7 +75,6 @@ function script_path()
 end
 
 --- Setup by loading user defined function and initializing the scratchpad
---- Has no effect if in MODE_MSCAP
 function setUp()
 	-- fetch user defined function
 	loaded_chunk = assert(loadfile(script_path() .. "pkt-matcher.lua"))
@@ -90,6 +99,9 @@ end
 
 
 --- Abstract different readers from each other
+--- Manage two different mempools
+--
+-- @param reader, the pcap reader
 function readSingle(reader)
 	if next_mem == 0 then
 		next_mem = 1
@@ -102,12 +114,18 @@ function readSingle(reader)
 end
 
 --- Save free, will free mbufs
+--
+-- @param the mbuf which should be freed
 function sfree(cap)
 	free(cap)
 end
 
 
---- Extract timestamp from pcap and mscaps
+--- Extract timestamp from pcaps
+--- This function is designed for the Intel X552, for other devices the computation of
+--- the timestamp could be slightly different
+--
+-- @param cap, mbuf to extract the timestamp from
 function getTs(cap)
 	-- get X552 timestamps
 	local timestamp = ffi.cast("uint32_t*", ffi.cast("uint8_t*", cap:getData()) + cap:getSize() - 8)
@@ -116,13 +134,9 @@ function getTs(cap)
 	return high * 10^9 + low
 end
 
--- Get the payload identification from pcap file
--- Undefined behavior for packets without identification in the payload
-function getPayloadId(cap)
-	local pkt = cap:getUdpPacket()
-	return pkt.payload.uint32[0]
-end
 
+--- Prepare HashMap for operation
+--- Initializes buffers
 function initHashMap()
 	-- we need the values everywhere, therefore, global
 	tbbmap = hmap.createHashmap(16, 8)
@@ -136,7 +150,9 @@ function initHashMap()
 	return keyBuf, tsBuf
 end
 
--- Create a non garbage collected zero initialized byte array
+--- Create a non garbage collected zero initialized byte array
+--
+-- @param length, length of the array in bytes
 function createBytes(length)
 	local bytes = C.malloc(ffi.sizeof(UINT8_T) * length)
         bytes = ffi.cast(UINT8_P, bytes)
@@ -144,6 +160,7 @@ function createBytes(length)
 	ffi.fill(bytes, length)
 	return bytes
 end
+
 
 --- Extract data from an pcap file
 --- This is done by an external userdefined function pktmatch which selects some
@@ -154,12 +171,13 @@ end
 -- @param cap the pcap file to extract the data from
 -- @param keyBuf a buffer into which the data selcetd by the udf is copied
 -- @param tsBuf a buffer into which the timestamp is copied
-function extractData(cap, keyBuf, tsBuf)
+-- @param pre, true if pre-DuT packet, false otherwise
+function extractData(cap, keyBuf, tsBuf, pre)
 	-- zero fill scratchpad again
 	ffi.fill(scratchpad, SCR_SIZE)
 
 	-- TODO: think again what purpose filled should have ...
-	local filled = pktmatch(cap, scratchpad, SCR_SIZE)
+	local filled = pktmatch(cap, scratchpad, SCR_SIZE, pre)
 
 	ffi.copy(keyBuf, scratchpad, 16)
 
@@ -167,8 +185,14 @@ function extractData(cap, keyBuf, tsBuf)
 end
 
 
+--- Adds a given value to the HashMap
+--- Should be called for pre-DuT packets
+--
+-- @param cap, the corresponding mbuf for the packet
+-- @param keyBuf, reusable buffer for keys. Need not be zero initialized
+-- @param tsBuf, reusable buffer for timestamps. Need not be zero initalized
 function addKeyVal(cap, keyBuf, tsBuf)
-	extractData(cap, keyBuf, tsBuf)
+	extractData(cap, keyBuf, tsBuf, true)
 
 	-- add the data to the hashmap
 	tbbmap:access(acc, keyBuf)
@@ -177,8 +201,18 @@ function addKeyVal(cap, keyBuf, tsBuf)
 	acc:release()
 end
 
+
+--- Try to find a match in the table for a given key
+--- The key is extracted from the mbuf representing a post-DuT device
+--
+-- @param cap, the post-DuT mbuf
+-- @param misses, counter for all misses
+-- @param keyBuf, reusable buffer for keys. Need not be zero initialized
+-- @param tsBuf, reusable buffer for timestamps. Need not be zero initalized
+-- @param lastHit, timestamp of the last successful matching operation
+-- @param tableSize, the current number of entries in the table
 function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit, tableSize)
-	extractData(cap, keyBuf, tsBuf)
+	extractData(cap, keyBuf, tsBuf, false)
 
 	local found = tbbmap:find(acc, keyBuf)
 	if found then
@@ -202,6 +236,12 @@ function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit, tableSize)
 	return misses, lastHit, tableSize
 end
 
+
+--- Core loop of the program
+--
+-- @param args, arguments. See post-processing.lua for details on arguments
+-- @param PRE, filename of the pcap file for pre-DuT measurements
+-- @param POST, filename of the pcap file for post-DuT measurements
 function tbbCore(args, PRE, POST)
 	-- initialize scratchpad and mbufs
 	setUp()
@@ -280,6 +320,11 @@ function tbbCore(args, PRE, POST)
 	return packets
 end
 
+
+--- Check current table size and try to delete old entries if size exceeded threshold
+--
+-- @param lastHist, the timestamp of the last successful matching operation
+-- @param tableSize, the current number of entries in the table
 function checkClean(lastHit, tableSize)
 	if tableSize > TABLE_TARGET_SIZE + TABLE_THRESH_SIZE then
 		log:info("Cleaning: ")
@@ -294,6 +339,11 @@ function checkClean(lastHit, tableSize)
 end
 
 
+--- Write up to range entries from the pcap file as human readable csv file
+--
+-- @param infile, name of the pcap file
+-- @param outfile, name of the csv file to write to
+-- @param range, writes up to range entries (provided there are enough entries)
 function writePCAPasText(infile, outfile, range)
         setUp()
         local reader = pcap:newReader(infile)
