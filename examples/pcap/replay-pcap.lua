@@ -45,6 +45,9 @@ function replay(queue, file, loop, rateLimiter, multiplier)
 				for i, buf in ipairs(bufs) do
 					-- ts is in microseconds
 					local ts = buf.udata64
+					if prev > ts then
+						ts = prev
+					end
 					local delay = ts - prev
 					delay = tonumber(delay * 10^3) / multiplier -- nanoseconds
 					delay = delay / (8000 / linkSpeed) -- delay in bytes
