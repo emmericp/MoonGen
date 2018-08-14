@@ -22,7 +22,6 @@ function configure(parser)
 	parser:option("-x --xlatency", "Extra exponentially distributed latency, in addition to the fixed latency (in ms)."):args(2):convert(tonumber):default(0)
 	parser:option("-q --queuedepth", "Maximum number of packets to hold in the delay line"):args(2):convert(tonumber):default(0)
 	parser:option("-o --loss", "Rate of packet drops"):args(2):convert(tonumber):default(0)
-	parser:option("-c --concealedloss", "Rate of concealed packet drops"):args(2):convert(tonumber):default(0)
 	return parser:parse()
 end
 
@@ -61,9 +60,9 @@ function master(args)
 
 	-- start the forwarding tasks
 	for i = 1, args.threads do
-		mg.startTask("forward", ring1, args.dev[1]:getTxQueue(i - 1), args.dev[1], args.rate[1], args.latency[1], args.xlatency[1], args.loss[1], args.concealedloss[1])
+		mg.startTask("forward", ring1, args.dev[1]:getTxQueue(i - 1), args.dev[1], args.rate[1], args.latency[1], args.xlatency[1], args.loss[1])
 		if args.dev[1] ~= args.dev[2] then
-			mg.startTask("forward", ring2, args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[2], args.latency[2], args.xlatency[2], args.loss[2], args.concealedloss[2])
+			mg.startTask("forward", ring2, args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[2], args.latency[2], args.xlatency[2], args.loss[2])
 		end
 	end
 
@@ -108,7 +107,7 @@ function receive(ring, rxQueue, rxDev)
 end
 
 
-function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossrate)
+function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate)
 	print("forward with rate "..rate.." and latency "..latency.." and loss rate "..lossrate)
 	local numThreads = 1
 	
@@ -143,12 +142,7 @@ function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossr
 				if (xlatency > 0) then
 					extraDelay = -math.log(math.random())*xlatency
 				end
-				-- emulate concealed losses
-				local closses = 0
-				while (math.random() < clossrate) do
-					closses = closses + 1
-				end
-				local send_time = arrival_timestamp + (((2*closses+1)*latency + extraDelay) * tsc_hz_ms)
+				local send_time = arrival_timestamp + ((latency+extraDelay) * tsc_hz_ms)
 				local cur_time = limiter:get_tsc_cycles()
 				--print("timestamps", arrival_timestamp, send_time, cur_time)
 				-- spin/wait until it is time to send this frame
