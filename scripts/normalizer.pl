@@ -16,7 +16,8 @@ chomp(@lines);
 
 # some scripts record latency in msec and some in usec.
 # just guess which it is based on the first latency value.
-my $t_factor = 1.0e-3;
+#my $t_factor = 1.0e-3;
+my $t_factor = 1;
 my ($latency, $count) = split(/[\,\s]+/,$lines[0]);
 #if ($latency > 100000000) {
 #    $t_factor = 1.0e-6;
@@ -28,6 +29,7 @@ foreach my $l (@lines) {
     $total += $count;
 }
 
+print "# latency\tcount\tpdf\t (time-factor: $t_factor)q\n";
 foreach my $l (@lines) {
     ($latency, $count) = split(/[\,\s]+/,$l);
     print "".($latency*$t_factor)."\t$count\t".((1.0*$count)/(1.0*$total))."\n";

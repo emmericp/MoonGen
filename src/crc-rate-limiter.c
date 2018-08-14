@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include <rte_config.h>
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
@@ -84,6 +85,46 @@ void moongen_send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue
 		}
 		// step 2: send the packet
 		pkts[send_buf_idx++] = pkt;
+		if (send_buf_idx >= BUF_SIZE || i + 1 == num_pkts) { // don't forget to send the last batch
+			dpdk_send_all_packets(port_id, queue_id, pkts, send_buf_idx);
+			send_buf_idx = 0;
+		}
+	}
+	// atomic as multiple threads may use the same stats register from multiple queues
+	__sync_fetch_and_add(&bad_pkts_sent[port_id], num_bad_pkts);
+	__sync_fetch_and_add(&bad_bytes_sent[port_id], num_bad_bytes);
+	return;
+}
+
+void moongen_send_all_packets_with_delay_bad_crc_loss(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct rte_mempool* pool, uint32_t min_pkt_size, double loss_rate) {
+	const int BUF_SIZE = 128;
+	struct rte_mbuf* pkts[BUF_SIZE];
+	int send_buf_idx = 0;
+	uint32_t num_bad_pkts = 0;
+	uint32_t num_bad_bytes = 0;
+	for (uint16_t i = 0; i < num_pkts; i++) {
+		struct rte_mbuf* pkt = load_pkts[i];
+		// desired inter-frame spacing is encoded in the hash 'usr' field
+		uint32_t delay = (uint32_t) pkt->udata64;
+		// step 1: generate delay-packets
+		while (delay > 0) {
+			struct rte_mbuf* pkt = get_delay_pkt_bad_crc(pool, &delay, min_pkt_size);
+			if (pkt) {
+				num_bad_pkts++;
+				// packet size: [MAC, CRC] to be consistent with HW counters
+				num_bad_bytes += pkt->pkt_len;
+				pkts[send_buf_idx++] = pkt;
+			}
+			if (send_buf_idx >= BUF_SIZE) {
+				dpdk_send_all_packets(port_id, queue_id, pkts, send_buf_idx);
+				send_buf_idx = 0;
+			}
+		}
+		// step 2: send the packet
+		// include random losses
+		if ((double)rand()/RAND_MAX >= loss_rate) {
+			pkts[send_buf_idx++] = pkt;
+		}
 		if (send_buf_idx >= BUF_SIZE || i + 1 == num_pkts) { // don't forget to send the last batch
 			dpdk_send_all_packets(port_id, queue_id, pkts, send_buf_idx);
 			send_buf_idx = 0;
