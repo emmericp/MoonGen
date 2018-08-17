@@ -30,6 +30,7 @@ function master(args)
 end
 
 function replay(queue, file, loop, rateLimiter, multiplier)
+	log:info("[REPLAY]: Start Replay")
 	local mempool = memory:createMemPool(4096)
 	local bufs = mempool:bufArray()
 	local pcapFile = pcap:newReader(file)
@@ -43,6 +44,9 @@ function replay(queue, file, loop, rateLimiter, multiplier)
 					prev = bufs.array[0].udata64
 				end
 				for i, buf in ipairs(bufs) do
+					if buf == nil then
+						break
+					end
 					-- ts is in microseconds
 					local ts = buf.udata64
 					if prev > ts then
