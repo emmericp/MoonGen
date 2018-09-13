@@ -2,8 +2,6 @@
 
 local mod = {}
 
-local lm        = require "libmoon"
-local memory    = require "memory"
 local hist      = require "histogram"
 local log       = require "log"
 local ms	= require "moonsniff-io"
@@ -11,6 +9,7 @@ local bit	= require "bit"
 
 local ffi    = require "ffi"
 local C = ffi.C
+local band = bit.band
 
 -- default values when no cli options are specified
 local INPUT_PATH = "latencies.csv"
@@ -19,14 +18,9 @@ local TIME_THRESH = -50 	-- negative timevalues smaller than this value are not 
 
 
 -- pointers and ctypes
-local CHAR_P = ffi.typeof("char *")
 local INT64_T = ffi.typeof("int64_t")
+local UINT64_T = ffi.typeof("uint64_t")
 local UINT64_P = ffi.typeof("uint64_t *")
-local UINT8_T = ffi.typeof("uint8_t")
-local UINT8_P = ffi.typeof("uint8_t*")
-
-local free = C.rte_pktmbuf_free_export
-local band = bit.band
 
 ffi.cdef[[
 	void* malloc(size_t);
@@ -50,12 +44,9 @@ function mod.match(PRE, POST, args)
 
 	log:info("Using array matching")
 
-	local uint64_t = ffi.typeof("uint64_t")
-	local uint64_p = ffi.typeof("uint64_t*")
-
 	-- increase the size of map by one to make BITMASK a valid identifier
-	local map = C.malloc(ffi.sizeof(uint64_t) * (BITMASK + 1))
-	map = ffi.cast(uint64_p, map)
+	local map = C.malloc(ffi.sizeof(UINT64_T) * (BITMASK + 1))
+	map = ffi.cast(UINT64_P, map)
 
 	-- make sure the complete map is zero initialized
 	zeroInit(map)
@@ -101,32 +92,7 @@ function mod.match(PRE, POST, args)
 
 		precap = readSingle(prereader)
 
-		post_ident = band(getId(postcap), BITMASK)
-
-		local ts = map[post_ident]
-
-		local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
-
-		-- check for time measurements which violate the given threshold
-		if ts ~= 0 and diff < TIME_THRESH then
-			log:warn("Got negative timestamp")
-			log:warn("Identification " .. ident)
-			log:warn("Postcount: " .. post_count)
-			log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
-			log:warn("Difference: " .. tostring(diff))
-			return
-
-		else
-			if ts ~= 0 then
-				C.hs_update(diff)
-
-				-- reset the ts field to avoid matching it again
-				map[ident] = 0
-			else
-				misses = misses + 1
-			end
-			postcap = readSingle(postreader)
-		end
+		postcap, misses = computeLatency(postcap, postreader, map, misses)
 	end
 
 	-- all pre-DuT values are already included in the map
@@ -134,30 +100,7 @@ function mod.match(PRE, POST, args)
 	while postcap do
 		post_count = post_count + 1
 
-		local ident = band(getId(postcap), BITMASK)
-		local ts = map[ident]
-
-		local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
-
-		-- check for time measurements which violate the given threshold
-		if ts ~= 0 and diff < TIME_THRESH then
-			log:warn("Got negative timestamp")
-			log:warn("Identification " .. ident)
-			log:warn("Postcount: " .. post_count)
-			log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
-			log:warn("Difference: " .. tostring(diff))
-			return
-
-		elseif ts ~= 0 then
-
-			C.hs_update(diff)
-
-			-- reset the ts field to avoid matching it again
-			map[ident] = 0
-		else
-			misses = misses + 1
-		end
-		postcap = readSingle(postreader)
+		postcap, misses = computeLatency(postcap, postreader, map, misses)
 	end
 
 	log:info("Finished timestamp matching")
@@ -169,19 +112,8 @@ function mod.match(PRE, POST, args)
 
 	C.hs_finalize()
 
-	-- print statistics and analysis
-	print()
-	log:info("# pkts pre: " .. pre_count .. ", # pkts post " .. post_count)
-	log:info("Packet loss: " .. (1 - (post_count/pre_count)) * 100 .. " %%")
-	log:info("")
-	log:info("# of identifications possible: " .. BITMASK)
-	log:info("Overwrites: " .. overwrites .. " from " .. pre_count)
-	log:info("\tPercentage: " .. (overwrites/pre_count) * 100 .. " %%")
-	log:info("")
-	log:info("Misses: " .. misses .. " from " .. post_count)
-	log:info("\tPercentage: " .. (misses/post_count) * 100 .. " %%")
-	log:info("")
-	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+	-- print final statistics
+	printStats(pre_count, post_count, overwrites, misses)
 
 	log:info("Finished processing. Writing histogram ...")
 	C.hs_write(args.output .. ".csv")
@@ -227,6 +159,62 @@ function initialFill(precap, prereader, map)
         end
 	return pre_count, overwrites
 end
+
+--- Function to process a single entry of the post .mscap file
+--- Computes the correct index in the array and checks its contents
+--- If computed latencies exceed the negative threshold (e.g. -2 milliseconds) a warning is printed
+--
+-- @param postcap, the current mscap entry
+-- @param postreader, the reader associated with the post mscap file
+-- @param map, the array in which the pre timestamps are stored
+-- @param misses, the number of misses which have occurred until now
+-- @return the next mscap entry, or nil if mscap file is depleted
+-- @return the new number of misses (either the same or misses + 1)
+function computeLatency(postcap, postreader, map, misses)
+	local ident = band(getId(postcap), BITMASK)
+	local ts = map[ident]
+	local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
+
+	-- check for time measurements which violate the given threshold
+	if ts ~= 0 and diff < TIME_THRESH then
+		log:warn("Got negative timestamp")
+		log:warn("Identification " .. ident)
+		log:warn("Postcount: " .. post_count)
+		log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
+		log:warn("Difference: " .. tostring(diff))
+		map[ident] = 0
+	else
+		if ts ~= 0 then
+			C.hs_update(diff)
+
+			-- reset the ts field to avoid matching it again
+			map[ident] = 0
+		else
+			misses = misses + 1
+		end
+	end
+
+	return readSingle(postreader), misses
+end
+
+
+--- Prints the statistics at the end of the program
+function printStats(pre_count, post_count, overwrites, misses)
+	print()
+	log:info("# pkts pre: " .. pre_count .. ", # pkts post " .. post_count)
+	log:info("Packet loss: " .. (1 - (post_count/pre_count)) * 100 .. " %%")
+	log:info("")
+	log:info("# of identifications possible: " .. BITMASK)
+	log:info("Overwrites: " .. overwrites .. " from " .. pre_count)
+	log:info("\tPercentage: " .. (overwrites/pre_count) * 100 .. " %%")
+	log:info("")
+	log:info("Misses: " .. misses .. " from " .. post_count)
+	log:info("\tPercentage: " .. (misses/post_count) * 100 .. " %%")
+	log:info("")
+	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+end
+
+
 
 --- Used for debug mode only
 --- Prints up to range entries from specified .mscap file as csv
