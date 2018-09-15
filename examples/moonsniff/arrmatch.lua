@@ -211,7 +211,7 @@ function printStats(pre_count, post_count, overwrites, misses)
 	log:info("Misses: " .. misses .. " from " .. post_count)
 	log:info("\tPercentage: " .. (misses/post_count) * 100 .. " %%")
 	log:info("")
-	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+	log:info("Mean: " .. C.hs_getMean() .. " [ns], Variance: " .. C.hs_getVariance() .. " [ns]\n")
 end
 
 

@@ -311,7 +311,7 @@ function tbbCore(args, PRE, POST)
 
 	C.hs_finalize()
 
-	log:info("Mean: " .. C.hs_getMean() .. ", Variance: " .. C.hs_getVariance() .. "\n")
+	log:info("Mean: " .. C.hs_getMean() .. " [ns], Variance: " .. C.hs_getVariance() .. " [ns]\n")
 
 	log:info("Misses: " .. misses)
 	C.hs_write(args.output .. ".csv")
