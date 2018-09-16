@@ -88,7 +88,7 @@ namespace moonsniff {
 			bool has_next(){
 				return file >> ts.pre >> ts.post ? true : false;
 			}
-			
+
 			ms_timestamps read_from_file(){
 				return ts;
 			}
@@ -126,8 +126,8 @@ namespace moonsniff {
 				}
 			}
 	};
-				
-		
+
+
 	struct ms_stats {
 		uint64_t average_latency = 0;
 		uint32_t hits = 0;
@@ -141,12 +141,11 @@ namespace moonsniff {
 	enum ms_mode { ms_text, ms_binary };
 
 	std::ofstream file;
-	
+
 	uint64_t hit_list[UINT24_MAX + 1] = { 0 };
 	std::mutex mtx[UINT24_MAX + 1];
 
 	Writer* writer;
-//	Text_Writer* ovr;
 
 	bool has_hit = false;
 
@@ -156,32 +155,22 @@ namespace moonsniff {
 		} else {
 			writer = new Text_Writer(fileName);
 		}
-//		ovr = new Text_Writer("overwrites.csv");
 	}
 
+	// finish by closing the writer
 	static void finish(){
 		writer -> finish();
-//		ovr -> finish();
 	}
 
+	// add a new entry
 	static void add_entry(uint32_t identification, uint64_t timestamp){
-		//uint64_t old_ts = hit_list[identification & INDEX_MASK];
 		uint32_t index = identification & INDEX_MASK;
 		while(!mtx[index].try_lock());
 		hit_list[index] = timestamp;
 		mtx[index].unlock();
-		//std::cout << "timestamp: " << timestamp << " for identification: " << identification << "\n";
-//		if( old_ts != 0 ){
-//			++stats.overwrites;
-//			if( !has_hit ){
-//				++stats.cold_overwrites;
-//			} else {
-//				ovr -> write_to_file(identification, timestamp);
-//			}
-//		}
-		//std::cout << "finished adding" << "\n";
 	}
 
+	// check if an element with same identification is in the array
 	static void test_for(uint32_t identification, uint64_t timestamp){
 		uint32_t index = identification & INDEX_MASK;
 		while(!mtx[index].try_lock());
@@ -190,19 +179,13 @@ namespace moonsniff {
 		mtx[index].unlock();
 		if( old_ts != 0 ){
 			++stats.hits;
-//			has_hit = true;
 			writer -> write_to_file(old_ts, timestamp);
-			//std::cout << "new: " << timestamp << "\n";
-			//std::cout << "old: " << hit_list[identification].timestamp << "\n";
-			////std::cout << "difference: " << (timestamp - hit_list[identification].timestamp)/1e6 << " ms\n";
 		} else {
 			++stats.misses;
-//			if( !has_hit ){
-//				++stats.cold_misses;
-//			}
 		}
 	}
 
+	// compute the average from the written file
 	static ms_stats post_process(const char* fileName, ms_mode mode){
 		Reader* reader;
 		if( mode == ms_binary ){
@@ -226,46 +209,6 @@ namespace moonsniff {
 		reader -> finish();
 		return stats;
 	}
-
-	//----------------------Hashing-----------------------------//
-
-	// this is not cryptographic hashing!
-	std::hash<std::string> hasher;
-	std::hash<uint64_t> uhash;
-
-	static uint32_t hash(rte_mbuf* input){
-		char* ptr = rte_pktmbuf_mtod(input, char*);
-
-		return hasher(ptr);
-
-//		char* ptr = (char*) malloc(100);
-//		std::strncpy(ptr, input, 60);
-//		ptr[99] = '\0';
-//		return hasher(ptr);
-	}
-
-	static uint32_t get_identifier(rte_mbuf* buf){
-		//std::cout << "Entered function \n";
-		struct ether_hdr* eth = rte_pktmbuf_mtod(buf, struct ether_hdr*);
-		if( rte_be_to_cpu_16(eth->ether_type) == 0x0800) {
-			//std::cout << "Found an ipv4 packet\n";
-			struct ipv4_hdr* ip = rte_pktmbuf_mtod_offset(buf, struct ipv4_hdr*, 14);
-
-			// just for getting an identifier it is not neccessary to use the correct byteorder
-			uint32_t packet_id = (uint32_t) ip->packet_id;
-			//std::cout << "id: " << rte_be_to_cpu_16(ip->packet_id) << "\n";
-			uint32_t hdr_checksum = (uint32_t) ip->hdr_checksum;
-			//std::cout << "chksm: " << rte_be_to_cpu_16(ip->hdr_checksum) << "\n";
-
-			uint64_t srcdst =(((uint64_t) ip->src_addr) << 32) + ip->dst_addr;
-			uint32_t hash_val = uhash(srcdst);
-
-			// hash of src and dst is added to hash of id (higher 16 bit) and checksum (lower 16 bit)
-			return hash_val + uhash((packet_id << 16) + hdr_checksum);
-		}
-		std::cerr << "Identifiers for non ipv4 packets are currently not supported.\n";
-		return 0;
-	}
 }
 
 extern "C" {
@@ -283,12 +226,4 @@ extern "C" {
 
 	void ms_init(const char* fileName, moonsniff::ms_mode mode){ moonsniff::init(fileName, mode); }
 	void ms_finish(){ moonsniff::finish(); }
-
-	uint32_t ms_hash(rte_mbuf* input){
-		return moonsniff::hash(input);
-	}
-
-	uint32_t ms_get_identifier(rte_mbuf* packet){
-		return moonsniff::get_identifier(packet);
-	}
 }

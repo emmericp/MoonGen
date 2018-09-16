@@ -31,7 +31,6 @@ set(files
 	src/moonsniff
 	src/histogram
 	src/hashmap
-	src/deque
 )
 
 set(libraries

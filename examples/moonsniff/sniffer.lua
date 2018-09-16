@@ -16,13 +16,13 @@ local ffi    = require "ffi"
 local C = ffi.C
 
 local MS_TYPE = 0b01010101
+local LIVE_MODE_FILE_TYPE = C.ms_text -- alternative: C.ms_binary
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
 	parser:argument("dev", "devices to use."):args(2):convert(tonumber)
 	parser:option("-o --output", "Path to output file."):args(1):default("latencies")
 	parser:option("-r --runtime", "Sets the length of the measurement period in seconds."):args(1):convert(tonumber):default(10)
-	parser:flag("-b --binary", "Write file in binary mode (instead of human readable). For long test series this will reduce the size of the output file.")
 	parser:flag("-l --live", "Do some live processing during packet capture. Lower performance than standard mode.")
 	parser:flag("-f --fast", "Set fast flag to reduce the amount of live processing for higher performance. Only has effect if live flag is also set")
 	parser:flag("-c --capture", "If set, all incoming packets are captured as a whole.")
@@ -31,7 +31,6 @@ function configure(parser)
 end
 
 function master(args)
-	args.binary = C.ms_text and C.ms_text or C.ms_binary
 	if args.debug then
 		-- used mainly to test functionality of io
 		iodebug(args)
@@ -45,7 +44,7 @@ function master(args)
 		local dev1rx = args.dev[2]:getRxQueue(0)
 
 		if args.live then
-			C.ms_init(args.output .. ".csv", args.binary)
+			C.ms_init(args.output .. ".csv", LIVE_MODE_FILE_TYPE)
 			stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
 		else
 			-- if we are not live we want to print the stats to a seperate file so they are easily
@@ -201,7 +200,7 @@ function printStats(args)
 	lm.sleepMillis(500)
 	print()
 
-	stats = C.ms_post_process(args.output .. ".csv", args.binary)
+	stats = C.ms_post_process(args.output .. ".csv", LIVE_MODE_FILE_TYPE)
 	hits = stats.hits
 	misses = stats.misses
 	cold = stats.cold_misses
