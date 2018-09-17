@@ -20,7 +20,11 @@ function configure(parser)
 	parser:option("-r --rate", "Forwarding rates in Mbps (two values for two links)"):args(2):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per forwarding direction using RSS."):args(1):convert(tonumber):default(1)
 	parser:option("-l --latency", "Fixed emulated latency (in ms) on the link."):args(2):convert(tonumber):default(0)
-	parser:option("-q --queuedepth", "Maximum number of packets to hold in the delay line"):args(2):convert(tonumber):default({0,0})
+	parser:option("-x --xlatency", "Extra exponentially distributed latency, in addition to the fixed latency (in ms)."):args(2):convert(tonumber):default(0)
+	parser:option("-q --queuedepth", "Maximum number of bytes to hold in the delay line"):args(2):convert(tonumber):default({0,0})
+	parser:option("-o --loss", "Rate of packet drops"):args(2):convert(tonumber):default(0)
+	parser:option("-c --concealedloss", "Rate of concealed packet drops"):args(2):convert(tonumber):default(0)
+	parser:option("-u --catchuprate", "After a concealed loss, this rate will apply to the backed-up frames."):args(2):convert(tonumber):default(0)
 	return parser:parse()
 end
 
@@ -61,9 +65,9 @@ function master(args)
 
 	-- start the forwarding tasks
 	for i = 1, args.threads do
-		mg.startTask("forward", ring1, args.dev[1]:getTxQueue(i - 1), args.dev[1], args.rate[1], args.latency[1])
+		mg.startTask("forward", ring1, args.dev[1]:getTxQueue(i - 1), args.dev[1], args.rate[1], args.latency[1], args.xlatency[1], args.loss[1], args.concealedloss[1], args.catchuprate[1])
 		if args.dev[1] ~= args.dev[2] then
-			mg.startTask("forward", ring2, args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[2], args.latency[2])
+			mg.startTask("forward", ring2, args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[2], args.latency[2], args.xlatency[2], args.loss[2], args.concealedloss[2], args.catchuprate[2])
 		end
 	end
 
@@ -102,14 +106,14 @@ function receive(ring, rxQueue, rxDev)
 		end
 		if count > 0 then
 			pipe:sendToBytesizedRing(ring.ring, bufs, count)
-			--print("ring count/usage: ",pipe:countBytesizedRing(ring.ring),pipe:bytesusedBytesizedRing(ring.ring))
+			print("ring count/usage: ",pipe:countBytesizedRing(ring.ring),pipe:bytesusedBytesizedRing(ring.ring),count)
 		end
 	end
 end
 
 
-function forward(ring, txQueue, txDev, rate, latency)
-	print("forward with rate "..rate.." and latency "..latency)
+function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossrate, catchuprate)
+	print("forward with rate "..rate.." and latency "..latency.." and loss rate "..lossrate.." and clossrate "..clossrate.." and catchuprate "..catchuprate)
 	local numThreads = 1
 	
 	local linkspeed = txDev:getLinkStatus().speed
@@ -124,6 +128,10 @@ function forward(ring, txQueue, txDev, rate, latency)
 	local bufs = memory.createBufArray()  --memory:bufArray()  --(128)
 	local count = 0
 	local hist = histogram:new()
+
+	-- when there is a concealed loss, the backed-up packets can
+	-- catch-up at line rate
+	local catchup_mode = false
 
 	while mg.running() do
 		-- receive one or more packets from the queue
@@ -141,12 +149,30 @@ function forward(ring, txQueue, txDev, rate, latency)
 				-- get the buf's arrival timestamp and compare to current time
 				--local arrival_timestamp = buf:getTimestamp()
 				local arrival_timestamp = buf.udata64
-				local send_time = arrival_timestamp + (latency * tsc_hz_ms)
+
+				-- emulate extra exponential random delay
+				local extraDelay = 0.0
+				if (xlatency > 0) then
+					extraDelay = -math.log(math.random())*xlatency
+				end
+
+				-- emulate concealed losses
+				local closses = 0
+				while (math.random() < clossrate) do
+					closses = closses + 1
+					if (catchuprate > 0) then
+						catchup_mode = true
+						--print "entering catchup mode!"
+					end
+				end
+				local send_time = arrival_timestamp + (((closses+1)*latency + extraDelay) * tsc_hz_ms)
+
 				local cur_time = limiter:get_tsc_cycles()
 				--print("timestamps", arrival_timestamp, send_time, cur_time)
 				-- spin/wait until it is time to send this frame
 				-- this assumes frame order is preserved
 				while cur_time < send_time do
+					catchup_mode = false
 					if not mg.running() then
 						return
 					end
@@ -159,7 +185,13 @@ function forward(ring, txQueue, txDev, rate, latency)
 				hist:update(tonumber(cur_time - send_time))
 
 				local pktSize = buf.pkt_len + 24
-				buf:setDelay((pktSize) * (linkspeed/rate - 1) )
+				if (catchup_mode) then
+					--print "operating in catchup mode!"
+					buf:setDelay((pktSize) * (linkspeed/catchuprate - 1))
+				else
+					buf:setDelay((pktSize) * (linkspeed/rate - 1))
+				end
+
 			end
 		end
 		--print("count="..tostring(count))
@@ -167,7 +199,8 @@ function forward(ring, txQueue, txDev, rate, latency)
 		--if count > 0 then
 		--if count > 0 then
 			-- the rate here doesn't affect the result afaict.  It's just to help decide the size of the bad pkts
-			txQueue:sendWithDelay(bufs, rate * numThreads, count)
+			txQueue:sendWithDelayLoss(bufs, rate * numThreads, lossrate, count)
+			--txQueue:sendWithDelay(bufs, rate * numThreads, count)
 			--print("sendWithDelay() returned")
 		end
 	end
