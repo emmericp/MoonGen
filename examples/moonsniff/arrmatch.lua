@@ -179,7 +179,6 @@ function computeLatency(postcap, postreader, map, misses)
 	if ts ~= 0 and diff < TIME_THRESH then
 		log:warn("Got negative timestamp")
 		log:warn("Identification " .. ident)
-		log:warn("Postcount: " .. post_count)
 		log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
 		log:warn("Difference: " .. tostring(diff))
 		map[ident] = 0
