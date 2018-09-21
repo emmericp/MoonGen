@@ -16,7 +16,6 @@ local ffi    = require "ffi"
 local C = ffi.C
 
 local MS_TYPE = 0b01010101
-local LIVE_MODE_FILE_TYPE = C.ms_text -- alternative: C.ms_binary
 
 function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
@@ -44,7 +43,6 @@ function master(args)
 		local dev1rx = args.dev[2]:getRxQueue(0)
 
 		if args.live then
-			C.ms_init(args.output .. ".csv", LIVE_MODE_FILE_TYPE)
 			stats.startStatsTask{rxDevices = {args.dev[1], args.dev[2]}}
 		else
 			-- if we are not live we want to print the stats to a seperate file so they are easily
@@ -70,8 +68,6 @@ function master(args)
 		receiver0:wait()
 		receiver1:wait()
 		lm.stop()
-
-		if args.live then C.ms_finish() end
 
 		log:info("Finished all capturing/writing operations")
 
@@ -200,23 +196,18 @@ function printStats(args)
 	lm.sleepMillis(500)
 	print()
 
-	stats = C.ms_post_process(args.output .. ".csv", LIVE_MODE_FILE_TYPE)
+	stats = C.ms_fetch_stats()
 	hits = stats.hits
 	misses = stats.misses
-	cold = stats.cold_misses
 	invalidTS = stats.inval_ts
-	overwrites = stats.overwrites
 	print("Received: " .. hits + misses)
 	print("\tHits: " .. hits)
 	print("\tHits with invalid timestamps: " .. invalidTS)
 	print("\tMisses: " .. misses)
-	print("\tCold Misses: " .. cold)
-	print("\tOverwrites: " .. overwrites)
-	print("\tCold Overwrites: " .. stats.cold_overwrites)
 	print("\tLoss by misses: " .. (misses/(misses + hits)) * 100 .. "%")
 	print("\tTotal loss: " .. ((misses + invalidTS)/(misses + hits)) * 100 .. "%")
-	print("Average Latency: " .. tostring(tonumber(stats.average_latency)/10^3) .. " us")
-
+	print("Average latency: " .. tostring(tonumber(stats.average_latency)/10^3) .. " us")
+	print("Variance of latency: " .. tostring(tonumber(stats.variance_latency)/10^3) .. " us")
 end
 
 function iodebug(args)

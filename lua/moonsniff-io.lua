@@ -14,22 +14,16 @@ local C = ffi.C
 ffi.cdef[[
 	//----------------Moonsniff Live IO------------------------
         struct ms_stats {
-                uint64_t average_latency;
+                int64_t average_latency;
+		int64_t variance_latency;
                 uint32_t hits;
                 uint32_t misses;
-                uint32_t cold_misses;
                 uint32_t inval_ts;
-                uint32_t overwrites;
-                uint32_t cold_overwrites;
         };
-
-        enum ms_mode { ms_text, ms_binary };
 
         void ms_add_entry(uint32_t identification, uint64_t timestamp);
         void ms_test_for(uint32_t identification, uint64_t timestamp);
-        void ms_init(const char* fileName, enum ms_mode mode);
-        void ms_finish();
-        struct ms_stats ms_post_process(const char* fileName, enum ms_mode mode);
+        struct ms_stats ms_fetch_stats();
 
 	//---------------MSCAP Writer/Reader-------------------------
         struct mscap {
