@@ -4,7 +4,7 @@ local mg     = require "moongen"
 local memory = require "memory"
 local device = require "device"
 local ts     = require "timestamping"
-local hist   = require "histogram"
+local histogram = require "histogram"
 local stats  = require "stats"
 local log    = require "log"
 local timer		= require "timer"
@@ -41,6 +41,7 @@ function master(args)
 
 	-- start forwarding tasks
 	for i = 1, args.threads do
+		print("dev is ",tonumber(args.dev[1]["id"]))
 		--rateLimiter1 = limiter:new(args.dev[2]:getTxQueue(i - 1), "cbr", 1 / args.rate[1] * 1000)
 		mg.startTask("forward", args.dev[1]:getRxQueue(i - 1), args.dev[2]:getTxQueue(i - 1), args.dev[2], args.rate[1])
 		-- bidirectional fowarding only if two different devices where passed
@@ -56,6 +57,9 @@ function forward(rxQueue, txQueue, txDev, rate)
 	local ETH_DST	= "11:12:13:14:15:16"
 	local pattern = "cbr"
 	local numThreads = 1
+
+	local count_hist = histogram:new()
+	local size_hist = histogram:new()
 	
 	local linkspeed = txDev:getLinkStatus().speed
 	print("linkspeed = "..linkspeed)
@@ -66,6 +70,9 @@ function forward(rxQueue, txQueue, txDev, rate)
 	while mg.running() do
 		-- receive one or more packets from the queue
 		local count = rxQueue:recv(bufs)
+
+		count_hist:update(count)
+
 		-- send out all received bufs on the other queue
 		-- the bufs are free'd implicitly by this function
 		-- txQueue:sendN(bufs, count)
@@ -96,6 +103,7 @@ function forward(rxQueue, txQueue, txDev, rate)
 				--print("forwarding packet of size ",pktSize)
 				--buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - pktSize - 24))
 				--buf:setDelay((pktSize+24) * (linkspeed/rate - 1) )
+				size_hist:update(buf.pkt_len)
 				buf:setDelay((pktSize) * (linkspeed/rate - 1) )
 			end
 		end
@@ -104,6 +112,11 @@ function forward(rxQueue, txQueue, txDev, rate)
 		txQueue:sendWithDelay(bufs, rate * numThreads, count)
 		--txQueue:sendWithDelay(bufs)
 	end
+	
+	count_hist:print()
+	count_hist:save("pkt-count-distribution-histogram-"..tonumber(txDev["id"])..".csv")
+	size_hist:print()
+	size_hist:save("pkt-size-distribution-histogram-"..tonumber(txDev["id"])..".csv")
 end
 
 

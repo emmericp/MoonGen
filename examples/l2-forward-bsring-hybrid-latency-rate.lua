@@ -3,7 +3,6 @@ local memory  = require "memory"
 local device  = require "device"
 local ts      = require "timestamping"
 local stats   = require "stats"
-local hist    = require "histogram"
 local log     = require "log"
 local limiter = require "software-ratecontrol"
 local pipe    = require "pipe"
@@ -88,11 +87,22 @@ function receive(ring, rxQueue, rxDev)
 
 	local bufs = memory.createBufArray()
 	local count = 0
+	local count_hist = histogram:new()
+	local histfile = "rxq-pkt-count-distribution-histogram-"..tonumber(rxDev["id"])..".csv"
+	print("will save hist to: "..histfile)
+	--local last_ts = 0
+	--local last_hwts = 0
 	while mg.running() do
 		count = rxQueue:recv(bufs)
+		count_hist:update(count)
 		--print("receive thread count="..count)
-		for _, buf in ipairs(bufs) do
+		--for iix, buf in ipairs(bufs) do
+		for iix=1,count do
+			local buf = bufs[iix]
 			if (buf ~= nil) then
+				if (iix > count) then
+					print("WARNING receive: iix > count",iix,count)
+				end
 				--if buf:hasTimestamp() then
 				--	local ts = buf:getTimestamp()
 				--	buf.udata64 = ts
@@ -100,15 +110,26 @@ function receive(ring, rxQueue, rxDev)
 				--else
 					local ts = limiter:get_tsc_cycles()
 					buf.udata64 = ts
+					print("RXRXRX ",buf,ts,buf.udata64)
+					--if buf:hasTimestamp() then
+					--	local hwts = buf:getTimestamp()
+					--	print("arrival timestamps: ",ts, (ts-last_ts), hwts, last_hwts, (hwts-last_hwts))
+					--	last_ts = ts
+					--	last_hwts = hwts
+					--else
+					--	print("no hw timestamp!!!")
+					--end
 					--print("set timestamp to get_tsc_cycles=", ts, count)
 				--end
 			end
 		end
 		if count > 0 then
 			pipe:sendToBytesizedRing(ring.ring, bufs, count)
-			print("ring count/usage: ",pipe:countBytesizedRing(ring.ring),pipe:bytesusedBytesizedRing(ring.ring),count)
+			--print("ring count/usage: ",pipe:countBytesizedRing(ring.ring),pipe:bytesusedBytesizedRing(ring.ring),count)
 		end
 	end
+	count_hist:print()
+	count_hist:save(histfile)
 end
 
 
@@ -116,6 +137,11 @@ function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossr
 	print("forward with rate "..rate.." and latency "..latency.." and loss rate "..lossrate.." and clossrate "..clossrate.." and catchuprate "..catchuprate)
 	local numThreads = 1
 	
+	local count_hist = histogram:new()
+	--local size_hist = histogram:new()
+	local counthistfile = "pkt-count-distribution-histogram-"..tonumber(txDev["id"])..".csv"
+	print("will save hist to: "..counthistfile)
+
 	local linkspeed = txDev:getLinkStatus().speed
 	print("linkspeed = "..linkspeed)
 
@@ -127,85 +153,148 @@ function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossr
 	-- larger batch size is useful when sending it through a rate limiter
 	local bufs = memory.createBufArray()  --memory:bufArray()  --(128)
 	local count = 0
-	local hist = histogram:new()
+	print("bufs = ", bufs, bufs.size)
+	for iix=1,bufs.size do
+		print("\t",iix,bufs[iix])
+	end
+
 
 	-- when there is a concealed loss, the backed-up packets can
 	-- catch-up at line rate
 	local catchup_mode = false
+	
+	local cur_time = limiter:get_tsc_cycles()
+	print("timing test: ",cur_time)
+	local last_time = cur_time
+	cur_time = limiter:get_tsc_cycles()
+	print("timing test: ",cur_time, last_time, (cur_time-last_time), (cur_time-last_time)/tsc_hz_us)
+	last_time = cur_time
+	cur_time = limiter:get_tsc_cycles()
+	print("timing test: ",cur_time, last_time, (cur_time-last_time), (cur_time-last_time)/tsc_hz_us)
+	last_time = cur_time
+	cur_time = limiter:get_tsc_cycles()
+	print("timing test: ",cur_time, last_time, (cur_time-last_time), (cur_time-last_time)/tsc_hz_us)
+	
 
 	while mg.running() do
 		-- receive one or more packets from the queue
 		--local count = rxQueue:recv(bufs)
-		--print("calling pipe:recvFromBytesizedRing(ring.ring, bufs)")
+		prerecv_time = limiter:get_tsc_cycles()
+		--count = pipe:recvFromBytesizedRing(ring.ring, bufs)
 		count = pipe:recvFromBytesizedRing(ring.ring, bufs, 1)
-		--print("call returned.")
+		postrecv_time = limiter:get_tsc_cycles()
+		if (prerecv_time - prerecv_time) > tsc_hz_us then
+			print("time of recvFromBytesizedRing: ",prerecv_time, prerecv_time, (prerecv_time-prerecv_time), (prerecv_time-prerecv_time)/tsc_hz_us)
+		end
+		count_hist:update(count)
+
 		if count > 0 then
-		--print("count=", count)
+			--print("count=", count)
 
-		for _, buf in ipairs(bufs) do
-			
-			if (buf ~= nil) then
-				--print("buf ~= nil")
-				-- get the buf's arrival timestamp and compare to current time
-				--local arrival_timestamp = buf:getTimestamp()
-				local arrival_timestamp = buf.udata64
+			local itercount = 0
+			--for iix, buf in ipairs(bufs) do
+			for iix=1,count do
+				local buf = bufs[iix]
+				print("iteration "..iix,bufs[iix])				
 
-				-- emulate extra exponential random delay
-				local extraDelay = 0.0
-				if (xlatency > 0) then
-					extraDelay = -math.log(math.random())*xlatency
-				end
+				itercount = itercount + 1
+				if ((iix <= count) and (buf ~= nil)) then
+					--print("buf ~= nil")
+					-- get the buf's arrival timestamp and compare to current time
+					--local arrival_timestamp = buf:getTimestamp()
+					local arrival_timestamp = buf.udata64
+					--------------------print("arrival timestamp ",arrival_timestamp,ii,buf)
+					--local hwtimestamp = buf:getTimestamp()
 
-				-- emulate concealed losses
-				local closses = 0
-				while (math.random() < clossrate) do
-					closses = closses + 1
-					if (catchuprate > 0) then
-						catchup_mode = true
-						--print "entering catchup mode!"
+					-- emulate extra exponential random delay
+					local extraDelay = 0.0
+					if (xlatency > 0) then
+						extraDelay = -math.log(math.random())*xlatency
 					end
-				end
-				local send_time = arrival_timestamp + (((closses+1)*latency + extraDelay) * tsc_hz_ms)
 
-				local cur_time = limiter:get_tsc_cycles()
-				--print("timestamps", arrival_timestamp, send_time, cur_time)
-				-- spin/wait until it is time to send this frame
-				-- this assumes frame order is preserved
-				while cur_time < send_time do
-					catchup_mode = false
-					if not mg.running() then
-						return
+					-- emulate concealed losses
+					local closses = 0
+					while (math.random() < clossrate) do
+						closses = closses + 1
+						if (catchuprate > 0) then
+							catchup_mode = true
+							--print "entering catchup mode!"
+						end
 					end
-					cur_time = limiter:get_tsc_cycles()
-				end
+					local send_time = arrival_timestamp + (((closses+1)*latency + extraDelay) * tsc_hz_ms)
+
+					local cur_time = limiter:get_tsc_cycles()
+					--print("timestamps", arrival_timestamp, send_time, cur_time)
+					-- spin/wait until it is time to send this frame
+					-- this assumes frame order is preserved
 				
-				--if (cur_time - send_time) > tsc_hz_ms then
-				--	print("target latecy exceeded by: ",cur_time, send_time, (cur_time-send_time), (cur_time-send_time)/tsc_hz_us)
-				--end
-				hist:update(tonumber(cur_time - send_time))
+					--if (cur_time > send_time) then
+					--	print("latency exceeded before loop: ",cur_time, send_time, (cur_time-send_time), (cur_time-send_time)/tsc_hz_us)
+					--end
 
-				local pktSize = buf.pkt_len + 24
-				if (catchup_mode) then
-					--print "operating in catchup mode!"
-					buf:setDelay((pktSize) * (linkspeed/catchuprate - 1))
-				else
-					buf:setDelay((pktSize) * (linkspeed/rate - 1))
+					--local last_loop_time = limiter:get_tsc_cycles()
+					local spinwaited = false
+					while cur_time < send_time do
+						spinwaited = true
+						catchup_mode = false
+						if not mg.running() then
+							return
+						end
+						cur_time = limiter:get_tsc_cycles()
+						--if ((cur_time-last_loop_time) > 3000000) then
+						--	print("inter-loop time: ",cur_time, last_loop_time, (cur_time-last_loop_time), (cur_time-last_loop_time)/tsc_hz_us)
+						--end
+						--if (cur_time > send_time) then
+						--	if ((cur_time - send_time) > 5000) then
+						--		print("target latecy will be exceeded by: ",cur_time, send_time, (cur_time-send_time), (cur_time-send_time)/tsc_hz_us)
+						--	end
+						--end
+						--last_loop_time = cur_time
+					end
+				
+					--if (cur_time - send_time) > tsc_hz_ms then
+					--	print("target latecy exceeded by: ",cur_time, send_time, (cur_time-send_time), (cur_time-send_time)/tsc_hz_us)
+					--end
+					--hist:update(tonumber(cur_time - send_time))
+	
+					local pktSize = buf.pkt_len + 24
+					--size_hist:update(buf.pkt_len)
+					if (catchup_mode) then
+						--print "operating in catchup mode!"
+						print("catchup setting delay to "..((pktSize) * (linkspeed/rate - 1)).." on buf ",buf,spinwaited)
+						buf:setDelay((pktSize) * (linkspeed/catchuprate - 1))
+					else
+						print("setting delay to "..((pktSize) * (linkspeed/rate - 1)).." on buf ",buf,spinwaited)
+						buf:setDelay((pktSize) * (linkspeed/rate - 1))
+					end
+					print("delay is now ", buf.udata64, buf, buf.pkt_len)
 				end
-
 			end
-		end
-		--print("count="..tostring(count))
+			print("did so many iterations "..itercount)
+			--print("count="..tostring(count))
 
-		--if count > 0 then
-		--if count > 0 then
-			-- the rate here doesn't affect the result afaict.  It's just to help decide the size of the bad pkts
-			txQueue:sendWithDelayLoss(bufs, rate * numThreads, lossrate, count)
-			--txQueue:sendWithDelay(bufs, rate * numThreads, count)
-			--print("sendWithDelay() returned")
-		end
-	end
-	hist:print()
-	hist:save("latencyq-histogram.csv")
+			--if count > 0 then
+			if count > 0 then
+				-- the rate here doesn't affect the result afaict.  It's just to help decide the size of the bad pkts
+				--local presend_time = limiter:get_tsc_cycles()
+				------------------print("calling sendWithDelayLoss ",bufs[0],bufs[0].udata64)
+				txQueue:sendWithDelayLoss(bufs, rate * numThreads, lossrate, count)
+				--txQueue:sendWithDelay(bufs, rate * numThreads, count)
+				--local postsend_time = limiter:get_tsc_cycles()
+				--if (postsend_time - presend_time) > 10000000ULL then
+				--if (postsend_time - presend_time) > 100*tsc_hz_us then
+				--if (postsend_time - presend_time) > 100*tsc_hz_us then
+				--	print("abnormal time spent sending: ",postsend_time, presend_time, (postsend_time-presend_time), (postsend_time-presend_time)/tsc_hz_us)
+				--end
+				--txQueue:sendWithDelay(bufs, rate * numThreads, count)
+				--print("sendWithDelay() returned")
+			end
+		end   -- if count > 0 then
+	end   -- while mg.running() do
+	count_hist:print()
+	count_hist:save("pkt-count-distribution-histogram-"..tonumber(txDev["id"])..".csv")
+	--size_hist:print()
+	--size_hist:save("pkt-size-distribution-histogram-"..tonumber(txDev["id"])..".csv")
 end
 
 

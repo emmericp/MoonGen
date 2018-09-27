@@ -3,6 +3,7 @@ local pkt    = require "packet"
 local memory = require "memory"
 local ffi    = require "ffi"
 local log    = require "log"
+local limiter = require "software-ratecontrol"
 
 local txQueue = device.__txQueuePrototype
 local device = device.__devicePrototype
@@ -79,7 +80,17 @@ function txQueue:sendWithDelayLoss(bufs, targetRate, lossRate, n)
 		minPktSize = math.floor(10 * 10^9 / 10^6 / 8 / maxPktRate)
 	end
 	-- print("send with loss rate "..lossRate)
+	local tsc_hz_us = 2666
+	local presend_time = limiter:get_tsc_cycles()
+	for ii=1,n do
+		local buf = bufs[ii]
+		print("sendWithDelayLoss() ",ii,buf, buf.udata64, buf.pkt_len)
+	end
 	C.moongen_send_all_packets_with_delay_bad_crc_loss(self.id, self.qid, bufs.array, n, mempool, minPktSize, lossRate)
+	local postsend_time = limiter:get_tsc_cycles()
+	if (postsend_time - presend_time) > 1000*tsc_hz_us then
+		print("abnormal time spent mgsending: ",postsend_time, presend_time, (postsend_time-presend_time), (postsend_time-presend_time)/tsc_hz_us)
+	end
 	return bufs.size
 end
 
