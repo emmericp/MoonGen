@@ -103,28 +103,23 @@ void moongen_send_all_packets_with_delay_bad_crc_loss(uint8_t port_id, uint16_t 
 	int send_buf_idx = 0;
 	uint32_t num_bad_pkts = 0;
 	uint32_t num_bad_bytes = 0;
-	printf("moongen_send_all_packets_with_delay_bad_crc_loss(%d)...\n",num_pkts);
 	if (num_pkts>0) {
-		printf("\tudata64=%lx\t%p\n",load_pkts[0]->udata64,load_pkts[0]);
-		printf("\ttimesync=%04x\tseqn=%08x\tpacket_type=%08x\tuserdata=%p\tpool=%p\tnext=%p\ttx_offload=%lx\n",
-				load_pkts[0]->timesync,load_pkts[0]->seqn,load_pkts[0]->packet_type,load_pkts[0]->userdata,load_pkts[0]->pool,load_pkts[0]->next,load_pkts[0]->tx_offload);
-		if (load_pkts[0]->udata64 > 0x0fffffff) {
-			printf("WARNINGWARNING\n");
-			//printf("\tudata points to: %08x\n",*((uint32_t*)(load_pkts[0]->userdata)));
-		}
 	}
 	for (uint16_t i = 0; i < num_pkts; i++) {
 		struct rte_mbuf* pkt;
-		printf("\tinside forloop udata64=%lx\t%p\n",load_pkts[0]->udata64,load_pkts[0]);
 		pkt = load_pkts[i];
+
 		// desired inter-frame spacing is encoded in the hash 'usr' field
 		uint32_t delay = (uint32_t) pkt->udata64;
+
+		if (pkt->udata64 > 0x0fffffff) {
+			printf("WARNING: moongen_send_all_packets_with_delay_bad_crc_loss: bad value in udata64 %lx\n",pkt->udata64);
+			delay = 0;
+		}
+
 		// step 1: generate delay-packets
-		printf("\tentering whileloop delay is %08x\t%lx\n",delay,pkt->udata64);
 		while (delay > 0) {
-			printf("\tcalling get_delay_pkt_bad_crc(%08x)\n",delay);
 			struct rte_mbuf* bad_pkt = get_delay_pkt_bad_crc(pool, &delay, min_pkt_size);
-			printf("\treturned delay = %08x\n",delay);
 			if (bad_pkt) {
 				num_bad_pkts++;
 				// packet size: [MAC, CRC] to be consistent with HW counters
@@ -132,9 +127,7 @@ void moongen_send_all_packets_with_delay_bad_crc_loss(uint8_t port_id, uint16_t 
 				pkts[send_buf_idx++] = bad_pkt;
 			}
 			if (send_buf_idx >= BUF_SIZE) {
-				printf("111 dpdk_send_all_packets(%d, %08x, %d, %d)\n",send_buf_idx, delay, i, num_pkts);
 				dpdk_send_all_packets(port_id, queue_id, pkts, send_buf_idx);
-				printf("done\n");
 				send_buf_idx = 0;
 			}
 		}
@@ -144,17 +137,13 @@ void moongen_send_all_packets_with_delay_bad_crc_loss(uint8_t port_id, uint16_t 
 			pkts[send_buf_idx++] = pkt;
 		}
 		if (send_buf_idx >= BUF_SIZE || i + 1 == num_pkts) { // don't forget to send the last batch
-			printf("222 dpdk_send_all_packets(%d, %08x, %d, %d)\n",send_buf_idx, delay, i, num_pkts);
 			dpdk_send_all_packets(port_id, queue_id, pkts, send_buf_idx);
-			printf("done\n");
 			send_buf_idx = 0;
 		}
 	}
-	//printf("done1\n");
 	// atomic as multiple threads may use the same stats register from multiple queues
 	__sync_fetch_and_add(&bad_pkts_sent[port_id], num_bad_pkts);
 	__sync_fetch_and_add(&bad_bytes_sent[port_id], num_bad_bytes);
-	//printf("done2\n");
 	return;
 }
 
