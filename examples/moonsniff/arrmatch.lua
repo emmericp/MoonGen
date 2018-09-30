@@ -13,9 +13,8 @@ local band = bit.band
 
 -- default values when no cli options are specified
 local INPUT_PATH = "latencies.csv"
-local BITMASK = 0x0FFFFFFF
+local INDEX_BITMASK = 0x0FFFFFFF
 local TIME_THRESH = -50 	-- negative timevalues smaller than this value are not allowed
-
 
 -- pointers and ctypes
 local INT64_T = ffi.typeof("int64_t")
@@ -25,7 +24,16 @@ local UINT64_P = ffi.typeof("uint64_t *")
 ffi.cdef[[
 	void* malloc(size_t);
 	void free(void*);
+
+	struct entry {
+		uint64_t timestamp;	// the full timestamp
+		uint64_t identifier;	// may seem like memory waste as identifier is only 32 bit
+					// but struct is 8 byte aligned by compiler anyway
+	};
 ]]
+
+local ENTRY_T = ffi.typeof("struct entry")
+local ENTRY_P = ffi.typeof("struct entry *")
 
 --- Main matching function
 --- Tries to match timestamps and identifications from two mscap files
@@ -45,8 +53,8 @@ function mod.match(PRE, POST, args)
 	log:info("Using array matching")
 
 	-- increase the size of map by one to make BITMASK a valid identifier
-	local map = C.malloc(ffi.sizeof(UINT64_T) * (BITMASK + 1))
-	map = ffi.cast(UINT64_P, map)
+	local map = C.malloc(ffi.sizeof(ENTRY_T) * (INDEX_BITMASK + 1))
+	map = ffi.cast(ENTRY_P, map)
 
 	-- make sure the complete map is zero initialized
 	zeroInit(map)
@@ -82,13 +90,14 @@ function mod.match(PRE, POST, args)
 		pre_count = pre_count + 1
 		post_count = post_count + 1
 
-		local ident = band(getId(precap), BITMASK)
+		local ident = band(getId(precap), INDEX_BITMASK)
 
-		if map[ident] ~= 0 then
+		if map[ident].timestamp ~= 0 then
 			overwrites = overwrites + 1
 		end
 
-		map[ident] = getTs(precap)
+		map[ident].timestamp = getTs(precap)
+		map[ident].identifier = getId(precap)
 
 		precap = readSingle(prereader)
 
@@ -126,8 +135,9 @@ end
 --
 -- @param map, pointer to the matching-array
 function zeroInit(map)
-	for i = 0, BITMASK do
-		map[i] = 0
+	for i = 0, INDEX_BITMASK do
+		map[i].timestamp = 0
+		map[i].identifier = 0
 	end
 end
 
@@ -137,24 +147,25 @@ end
 -- @param prereader, the reader for all subsequent mscaps
 -- @param map, pointer to the array on which the matching is performed
 function initialFill(precap, prereader, map)
-        pre_ident = band(getId(precap), BITMASK)
+        pre_ident = band(getId(precap), INDEX_BITMASK)
         initial_id = pre_ident
 
 	local overwrites = 0
 
         local pre_count = 0
 
-        log:info("end : " .. BITMASK - 100)
+        log:info("end : " .. INDEX_BITMASK - 100)
 
-        while precap and pre_ident >= initial_id and pre_ident < BITMASK - 100 do
+        while precap and pre_ident >= initial_id and pre_ident < INDEX_BITMASK - 100 do
                 pre_count = pre_count + 1
 
-                if map[pre_ident] ~= 0 then overwrites = overwrites + 1 end
-                map[pre_ident] = getTs(precap)
+                if map[pre_ident].timestamp ~= 0 then overwrites = overwrites + 1 end
+                map[pre_ident].timestamp = getTs(precap)
+		map[pre_ident].identifier = getId(precap)
 
                 precap = readSingle(prereader)
                 if precap then
-                        pre_ident = band(getId(precap), BITMASK)
+                        pre_ident = band(getId(precap), INDEX_BITMASK)
                 end
         end
 	return pre_count, overwrites
@@ -171,27 +182,32 @@ end
 -- @return the next mscap entry, or nil if mscap file is depleted
 -- @return the new number of misses (either the same or misses + 1)
 function computeLatency(postcap, postreader, map, misses)
-	local ident = band(getId(postcap), BITMASK)
-	local ts = map[ident]
-	local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
+	local ident = band(getId(postcap), INDEX_BITMASK)
+	local ts = map[ident].timestamp
+	local pre_identifier = map[ident].identifier
+	local post_identifier = getId(postcap)
 
-	-- check for time measurements which violate the given threshold
-	if ts ~= 0 and diff < TIME_THRESH then
-		log:warn("Got negative timestamp")
-		log:warn("Identification " .. ident)
-		log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
-		log:warn("Difference: " .. tostring(diff))
-		map[ident] = 0
-	else
-		if ts ~= 0 then
-			C.hs_update(diff)
+	if pre_identifier == post_identifier then
+		local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
 
-			-- reset the ts field to avoid matching it again
-			map[ident] = 0
+		if ts ~= 0 and diff < TIME_THRESH then
+			log:warn("Got negative timestamp")
+			log:warn("Identification " .. ident)
+			log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
+			log:warn("Difference: " .. tostring(diff))
 		else
-			misses = misses + 1
+			if ts ~= 0 then
+				C.hs_update(diff)
+			else
+				misses = misses + 1
+			end
 		end
+	else
+		misses = misses + 1
 	end
+
+	map[ident].timestamp = 0
+	map[ident].identifier = 0
 
 	return readSingle(postreader), misses
 end
@@ -203,7 +219,7 @@ function printStats(pre_count, post_count, overwrites, misses)
 	log:info("# pkts pre: " .. pre_count .. ", # pkts post " .. post_count)
 	log:info("Packet loss: " .. (1 - (post_count/pre_count)) * 100 .. " %%")
 	log:info("")
-	log:info("# of identifications possible: " .. BITMASK)
+	log:info("# of identifications possible: " .. INDEX_BITMASK)
 	log:info("Overwrites: " .. overwrites .. " from " .. pre_count)
 	log:info("\tPercentage: " .. (overwrites/pre_count) * 100 .. " %%")
 	log:info("")
@@ -229,7 +245,7 @@ function writeMSCAPasText(infile, outfile, range)
 	textf = io.open(outfile, "w")
 
 	for i = 0, range do
-		local ident = band(mscap.identification, BITMASK)
+		local ident = band(mscap.identification, INDEX_BITMASK)
 
 		textf:write(tostring(mscap.identification), ", ", tostring(ident), ", ", tostring(mscap.timestamp), "\n")
 		mscap = reader:readSingle()
