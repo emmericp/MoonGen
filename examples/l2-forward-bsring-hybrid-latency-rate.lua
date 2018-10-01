@@ -37,9 +37,7 @@ function master(args)
 			rxQueues = args.threads,
 			rssQueues = 0,
 			rssFunctions = {},
-			--rxDescs = 4096,
-			--rxDescs = 128,
-			--txDescs = 128,
+			rxDescs = 4096,
 			dropEnable = true,
 			disableOffloads = true
 		}
@@ -86,6 +84,8 @@ function receive(ring, rxQueue, rxDev)
 	local bufs = memory.createBufArray()
 	local count = 0
 	local count_hist = histogram:new()
+	local ringsize_hist = histogram:new()
+	local ringbytes_hist = histogram:new()
 	local ts = 0
 	while mg.running() do
 		count = rxQueue:recv(bufs)
@@ -99,12 +99,21 @@ function receive(ring, rxQueue, rxDev)
 			buf.udata64 = ts
 		end
 		if count > 0 then
-			pipe:sendToBytesizedRing(ring.ring, bufs, count)
+			local num_added = pipe:sendToBytesizedRing(ring.ring, bufs, count)
+			if (num_added < count) then
+				print("failed to add packets to bsring "..num_added.."  "..count)
+			end
+			ringsize_hist:update(pipe:countBytesizedRing(ring.ring))
+			ringbytes_hist:update(pipe:bytesusedBytesizedRing(ring.ring))
 			--print("ring count/usage: ",pipe:countBytesizedRing(ring.ring),pipe:bytesusedBytesizedRing(ring.ring),count)
 		end
 	end
 	count_hist:print()
 	count_hist:save("rxq-pkt-count-distribution-histogram-"..rxDev["id"]..".csv")
+	ringsize_hist:print()
+	ringsize_hist:save("rxq-ringsize-distribution-histogram-"..rxDev["id"]..".csv")
+	ringbytes_hist:print()
+	ringbytes_hist:save("rxq-ringbytes-distribution-histogram-"..rxDev["id"]..".csv")
 end
 
 

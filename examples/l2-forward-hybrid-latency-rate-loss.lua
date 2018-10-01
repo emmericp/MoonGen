@@ -3,12 +3,12 @@ local memory  = require "memory"
 local device  = require "device"
 local ts      = require "timestamping"
 local stats   = require "stats"
-local hist    = require "histogram"
 local log     = require "log"
 local limiter = require "software-ratecontrol"
 local pipe    = require "pipe"
 local ffi     = require "ffi"
 local libmoon = require "libmoon"
+local histogram = require "histogram"
 
 local PKT_SIZE	= 60
 
@@ -18,12 +18,12 @@ function configure(parser)
 	--parser:option("-r --rate", "Transmit rate in Mpps."):args(1):default(2):convert(tonumber)
 	parser:option("-r --rate", "Forwarding rates in Mbps (two values for two links)"):args(2):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per forwarding direction using RSS."):args(1):convert(tonumber):default(1)
-	parser:option("-l --latency", "Fixed emulated latency (in ms) on the link."):args(2):convert(tonumber):default(0)
-	parser:option("-x --xlatency", "Extra exponentially distributed latency, in addition to the fixed latency (in ms)."):args(2):convert(tonumber):default(0)
-	parser:option("-q --queuedepth", "Maximum number of packets to hold in the delay line"):args(2):convert(tonumber):default(0)
-	parser:option("-o --loss", "Rate of packet drops"):args(2):convert(tonumber):default(0)
-	parser:option("-c --concealedloss", "Rate of concealed packet drops"):args(2):convert(tonumber):default(0)
-	parser:option("-u --catchuprate", "After a concealed loss, this rate will apply to the backed-up frames."):args(2):convert(tonumber):default(0)
+	parser:option("-l --latency", "Fixed emulated latency (in ms) on the link."):args(2):convert(tonumber):default({0,0})
+	parser:option("-x --xlatency", "Extra exponentially distributed latency, in addition to the fixed latency (in ms)."):args(2):convert(tonumber):default({0,0})
+	parser:option("-q --queuedepth", "Maximum number of packets to hold in the delay line"):args(2):convert(tonumber):default({0,0})
+	parser:option("-o --loss", "Rate of packet drops"):args(2):convert(tonumber):default({0,0})
+	parser:option("-c --concealedloss", "Rate of concealed packet drops"):args(2):convert(tonumber):default({0,0})
+	parser:option("-u --catchuprate", "After a concealed loss, this rate will apply to the backed-up frames."):args(2):convert(tonumber):default({0,0})
 	return parser:parse()
 end
 
@@ -88,18 +88,10 @@ function receive(ring, rxQueue, rxDev)
 	while mg.running() do
 		count = rxQueue:recv(bufs)
 		--print("receive thread count="..count)
-		for _, buf in ipairs(bufs) do
-			if (buf ~= nil) then
-				--if buf:hasTimestamp() then
-				--	local ts = buf:getTimestamp()
-				--	buf.udata64 = ts
-				--	print("set timestamp to getTimestamp=", ts)
-				--else
-					local ts = limiter:get_tsc_cycles()
-					buf.udata64 = ts
-					--print("set timestamp to get_tsc_cycles=", ts, count)
-				--end
-			end
+		for iix=1,count do
+			local buf = bufs[iix]
+			local ts = limiter:get_tsc_cycles()
+			buf.udata64 = ts
 		end
 		if count > 0 then
 			pipe:sendToPacketRing(ring.ring, bufs, count)
@@ -107,7 +99,6 @@ function receive(ring, rxQueue, rxDev)
 		end
 	end
 end
-
 
 function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossrate, catchuprate)
 	print("forward with rate "..rate.." and latency "..latency.." and loss rate "..lossrate.." and clossrate "..clossrate.." and catchuprate "..catchuprate)
@@ -135,54 +126,50 @@ function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossr
 		--print("calling pipe:recvFromPacketRing(ring.ring, bufs)")
 		count = pipe:recvFromPacketRing(ring.ring, bufs, 1)
 		--print("call returned.")
-		if count > 0 then
-		--print("count=", count)
-				
-		for _, buf in ipairs(bufs) do
+		for iix=1,count do
+			local buf = bufs[iix]
 			
-			if (buf ~= nil) then
-				--print("buf ~= nil")
-				-- get the buf's arrival timestamp and compare to current time
-				--local arrival_timestamp = buf:getTimestamp()
-				local arrival_timestamp = buf.udata64
-				local extraDelay = 0.0
-				if (xlatency > 0) then
-					extraDelay = -math.log(math.random())*xlatency
-				end
-				-- emulate concealed losses
-				local closses = 0
-				while (math.random() < clossrate) do
-					closses = closses + 1
-					if (catchuprate > 0) then
-						catchup_mode = true
-						--print "entering catchup mode!"
-					end
-				end
-				local send_time = arrival_timestamp + (((closses+1)*latency + extraDelay) * tsc_hz_ms)
-				local cur_time = limiter:get_tsc_cycles()
-				--print("timestamps", arrival_timestamp, send_time, cur_time)
-				-- spin/wait until it is time to send this frame
-				-- this assumes frame order is preserved
-				while limiter:get_tsc_cycles() < send_time do
-					catchup_mode = false
-					if not mg.running() then
-						return
-					end
-				end
-				
-				local pktSize = buf.pkt_len + 24
-				if (catchup_mode) then
-					--print "operating in catchup mode!"
-					buf:setDelay((pktSize) * (linkspeed/catchuprate - 1))
-				else
-					buf:setDelay((pktSize) * (linkspeed/rate - 1))
+			-- get the buf's arrival timestamp and compare to current time
+			--local arrival_timestamp = buf:getTimestamp()
+			local arrival_timestamp = buf.udata64
+			local extraDelay = 0.0
+			if (xlatency > 0) then
+				extraDelay = -math.log(math.random())*xlatency
+			end
+			-- emulate concealed losses
+			local closses = 0
+			while (math.random() < clossrate) do
+				closses = closses + 1
+				if (catchuprate > 0) then
+					catchup_mode = true
+					--print "entering catchup mode!"
 				end
 			end
+			local send_time = arrival_timestamp + (((closses+1)*latency + extraDelay) * tsc_hz_ms)
+			local cur_time = limiter:get_tsc_cycles()
+			--print("timestamps", arrival_timestamp, send_time, cur_time)
+			-- spin/wait until it is time to send this frame
+			-- this assumes frame order is preserved
+			while limiter:get_tsc_cycles() < send_time do
+				catchup_mode = false
+				if not mg.running() then
+					return
+				end
+			end
+			
+			local pktSize = buf.pkt_len + 24
+			if (catchup_mode) then
+				--print "operating in catchup mode!"
+				buf:setDelay((pktSize) * (linkspeed/catchuprate - 1))
+			else
+				buf:setDelay((pktSize) * (linkspeed/rate - 1))
+			end
 		end
+
 		--print("count="..tostring(count))
 
 		--if count > 0 then
-		--if count > 0 then
+		if count > 0 then
 			-- the rate here doesn't affect the result afaict.  It's just to help decide the size of the bad pkts
 			txQueue:sendWithDelayLoss(bufs, rate * numThreads, lossrate, count)
 			--print("sendWithDelay() returned")
