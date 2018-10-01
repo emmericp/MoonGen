@@ -32,8 +32,16 @@ namespace moonsniff {
 		uint32_t inval_ts = 0;
 	} stats;
 
+	/**
+	 * Entry of the hit_list which stores the pre-DUT data
+	 */
+	struct entry {
+		uint64_t timestamp;
+		uint64_t identifier;
+	};
+
 	// initialize array and as many mutexes to ensure memory order
-	uint64_t hit_list[UINT24_MAX + 1] = { 0 };
+	struct entry hit_list[UINT24_MAX + 1] = {{ 0, 0 }};
 	std::mutex mtx[UINT24_MAX + 1];
 
 	/**
@@ -45,7 +53,8 @@ namespace moonsniff {
 	static void add_entry(uint32_t identification, uint64_t timestamp){
 		uint32_t index = identification & INDEX_MASK;
 		while(!mtx[index].try_lock());
-		hit_list[index] = timestamp;
+		hit_list[index].timestamp = timestamp;
+		hit_list[index].identifier = identification;
 		mtx[index].unlock();
 	}
 
@@ -59,12 +68,13 @@ namespace moonsniff {
 	static void test_for(uint32_t identification, uint64_t timestamp){
 		uint32_t index = identification & INDEX_MASK;
 		while(!mtx[index].try_lock());
-		uint64_t old_ts = hit_list[index];
-		hit_list[index] = 0;
+		uint64_t old_ts = hit_list[index].identifier == identification ? hit_list[index].timestamp : 0;
+		hit_list[index].timestamp = 0;
+		hit_list[index].identifier = 0;
 		mtx[index].unlock();
 		if( old_ts != 0 ){
 			++stats.hits;
-			// diff overflow improbable (latency > 290 years)
+			// diff overflow improbable
 			int64_t diff = timestamp - old_ts;
 			if (diff < -NEGATIVE_THRESH){
 				std::cerr << "Measured latency below " << NEGATIVE_THRESH
