@@ -21,7 +21,7 @@ function configure(parser)
 	parser:description("Demonstrate and test hardware latency induced by a device under test.\nThe ideal test setup is to use 2 taps, one should be connected to the ingress cable, the other one to the egress one.\n\n For more detailed information on possible setups and usage of this script have a look at moonsniff.md.")
 	parser:argument("dev", "devices to use."):args(2):convert(tonumber)
 	parser:option("-o --output", "Path to output file."):args(1):default("latencies")
-	parser:option("-r --runtime", "Sets the length of the measurement period in seconds."):args(1):convert(tonumber):default(10)
+	parser:option("-t --time", "Sets the length of the measurement period in seconds."):args(1):convert(tonumber):default(10)
 	parser:flag("-l --live", "Do some live processing during packet capture. Lower performance than standard mode.")
 	parser:flag("-f --fast", "Set fast flag to reduce the amount of live processing for higher performance. Only has effect if live flag is also set")
 	parser:flag("-c --capture", "If set, all incoming packets are captured as a whole.")
@@ -127,7 +127,7 @@ function timestamp(queue, otherdev, bar, pre, args)
 end
 
 function core_online(queue, bufs, pre, hist, args)
-	local runtime = timer:new(args.runtime + 0.5)
+	local runtime = timer:new(args.time + 0.5)
 	local lastTimestamp
 
 	while lm.running() and runtime:running() do
@@ -156,7 +156,7 @@ function core_online(queue, bufs, pre, hist, args)
 end
 
 function core_offline(queue, bufs, writer, args)
-	local runtime = timer:new(args.runtime + 0.5)
+	local runtime = timer:new(args.time + 0.5)
 
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
@@ -174,7 +174,7 @@ function core_offline(queue, bufs, writer, args)
 end
 
 function core_capture(queue, bufs, writer, args)
-	local runtime = timer:new(args.runtime + 0.5)
+	local runtime = timer:new(args.time + 0.5)
 
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)

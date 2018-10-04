@@ -17,8 +17,8 @@ local band = bit.band
 function configure(parser)
         parser:description("Generate traffic which can be used by moonsniff to establish latencies induced by a device under test.")
         parser:argument("dev", "Devices to use."):args(2):convert(tonumber)
-	parser:option("-r --runtime", "Determines how long packets will be send in seconds."):args(1):convert(tonumber):default(10)
-	parser:option("-s --sendrate", "Approximate send rate in mbit/s. Due to IFG etc. rate on the wire may be higher."):args(1):convert(tonumber):default(1000)
+	parser:option("-t --time", "Determines how long packets will be send in seconds."):args(1):convert(tonumber):default(10)
+	parser:option("-r --rate", "Approximate send rate in mbit/s. Due to IFG etc. rate on the wire may be higher."):args(1):convert(tonumber):default(1000)
         return parser:parse()
 end
 
@@ -39,7 +39,7 @@ end
 function generateTraffic(queue, args)
         log:info("Trying to enable rx timestamping of all packets, this isn't supported by most nics")
         local pkt_id = 0
-        local runtime = timer:new(args.runtime)
+        local runtime = timer:new(args.time)
         local hist = hist:new()
         local mempool = memory.createMemPool(function(buf)
                 buf:getUdpPacket():fill{
@@ -50,9 +50,9 @@ function generateTraffic(queue, args)
         if lm.running() then
                 lm.sleepMillis(500)
         end
-        log:info("Trying to generate ~" .. args.sendrate .. " mbit/s")
-        queue:setRate(args.sendrate)
-        local runtime = timer:new(args.runtime)
+        log:info("Trying to generate ~" .. args.rate .. " mbit/s")
+        queue:setRate(args.rate)
+        local runtime = timer:new(args.time)
         while lm.running() and runtime:running() do
                 bufs:alloc(PKT_LEN)
 
