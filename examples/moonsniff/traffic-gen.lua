@@ -50,7 +50,7 @@ function generateTraffic(queue, args)
         if lm.running() then
                 lm.sleepMillis(500)
         end
-        log:info("Trying to generate ~" .. args.rate .. " mbit/s")
+        log:info("Trying to generate ~" .. args.rate .. " Mbit/s")
         queue:setRate(args.rate)
         local runtime = timer:new(args.time)
         while lm.running() and runtime:running() do
