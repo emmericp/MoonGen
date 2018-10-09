@@ -37,7 +37,7 @@ function master(args)
 			rxQueues = args.threads,
 			rssQueues = 0,
 			rssFunctions = {},
-			rxDescs = 4096,
+			--rxDescs = 4096,
 			dropEnable = true,
 			disableOffloads = true
 		}
@@ -57,8 +57,8 @@ function master(args)
 	if qdepth2 < 1 then
 		qdepth2 = math.floor((args.latency[2] * args.rate[2] * 1000)/672)
 	end
-	local ring1 = pipe:newPacketRing(qdepth1)
-	local ring2 = pipe:newPacketRing(qdepth2)
+	local ring1 = pipe:newPktsizedRing(qdepth1)
+	local ring2 = pipe:newPktsizedRing(qdepth2)
 
 	-- start the forwarding tasks
 	for i = 1, args.threads do
@@ -85,8 +85,12 @@ function receive(ring, rxQueue, rxDev)
 
 	local bufs = memory.createBufArray()
 	local count = 0
+	local count_hist = histogram:new()
+	local ringsize_hist = histogram:new()
+	local ringbytes_hist = histogram:new()
 	while mg.running() do
 		count = rxQueue:recv(bufs)
+		count_hist:update(count)
 		--print("receive thread count="..count)
 		for iix=1,count do
 			local buf = bufs[iix]
@@ -94,10 +98,15 @@ function receive(ring, rxQueue, rxDev)
 			buf.udata64 = ts
 		end
 		if count > 0 then
-			pipe:sendToPacketRing(ring.ring, bufs, count)
+			pipe:sendToPktsizedRing(ring.ring, bufs, count)
 			--print("ring count: ",pipe:countPacketRing(ring.ring))
+			ringsize_hist:update(pipe:countPktsizedRing(ring.ring))
 		end
 	end
+	count_hist:print()
+	count_hist:save("rxq-pkt-count-distribution-histogram-"..rxDev["id"]..".csv")
+	ringsize_hist:print()
+	ringsize_hist:save("rxq-ringsize-distribution-histogram-"..rxDev["id"]..".csv")
 end
 
 function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossrate, catchuprate)
@@ -123,8 +132,8 @@ function forward(ring, txQueue, txDev, rate, latency, xlatency, lossrate, clossr
 	while mg.running() do
 		-- receive one or more packets from the queue
 		--local count = rxQueue:recv(bufs)
-		--print("calling pipe:recvFromPacketRing(ring.ring, bufs)")
-		count = pipe:recvFromPacketRing(ring.ring, bufs, 1)
+		--print("calling pipe:recvFromPktsizedRing(ring.ring, bufs)")
+		count = pipe:recvFromPktsizedRing(ring.ring, bufs, 1)
 		--print("call returned.")
 		for iix=1,count do
 			local buf = bufs[iix]
