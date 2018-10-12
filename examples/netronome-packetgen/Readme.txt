@@ -322,7 +322,7 @@ The following example would write the stats to a file named example.txt:
 The following would generate example-c0-p0.txt example-c1-p1.txt, where each
 file has the stats for only one slave:
 
-  /path/to/MoonGen packetgen -tx 0 -rx 1 -fp example -wm 3
+  /path/to/MoonGen packetgen.lua -tx 0 -rx 1 -fp example -wm 3
 
 # RUNTIME CONTROL                                                             #
 # --------------------------------------------------------------------------- #

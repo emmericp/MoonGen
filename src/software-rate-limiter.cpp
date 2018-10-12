@@ -29,7 +29,7 @@ namespace rate_limiter {
 
 	struct limiter_control {
 		std::atomic<uint64_t> count = {0};
-		std::atomic<uint8_t> stop = {0};
+		std::atomic<uint64_t> stop = {0};
 
 		inline bool running() {
 			return libmoon::is_running(0) && !stop.load(std::memory_order_relaxed);
@@ -39,6 +39,7 @@ namespace rate_limiter {
 			count.fetch_add(n, std::memory_order_relaxed);
 		};
 	};
+	static_assert(sizeof(limiter_control) == 16, "struct size mismatch");
 	
 	/*
 	 * Arbitrary time software rate control main
