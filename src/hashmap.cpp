@@ -118,5 +118,8 @@ using namespace hash_map;
 
 // Values are the 64 bit timestamps
 MAP_VALUES(8)
-
+MAP_VALUES(16)
+MAP_VALUES(32)
+MAP_VALUES(64)
+MAP_VALUES(128)
 }

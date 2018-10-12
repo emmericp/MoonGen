@@ -24,7 +24,7 @@ uint32_t hmapk{key_size}v{value_size}_clean(hmapk{key_size}v{value_size}* map, u
 local module = {}
 
 local keySizes = { 8, 16, 32, 64 }
-local valueSizes = { 8 }
+local valueSizes = { 8, 16, 32, 64, 128 }
 
 -- Get tbb hash map with fitting key and value size
 function module.createHashmap(keySize, valueSize)
@@ -38,13 +38,21 @@ function module.createHashmap(keySize, valueSize)
     elseif keySize <= 64 then
         realKeySize = 64
     else
-        log:error("Keys of size %d are not supported", keySize)
+        log:error("HashMap: Keys of size %d are not supported", keySize)
         return nil
     end
     if valueSize <= 8 then
         realValueSize = 8
+    elseif valueSize <= 16 then
+        realValueSize = 16
+    elseif valueSize <= 32 then
+        realValueSize = 32
+    elseif valueSize <= 64 then
+        realValueSize = 64
+    elseif valueSize <= 128 then
+        realValueSize = 128
     else
-        log:error("Values of size %d are not supported", valueSize)
+        log:error("HashMap: Values of size %d are not supported", valueSize)
         return nil
     end
 

@@ -27,6 +27,7 @@ local band = bit.band
 local pktmatch = nil
 local scratchpad = nil
 local SCR_SIZE = 16 		-- size of the scratchpad in bytes, must always be multiple of 8 for hash to work
+				-- maximum: 64 (largest supported key size for hashmap)
 local mempool = nil
 local mempool2 = nil
 local next_mem = 0
@@ -139,10 +140,10 @@ end
 --- Initializes buffers
 function initHashMap()
 	-- we need the values everywhere, therefore, global
-	tbbmap = hmap.createHashmap(16, 8)
+	tbbmap = hmap.createHashmap(SCR_SIZE, 8)
 	tbbmap:clear()
 	acc = tbbmap.newAccessor()
-	local keyBuf = createBytes(16)
+	local keyBuf = createBytes(SCR_SIZE)
 
 	-- 8 byte timestamps
 	local tsBuf = createBytes(8)
@@ -176,10 +177,10 @@ function extractData(cap, keyBuf, tsBuf, pre)
 	-- zero fill scratchpad again
 	ffi.fill(scratchpad, SCR_SIZE)
 
-	-- TODO: think again what purpose filled should have ...
+	-- as the scratchpad has been zerofilled, filled can safely be ignored
 	local filled = pktmatch(cap, scratchpad, SCR_SIZE, pre)
 
-	ffi.copy(keyBuf, scratchpad, 16)
+	ffi.copy(keyBuf, scratchpad, SCR_SIZE)
 
 	tsBuf[0] = getTs(cap)
 end
@@ -349,7 +350,7 @@ function writePCAPasText(infile, outfile, range)
         local reader = pcap:newReader(infile)
         cap = readSingle(reader)
 
-	local keyBuf = createBytes(16)
+	local keyBuf = createBytes(SCR_SIZE)
 
         -- 8 byte timestamps
         local tsBuf = createBytes(8)
