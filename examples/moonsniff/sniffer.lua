@@ -15,6 +15,9 @@ local ms	= require "moonsniff-io"
 local ffi    = require "ffi"
 local C = ffi.C
 
+local MS_THRESH = -50  -- Live mode only! All latencies below this value [ns] will print a warning
+                       -- Those values will not be included in the latency estimation
+
 local MS_TYPE = 0b01010101
 
 function configure(parser)
@@ -87,6 +90,7 @@ function timestamp(queue, otherdev, bar, pre, args)
 --	bar:wait()
 
 	if args.live then
+		C.ms_set_thresh(MS_THRESH)
 		local hist = not args.fast and hist:new()
 		core_online(queue, bufs, pre, hist, args)
 

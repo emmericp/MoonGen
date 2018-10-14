@@ -2,34 +2,30 @@
 
 local mod = {}
 
-local hist      = require "histogram"
-local log       = require "log"
-local ms	= require "moonsniff-io"
-local bit	= require "bit"
+local hist 	= require "histogram"
+local log 	= require "log"
+local ms 	= require "moonsniff-io"
+local bit 	= require "bit"
+local mem 	= require "memory"
 
-local ffi    = require "ffi"
+local ffi 	= require "ffi"
 local C = ffi.C
 local band = bit.band
 
--- default values when no cli options are specified
-local INPUT_PATH = "latencies.csv"
+-- default values
 local INDEX_BITMASK = 0x0FFFFFFF
-local TIME_THRESH = -50 	-- negative timevalues smaller than this value are not allowed
+local TIME_THRESH = -50 -- negative timevalues smaller than this value are not allowed
 
 -- pointers and ctypes
 local INT64_T = ffi.typeof("int64_t")
 local UINT64_T = ffi.typeof("uint64_t")
 local UINT64_P = ffi.typeof("uint64_t *")
 
-ffi.cdef[[
-	void* malloc(size_t);
-	void free(void*);
-
+ffi.cdef [[
 	struct entry {
 		uint64_t timestamp;	// the full timestamp
-		uint64_t identifier;	// may seem like memory waste as identifier is only 32 bit
-					// but struct is 8 byte aligned by compiler anyway
-	};
+		uint32_t identifier;
+	} __attribute__((__packed__));
 ]]
 
 local ENTRY_T = ffi.typeof("struct entry")
@@ -44,11 +40,11 @@ local ENTRY_P = ffi.typeof("struct entry *")
 -- @param args, arguments. See post-processing.lua for a list of supported arguments
 function mod.match(PRE, POST, args)
 	if args.debug then
-                log:info("Debug mode MSCAP")
-                writeMSCAPasText(PRE, "pre-ts.csv", 1000)
-                writeMSCAPasText(POST, "post-ts.csv", 1000)
-                return
-        end
+		log:info("Debug mode MSCAP")
+		writeMSCAPasText(PRE, "pre-ts.csv", 1000)
+		writeMSCAPasText(POST, "post-ts.csv", 1000)
+		return
+	end
 
 	log:info("Using array matching")
 
@@ -71,8 +67,8 @@ function mod.match(PRE, POST, args)
 	-- debug and information values
 	local overwrites = 0
 	local misses = 0
-	local pre_count = 0
-	local post_count = 0
+	local pre_pkts = 0	-- number of packets received on pre port
+	local post_pkts = 0	-- number of packets received on post port
 
 	log:info("Prefilling Map")
 
@@ -80,15 +76,15 @@ function mod.match(PRE, POST, args)
 		log:err("Detected either no pre or post timestamps. Aborting ..")
 	end
 
-	pre_count, overwrites = initialFill(precap, prereader, map)
+	pre_pkts, overwrites = initialFill(precap, prereader, map)
 
 	-- map is successfully prefilled
 	log:info("Map is now hot")
 
 	-- begin actual matching
 	while precap and postcap do
-		pre_count = pre_count + 1
-		post_count = post_count + 1
+		pre_pkts = pre_pkts + 1
+		post_pkts = post_pkts + 1
 
 		local ident = band(getId(precap), INDEX_BITMASK)
 
@@ -107,7 +103,7 @@ function mod.match(PRE, POST, args)
 	-- all pre-DuT values are already included in the map
 	-- process leftover post-DuT values
 	while postcap do
-		post_count = post_count + 1
+		post_pkts = post_pkts + 1
 
 		postcap, misses = computeLatency(postcap, postreader, map, misses)
 	end
@@ -122,13 +118,13 @@ function mod.match(PRE, POST, args)
 	C.hs_finalize()
 
 	-- print final statistics
-	printStats(pre_count, post_count, overwrites, misses)
+	printStats(pre_pkts, post_pkts, overwrites, misses)
 
 	log:info("Finished processing. Writing histogram ...")
 	C.hs_write(args.output .. ".csv")
 	C.hs_destroy()
 
-	return pre_count + post_count
+	return pre_pkts + post_pkts
 end
 
 --- Zero initialize the array on which the mapping will be performed
@@ -147,28 +143,28 @@ end
 -- @param prereader, the reader for all subsequent mscaps
 -- @param map, pointer to the array on which the matching is performed
 function initialFill(precap, prereader, map)
-        pre_ident = band(getId(precap), INDEX_BITMASK)
-        initial_id = pre_ident
+	local pre_ident = band(getId(precap), INDEX_BITMASK)
+	local initial_id = pre_ident
 
 	local overwrites = 0
 
-        local pre_count = 0
+	local pre_pkts = 0
 
-        log:info("end : " .. INDEX_BITMASK - 100)
+	log:info("end : " .. INDEX_BITMASK - 100)
 
-        while precap and pre_ident >= initial_id and pre_ident < INDEX_BITMASK - 100 do
-                pre_count = pre_count + 1
+	while precap and pre_ident >= initial_id and pre_ident < INDEX_BITMASK - 100 do
+		pre_pkts = pre_pkts + 1
 
-                if map[pre_ident].timestamp ~= 0 then overwrites = overwrites + 1 end
-                map[pre_ident].timestamp = getTs(precap)
+		if map[pre_ident].timestamp ~= 0 then overwrites = overwrites + 1 end
+		map[pre_ident].timestamp = getTs(precap)
 		map[pre_ident].identifier = getId(precap)
 
-                precap = readSingle(prereader)
-                if precap then
-                        pre_ident = band(getId(precap), INDEX_BITMASK)
-                end
-        end
-	return pre_count, overwrites
+		precap = readSingle(prereader)
+		if precap then
+			pre_ident = band(getId(precap), INDEX_BITMASK)
+		end
+	end
+	return pre_pkts, overwrites
 end
 
 --- Function to process a single entry of the post .mscap file
@@ -191,10 +187,10 @@ function computeLatency(postcap, postreader, map, misses)
 		local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
 
 		if ts ~= 0 and diff < TIME_THRESH then
-			log:warn("Got negative timestamp")
+			log:warn("Got latency smaller than defined thresh value")
 			log:warn("Identification " .. ident)
 			log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
-			log:warn("Difference: " .. tostring(diff))
+			log:warn("Difference: " .. tostring(diff) .. ", thresh: " .. tostring(TIME_THRESH))
 		else
 			if ts ~= 0 then
 				C.hs_update(diff)
@@ -214,17 +210,17 @@ end
 
 
 --- Prints the statistics at the end of the program
-function printStats(pre_count, post_count, overwrites, misses)
+function printStats(pre_pkts, post_pkts, overwrites, misses)
 	print()
-	log:info("# pkts pre: " .. pre_count .. ", # pkts post " .. post_count)
-	log:info("Packet loss: " .. (1 - (post_count/pre_count)) * 100 .. " %%")
+	log:info("# pkts pre: " .. pre_pkts .. ", # pkts post " .. post_pkts)
+	log:info("Packet loss: " .. (1 - (post_pkts / pre_pkts)) * 100 .. " %%")
 	log:info("")
 	log:info("# of identifications possible: " .. INDEX_BITMASK)
-	log:info("Overwrites: " .. overwrites .. " from " .. pre_count)
-	log:info("\tPercentage: " .. (overwrites/pre_count) * 100 .. " %%")
+	log:info("Overwrites: " .. overwrites .. " from " .. pre_pkts)
+	log:info("\tPercentage: " .. (overwrites / pre_pkts) * 100 .. " %%")
 	log:info("")
-	log:info("Misses: " .. misses .. " from " .. post_count)
-	log:info("\tPercentage: " .. (misses/post_count) * 100 .. " %%")
+	log:info("Misses: " .. misses .. " from " .. post_pkts)
+	log:info("\tPercentage: " .. (misses / post_pkts) * 100 .. " %%")
 	log:info("")
 	log:info("Mean: " .. C.hs_getMean() .. " [ns], Variance: " .. C.hs_getVariance() .. " [ns]\n")
 end
@@ -240,9 +236,9 @@ end
 -- @param range, print up to range entries if there are enough entries
 function writeMSCAPasText(infile, outfile, range)
 	local reader = ms:newReader(infile)
-	mscap = reader:readSingle()
+	local mscap = reader:readSingle()
 
-	textf = io.open(outfile, "w")
+	local textf = io.open(outfile, "w")
 
 	for i = 0, range do
 		local ident = band(mscap.identification, INDEX_BITMASK)

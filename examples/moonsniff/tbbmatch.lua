@@ -2,14 +2,14 @@
 
 local mod = {}
 
-local memory    = require "memory"
-local ts        = require "timestamping"
-local hist      = require "histogram"
-local log       = require "log"
-local ms	= require "moonsniff-io"
-local dpdk	= require "dpdk"
-local pcap	= require "pcap"
-local hmap	= require "hmap"
+local memory = require "memory"
+local ts     = require "timestamping"
+local hist   = require "histogram"
+local log    = require "log"
+local ms     = require "moonsniff-io"
+local dpdk   = require "dpdk"
+local pcap   = require "pcap"
+local hmap   = require "hmap"
 
 local ffi    = require "ffi"
 local C = ffi.C
@@ -26,23 +26,21 @@ local band = bit.band
 
 local pktmatch = nil
 local scratchpad = nil
-local SCR_SIZE = 16 		-- size of the scratchpad in bytes, must always be multiple of 8 for hash to work
-				-- maximum: 64 (largest supported key size for hashmap)
-local mempool = nil
-local mempool2 = nil
-local next_mem = 0
+local SCR_SIZE = 16 -- size of the scratchpad in bytes, must always be multiple of 8 for hash to work
+                    -- maximum: 64 (largest supported key size for hashmap)
+
+local TIME_THRESH = -50 -- negative timevalues smaller than this value are not allowed
+
+local mempool0 = nil
+local mempool1 = nil
+local next_mempool = 0 -- used to switch between mempool 0 and mempool 1
 
 local TABLE_TARGET_SIZE = 10000 -- approximate size for the used table
-local TABLE_THRESH_SIZE = 1000 	-- if table size exceeds target size + thresh size the table will be searched for
-				-- leftover entries which can be deleted
-				-- this value is dynamically increased during runtime
-local DELETION_THRESH = 1e9	-- delete entries only if their timestamp is this value of nanoseconds older
-				-- than the latest entry which was successfully matched
-
-ffi.cdef[[
-	void* malloc(size_t);
-	void free(void*);
-]]
+local TABLE_THRESH_SIZE = 1000 -- if table size exceeds target size + thresh size the table will be searched for
+                               -- leftover entries which can be deleted
+-- this value is dynamically increased during runtime
+local DELETION_THRESH = 1e9 -- delete entries only if their timestamp is this value of nanoseconds older
+                            -- than the latest entry which was successfully matched
 
 
 --- Main matching function
@@ -71,14 +69,14 @@ end
 --- Determine the absolute path of this script
 --- Needed because relative paths do not work, depending on the working directory
 function script_path()
-   local str = debug.getinfo(2, "S").source:sub(2)
-   return str:match("(.*/)")
+	local str = debug.getinfo(2, "S").source:sub(2)
+	return str:match("(.*/)")
 end
 
 --- Setup by loading user defined function and initializing the scratchpad
 function setUp()
 	-- fetch user defined function
-	loaded_chunk = assert(loadfile(script_path() .. "pkt-matcher.lua"))
+	local loaded_chunk = assert(loadfile(script_path() .. "pkt-matcher.lua"))
 	pktmatch = loaded_chunk()
 
 	-- initialize scratchpad
@@ -86,8 +84,8 @@ function setUp()
 	scratchpad = ffi.cast(UINT8_P, scratchpad)
 
 	-- setup the mempool
-	mempool = memory.createMemPool()
-	mempool2 = memory.createMemPool()
+	mempool0 = memory.createMemPool()
+	mempool1 = memory.createMemPool()
 end
 
 function tearDown()
@@ -104,12 +102,12 @@ end
 --
 -- @param reader, the pcap reader
 function readSingle(reader)
-	if next_mem == 0 then
-		next_mem = 1
-		return reader:readSingle(mempool)
+	if next_mempool == 0 then
+		next_mempool = 1
+		return reader:readSingle(mempool0)
 	else
-		next_mem = 0
-		return reader:readSingle(mempool2)
+		next_mempool = 0
+		return reader:readSingle(mempool1)
 	end
 	return reader:readSingle()
 end
@@ -132,7 +130,7 @@ function getTs(cap)
 	local timestamp = ffi.cast("uint32_t*", ffi.cast("uint8_t*", cap:getData()) + cap:getSize() - 8)
 	local low = timestamp[0]
 	local high = timestamp[1]
-	return high * 10^9 + low
+	return high * 10 ^ 9 + low
 end
 
 
@@ -156,7 +154,7 @@ end
 -- @param length, length of the array in bytes
 function createBytes(length)
 	local bytes = C.malloc(ffi.sizeof(UINT8_T) * length)
-        bytes = ffi.cast(UINT8_P, bytes)
+	bytes = ffi.cast(UINT8_P, bytes)
 
 	ffi.fill(bytes, length)
 	return bytes
@@ -222,8 +220,15 @@ function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit, tableSize)
 
 		pre_ts = ffi.cast(UINT64_P, pre_ts)
 
-		local diff = post_ts[0] - pre_ts[0]
-		C.hs_update(diff)
+		local diff = ffi.cast(INT64_T, post_ts[0] - pre_ts[0])
+
+		if diff < TIME_THRESH then
+			log:warn("Got latency smaller than defined thresh value")
+			log:warn("Pre: " .. tostring(pre_ts[0]) .. "; post: " .. tostring(post_ts[0]))
+			log:warn("Difference: " .. tostring(diff) .. ", thresh: " .. tostring(TIME_THRESH))
+		else
+			C.hs_update(diff)
+		end
 
 		-- delete associated data
 		tbbmap:erase(acc)
@@ -264,9 +269,9 @@ function tbbCore(args, PRE, POST)
 	while precap and ctr > 0 do
 		addKeyVal(precap, keyBuf, tsBuf)
 		tableSize = tableSize + 1
---		log:info("added key")
+		-- log:info("added key")
 		sfree(precap)
---		log:info("freeing")
+		-- log:info("freeing")
 		precap = readSingle(prereader)
 		ctr = ctr - 1
 		packets = packets + 1
@@ -346,34 +351,34 @@ end
 -- @param outfile, name of the csv file to write to
 -- @param range, writes up to range entries (provided there are enough entries)
 function writePCAPasText(infile, outfile, range)
-        setUp()
-        local reader = pcap:newReader(infile)
-        cap = readSingle(reader)
+	setUp()
+	local reader = pcap:newReader(infile)
+	local cap = readSingle(reader)
 
 	local keyBuf = createBytes(SCR_SIZE)
 
-        -- 8 byte timestamps
-        local tsBuf = createBytes(8)
-        tsBuf = ffi.cast(ffi.typeof("uint64_t *"), tsBuf)
+	-- 8 byte timestamps
+	local tsBuf = createBytes(8)
+	tsBuf = ffi.cast(ffi.typeof("uint64_t *"), tsBuf)
 
 
-        textf = io.open(outfile, "w")
+	local textf = io.open(outfile, "w")
 
-        for i = 0, range do
-                pkt = cap:getUdpPacket()
+	for i = 0, range do
+		local pkt = cap:getUdpPacket()
 		extractData(cap, keyBuf, tsBuf)
 
-                textf:write(tostring(pkt.payload.uint32[0]) .. ", " .. tostring(tsBuf[0]), "\n")
-                sfree(cap)
-                cap = readSingle(reader)
+		textf:write(tostring(pkt.payload.uint32[0]) .. ", " .. tostring(tsBuf[0]), "\n")
+		sfree(cap)
+		cap = readSingle(reader)
 
-                if cap == nil then break end
-        end
+		if cap == nil then break end
+	end
 
-        reader:close()
-        io.close(textf)
+	reader:close()
+	io.close(textf)
 
-        tearDown()
+	tearDown()
 end
 
 return mod
