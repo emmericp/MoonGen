@@ -2,7 +2,7 @@
 
 ## What is MoonSniff for?
 
-MoonSniff consists of several scripts and also extensions to the MoonGen core which allow measuring latencies of packets with an accuracy (trueness) of &#177;20 ns. This is possible with just commodity hardware. The test-setup we describe later on also makes sure that measurements have no impact on the system behavior in terms of jitter or additional latencies.
+MoonSniff consists of several scripts and also extensions to the MoonGen core which allow measuring latencies of packets with an accuracy (trueness) of ±20 ns. This is possible with just commodity hardware. The test-setup we describe later on also makes sure that measurements have no impact on the system behavior in terms of jitter or additional latencies.
 
 Basically, it can be seen as a cheaper alternative to buying professional DAQ packet capture cards.
 
@@ -94,7 +94,9 @@ MoonSniff runs in three different modes.
 
 3. PCAP Mode
 
-   This mode also creates full histograms. Contrary to the MSCAP mode, it does not require identifiers within packets. Packets are captured as a whole, and the user can provide a function (UDF) which creates an identifier based on selected parts of the packet. Apart from this distinction, it operates the same way as the MSCAP mode. To change the UDF, have a look at the [pkt-matcher.lua](pkt-matcher.lua) file. The UDF can handle pre and post packets differently, hence, you can (with corresponding effort) implement all deterministic changes to packets. E.g. a router changes IP-addresses, but if you know your routing table you can reverse this process and generate the same identifier.
+   This mode also creates full histograms. Contrary to the MSCAP mode, it does not require identifiers within packets. Packets are captured as a whole, and the user can provide a user defined function (UDF) which creates an identifier based on selected parts of the packet. The UDF is a Lua script which can make use of all features of MoonGen/libmoon, especially the packet API. The UDF can handle pre and post packets differently, hence, you can (with corresponding effort) compensate all deterministic changes made by the DUT to packets. E.g. a router changes IP-addresses, but if you know your routing table you can reverse this process and generate the same identifier. To change the UDF and to see a simple example, have a look at the [pkt-matcher.lua](pkt-matcher.lua) file.
+
+   Apart from this distinction, this mode operates the same way as the MSCAP mode.
    
    **Important:** As whole packets are captured the resulting files are very large. An SSD is recommended for high data-rates.  
 

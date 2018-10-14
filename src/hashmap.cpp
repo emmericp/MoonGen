@@ -15,51 +15,51 @@
 #include <deque>
 
 namespace hash_map {
-    /* Secret hash cookie */
-    constexpr uint32_t secret = 0xF00BA;
-    constexpr uint64_t sip_secret[2] = {1, 2}; // 128 bit secret
+	/* Secret hash cookie */
+	constexpr uint32_t secret = 0xF00BA;
+	constexpr uint64_t sip_secret[2] = {1, 2}; // 128 bit secret
 
-    template<typename K, typename std::enable_if<std::is_pod<K>::value>::type * = nullptr>
-    struct var_crc_hash {
-        var_crc_hash() = default;
+	template<typename K, typename std::enable_if<std::is_pod<K>::value>::type * = nullptr>
+	struct var_sip_hash {
+		var_sip_hash() = default;
 
-        var_crc_hash(const var_crc_hash &h) = default;
+		var_sip_hash(const var_sip_hash &h) = default;
 
-        inline bool equal(const K &j, const K &k) const noexcept {
-            return j == k;
-        }
+		inline bool equal(const K &j, const K &k) const noexcept {
+			return j == k;
+		}
 
-        // Safety check
-        static_assert(sizeof(K) == K::size, "sizeof(K) != K::size");
+		// Safety check
+		static_assert(sizeof(K) == K::size, "sizeof(K) != K::size");
 
-        /* Hash function to be used by TBB */
-        inline size_t hash(const K &k) const noexcept {
-            return SipHashC(sip_secret, reinterpret_cast<const char *>(k.data + 0), k.size);
-        }
+		/* Hash function to be used by TBB */
+		inline size_t hash(const K &k) const noexcept {
+			return SipHashC(sip_secret, reinterpret_cast<const char *>(k.data + 0), k.size);
+		}
 
-    };
+	};
 
-    template<size_t key_size>
-    struct key_buf {
-        static constexpr size_t size = key_size;
-        uint8_t data[key_size];
-    } __attribute__((__packed__));
+	template<size_t key_size>
+	struct key_buf {
+		static constexpr size_t size = key_size;
+		uint8_t data[key_size];
+	} __attribute__((__packed__));
 
-    template<size_t key_size>
-    inline bool operator==(const key_buf<key_size> &lhs, const key_buf<key_size> &rhs) noexcept {
-        return std::memcmp(lhs.data, rhs.data, key_size) == 0;
-    }
+	template<size_t key_size>
+	inline bool operator==(const key_buf<key_size> &lhs, const key_buf<key_size> &rhs) noexcept {
+		return std::memcmp(lhs.data, rhs.data, key_size) == 0;
+	}
 
-    template<size_t key_size> using K = key_buf<key_size>;
-    template<size_t value_size> using V = std::array<std::uint8_t, value_size>;
+	template<size_t key_size> using K = key_buf<key_size>;
+	template<size_t value_size> using V = std::array<std::uint8_t, value_size>;
 }
 
 extern "C" {
 using namespace hash_map;
 
 #define MAP_IMPL(key_size, value_size) \
-    template class tbb::concurrent_hash_map<K<key_size>, V<value_size>, var_crc_hash<K<key_size>>>; \
-    using hmapk##key_size##v##value_size = tbb::concurrent_hash_map<K<key_size>, V<value_size>, var_crc_hash<K<key_size>>>; \
+    template class tbb::concurrent_hash_map<K<key_size>, V<value_size>, var_sip_hash<K<key_size>>>; \
+    using hmapk##key_size##v##value_size = tbb::concurrent_hash_map<K<key_size>, V<value_size>, var_sip_hash<K<key_size>>>; \
     hmapk##key_size##v##value_size* hmapk##key_size##v##value_size##_create() { \
         return new hmapk##key_size##v##value_size; \
     } \
@@ -93,7 +93,7 @@ using namespace hash_map;
         return map->find(*a, *static_cast<const K<key_size>*>(key)); \
     } \
     uint32_t hmapk##key_size##v##value_size##_clean(hmapk##key_size##v##value_size* map, uint64_t thresh) { \
-	int ctr = 0; \
+    int ctr = 0; \
         std::deque<hash_map::key_buf<key_size>> deque; \
         for (hmapk##key_size##v##value_size::iterator it = map->begin(); it != map->end();) { \
             uint64_t ts = *reinterpret_cast<uint64_t *>( &(*it).second); \
@@ -103,11 +103,11 @@ using namespace hash_map;
             it++; \
             for(auto it = deque.begin(); it != deque.end(); it++) { \
                 map->erase(*it); \
-		++ctr; \
+        ++ctr; \
             } \
         } \
         deque.clear(); \
-	return ctr; \
+    return ctr; \
     }
 
 #define MAP_VALUES(value_size) \
