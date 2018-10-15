@@ -24,9 +24,8 @@ local UINT64_P = ffi.typeof("uint64_t *")
 ffi.cdef [[
 	struct entry {
 		uint64_t timestamp;	// the full timestamp
-		uint64_t identifier;	// may seem like memory waste as identifier is only 32 bit
-					// but struct is 8 byte aligned by compiler anyway
-	};
+		uint32_t identifier;
+	}__attribute__((__packed__)) ;
 ]]
 
 local ENTRY_T = ffi.typeof("struct entry")
