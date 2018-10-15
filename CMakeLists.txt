@@ -17,6 +17,8 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/dpdk/x86_64-native-linuxapp-gcc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/luajit/src
+	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/highwayhash/highwayhash
+	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/tbb/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/src
 )
@@ -26,6 +28,9 @@ set(files
 	src/software-timestamping
 	src/crc-rate-limiter
 	src/software-rate-limiter
+	src/moonsniff
+	src/histogram
+	src/hashmap
 )
 
 set(libraries
@@ -37,6 +42,7 @@ link_directories(
 	${CMAKE_CURRENT_BINARY_DIR}/libmoon
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/dpdk/x86_64-native-linuxapp-gcc/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/luajit/usr/local/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/highwayhash/lib
 )
 
 add_executable(MoonGen ${files})
