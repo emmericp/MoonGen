@@ -191,7 +191,7 @@ function computeLatency(postcap, postreader, map, misses)
 			log:warn("Got latency smaller than defined thresh value")
 			log:warn("Identification " .. ident)
 			log:warn("Pre: " .. tostring(ts) .. "; post: " .. tostring(getTs(postcap)))
-			log:warn("Difference: " .. tostring(diff))
+			log:warn("Difference: " .. tostring(diff) .. ", thresh: " .. tostring(TIME_THRESH))
 		else
 			if ts ~= 0 then
 				C.hs_update(diff)

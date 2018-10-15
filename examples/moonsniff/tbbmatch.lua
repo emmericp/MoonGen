@@ -42,11 +42,6 @@ local TABLE_THRESH_SIZE = 1000 -- if table size exceeds target size + thresh siz
 local DELETION_THRESH = 1e9 -- delete entries only if their timestamp is this value of nanoseconds older
                             -- than the latest entry which was successfully matched
 
-ffi.cdef [[
-	void* malloc(size_t);
-	void free(void*);
-]]
-
 
 --- Main matching function
 --- Matches timestamps and identifications from pcap files
@@ -225,12 +220,12 @@ function getKeyVal(cap, misses, keyBuf, tsBuf, lastHit, tableSize)
 
 		pre_ts = ffi.cast(UINT64_P, pre_ts)
 
-		local diff = post_ts[0] - pre_ts[0]
+		local diff = ffi.cast(INT64_T, post_ts[0] - pre_ts[0])
 
 		if diff < TIME_THRESH then
 			log:warn("Got latency smaller than defined thresh value")
 			log:warn("Pre: " .. tostring(pre_ts[0]) .. "; post: " .. tostring(post_ts[0]))
-			log:warn("Difference: " .. tostring(diff))
+			log:warn("Difference: " .. tostring(diff) .. ", thresh: " .. tostring(TIME_THRESH))
 		else
 			C.hs_update(diff)
 		end
