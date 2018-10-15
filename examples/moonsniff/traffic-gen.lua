@@ -12,7 +12,7 @@ local stats  = require "stats"
 local bit    = require "bit"
 
 local PKT_LEN = 100 -- in byte
-local MS_TYPE = 0 b01010101
+local MS_TYPE = 0b01010101
 local band = bit.band
 
 function configure(parser)
