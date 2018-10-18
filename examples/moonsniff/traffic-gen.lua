@@ -35,6 +35,8 @@ function master(args)
 	local sender0 = lm.startTask("generateTraffic", dev0tx, args)
 
 	sender0:wait()
+	lm.stop()
+	lm.waitForTasks()
 end
 
 function generateTraffic(queue, args)

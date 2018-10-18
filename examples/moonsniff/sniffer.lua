@@ -37,8 +37,8 @@ function master(args)
 		-- used mainly to test functionality of io
 		iodebug(args)
 	else
-		args.dev[1] = device.config{port = args.dev[1], txQueues = 2, rxQueues = 2}
-		args.dev[2] = device.config{port = args.dev[2], txQueues = 2, rxQueues = 2}
+		args.dev[1] = device.config{port = args.dev[1], txQueues = 1, rxQueues = 1, rxDescs = 4096, dropEnable = false}
+		args.dev[2] = device.config{port = args.dev[2], txQueues = 1, rxQueues = 1, rxDescs = 4096, dropEnable = false}
 		device.waitForLinks()
 		local dev0tx = args.dev[1]:getTxQueue(0)
 		local dev0rx = args.dev[1]:getRxQueue(0)
@@ -160,8 +160,7 @@ function core_online(queue, bufs, pre, hist, args)
 end
 
 function core_offline(queue, bufs, writer, args)
-	local runtime = timer:new(args.time + 0.5)
-
+	local runtime = timer:new(args.time)
 	while lm.running() and runtime:running() do
 		local rx = queue:tryRecv(bufs, 1000)
 		for i = 1, rx do
