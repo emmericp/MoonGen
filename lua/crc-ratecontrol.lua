@@ -3,6 +3,7 @@ local pkt    = require "packet"
 local memory = require "memory"
 local ffi    = require "ffi"
 local log    = require "log"
+local limiter = require "software-ratecontrol"
 
 local txQueue = device.__txQueuePrototype
 local device = device.__devicePrototype
@@ -10,6 +11,7 @@ local C = ffi.C
 
 ffi.cdef[[
 	void moongen_send_all_packets_with_delay_bad_crc(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool, uint32_t min_pkt_size);
+	void moongen_send_all_packets_with_delay_bad_crc_loss(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** load_pkts, uint16_t num_pkts, struct mempool* pool, uint32_t min_pkt_size, double loss_rate);
 ]]
 
 local mempool
@@ -46,6 +48,53 @@ function txQueue:sendWithDelay(bufs, targetRate, n)
 	C.moongen_send_all_packets_with_delay_bad_crc(self.id, self.qid, bufs.array, n, mempool, minPktSize)
 	return bufs.size
 end
+
+--- Send rate-controlled packets by filling gaps with invalid packets.
+-- @param bufs
+-- @param targetRate optional, hint to the driver which total rate you are trying to achieve.
+--   increases precision at low non-cbr rates
+-- @param lossRate bernoulli probability of dropping any particular frame
+-- @param n optional, number of packets to send (defaults to full bufs)
+function txQueue:sendWithDelayLoss(bufs, targetRate, lossRate, n)
+	if not self.dev.crcPatch then
+		log:fatal("Driver does not support disabling the CRC flag. This feature requires a patched driver.")
+	end
+	targetRate = targetRate or 14.88
+	self.used = true
+	mempool = mempool or memory.createMemPool{
+		func = function(buf)
+			-- this is tcp packet because the netfpga/OSNT system we use for testing this
+			-- cannot handle all-zero packets properly (filters get confused)
+			-- the actual contents of the packets don't matter since their CRC is invalid anways
+			local pkt = buf:getTcpPacket()
+			pkt:fill()
+		end
+	}
+	n = n or bufs.size
+	local avgPacketSize = 1.25 / (targetRate * 2) * 1000
+	local minPktSize = self.dev.minPacketSize or 64
+	local maxPktRate = self.dev.maxPacketRate or 14.88
+	-- allow smaller packets at low rates
+	if targetRate < maxPktRate / 2 then
+		minPktSize = minPktSize + 20
+	else
+		minPktSize = math.floor(10 * 10^9 / 10^6 / 8 / maxPktRate)
+	end
+	-- print("send with loss rate "..lossRate)
+	local tsc_hz_us = 2666
+	local presend_time = limiter:get_tsc_cycles()
+	--for ii=1,n do
+	--	local buf = bufs[ii]
+	--	--print("sendWithDelayLoss() ",ii,buf, buf.udata64, buf.pkt_len)
+	--end
+	C.moongen_send_all_packets_with_delay_bad_crc_loss(self.id, self.qid, bufs.array, n, mempool, minPktSize, lossRate)
+	local postsend_time = limiter:get_tsc_cycles()
+	--if (postsend_time - presend_time) > 1000*tsc_hz_us then
+	--	print("abnormal time spent mgsending: ",postsend_time, presend_time, (postsend_time-presend_time), (postsend_time-presend_time)/tsc_hz_us)
+	--end
+	return bufs.size
+end
+
 
 --- Set the time to wait before the packet is sent for software rate-controlled send methods.
 --- @param delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)
