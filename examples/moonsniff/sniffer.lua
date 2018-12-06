@@ -25,6 +25,7 @@ function configure(parser)
 	parser:argument("dev", "devices to use."):args(2):convert(tonumber)
 	parser:option("-o --output", "Path to output file."):args(1):default("latencies")
 	parser:option("-t --time", "Sets the length of the measurement period in seconds."):args(1):convert(tonumber):default(10)
+	parser:option("--seq-offset", "Offset of the sequence number in bytes."):args(1):convert(tonumber)
 	parser:flag("-l --live", "Do some live processing during packet capture. Lower performance than standard mode.")
 	parser:flag("-f --fast", "Set fast flag to reduce the amount of live processing for higher performance. Only has effect if live flag is also set")
 	parser:flag("-c --capture", "If set, all incoming packets are captured as a whole.")
@@ -117,16 +118,19 @@ function timestamp(queue, otherdev, bar, pre, args)
 		writer:close()
 
 	else
-		local writer
+		local filename
 		if pre then
-			writer = ms:newWriter(args.output .. "-pre.mscap")
+			filename = args.output .. "-pre.mscap"
 		else
-			writer = ms:newWriter(args.output .. "-post.mscap")
+			filename = args.output .. "-post.mscap"
 		end
 
-		bar:wait()
-		core_offline(queue, bufs, writer, args)
-		writer:close()
+		if not args.seq_offset then
+			log:error("Specify offset of sequence number with --seq-offset.")
+		else
+			bar:wait()
+			core_offline(queue, bufs, filename, args)
+		end
 	end
 end
 
@@ -159,21 +163,8 @@ function core_online(queue, bufs, pre, hist, args)
 
 end
 
-function core_offline(queue, bufs, writer, args)
-	local runtime = timer:new(args.time)
-	while lm.running() and runtime:running() do
-		local rx = queue:tryRecv(bufs, 1000)
-		for i = 1, rx do
-			local timestamp = bufs[i]:getTimestamp(queue.dev)
-			if timestamp then
-				local pkt = bufs[i]:getUdpPacket()
-				if pkt.payload.uint8[4] == MS_TYPE then
-					writer:write(pkt.payload.uint32[0], timestamp)
-				end
-			end
-		end
-		bufs:free(rx)
-	end
+function core_offline(queue, bufs, filename, args)
+	C.ms_log_pkts(queue.id, queue.qid, bufs.array, bufs.size, args.seq_offset, filename)
 end
 
 function core_capture(queue, bufs, writer, args)
