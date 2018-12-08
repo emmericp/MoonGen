@@ -2,6 +2,11 @@
 #include <string>
 #include <iostream>
 #include <mutex>
+#include <fstream>
+
+#include <rte_ethdev.h>
+#include <rte_mbuf.h>
+#include "lifecycle.hpp"
 
 #define UINT24_MAX 16777215
 #define INDEX_MASK (uint32_t) 0x00FFFFFF
@@ -106,6 +111,37 @@ namespace moonsniff {
 		stats.variance_latency = variance;
 		return stats;
 	}
+
+	/**
+	 * Log packets.
+	 */
+	void ms_log_pkts(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts, uint32_t seqnum_offset, const char* filename) {
+		std::ofstream out (filename, std::ofstream::binary | std::ofstream::app);
+
+		while (libmoon::is_running(0)) {
+			uint16_t rx = rte_eth_rx_burst(port_id, queue_id, rx_pkts, nb_pkts);
+
+			for (int i = 0; i < rx; i++) {
+				if ((rx_pkts[i]->ol_flags | PKT_RX_IEEE1588_TMST) != 0) {
+					uint32_t* timestamp32 = (uint32_t*)((uint8_t*)rx_pkts[i]->buf_addr + rx_pkts[i]->data_off + rx_pkts[i]->pkt_len - 8);
+					uint32_t low = timestamp32[0];
+					uint32_t high = timestamp32[1];
+					uint64_t timestamp = high * 1000000000 + low;
+
+					if (seqnum_offset < rx_pkts[i]->pkt_len) {
+						uint32_t identifier = *(uint32_t*)((uint8_t*)rx_pkts[i]->buf_addr + rx_pkts[i]->data_off + seqnum_offset);
+
+						out.write((char*)&timestamp, sizeof(timestamp));
+						out.write((char*)&identifier, sizeof(identifier));
+					} else {
+						std::cerr << "Offset of sequence number greater than packet size\n";
+					}
+				}
+
+				rte_pktmbuf_free(rx_pkts[i]);
+			}
+		}
+	}
 }
 
 extern "C" {
@@ -124,5 +160,9 @@ void ms_test_for(uint32_t identification, uint64_t timestamp) {
 
 moonsniff::ms_stats ms_fetch_stats() {
 	return moonsniff::fetch_stats();
+}
+
+void ms_log_pkts(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts, uint32_t seqnum_offset, const char* filename) {
+	moonsniff::ms_log_pkts(port_id, queue_id, rx_pkts, nb_pkts, seqnum_offset, filename);
 }
 }

@@ -13,24 +13,25 @@ local C = ffi.C
 
 ffi.cdef [[
 	//----------------Moonsniff Live IO------------------------
-        struct ms_stats {
-                int64_t average_latency;
+	struct ms_stats {
+		int64_t average_latency;
 		int64_t variance_latency;
-                uint32_t hits;
-                uint32_t misses;
-                uint32_t inval_ts;
-        };
+		uint32_t hits;
+		uint32_t misses;
+		uint32_t inval_ts;
+	};
 
-        void ms_set_thresh(int64_t thresh);
-        void ms_add_entry(uint32_t identification, uint64_t timestamp);
-        void ms_test_for(uint32_t identification, uint64_t timestamp);
-        struct ms_stats ms_fetch_stats();
+	void ms_set_thresh(int64_t thresh);
+	void ms_add_entry(uint32_t identification, uint64_t timestamp);
+	void ms_test_for(uint32_t identification, uint64_t timestamp);
+	struct ms_stats ms_fetch_stats();
+	void ms_log_pkts(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts, uint32_t seqnum_offset, const char* filename);
 
 	//---------------MSCAP Writer/Reader-------------------------
-        struct mscap {
-                uint64_t timestamp;  /* timestamp in nanoseconds */
-                uint32_t identification;   /* identifies a received packet */
-        };
+	struct mscap {
+		uint64_t timestamp;  /* timestamp in nanoseconds */
+		uint32_t identification;   /* identifies a received packet */
+	};
 
 	//--------------CPP Histogram--------------------------------
 	void hs_initialize(uint32_t bucket_size);
@@ -77,7 +78,7 @@ function mod:newWriter(filename, startTime)
 	end
 	local offset = 0
 	ptr = cast("uint8_t*", ptr)
-	return setmetatable({ fd = fd, ptr = ptr, size = size, offset = offset, startTime = startTime }, writer)
+	return setmetatable({ fd = fd, ptr = ptr, size = size, offset = offset, startTime = startTime, filename = filename }, writer)
 end
 
 function writer:resize(size)
