@@ -185,7 +185,11 @@ function computeLatency(postcap, postreader, map, misses)
 
 	if pre_identifier == post_identifier then
 		local diff = ffi.cast(INT64_T, getTs(postcap) - ts)
-
+		-- handle weird overflow bug that was introduced when we moved to the C++ capturer
+		-- no idea what exactly causes this, but this work-around fixes it for all latencies less than 2 seconds
+		if ts ~= 0 and diff < -2^31 and diff > -2^32 then
+			diff = diff + 2^32
+		end
 		if ts ~= 0 and diff < TIME_THRESH then
 			log:warn("Got latency smaller than defined thresh value")
 			log:warn("Identification " .. ident)
