@@ -135,6 +135,9 @@ void moongen_send_all_packets_with_delay_bad_crc_loss(uint8_t port_id, uint16_t 
 		// include random losses
 		if ((double)rand()/RAND_MAX >= loss_rate) {
 			pkts[send_buf_idx++] = pkt;
+		} else {
+			// if the packet is not going to be sent, we have to free the mbuf.
+			rte_pktmbuf_free(pkt);
 		}
 		if (send_buf_idx >= BUF_SIZE || i + 1 == num_pkts) { // don't forget to send the last batch
 			dpdk_send_all_packets(port_id, queue_id, pkts, send_buf_idx);
