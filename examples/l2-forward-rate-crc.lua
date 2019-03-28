@@ -97,8 +97,9 @@ function forward(rxQueue, txQueue, txDev, rate)
 		-- packets shouldbe sent out before the actual packet.  Otherwise the good packet
 		-- could be complete received before it would have even completed sending at the
 		-- reduced rate.
-		for _, buf in ipairs(bufs) do
-			if (buf ~= nil) then
+		for iix=1,count do
+			local buf = bufs[iix]
+			if (buf ~= nil) then    -- should not be necessary
 				local pktSize = buf.pkt_len + 24
 				--print("forwarding packet of size ",pktSize)
 				--buf:setDelay(dist(10^10 / numThreads / 8 / (rate * 10^6) - pktSize - 24))
