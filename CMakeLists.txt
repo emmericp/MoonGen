@@ -15,7 +15,7 @@ add_subdirectory(libmoon)
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/src
 	${CMAKE_CURRENT_SOURCE_DIR}/lib
-	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/dpdk/x86_64-native-linuxapp-gcc/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/dpdk/x86_64-native-linux-gcc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/luajit/src
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/highwayhash/highwayhash
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/tbb/include
@@ -40,7 +40,7 @@ set(libraries
 
 link_directories(
 	${CMAKE_CURRENT_BINARY_DIR}/libmoon
-	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/dpdk/x86_64-native-linuxapp-gcc/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/dpdk/x86_64-native-linux-gcc/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/luajit/usr/local/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/libmoon/deps/highwayhash/lib
 )
