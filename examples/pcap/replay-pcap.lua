@@ -42,7 +42,8 @@ function replay(queue, file, loop, rateLimiter, multiplier)
 				if prev == 0 then
 					prev = bufs.array[0].udata64
 				end
-				for i, buf in ipairs(bufs) do
+				for i = 1, n  do
+					local buf = bufs[i]
 					-- ts is in microseconds
 					local ts = buf.udata64
 					if prev > ts then
