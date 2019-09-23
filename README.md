@@ -90,7 +90,7 @@ Use `libmoon/deps/dpdk/usertools/dpdk-devbind.py ` to manage NICs manually.
 Run the following command to install these on Debian/Ubuntu:
 
 ```
-sudo apt-get install -y build-essential cmake linux-headers-`uname -r` pciutils libnuma-dev
+sudo apt-get install -y build-essential cmake linux-headers-`uname -r` pciutils libnuma-dev libtbb-dev
 ```
 
 # Using MoonGen
