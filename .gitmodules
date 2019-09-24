@@ -1,3 +1,5 @@
 [submodule "libmoon"]
 	path = libmoon
-	url = https://github.com/libmoon/libmoon
+	url = https://github.com/brentondwalker/libmoon.git
+	branch = master
+
