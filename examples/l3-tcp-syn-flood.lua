@@ -39,7 +39,7 @@ function loadSlave(queue, minA, numIPs, dest)
 	local mem = memory.createMemPool(function(buf)
 		buf:getTcpPacket(ipv4):fill{ 
 			ethSrc = queue,
-			ethDst = "12:34:56:78:90",
+			ethDst = "12:34:56:78:90:ab",
 			ip4Dst = dest, 
 			ip6Dst = dest,
 			tcpSyn = 1,
