@@ -71,4 +71,4 @@ Flow{"example", Packet.Udp{
 }
 ```
 
-The protocol fields rely on libmoon's magic protocol stack which means you'll unfortunately have to dig through the (libmoon protocol definitions)[https://github.com/libmoon/libmoon/tree/master/lua/proto]. Everything that's available as `setXXX` there is available as variable here.
+The protocol fields rely on libmoon's magic protocol stack which means you'll unfortunately have to dig through the [libmoon protocol definitions](https://github.com/libmoon/libmoon/tree/master/lua/proto). Everything that's available as `setXXX` there is available as variable here.
