@@ -11,14 +11,23 @@ function configure(parser)
 	parser:option("-i --ip", "Source IP (IPv4 or IPv6)."):default("10.0.0.1")
 	parser:option("-d --destination", "Destination IP (IPv4 or IPv6).")
 	parser:option("-f --flows", "Number of different IPs to use."):default(100):convert(tonumber)
+	parser:option("-q --queues", "Number of tx queues."):default(1):convert(tonumber)
 end
 
 function master(args)
 	for i, dev in ipairs(args.dev) do
-		local dev = device.config{port = dev}
+		local dev = device.config{port = dev, txQueues = args.queues}
 		dev:wait()
-		dev:getTxQueue(0):setRate(args.rate)
-		mg.startTask("loadSlave", dev:getTxQueue(0), args.ip, args.flows, args.destination)
+
+		local nQ = dev:getInfo().nb_tx_queues -- should be the same as args.queues
+		if nQ < args.queues then
+		   print(string.format("Warning: requested %d queues, but only %d available", args.queues, nQ))
+		end
+		for i = 0, nQ-1 do
+		   local txQ = dev:getTxQueue(i)
+		   txQ:setRate(args.rate)
+		   mg.startTask("loadSlave", txQ, args.ip, args.flows, args.destination)
+		end
 	end
 	mg.waitForTasks()
 end
