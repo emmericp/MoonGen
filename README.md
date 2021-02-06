@@ -75,7 +75,8 @@ A more detailed evaluation can be found in [our paper](http://www.net.in.tum.de/
 5. sudo ./build/MoonGen examples/l3-load-latency.lua 0 1
 
 Note: You need to bind NICs to DPDK to use them. `bind-interfaces.sh` does this for all unused NICs (no routing table entry in the system).
-Use `libmoon/deps/dpdk/usertools/dpdk-devbind.py ` to manage NICs manually.
+Use `libmoon/deps/dpdk/usertools/dpdk-devbind.py ` to manage NICs manually.  
+If you have secure boot enabled (by default in ubuntu 20.04 LTS), you will get a permission denied error on the insmod command of the kernel module when running `sudo ./bind-interfaces.sh`. You can temporarely disable secure boot on ubuntu with the steps described [here](https://wiki.ubuntu.com/UEFI/SecureBoot/DKMS) to permit the unsigned driver to load.
 
 
 ## Dependencies
