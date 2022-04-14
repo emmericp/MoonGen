@@ -1,3 +1,4 @@
+local mg		= require "moongen"
 local dpdk		= require "dpdk"
 local memory	= require "memory"
 local device	= require "device"
@@ -9,24 +10,18 @@ local ip		= require "proto.ip4"
 local icmp		= require "proto.icmp"
 
 
-function master(funny, port, ...)
-	if funny and funny ~= "--do-funny-things" then
-		return master(nil, funny, port, ...)
-	end
-	port = tonumber(port)
-	if not port or select("#", ...) == 0 or ... == nil then
-		log:info("usage: [--do-funny-things] port ip [ip...]")
-		return
-	end
-	
-	local dev = device.config(port, 2, 2)
-	device.waitForLinks()
-	
-	dpdk.launchLua(arp.arpTask, {
-		{ rxQueue = dev:getRxQueue(1), txQueue = dev:getTxQueue(1), ips = { ... } }
-	})
+function configure(parser)
+	parser:description("ICMP ARP responder")
+	parser:argument("dev", "Device number."):convert(tonumber)
+	parser:flag("--do-funny-things")
+end
 
-	pingResponder(dev, funny)
+
+function master(args)
+	local dev = device.config{port = args.dev, txQueues = 1, rxQueues = 1}
+	dev:wait()
+	mg.startTask("pingResponder", dev, args.do_funny_things)
+	mg.waitForTasks()
 end
 
 local DIGITS = { 1, 8 }
@@ -65,7 +60,7 @@ function pingResponder(dev, funny)
 
 	local rxMem = memory.createMemPool()	
 	local rxBufs = rxMem:bufArray(1)
-	while dpdk.running() do
+	while mg.running() do
 		rx = rxQueue:recv(rxBufs)
 		if rx > 0 then
 			local buf = rxBufs[1]

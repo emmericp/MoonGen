@@ -135,6 +135,19 @@ MoonGen prints all available ports on startup, so adjust this if necessary.
 You can also check out the examples of the [libmoon](https://github.com/libmoon/libmoon) project.
 All libmoon scripts are also valid MoonGen scripts as MoonGen extends libmoon.
 
+## Using tman (task manager)
+A newer CLI interface allows to start a number of various tasks at once. Here is the synopsis:
+```
+ ./build/tman [tman options...] [-- <task1-file> [task1 options...]] [-- <task2-file> [task2 options...]] [-- ...]
+```
+Also `./build/tman -h` gives more enhanced help.
+
+Ordinary task Lua files, however, are incompatible with tman interface. A task file for `tman` has to determine the following objects:
+- `function configure(parser)` which describes task's options.
+- `function task(taskNum, txInfo, rxInfo, args)` which describes what is being run. Here `txInfo` and `rxInfo` are arrays of RX and TX queues respectively, `args` keeps the parameters of the task manager and the task itself.
+
+See examples in `examples/tman/`.
+
 # Frequently Asked Questions
 
 ### Which NICs do you support?
