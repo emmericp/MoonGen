@@ -1,4 +1,4 @@
---[[   
+--[[    
   
    Copyright (C) 2016 Netronome Systems, Inc. All rights reserved.
 
@@ -31,7 +31,6 @@
       packet sizes 1514, 570, and 64, respectively. 
 --]]
 
-local libmoon  = require "libmoon"
 local mg       = require "moongen"
 local moongen  = require "dpdk"      
 local dpdkc    = require "dpdkc"       
@@ -271,7 +270,7 @@ function master(...)
         -- Check if the port must be used as a TX slave:
         for _, txPortId in ipairs(clParams.txSlavePorts) do
             if txPortId == portId then
-                libmoon.startTask("txSlave", devices[i], portId, slaveId, clParams)
+                mg.startTask("txSlave", devices[i], portId, slaveId, clParams)
                 slaveId = slaveId + 1
                 break
             end
@@ -279,7 +278,7 @@ function master(...)
         -- Check if the port must be used as a RX slave:
         for _, rxPortId in ipairs(clParams.rxSlavePorts) do
             if rxPortId == portId then
-                libmoon.startTask("rxSlave", devices[i], portId, slaveId, clParams)
+                mg.startTask("rxSlave", devices[i], portId, slaveId, clParams)
                 slaveId = slaveId + 1
                 break
             end
