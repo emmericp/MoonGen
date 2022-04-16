@@ -91,7 +91,7 @@ If you have secure boot enabled (by default in ubuntu 20.04 LTS), you will get a
 Run the following command to install these on Debian/Ubuntu:
 
 ```
-sudo apt-get install -y build-essential cmake linux-headers-`uname -r` pciutils libnuma-dev
+sudo apt-get install -y build-essential cmake linux-headers-`uname -r` pciutils libnuma-dev libtbb-dev
 ```
 
 # Using MoonGen
