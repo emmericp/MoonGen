@@ -86,12 +86,13 @@ If you have secure boot enabled (by default in ubuntu 20.04 LTS), you will get a
 * libnuma-dev
 * kernel headers (for the DPDK igb-uio driver)
 * lspci (for `dpdk-devbind.py`)
+* libtbb-dev
 * [additional dependencies](https://github.com/libmoon/libmoon/blob/master/install-mlx.md) for Mellanox NICs
 
 Run the following command to install these on Debian/Ubuntu:
 
 ```
-sudo apt-get install -y build-essential cmake linux-headers-`uname -r` pciutils libnuma-dev
+sudo apt-get install -y build-essential cmake linux-headers-`uname -r` pciutils libnuma-dev libtbb-dev
 ```
 
 # Using MoonGen
