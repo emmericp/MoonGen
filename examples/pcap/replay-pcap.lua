@@ -61,6 +61,7 @@ function replay(queue, file, loop, rateLimiter, multiplier, sleepTime)
 			end
 		else
 			if loop then
+				prev = 0
 				pcapFile:reset()
 			else
 				break
@@ -75,4 +76,3 @@ function replay(queue, file, loop, rateLimiter, multiplier, sleepTime)
 	log:info("Enqueued all packets, waiting for %d seconds for queues to flush", sleepTime)
 	mg.sleepMillisIdle(sleepTime * 1000)
 end
-
